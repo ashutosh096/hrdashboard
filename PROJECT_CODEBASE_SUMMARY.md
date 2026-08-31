@@ -35,6 +35,7 @@
    - Red unread count badge on header bell icon (`3`).
    - Live dropdown popup for realtime alerts, task submissions, and meeting notices.
    - **Strict DB Authentication**: User lookup via PostgreSQL `users` table with `bcrypt.compare()` hash verification (all demo fallback logins removed).
+   - **Secure Onboarding**: Invite token verification via `invites` table for password setup (`/set-password`).
    - **Zero TypeScript Errors**: 100% verified with `tsc --noEmit`.
 
 ---
@@ -43,8 +44,8 @@
 
 | Role | User Account | Auth Security | Access Rights |
 | :--- | :--- | :--- | :--- |
-| **Manager / Admin** | `admin@ehm-climagro.com` | bcrypt hash check via DB `users` table | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Export Reports |
-| **Employee** | `employee@ehm-climagro.com` | bcrypt hash check via DB `users` table | Employee Portal Dashboard, My Deliverables, Locked Daily Attendance, My Applications, Team Tasks |
+| **Manager / Admin** | `admin@example.com` | Real DB bcrypt hash check via `users` table (seeded in `seed.ts`) | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Export Reports |
+| **Employee** | `employee@ehm-climagro.com` | Real DB bcrypt hash check via `users` table | Employee Portal Dashboard, My Deliverables, Locked Daily Attendance, My Applications, Team Tasks |
 
 ---
 
@@ -61,7 +62,7 @@
 | **Toast Alerts** | **Sonner** | Interactive notification popups |
 | **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` |
 | **Database & ORM** | **PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Authentication** | **JWT (JSON Web Tokens)** + **BcryptJS** | Real DB User Authentication & encrypted tokens |
+| **Authentication** | **JWT (JSON Web Tokens)** + **BcryptJS** | Real DB User & Invite Authentication |
 | **Email Dispatch** | **Resend API** | Automated onboarding & invite emails |
 
 ---
@@ -100,12 +101,12 @@ c:\hrdashboard\artifacts\hr-dashboard\
 
 ## ⚙️ Core Application Source Code
 
-### 1. `c:\hrdashboard\artifacts\api-server\src\routes\auth.ts` (DB Auth with Bcrypt)
+### 1. `c:\hrdashboard\artifacts\api-server\src\routes\auth.ts` (DB Auth & Invite Token Validation)
 ```typescript
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users, eq } from '@workspace/db';
+import { db, users, invites, eq } from '@workspace/db';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
@@ -149,6 +150,46 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/set-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    return res.status(400).json({ message: 'Token and password required' });
+  }
+
+  try {
+    const [invite] = await db
+      .select()
+      .from(invites)
+      .where(eq(invites.token, token));
+
+    if (!invite || invite.status === 'ACCEPTED' || (invite.expiresAt && new Date(invite.expiresAt) < new Date())) {
+      return res.status(400).json({ message: 'Invalid or expired invite token' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const inviteEmail = invite.email.toLowerCase().trim();
+
+    const [existingUser] = await db.select().from(users).where(eq(users.email, inviteEmail));
+    let userId: string;
+
+    if (existingUser) {
+      userId = existingUser.id;
+      await db.update(users).set({ passwordHash, status: 'ACTIVE' }).where(eq(users.id, existingUser.id));
+    } else {
+      const [newUser] = await db.insert(users).values({ email: inviteEmail, passwordHash, role: invite.role, status: 'ACTIVE', employeeId: invite.employeeId }).returning();
+      userId = newUser ? newUser.id : 'user-' + Date.now();
+    }
+
+    await db.update(invites).set({ status: 'ACCEPTED' }).where(eq(invites.id, invite.id));
+
+    const userPayload = { id: userId, email: inviteEmail, role: invite.role, employeeId: invite.employeeId };
+    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+    return res.json({ message: 'Password set successfully', token: authToken, user: userPayload });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to set password' });
+  }
+});
+
 export default router;
 ```
 
@@ -158,4 +199,4 @@ export default router;
 
 - **`artifacts/api-server`**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
 - **`artifacts/hr-dashboard`**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
-- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md) (108/108 files verified)
+- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md) (109/109 files verified)
