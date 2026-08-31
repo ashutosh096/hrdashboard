@@ -234,6 +234,7 @@ export const TeamTasksView: React.FC = () => {
         task={selectedTaskToUpdate}
         onClose={() => setSelectedTaskToUpdate(null)}
         onSave={handleSaveUpdate}
+        isReadOnly={!isEmployee}
       />
     </div>
   );

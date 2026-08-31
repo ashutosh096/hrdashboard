@@ -303,6 +303,7 @@ export const EmployeeDashboardView: React.FC = () => {
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
         onSave={handleSaveTaskUpdate}
+        isReadOnly={false}
       />
     </div>
   );
