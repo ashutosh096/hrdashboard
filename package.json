@@ -1,0 +1,12 @@
+{
+  "name": "hros-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"@workspace/*\" dev",
+    "build": "pnpm --recursive run build",
+    "seed": "pnpm --filter @workspace/api-server seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
