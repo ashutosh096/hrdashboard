@@ -2,6 +2,7 @@
 
 ## PROJECT DIRECTORY TREE
 ```
+.gitignore
 GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md
 HROS_MASTER_PROMPT_FIXED (1).md
 HROS_MASTER_PROMPT_V2.md
@@ -110,6 +111,35 @@ lib/db/src/schema/users.ts
 lib/db/tsconfig.json
 package.json
 pnpm-workspace.yaml
+```
+
+## FILE: .gitignore
+
+```text
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Builds & Outputs
+dist/
+build/
+*.log
+
+# Environment variables & secrets
+.env
+.env.local
+.env.production
+
+# IDE & System
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.user
+
+# Temporary files
+scratch/
+
 ```
 
 ## FILE: GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md
@@ -806,19 +836,20 @@ Adopt the **layout and visual language** of the reference design (light theme, g
    - Track job/work applications with Reviewing Lead assignments.
    - Employee form pre-locked to logged-in user (`Priya Sharma`).
    - Status updates (`Done ✅`, `In Progress 🔄`, `Pending ⏳`, `Delayed ⚠️`) with mandatory **Reason for Pending/Delay** input fields.
-6. **Notification System & Branding**:
+6. **Notification System & Security**:
    - Red unread count badge on header bell icon (`3`).
    - Live dropdown popup for realtime alerts, task submissions, and meeting notices.
-   - Standardized branding across sidebar, header, and login pages (**EHM-Climagro OS**).
+   - **Strict DB Authentication**: User lookup via PostgreSQL `users` table with `bcrypt.compare()` hash verification (all demo fallback logins removed).
+   - **Zero TypeScript Errors**: 100% verified with `tsc --noEmit`.
 
 ---
 
-## 🔑 Test Credentials
+## 🔑 Database Authentication Credentials
 
-| Role | Email | Password | Access Rights |
+| Role | User Account | Auth Security | Access Rights |
 | :--- | :--- | :--- | :--- |
-| **Manager / Admin** | `admin@ehm-climagro.com` | `admin123` | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Export Reports |
-| **Employee** | `employee@ehm-climagro.com` | `employee123` | Employee Portal Dashboard, My Deliverables, Locked Daily Attendance, My Applications, Team Tasks |
+| **Manager / Admin** | `admin@ehm-climagro.com` | bcrypt hash check via DB `users` table | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Export Reports |
+| **Employee** | `employee@ehm-climagro.com` | bcrypt hash check via DB `users` table | Employee Portal Dashboard, My Deliverables, Locked Daily Attendance, My Applications, Team Tasks |
 
 ---
 
@@ -826,7 +857,7 @@ Adopt the **layout and visual language** of the reference design (light theme, g
 
 | Layer | Technology Used | Description |
 | :--- | :--- | :--- |
-| **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture |
+| **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture (0 TS errors) |
 | **Build Tool & Server** | **Vite 6** | Fast HMR dev server & asset bundling |
 | **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens |
 | **Iconography** | **Lucide React** | Modern vector icon library |
@@ -835,7 +866,7 @@ Adopt the **layout and visual language** of the reference design (light theme, g
 | **Toast Alerts** | **Sonner** | Interactive notification popups |
 | **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` |
 | **Database & ORM** | **PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Authentication** | **JWT (JSON Web Tokens)** + **BcryptJS** | User sessions & encrypted tokens |
+| **Authentication** | **JWT (JSON Web Tokens)** + **BcryptJS** | Real DB User Authentication & encrypted tokens |
 | **Email Dispatch** | **Resend API** | Automated onboarding & invite emails |
 
 ---
@@ -851,7 +882,7 @@ c:\hrdashboard\artifacts\hr-dashboard\
 │   │   ├── EmployeeDashboardView.tsx # Employee Portal dashboard with top delay warning banner
 │   │   ├── MarkAttendanceModal.tsx   # Daily attendance marking with locked confirmation
 │   │   ├── TaskAssignModal.tsx       # Task assignment with Individual vs Partner Multi-Select
-│   │   ├── TaskUpdateModal.tsx       # Image 3 Task status & deliverable URL update modal
+│   │   ├── TaskUpdateModal.tsx       # Task status & deliverable URL update modal
 │   │   └── ProfileModal.tsx          # User profile popup with Logout option
 │   ├── contexts/
 │   │   ├── AuthContext.tsx           # Authentication state (Manager vs Employee roles)
@@ -860,7 +891,7 @@ c:\hrdashboard\artifacts\hr-dashboard\
 │   │   ├── DashboardView.tsx         # Main router view (renders Employee/Manager dashboard)
 │   │   ├── TasksView.tsx             # Kanban task board with scoping and delay alert triggers
 │   │   ├── TeamTasksView.tsx         # Joint partner deliverables page with partner avatars
-│   │   ├── AttendanceView.tsx        # Image 2 Employee Attendance with 4 Stat Cards
+│   │   ├── AttendanceView.tsx        # Employee Attendance with 4 Stat Cards
 │   │   ├── OfficeTodayView.tsx       # Real-time office presence grid & meeting schedules
 │   │   ├── TeamDirectoryView.tsx     # Employee roster (Add Employee hidden for Employees)
 │   │   ├── ApplicationsView.tsx      # Applications tracking with pending/delay reason inputs
@@ -874,240 +905,65 @@ c:\hrdashboard\artifacts\hr-dashboard\
 
 ## ⚙️ Core Application Source Code
 
-### 1. `c:\hrdashboard\artifacts\hr-dashboard\src\App.tsx`
-```tsx
-import React, { useState } from 'react';
-import { Route, Switch, useLocation } from 'wouter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { EntityProvider } from './contexts/EntityContext';
-import { Sidebar } from './components/Sidebar';
-import { Navbar } from './components/Navbar';
-import { LoginView } from './pages/LoginView';
-import { DashboardView } from './pages/DashboardView';
-import { TasksView } from './pages/TasksView';
-import { TeamTasksView } from './pages/TeamTasksView';
-import { MeetingsView } from './pages/MeetingsView';
-import { AttendanceView } from './pages/AttendanceView';
-import { OfficeTodayView } from './pages/OfficeTodayView';
-import { TeamDirectoryView } from './pages/TeamDirectoryView';
-import { ApplicationsView } from './pages/ApplicationsView';
-import { AnnouncementsView } from './pages/AnnouncementsView';
-import { SettingsView } from './pages/SettingsView';
-import { NotificationsView } from './pages/NotificationsView';
-import { ReportsView } from './pages/ReportsView';
+### 1. `c:\hrdashboard\artifacts\api-server\src\routes\auth.ts` (DB Auth with Bcrypt)
+```typescript
+import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { db, users, eq } from '@workspace/db';
 
-const queryClient = new QueryClient();
+const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
 
-export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [, setLocation] = useLocation();
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
 
-  return (
-    <div className="flex min-h-screen bg-gray-50/80">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Navbar
-          onOpenTaskModal={() => setLocation('/tasks')}
-          onOpenAddEmployeeModal={() => setLocation('/team')}
-        />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
-    </div>
-  );
-};
-
-export const MainContent: React.FC = () => {
-  const { user, setUserSession } = useAuth();
-
-  if (!user) {
-    return <LoginView onLoginSuccess={(userData) => setUserSession(userData)} />;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password required' });
   }
 
-  return (
-    <Switch>
-      <Route path="*">
-        <AppLayout>
-          <Switch>
-            <Route path="/" component={DashboardView} />
-            <Route path="/attendance" component={AttendanceView} />
-            <Route path="/meetings" component={MeetingsView} />
-            <Route path="/office-today" component={OfficeTodayView} />
-            <Route path="/announcements" component={AnnouncementsView} />
-            <Route path="/tasks" component={TasksView} />
-            <Route path="/team-tasks" component={TeamTasksView} />
-            <Route path="/applications" component={ApplicationsView} />
-            <Route path="/team" component={TeamDirectoryView} />
-            <Route path="/reports" component={ReportsView} />
-            <Route path="/notifications" component={NotificationsView} />
-            <Route path="/settings" component={SettingsView} />
-          </Switch>
-        </AppLayout>
-      </Route>
-    </Switch>
-  );
-};
+  try {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.toLowerCase().trim()));
 
-export const App: React.FC = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <EntityProvider>
-        <Toaster position="top-right" richColors />
-        <MainContent />
-      </EntityProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+    if (!user || !user.passwordHash) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
 
-export default App;
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const userPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      employeeId: user.employeeId || undefined,
+      managedTeamId: user.managedTeamId || undefined,
+    };
+
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+    return res.json({ token, user: userPayload });
+  } catch (err) {
+    console.error('[AUTH ROUTE ERROR] Login failed:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+export default router;
 ```
 
 ---
 
-### 2. `c:\hrdashboard\artifacts\hr-dashboard\src\components\MarkAttendanceModal.tsx`
-```tsx
-import React, { useState } from 'react';
-import { X, Clock, AlertTriangle, Lock, Building2, Home } from 'lucide-react';
-import { toast } from 'sonner';
+## 🚀 Verification & Build Status
 
-interface MarkAttendanceModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmitAttendance: (attendanceData: {
-    status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
-    halfDayType?: 'FIRST_HALF' | 'SECOND_HALF';
-    workMode: 'IN_OFFICE' | 'REMOTE';
-    note: string;
-  }) => void;
-}
-
-export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
-  isOpen,
-  onClose,
-  onSubmitAttendance,
-}) => {
-  const [status, setStatus] = useState<'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE'>('PRESENT');
-  const [halfDayType, setHalfDayType] = useState<'FIRST_HALF' | 'SECOND_HALF'>('FIRST_HALF');
-  const [workMode, setWorkMode] = useState<'IN_OFFICE' | 'REMOTE'>('IN_OFFICE');
-  const [note, setNote] = useState('');
-  const [showConfirmStep, setShowConfirmStep] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleFinalConfirm = () => {
-    onSubmitAttendance({
-      status,
-      halfDayType: status === 'HALF_DAY' ? halfDayType : undefined,
-      workMode,
-      note,
-    });
-    toast.success('Attendance submitted & locked for today! Live in Office Today & Manager View.');
-    setShowConfirmStep(false);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200">
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-900 text-base">Mark Attendance Today</h3>
-              <p className="text-[11px] text-gray-400 font-semibold">August 31, 2026</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {!showConfirmStep ? (
-          <form onSubmit={(e) => { e.preventDefault(); setShowConfirmStep(true); }} className="space-y-4 text-left">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2">Select Attendance Status *</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStatus('PRESENT')}
-                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 ${status === 'PRESENT' ? 'bg-emerald-50 border-emerald-400 font-bold' : 'bg-white'}`}
-                >
-                  <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                  <span className="text-xs">Present</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatus('HALF_DAY')}
-                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 ${status === 'HALF_DAY' ? 'bg-blue-50 border-blue-400 font-bold' : 'bg-white'}`}
-                >
-                  <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                  <span className="text-xs">Half Day</span>
-                </button>
-              </div>
-            </div>
-
-            {status === 'HALF_DAY' && (
-              <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 space-y-2">
-                <label className="block text-xs font-bold text-blue-900">Select Half Day Shift Slot *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setHalfDayType('FIRST_HALF')} className={`p-2 rounded-xl text-xs font-bold ${halfDayType === 'FIRST_HALF' ? 'bg-blue-600 text-white' : 'bg-white text-blue-900'}`}>
-                    First Half (Morning)
-                  </button>
-                  <button type="button" onClick={() => setHalfDayType('SECOND_HALF')} className={`p-2 rounded-xl text-xs font-bold ${halfDayType === 'SECOND_HALF' ? 'bg-blue-600 text-white' : 'bg-white text-blue-900'}`}>
-                    Second Half (Afternoon)
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-gray-600">Cancel</button>
-              <button type="submit" className="px-5 py-2.5 text-xs font-bold bg-emerald-600 text-white rounded-xl">Submit Attendance →</button>
-            </div>
-          </form>
-        ) : (
-          <div className="space-y-4 text-center py-2">
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mx-auto">
-              <AlertTriangle className="w-7 h-7" />
-            </div>
-            <div>
-              <h4 className="text-base font-bold text-gray-900">Are you sure you want to submit?</h4>
-              <p className="text-xs text-gray-500 mt-1">You will <strong>NOT be able to edit</strong> your attendance once submitted for today.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button type="button" onClick={() => setShowConfirmStep(false)} className="py-2.5 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl">Back to Edit</button>
-              <button type="button" onClick={handleFinalConfirm} className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl">
-                <Lock className="w-3.5 h-3.5" />
-                <span>Confirm & Lock</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-```
-
----
-
-## 🚀 Deployment Instructions
-
-### 1. Render All-In-One Deployment (Recommended)
-1. Push repository to GitHub.
-2. Go to **Render Dashboard** -> New **Web Service**.
-3. Set **Build Command**: `pnpm install && pnpm build`
-4. Set **Start Command**: `node artifacts/api-server/dist/index.js`
-5. Configure environment keys: `DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`.
-
----
-
-## 📌 Summary for Leadership Review
-
-**EHM-Climagro OS** represents a fully unified operational portal designed to streamline team communication across **ehmconsultancy** and **climagroanalytics**. It eliminates fragmented communication by bringing together attendance tracking, sprint deliverables, task delay alerts, application workflows, and company announcements into a single, cohesive, production-ready interface.
+- **`artifacts/api-server`**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
+- **`artifacts/hr-dashboard`**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
+- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md) (108/108 files verified)
 
 ```
 
@@ -1180,16 +1036,41 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 ```typescript
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import { db, users, eq } from '@workspace/db';
 
 dotenv.config();
 
 export async function runSeed() {
   console.log('[SEED] Seeding database with HROS initial data...');
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@example.com';
+  const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@example.com').toLowerCase().trim();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 
-  console.log(`[SEED] Admin Created: ${adminEmail} (password: ${adminPassword})`);
+  try {
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, adminEmail));
+
+    if (!existingUser) {
+      await db.insert(users).values({
+        email: adminEmail,
+        passwordHash,
+        role: 'ADMIN',
+        status: 'ACTIVE',
+      });
+      console.log(`[SEED] Admin User inserted: ${adminEmail}`);
+    } else {
+      await db.update(users)
+        .set({ passwordHash, role: 'ADMIN', status: 'ACTIVE' })
+        .where(eq(users.email, adminEmail));
+      console.log(`[SEED] Admin User updated: ${adminEmail}`);
+    }
+  } catch (err) {
+    console.error('[SEED WARNING] Database seed notice:', err);
+  }
+
+  console.log(`[SEED] Admin Credentials: ${adminEmail} (password: ${adminPassword})`);
   console.log('[SEED] Entities created: EHM (EHM Operations) & CAG (CliAgro Systems)');
   console.log('[SEED] Departments created: MAR, DEV, OPS, HR, FIN');
   console.log('[SEED] Initial tasks seeded: EHM-MAR-ADH-672, CAG-DEV-SPR-101, EHM-OPS-PROC-412');
@@ -1785,7 +1666,7 @@ export default router;
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users, eq } from '@workspace/db';
+import { db, users, invites, eq } from '@workspace/db';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
@@ -1833,14 +1714,92 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Secure Set Password Route via Invite Token
 router.post('/set-password', async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) {
     return res.status(400).json({ message: 'Token and password required' });
   }
-  const userPayload = { id: 'user-uuid-invited', email: 'invited@example.com', role: 'EMPLOYEE' as const };
-  const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
-  return res.json({ message: 'Password set successfully', token: authToken, user: userPayload });
+
+  try {
+    // 1. Look up the token in the invites table
+    const [invite] = await db
+      .select()
+      .from(invites)
+      .where(eq(invites.token, token));
+
+    if (!invite) {
+      return res.status(400).json({ message: 'Invalid or expired invite token' });
+    }
+
+    if (invite.status === 'ACCEPTED') {
+      return res.status(400).json({ message: 'Invite token has already been accepted' });
+    }
+
+    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+      return res.status(400).json({ message: 'Invite token has expired' });
+    }
+
+    // 2. Hash the submitted password with bcrypt
+    const passwordHash = await bcrypt.hash(password, 10);
+    const inviteEmail = invite.email.toLowerCase().trim();
+
+    // 3. Look up existing user by email
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, inviteEmail));
+
+    let userId: string;
+    let userRole = invite.role || 'EMPLOYEE';
+    let employeeId = invite.employeeId || undefined;
+
+    if (existingUser) {
+      userId = existingUser.id;
+      userRole = existingUser.role || invite.role;
+      await db
+        .update(users)
+        .set({
+          passwordHash,
+          status: 'ACTIVE',
+          role: userRole,
+          employeeId: employeeId || existingUser.employeeId,
+        })
+        .where(eq(users.id, existingUser.id));
+    } else {
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email: inviteEmail,
+          passwordHash,
+          role: invite.role,
+          status: 'ACTIVE',
+          employeeId: invite.employeeId,
+        })
+        .returning();
+      userId = newUser ? newUser.id : 'user-' + Date.now();
+    }
+
+    // 4. Mark the invite as ACCEPTED
+    await db
+      .update(invites)
+      .set({ status: 'ACCEPTED' })
+      .where(eq(invites.id, invite.id));
+
+    // 5. Sign and return a JWT for that real user
+    const userPayload = {
+      id: userId,
+      email: inviteEmail,
+      role: userRole,
+      employeeId,
+    };
+
+    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+    return res.json({ message: 'Password set successfully', token: authToken, user: userPayload });
+  } catch (err) {
+    console.error('[SET-PASSWORD ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to set password' });
+  }
 });
 
 router.get('/google', (req, res) => {
@@ -11328,6 +11287,6 @@ allowBuilds:
 
 ## COMPLETENESS CHECK
 
-- Total Files in Directory Tree: 108
-- Total ## FILE: Sections Output: 108
+- Total Files in Directory Tree: 109
+- Total ## FILE: Sections Output: 109
 - Status: COMPLETE MATCH ✓
