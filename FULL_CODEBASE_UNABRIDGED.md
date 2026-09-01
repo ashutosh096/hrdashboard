@@ -8129,12 +8129,16 @@ export const useEntity = () => useContext(EntityContext);
     --card-bg: #FFFFFF;
   }
 
+  html {
+    font-size: 75%; /* Scales typography, paddings, gaps & layout elements to 75% size with 0 layout gaps */
+  }
+
   body {
-    zoom: 75%;
     background-color: var(--bg-page);
     color: #111827;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
   }
 }
 
