@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, decimal, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, decimal, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
 import { entities } from './entities.js';
 import { departments } from './departments.js';
 
@@ -6,6 +6,8 @@ export const employeeStatusEnum = pgEnum('employee_status', ['ACTIVE', 'TERMINAT
 
 export const employees = pgTable('employees', {
   id: uuid('id').primaryKey().defaultRandom(),
+  employeeCode: varchar('employee_code', { length: 20 }).unique().notNull(),
+  taskSeqCounter: integer('task_seq_counter').default(0).notNull(),
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),

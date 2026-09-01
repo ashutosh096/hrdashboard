@@ -8,6 +8,7 @@
     "build": "tsc"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "pg": "^8.13.1"
   },

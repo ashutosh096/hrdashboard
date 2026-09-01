@@ -2,10 +2,10 @@ import { defineConfig } from 'drizzle-kit';
 import dotenv from 'dotenv';
 import path from 'node:path';
 
-dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
 
 export default defineConfig({
-  schema: './lib/db/src/schema/*.ts',
+  schema: './dist/index.js',
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {

@@ -1,0 +1,1 @@
+ALTER TABLE "tasks" ALTER COLUMN "sprint_week" DROP NOT NULL;

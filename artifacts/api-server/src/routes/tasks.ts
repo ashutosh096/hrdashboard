@@ -1,110 +1,114 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
+import { db, tasks, employees, entities, sprints, eq, sql } from '@workspace/db';
 
 const router = Router();
 
-// In-memory tasks collection initialized with real HROS data
-let tasksList = [
-  {
-    id: 't-1',
-    taskCode: 'EHM-MAR-ADH-672',
-    title: 'Brand Refresh Assets & Social Kit',
-    description: 'Create high-res SVG vectors and banner graphics for EHM social channels.',
-    entityCode: 'EHM',
-    departmentCode: 'MAR',
-    sprintWeek: 'Sprint 35',
-    assigneeName: 'Priya Sharma',
-    assigneeId: 'emp-1',
-    reviewingLeadName: 'Sanjay Kapoor',
-    deliverableUrl: 'https://drive.google.com/file/d/ehm-brand-v2',
-    status: 'DONE',
-    priority: 'HIGH',
-    dueDate: '2026-09-02',
-    notes: [{ id: 'n-1', author: 'Sanjay Kapoor', content: 'Approved vector assets.', createdAt: '2026-08-30' }],
-    checklists: [{ id: 'c-1', itemText: 'Logo variants', isCompleted: true }, { id: 'c-2', itemText: 'Banner sizes', isCompleted: true }],
-  },
-  {
-    id: 't-2',
-    taskCode: 'CAG-DEV-SPR-101',
-    title: 'IoT Sensor API Gateway v2',
-    description: 'Implement WebSocket listener for CliAgro sensor telemetry.',
-    entityCode: 'CAG',
-    departmentCode: 'DEV',
-    sprintWeek: 'Sprint 35',
-    assigneeName: 'Rahul Verma',
-    assigneeId: 'emp-2',
-    reviewingLeadName: 'Ananya Rao',
-    deliverableUrl: 'https://github.com/cliagro/sensor-gateway',
-    status: 'IN_PROGRESS',
-    priority: 'URGENT',
-    dueDate: '2026-09-04',
-    notes: [{ id: 'n-2', author: 'Rahul Verma', content: 'WebSocket endpoint connected.', createdAt: '2026-08-31' }],
-    checklists: [{ id: 'c-3', itemText: 'Auth handler', isCompleted: true }, { id: 'c-4', itemText: 'Load test 1k conn', isCompleted: false }],
-  },
-  {
-    id: 't-3',
-    taskCode: 'EHM-OPS-PROC-412',
-    title: 'Q3 Vendor Procurement Audit',
-    description: 'Compile vendor compliance docs and contract renewals.',
-    entityCode: 'EHM',
-    departmentCode: 'OPS',
-    sprintWeek: 'Sprint 36',
-    assigneeName: 'Anita Desai',
-    assigneeId: 'emp-3',
-    reviewingLeadName: 'Sanjay Kapoor',
-    deliverableUrl: '',
-    status: 'TODO',
-    priority: 'MEDIUM',
-    dueDate: '2026-09-08',
-    notes: [],
-    checklists: [{ id: 'c-5', itemText: 'Collect contracts', isCompleted: false }],
-  },
-];
-
-router.get('/', (req, res) => {
-  const entity = (req.query.entity as string) || 'ALL';
-  const filtered = entity === 'ALL' ? tasksList : tasksList.filter(t => t.entityCode === entity);
-  res.json(filtered);
+router.get('/', async (req, res) => {
+  try {
+    const allTasks = await db.select().from(tasks);
+    res.json(allTasks);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch tasks' });
+  }
 });
 
-router.post('/', (req, res) => {
-  const body = req.body;
-  const entity = body.entityCode || 'EHM';
-  const dept = body.departmentCode || 'MAR';
-  const seq = Math.floor(100 + Math.random() * 900);
-  const taskCode = `${entity}-${dept}-ADH-${seq}`;
+router.post('/', async (req, res) => {
+  const { title, description, assigneeId, creatorId, departmentId, sprintId, initiativeId, storyPoints, priority, status, dueDate, deliverableUrl } = req.body;
 
-  const newTask = {
-    id: crypto.randomUUID(),
-    taskCode,
-    title: body.title || 'Untitled Task',
-    description: body.description || '',
-    entityCode: entity,
-    departmentCode: dept,
-    sprintWeek: body.sprintWeek || 'Sprint 35',
-    assigneeName: body.assigneeName || 'Priya Sharma',
-    assigneeId: body.assigneeId || 'emp-1',
-    reviewingLeadName: body.reviewingLeadName || 'Admin Lead',
-    deliverableUrl: body.deliverableUrl || '',
-    status: body.status || 'TODO',
-    priority: body.priority || 'MEDIUM',
-    dueDate: body.dueDate || new Date().toISOString().split('T')[0],
-    notes: [],
-    checklists: [],
-  };
+  try {
+    const newTask = await db.transaction(async (tx) => {
+      // 1. Resolve Assignee & their entityId
+      let targetAssigneeId = assigneeId;
+      if (!targetAssigneeId) {
+        const [firstEmp] = await tx.select().from(employees).limit(1);
+        targetAssigneeId = firstEmp?.id;
+      }
 
-  tasksList.unshift(newTask);
-  res.status(201).json(newTask);
-});
+      const [assignee] = await tx
+        .select({
+          id: employees.id,
+          entityId: employees.entityId,
+          departmentId: employees.departmentId,
+          employeeCode: employees.employeeCode,
+        })
+        .from(employees)
+        .where(eq(employees.id, targetAssigneeId));
 
-router.post('/:id/notes', (req, res) => {
-  const { id } = req.params;
-  const { content, author } = req.body;
-  const task = tasksList.find(t => t.id === id);
-  if (!task) return res.status(404).json({ message: 'Task not found' });
-  const note = { id: crypto.randomUUID(), author: author || 'User', content, createdAt: new Date().toISOString() };
-  task.notes.push(note);
-  res.json(note);
+      if (!assignee) {
+        throw new Error(`Assignee employee not found for ID: ${targetAssigneeId}`);
+      }
+
+      // 2. Fetch entityCode using Assignee's own entityId
+      const [entity] = await tx
+        .select({ code: entities.code })
+        .from(entities)
+        .where(eq(entities.id, assignee.entityId));
+
+      if (!entity) {
+        throw new Error(`Entity not found for ID: ${assignee.entityId}`);
+      }
+
+      const entityCode = entity.code; // "EHM" or "CAG"
+
+      // 3. Atomically increment taskSeqCounter on Assignee
+      const [updatedEmp] = await tx
+        .update(employees)
+        .set({ taskSeqCounter: sql`${employees.taskSeqCounter} + 1` })
+        .where(eq(employees.id, assignee.id))
+        .returning();
+
+      // Format taskCode (e.g. "EHM-EMP01-002")
+      const empShortCode = updatedEmp.employeeCode.replace(/^[^-]+-/, ''); // "EMP01"
+      const seqPadded = String(updatedEmp.taskSeqCounter).padStart(3, '0');
+      const taskCode = `${entityCode}-${empShortCode}-${seqPadded}`;
+
+      // 4. Resolve sprintWeek text from sprintId if available
+      let sprintWeekStr = req.body.sprintWeek;
+      if (!sprintWeekStr && sprintId) {
+        const [sprint] = await tx.select({ name: sprints.name }).from(sprints).where(eq(sprints.id, sprintId));
+        if (sprint) sprintWeekStr = sprint.name;
+      }
+      if (!sprintWeekStr) {
+        sprintWeekStr = status === 'BACKLOG' ? 'Backlog' : 'Sprint 35';
+      }
+
+      // 5. Resolve creator ID
+      let targetCreatorId = creatorId;
+      if (!targetCreatorId) {
+        targetCreatorId = assignee.id;
+      }
+
+      // 6. Insert Task enforcing assignee.entityId
+      const [createdTask] = await tx
+        .insert(tasks)
+        .values({
+          taskCode,
+          title: title || 'Untitled Task',
+          description: description || '',
+          entityId: assignee.entityId, // Derived directly from Assignee!
+          departmentId: departmentId || assignee.departmentId,
+          sprintWeek: sprintWeekStr,
+          sprintId: sprintId || null,
+          initiativeId: initiativeId || null,
+          storyPoints: storyPoints ? Number(storyPoints) : null,
+          assigneeId: assignee.id,
+          creatorId: targetCreatorId,
+          status: status || 'TODO',
+          priority: priority || 'MEDIUM',
+          dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000),
+          deliverableUrl: deliverableUrl || null,
+        })
+        .returning();
+
+      return createdTask;
+    });
+
+    res.status(201).json(newTask);
+  } catch (err: any) {
+    console.error('[TASK ASSIGNMENT ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to create task' });
+  }
 });
 
 export default router;

@@ -7,5 +7,6 @@ export const notifications = pgTable('notifications', {
   type: varchar('type', { length: 50 }).notNull(), // 'TASK_ASSIGNED', 'ANNOUNCEMENT', 'INVITE', 'DIGEST'
   payload: jsonb('payload').default({}).notNull(),
   readAt: timestamp('read_at'),
+  emailSentAt: timestamp('email_sent_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
