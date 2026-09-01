@@ -1220,13 +1220,19 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });
 });
 
-// Serve frontend static assets if built in monorepo
+// Serve frontend static assets & SPA fallback (Express 5 path-to-regexp compatible)
 const frontendDistPath = path.resolve(process.cwd(), 'artifacts/hr-dashboard/dist');
 if (fs.existsSync(frontendDistPath)) {
   app.use(express.static(frontendDistPath));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) return next();
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      const indexPath = path.join(frontendDistPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+      }
+    }
+    next();
   });
 } else {
   app.get('/', (req, res) => {
