@@ -10766,8 +10766,12 @@ export default defineConfig({
 {
   "name": "@workspace/api-client-react",
   "version": "1.0.0",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "@tanstack/react-query": "^5.62.7",
     "@workspace/api-zod": "workspace:*"
@@ -10860,9 +10864,11 @@ export function useEmployees(entityCode?: string) {
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
+    "outDir": "dist",
+    "rootDir": "src",
     "declaration": true,
     "strict": true,
-    "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true
   },
@@ -10877,8 +10883,12 @@ export function useEmployees(entityCode?: string) {
 {
   "name": "@workspace/api-zod",
   "version": "1.0.0",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "zod": "^3.24.1"
   },
@@ -10975,6 +10985,8 @@ export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>;
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
     "declaration": true,
     "strict": true,
     "esModuleInterop": true,
@@ -10991,8 +11003,12 @@ export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>;
 {
   "name": "@workspace/db",
   "version": "1.0.0",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "drizzle-orm": "^0.38.3",
     "pg": "^8.13.1"
@@ -11381,6 +11397,8 @@ export const users = pgTable('users', {
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
     "declaration": true,
     "strict": true,
     "esModuleInterop": true,
