@@ -1019,6 +1019,7 @@ export default router;
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "start": "node dist/index.js",
     "seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
@@ -11397,6 +11398,7 @@ export const users = pgTable('users', {
   "scripts": {
     "dev": "pnpm --parallel --filter \"@workspace/*\" dev",
     "build": "pnpm --recursive run build",
+    "start": "node artifacts/api-server/dist/index.js",
     "seed": "pnpm --filter @workspace/api-server seed"
   },
   "devDependencies": {

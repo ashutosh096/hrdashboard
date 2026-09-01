@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "pnpm --parallel --filter \"@workspace/*\" dev",
     "build": "pnpm --recursive run build",
+    "start": "node artifacts/api-server/dist/index.js",
     "seed": "pnpm --filter @workspace/api-server seed"
   },
   "devDependencies": {
