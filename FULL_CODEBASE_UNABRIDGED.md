@@ -8129,11 +8129,8 @@ export const useEntity = () => useContext(EntityContext);
     --card-bg: #FFFFFF;
   }
 
-  html {
-    font-size: 82.5%; /* Scaled down base unit to render compact 75% display density */
-  }
-
   body {
+    zoom: 75%;
     background-color: var(--bg-page);
     color: #111827;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
