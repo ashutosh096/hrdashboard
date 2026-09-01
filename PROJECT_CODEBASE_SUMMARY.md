@@ -23,7 +23,7 @@
    - Kanban board with Auto Task IDs (`EHM-MAR-ADH-672`, `CAG-DEV-SPR-101`).
    - Strict employee-level task scoping (employees only see tasks assigned to them).
    - **Send Delay Alert 🚨** action for managers with top warning banner on employee dashboard.
-   - **Submission Review Modal** for managers to inspect exact Canva / Drive links & daily standup notes filled by employees.
+   - **Submission Review Modal**: Read-only inspection view for managers with direct `Open Deliverable Link ↗` button.
 4. **Team & Partner Tasks (`/team-tasks`)**:
    - Multi-select partner team dropdown (`Priya Sharma + Rahul Verma`).
    - Displays joint partner avatars, reviewing lead, and partner standup notes.
@@ -31,11 +31,11 @@
    - Track job/work applications with Reviewing Lead assignments.
    - Employee form pre-locked to logged-in user (`Priya Sharma`).
    - Status updates (`Done ✅`, `In Progress 🔄`, `Pending ⏳`, `Delayed ⚠️`) with mandatory **Reason for Pending/Delay** input fields.
-6. **Notification System & Security**:
+6. **Notification System & Visual Scaling**:
    - Red unread count badge on header bell icon (`3`).
    - Live dropdown popup for realtime alerts, task submissions, and meeting notices.
-   - **Strict DB Authentication**: User lookup via PostgreSQL `users` table with `bcrypt.compare()` hash verification (all demo fallback logins removed).
-   - **Secure Onboarding**: Invite token verification via `invites` table for password setup (`/set-password`).
+   - **Compact 75% Scale Density**: Root CSS rem scaling (`html { font-size: 75%; }`) for a crisp, high-density dashboard layout with 0 white gaps.
+   - **Strict DB Authentication**: User lookup via PostgreSQL `users` table with `bcrypt.compare()` hash verification (all demo fallbacks removed).
    - **Zero TypeScript Errors**: 100% verified with `tsc --noEmit`.
 
 ---
@@ -55,12 +55,12 @@
 | :--- | :--- | :--- |
 | **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture (0 TS errors) |
 | **Build Tool & Server** | **Vite 6** | Fast HMR dev server & asset bundling |
-| **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens |
+| **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens (75% font-size density) |
 | **Iconography** | **Lucide React** | Modern vector icon library |
 | **Routing** | **Wouter** | Lightweight hooks-based SPA router |
 | **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
 | **Toast Alerts** | **Sonner** | Interactive notification popups |
-| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` |
+| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` / `10000` |
 | **Database & ORM** | **PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
 | **Authentication** | **JWT (JSON Web Tokens)** + **BcryptJS** | Real DB User & Invite Authentication |
 | **Email Dispatch** | **Resend API** | Automated onboarding & invite emails |
@@ -78,7 +78,7 @@ c:\hrdashboard\artifacts\hr-dashboard\
 │   │   ├── EmployeeDashboardView.tsx # Employee Portal dashboard with top delay warning banner
 │   │   ├── MarkAttendanceModal.tsx   # Daily attendance marking with locked confirmation
 │   │   ├── TaskAssignModal.tsx       # Task assignment with Individual vs Partner Multi-Select
-│   │   ├── TaskUpdateModal.tsx       # Task status & deliverable URL update modal
+│   │   ├── TaskUpdateModal.tsx       # Task status & deliverable URL update modal (Read-only for Manager)
 │   │   └── ProfileModal.tsx          # User profile popup with Logout option
 │   ├── contexts/
 │   │   ├── AuthContext.tsx           # Authentication state (Manager vs Employee roles)
@@ -147,46 +147,6 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
     return res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-router.post('/set-password', async (req, res) => {
-  const { token, password } = req.body;
-  if (!token || !password) {
-    return res.status(400).json({ message: 'Token and password required' });
-  }
-
-  try {
-    const [invite] = await db
-      .select()
-      .from(invites)
-      .where(eq(invites.token, token));
-
-    if (!invite || invite.status === 'ACCEPTED' || (invite.expiresAt && new Date(invite.expiresAt) < new Date())) {
-      return res.status(400).json({ message: 'Invalid or expired invite token' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-    const inviteEmail = invite.email.toLowerCase().trim();
-
-    const [existingUser] = await db.select().from(users).where(eq(users.email, inviteEmail));
-    let userId: string;
-
-    if (existingUser) {
-      userId = existingUser.id;
-      await db.update(users).set({ passwordHash, status: 'ACTIVE' }).where(eq(users.id, existingUser.id));
-    } else {
-      const [newUser] = await db.insert(users).values({ email: inviteEmail, passwordHash, role: invite.role, status: 'ACTIVE', employeeId: invite.employeeId }).returning();
-      userId = newUser ? newUser.id : 'user-' + Date.now();
-    }
-
-    await db.update(invites).set({ status: 'ACCEPTED' }).where(eq(invites.id, invite.id));
-
-    const userPayload = { id: userId, email: inviteEmail, role: invite.role, employeeId: invite.employeeId };
-    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
-    return res.json({ message: 'Password set successfully', token: authToken, user: userPayload });
-  } catch (err) {
-    return res.status(500).json({ message: 'Failed to set password' });
   }
 });
 
