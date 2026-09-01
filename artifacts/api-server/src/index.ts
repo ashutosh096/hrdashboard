@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import path from 'node:path';
+import fs from 'node:fs';
 import authRouter from './routes/auth.js';
 import dashboardRouter from './routes/dashboard.js';
 import tasksRouter from './routes/tasks.js';
@@ -38,6 +40,29 @@ app.use('/api/reports', reportsRouter);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });
 });
+
+// Serve frontend static assets if built in monorepo
+const frontendDistPath = path.resolve(process.cwd(), 'artifacts/hr-dashboard/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      service: 'EHM-Climagro OS API Server v2',
+      status: 'online 🚀',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth',
+        tasks: '/api/tasks',
+        employees: '/api/employees',
+      },
+    });
+  });
+}
 
 // Run background jobs
 startSyncCron();
