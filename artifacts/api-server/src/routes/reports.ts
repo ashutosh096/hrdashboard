@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 router.get('/sprint-summary', (req, res) => {
   const format = (req.query.format as string) || 'csv';

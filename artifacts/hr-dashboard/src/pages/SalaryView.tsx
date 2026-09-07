@@ -2,13 +2,25 @@ import React from 'react';
 import { DollarSign, Download, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useEntity } from '../contexts/EntityContext';
+
 export const SalaryView: React.FC = () => {
+  const { selectedEntity } = useEntity();
+
   const payroll = [
-    { name: 'Priya Sharma', entity: 'EHM', base: '$95,000', allowances: '$12,000', deductions: '$8,500', netPay: '$98,500' },
-    { name: 'Rahul Verma', entity: 'CAG', base: '$115,000', allowances: '$15,000', deductions: '$10,200', netPay: '$119,800' },
-    { name: 'Anita Desai', entity: 'EHM', base: '$105,000', allowances: '$13,500', deductions: '$9,100', netPay: '$109,400' },
-    { name: 'Vikram Mehta', entity: 'CAG', base: '$98,000', allowances: '$11,000', deductions: '$8,200', netPay: '$100,800' },
-  ];
+    { name: 'Ashutosh Mishra', entity: 'EHM', base: '₹14,50,000', allowances: '₹1,50,000', deductions: '₹85,000', netPay: '₹15,15,000' },
+    { name: 'Priyanka Sharma', entity: 'EHM', base: '₹11,00,000', allowances: '₹1,20,000', deductions: '₹65,000', netPay: '₹11,55,000' },
+    { name: 'Utkarsh Mishra', entity: 'EHM', base: '₹12,50,000', allowances: '₹1,30,000', deductions: '₹75,000', netPay: '₹13,05,000' },
+    { name: 'Prerna Shukla', entity: 'EHM', base: '₹10,50,000', allowances: '₹1,10,000', deductions: '₹60,000', netPay: '₹11,00,000' },
+    { name: 'Shreyansh Siladar', entity: 'EHM', base: '₹9,80,000', allowances: '₹1,00,000', deductions: '₹55,000', netPay: '₹10,25,000' },
+    { name: "Tarul Ma'am", entity: 'CAG', base: '₹8,50,000', allowances: '₹90,000', deductions: '₹48,000', netPay: '₹8,92,000' },
+    { name: 'Dr. Harshit Mishra', entity: 'EHM', base: '₹22,00,000', allowances: '₹2,50,000', deductions: '₹1,40,000', netPay: '₹23,10,000' },
+    { name: 'Neha Shukla', entity: 'EHM', base: '₹11,50,000', allowances: '₹1,25,000', deductions: '₹68,000', netPay: '₹12,07,000' },
+    { name: 'Dr. Utsav Mishra', entity: 'CAG', base: '₹16,00,000', allowances: '₹1,80,000', deductions: '₹95,000', netPay: '₹16,85,000' },
+    { name: 'Jitendra Sir', entity: 'EHM', base: '₹25,00,000', allowances: '₹3,00,000', deductions: '₹1,60,000', netPay: '₹26,40,000' },
+    { name: 'Pranshu Dubey', entity: 'EHM', base: '₹13,00,000', allowances: '₹1,40,000', deductions: '₹78,000', netPay: '₹13,62,000' },
+    { name: 'Himanshu Tiwari', entity: 'CAG', base: '₹9,20,000', allowances: '₹95,000', deductions: '₹52,000', netPay: '₹9,63,000' },
+  ].filter(emp => selectedEntity === 'ALL' || emp.entity === selectedEntity);
 
   return (
     <div className="p-6 space-y-6">

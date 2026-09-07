@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { X, Users, User, ChevronDown, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, User, Calendar, Tag, ShieldCheck, Layers, Clock } from 'lucide-react';
+import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 
 interface TaskAssignModalProps {
@@ -8,171 +9,284 @@ interface TaskAssignModalProps {
   onSubmit: (task: any) => void;
 }
 
+interface EpicOption {
+  id: string;
+  epicCode: string;
+  title: string;
+  initiativeId: string;
+}
+
+interface SprintOption {
+  id: string;
+  sprintCode: string;
+  name: string;
+}
+
+interface EmployeeOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+  employeeCode: string;
+  designation: string;
+}
+
+const DEPARTMENT_OPTIONS = [
+  'Marketing',
+  'Sales',
+  'Product & Tech',
+  'Operations & Delivery',
+  'Grants & Governance',
+];
+
+const PREVIOUS_CLONE_TASKS = [
+  { id: 'cl-1', title: 'API Gateway Telemetry Pipeline Integration', dept: 'Product & Tech', priority: 'HIGH', desc: 'GraphQL telemetry logging & rate limiting middleware.' },
+  { id: 'cl-2', title: 'Real-time WebSocket Notification & Push Engine', dept: 'Product & Tech', priority: 'HIGH', desc: 'Redis pub/sub channels setup and concurrency testing.' },
+  { id: 'cl-3', title: 'OAuth2 & Role-Based Access Control Security Audit', dept: 'Product & Tech', priority: 'URGENT', desc: 'Audit JWT bearer scopes and token expiration.' },
+  { id: 'cl-4', title: 'Q3 Brand Marketing Client Acquisition Campaign', dept: 'Marketing', priority: 'HIGH', desc: 'Brand identity collateral and B2B campaign funnel.' },
+  { id: 'cl-5', title: 'Agri-Tech Subsidy & Government Compliance Report', dept: 'Grants & Governance', priority: 'HIGH', desc: 'Government subsidy compliance and field telemetry.' },
+];
+
 export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClose, onSubmit }) => {
-  const [assignmentMode, setAssignmentMode] = useState<'INDIVIDUAL' | 'PARTNER'>('INDIVIDUAL');
-  const [entityCode, setEntityCode] = useState<'EHM' | 'CAG' | 'BOTH'>('EHM');
-  const [departmentCode, setDepartmentCode] = useState<'MAR' | 'DEV' | 'OPS' | 'HR' | 'FIN'>('MAR');
+  const [epics, setEpics] = useState<EpicOption[]>([]);
+  const [sprints, setSprints] = useState<SprintOption[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Form State
+  const [cloneSourceId, setCloneSourceId] = useState('');
+  const [selectedEpicId, setSelectedEpicId] = useState('');
+  const [assignToSprint, setAssignToSprint] = useState(false);
+  const [selectedSprintId, setSelectedSprintId] = useState('');
   const [title, setTitle] = useState('');
-  const [sprintWeek, setSprintWeek] = useState('Sprint 35');
-  const [assigneeName, setAssigneeName] = useState('Priya Sharma');
-  const [selectedPartners, setSelectedPartners] = useState<string[]>(['Priya Sharma', 'Rahul Verma']);
-  const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false);
-  const [reviewingLead, setReviewingLead] = useState('Dr. Harshit Mishra');
+  const [department, setDepartment] = useState('Product & Tech');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [reviewingLeadId, setReviewingLeadId] = useState('');
+  const [dueDate, setDueDate] = useState(
+    new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+  );
+  const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
-  const [deliverableUrl, setDeliverableUrl] = useState('');
 
-  const employeeOptions = [
-    'Priya Sharma',
-    'Rahul Verma',
-    'Anita Desai',
-    'Vikram Mehta',
-  ];
-
-  if (!isOpen) return null;
-
-  const generatedCode = `${entityCode === 'BOTH' ? 'ALL' : entityCode}-${departmentCode}-ADH-${Math.floor(100 + Math.random() * 900)}`;
-
-  const togglePartner = (empName: string) => {
-    if (selectedPartners.includes(empName)) {
-      if (selectedPartners.length === 1) {
-        toast.error('Select at least 1 team partner!');
-        return;
-      }
-      setSelectedPartners(selectedPartners.filter(p => p !== empName));
-    } else {
-      setSelectedPartners([...selectedPartners, empName]);
+  const handleCloneSelect = (taskId: string) => {
+    setCloneSourceId(taskId);
+    const found = PREVIOUS_CLONE_TASKS.find((t) => t.id === taskId);
+    if (found) {
+      setTitle(`[CLONE] ${found.title}`);
+      setDepartment(found.dept);
+      setPriority(found.priority as any);
+      setDescription(found.desc);
+      toast.success(`Pre-filled configuration from "${found.title}". Adjust basic info to complete clone!`);
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadOptions = async () => {
+      setLoading(true);
+      try {
+        const [epicsData, sprintsData, empsData] = await Promise.all([
+          fetchApi<any[]>('/api/epics'),
+          fetchApi<any[]>('/api/sprints'),
+          fetchApi<any[]>('/api/employees'),
+        ]);
+
+        // Alphabetically sort Epics by Title
+        const sortedEpics = [...epicsData].sort((a, b) =>
+          (a.title || '').localeCompare(b.title || '')
+        );
+        setEpics(sortedEpics);
+        if (sortedEpics.length > 0) {
+          setSelectedEpicId(sortedEpics[0].id);
+        }
+
+        // Alphabetically sort Sprints by Name
+        const sortedSprints = [...sprintsData].sort((a, b) =>
+          (a.name || '').localeCompare(b.name || '')
+        );
+        setSprints(sortedSprints);
+        if (sortedSprints.length > 0) {
+          setSelectedSprintId(sortedSprints[0].id);
+        }
+
+        const formattedEmps = empsData.map(e => ({
+          id: e.id,
+          firstName: e.firstName,
+          lastName: e.lastName,
+          employeeCode: e.employeeCode,
+          designation: e.designation || 'Team Member',
+        }));
+        setEmployees(formattedEmps);
+        if (formattedEmps.length > 0) {
+          setAssigneeId(formattedEmps[0].id);
+          setReviewingLeadId(formattedEmps[0].id);
+        }
+      } catch (err) {
+        console.error('[TASK MODAL OPTIONS FETCH ERROR]:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOptions();
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!title.trim()) return toast.error('Please enter a task title');
+    
+    // Parent Epic is mandatory ONLY if assignToSprint is false
+    if (!assignToSprint && !selectedEpicId) {
+      return toast.error('Please select a Parent Epic');
+    }
+
+    if (assignToSprint && !selectedSprintId) {
+      return toast.error('Please select a Sprint');
+    }
+
+    if (!assigneeId) return toast.error('Please select an assignee');
+
+    const selectedEpic = epics.find(ep => ep.id === selectedEpicId);
+
     onSubmit({
       title,
-      entityCode,
-      departmentCode,
-      sprintWeek,
-      assigneeName: assignmentMode === 'INDIVIDUAL' ? assigneeName : selectedPartners.join(' + '),
-      partners: assignmentMode === 'PARTNER' ? selectedPartners : [assigneeName],
-      isPartnerTask: assignmentMode === 'PARTNER',
-      reviewingLead,
+      epicId: selectedEpicId || null,
+      initiativeId: selectedEpic?.initiativeId || null,
+      sprintId: assignToSprint ? selectedSprintId : null,
+      assigneeId,
+      reviewingLeadId: reviewingLeadId || assigneeId,
+      department,
+      dueDate,
+      description,
       priority,
-      deliverableUrl,
-      taskCode: generatedCode,
     });
-    toast.success(`Task ${generatedCode} assigned as ${assignmentMode === 'PARTNER' ? 'Partner Team Task' : 'Individual Task'}!`);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Assign New Task</h2>
-            <p className="text-[11px] text-gray-400 font-medium">Create individual task or joint partner team deliverable.</p>
+            <h2 className="text-lg font-bold text-gray-900">Create New Task</h2>
+            <p className="text-[11px] text-gray-400 font-medium">
+              Assign deliverable task under Parent Epic (or Sprint).
+            </p>
           </div>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Assignment Type Selector: Individual vs Partner / Team Task */}
+          {/* Parent Epic Selector */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">Task Assignment Type *</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setAssignmentMode('INDIVIDUAL')}
-                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                  assignmentMode === 'INDIVIDUAL'
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>Individual Task</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAssignmentMode('PARTNER')}
-                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                  assignmentMode === 'PARTNER'
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Partner / Team Task</span>
-              </button>
-            </div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-purple-600" />
+                <span>Parent Epic {assignToSprint ? '(Optional)' : '* (Mandatory)'}</span>
+              </span>
+              {!assignToSprint && (
+                <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                  Required
+                </span>
+              )}
+            </label>
+            <select
+              required={!assignToSprint}
+              value={selectedEpicId}
+              onChange={(e) => setSelectedEpicId(e.target.value)}
+              className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+            >
+              <option value="">{assignToSprint ? 'Select Parent Epic (Optional)...' : 'Select Parent Epic...'}</option>
+              {epics.map((ep) => (
+                <option key={ep.id} value={ep.id}>
+                  [{ep.epicCode}] {ep.title}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Entity Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Entity</label>
-              <select
-                value={entityCode}
-                onChange={(e) => setEntityCode(e.target.value as any)}
-                className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="EHM">ehmconsultancy</option>
-                <option value="CAG">climagroanalytics</option>
-                <option value="BOTH">Both (Both Entities)</option>
-              </select>
+          {/* Checkbox: Assign this also in sprint */}
+          <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="assignToSprint"
+                checked={assignToSprint}
+                onChange={(e) => setAssignToSprint(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+              />
+              <label htmlFor="assignToSprint" className="text-xs font-bold text-gray-800 cursor-pointer">
+                Assign this also in sprint
+              </label>
             </div>
 
-            {/* Department Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Department</label>
-              <select
-                value={departmentCode}
-                onChange={(e) => setDepartmentCode(e.target.value as any)}
-                className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="MAR">Marketing (MAR)</option>
-                <option value="DEV">Engineering (DEV)</option>
-                <option value="OPS">Operations (OPS)</option>
-                <option value="HR">Human Resources (HR)</option>
-                <option value="FIN">Finance (FIN)</option>
-              </select>
-            </div>
+            {assignToSprint && (
+              <div className="pt-2 animate-in fade-in duration-150">
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Select Sprint *</span>
+                </label>
+                <select
+                  required={assignToSprint}
+                  value={selectedSprintId}
+                  onChange={(e) => setSelectedSprintId(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                >
+                  <option value="">Select Target Sprint...</option>
+                  {sprints.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      [{s.sprintCode}] {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          {/* Task Code */}
+          {/* Task Title */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Auto Task ID Code</label>
-            <input
-              type="text"
-              readOnly
-              value={generatedCode}
-              className="w-full text-xs font-mono font-bold border border-gray-200 rounded-xl p-2.5 bg-gray-100 text-emerald-700"
-            />
-          </div>
-
-          {/* Task Title / Deliverable Name */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Task Title / Deliverable Name</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Task Title *</label>
             <input
               type="text"
               required
-              placeholder="e.g. Joint Q3 Marketing Campaign & API Launch"
+              placeholder="e.g. Implement OAuth Callback Endpoint & Token Refresh"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Priority */}
+          {/* Department & Priority */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Priority</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Department *</label>
+              <select
+                required
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+              >
+                {DEPARTMENT_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -180,123 +294,68 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                 <option value="URGENT">Urgent</option>
               </select>
             </div>
+          </div>
 
-            {/* Target Sprint Week */}
+          {/* Assigned To & Reviewing Lead */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Target Sprint Week</label>
-              <input
-                type="text"
-                value={sprintWeek}
-                onChange={(e) => setSprintWeek(e.target.value)}
-                className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To *</label>
+              <select
+                required
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+              >
+                <option value="">Select Employee...</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    [{emp.employeeCode}] {emp.firstName} {emp.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Reviewing Lead *</label>
+              <select
+                required
+                value={reviewingLeadId}
+                onChange={(e) => setReviewingLeadId(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+              >
+                <option value="">Select Lead / Manager...</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    [{emp.employeeCode}] {emp.firstName} {emp.lastName} — {emp.designation}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Assignee Section */}
-          {assignmentMode === 'INDIVIDUAL' ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Assigned To</label>
-                <select
-                  value={assigneeName}
-                  onChange={(e) => setAssigneeName(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                >
-                  {employeeOptions.map(emp => (
-                    <option key={emp} value={emp}>{emp}</option>
-                  ))}
-                </select>
-              </div>
+          {/* Target Date / Due Date */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Target Date / Due Date *</label>
+            <input
+              type="date"
+              required
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+            />
+          </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Reviewing Lead</label>
-                <select
-                  value={reviewingLead}
-                  onChange={(e) => setReviewingLead(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-medium"
-                >
-                  <option value="Dr. Harshit Mishra">Dr. Harshit Mishra</option>
-                  <option value="Neha Shukla">Neha Shukla</option>
-                  <option value="Utsav Mishra">Utsav Mishra</option>
-                  <option value="Jitendra Sir">Jitendra Sir</option>
-                </select>
-              </div>
-            </div>
-          ) : (
-            /* Multi-Select Partner Dropdown Box */
-            <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-2xl p-3.5 space-y-2 relative">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-emerald-950">Select Partner Team Members (Dropdown) *</label>
-                <span className="text-[10px] font-bold text-emerald-700">{selectedPartners.length} Partners Selected</span>
-              </div>
-              
-              {/* Dropdown Container Box */}
-              <div className="relative">
-                <div
-                  onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
-                  className="w-full min-h-[42px] p-2 bg-white border border-gray-300 rounded-xl flex items-center justify-between gap-2 cursor-pointer hover:border-emerald-500 transition-colors"
-                >
-                  <div className="flex flex-wrap gap-1.5 items-center">
-                    {selectedPartners.map((partner) => (
-                      <span
-                        key={partner}
-                        className="inline-flex items-center gap-1 bg-emerald-600 text-white font-bold text-xs px-2.5 py-1 rounded-lg shadow-2xs"
-                      >
-                        <span>{partner}</span>
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            togglePartner(partner);
-                          }}
-                          className="hover:bg-emerald-700 rounded-full p-0.5"
-                        >
-                          <X className="w-3 h-3" />
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isPartnerDropdownOpen ? 'rotate-180' : ''}`} />
-                </div>
-
-                {/* Dropdown Menu Popover */}
-                {isPartnerDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in duration-150">
-                    <p className="text-[10px] text-gray-400 font-bold px-2 py-1 uppercase">Select 2 or more partners:</p>
-                    {employeeOptions.map((emp) => {
-                      const isSelected = selectedPartners.includes(emp);
-                      return (
-                        <div
-                          key={emp}
-                          onClick={() => togglePartner(emp)}
-                          className={`flex items-center justify-between p-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
-                            isSelected ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          <span>{emp}</span>
-                          {isSelected && <Check className="w-4 h-4 text-emerald-600" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-2">
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Reviewing Lead</label>
-                <select
-                  value={reviewingLead}
-                  onChange={(e) => setReviewingLead(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-white font-medium outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="Dr. Harshit Mishra">Dr. Harshit Mishra</option>
-                  <option value="Neha Shukla">Neha Shukla</option>
-                  <option value="Utsav Mishra">Utsav Mishra</option>
-                  <option value="Jitendra Sir">Jitendra Sir</option>
-                </select>
-              </div>
-            </div>
-          )}
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
+            <textarea
+              rows={3}
+              placeholder="Task deliverable guidelines, technical specifications, and expected outputs..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+            />
+          </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
             <button
@@ -310,7 +369,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
               type="submit"
               className="px-5 py-2.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-xs transition-colors"
             >
-              Assign Task & Sync
+              Assign Task
             </button>
           </div>
         </form>

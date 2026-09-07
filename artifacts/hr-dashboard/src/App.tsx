@@ -13,12 +13,14 @@ import { ExportReportModal } from './components/ExportReportModal';
 import { LoginView } from './pages/LoginView';
 import { DashboardView } from './pages/DashboardView';
 import { TasksView } from './pages/TasksView';
+import { SprintsView } from './pages/SprintsView';
 import { TeamTasksView } from './pages/TeamTasksView';
 import { MeetingsView } from './pages/MeetingsView';
 import { AttendanceView } from './pages/AttendanceView';
 import { OfficeTodayView } from './pages/OfficeTodayView';
 import { TeamDirectoryView } from './pages/TeamDirectoryView';
 import { ApplicationsView } from './pages/ApplicationsView';
+import { PerformanceView } from './pages/PerformanceView';
 import { AnnouncementsView } from './pages/AnnouncementsView';
 import { AcceptInviteView } from './pages/AcceptInviteView';
 import { SettingsView } from './pages/SettingsView';
@@ -65,34 +67,44 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 };
 
 export const MainContent: React.FC = () => {
-  const { user, setUserSession } = useAuth();
+  const { user, isLoading } = useAuth();
+  const [location] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-emerald-400 font-bold text-sm">
+        Loading HROS Operating System...
+      </div>
+    );
+  }
+
+  if (location.startsWith('/accept-invite')) {
+    return <AcceptInviteView />;
+  }
 
   if (!user) {
-    return <LoginView onLoginSuccess={(userData) => setUserSession(userData)} />;
+    return <LoginView />;
   }
 
   return (
-    <Switch>
-      <Route path="/accept-invite" component={AcceptInviteView} />
-      <Route path="*">
-        <AppLayout>
-          <Switch>
-            <Route path="/" component={DashboardView} />
-            <Route path="/attendance" component={AttendanceView} />
-            <Route path="/meetings" component={MeetingsView} />
-            <Route path="/office-today" component={OfficeTodayView} />
-            <Route path="/announcements" component={AnnouncementsView} />
-            <Route path="/tasks" component={TasksView} />
-            <Route path="/team-tasks" component={TeamTasksView} />
-            <Route path="/applications" component={ApplicationsView} />
-            <Route path="/team" component={TeamDirectoryView} />
-            <Route path="/reports" component={ReportsView} />
-            <Route path="/notifications" component={NotificationsView} />
-            <Route path="/settings" component={SettingsView} />
-          </Switch>
-        </AppLayout>
-      </Route>
-    </Switch>
+    <AppLayout>
+      <Switch>
+        <Route path="/" component={DashboardView} />
+        <Route path="/attendance" component={AttendanceView} />
+        <Route path="/meetings" component={MeetingsView} />
+        <Route path="/office-today" component={OfficeTodayView} />
+        <Route path="/announcements" component={AnnouncementsView} />
+        <Route path="/tasks" component={TasksView} />
+        <Route path="/sprints" component={SprintsView} />
+        <Route path="/team-tasks" component={TeamTasksView} />
+        <Route path="/applications" component={ApplicationsView} />
+        <Route path="/performance" component={DashboardView} />
+        <Route path="/team" component={TeamDirectoryView} />
+        <Route path="/reports" component={ReportsView} />
+        <Route path="/notifications" component={NotificationsView} />
+        <Route path="/settings" component={SettingsView} />
+      </Switch>
+    </AppLayout>
   );
 };
 

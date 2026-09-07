@@ -15,6 +15,20 @@
       "when": 1788251483157,
       "tag": "0001_blue_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788259060531,
+      "tag": "0002_silky_onslaught",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788259968269,
+      "tag": "0003_fair_sue_storm",
+      "breakpoints": true
     }
   ]
 }

@@ -40,7 +40,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [entity, setEntity] = useState('climagroanalytics');
   const [parentTaskId, setParentTaskId] = useState('');
   const [taskName, setTaskName] = useState('');
-  const [assignee, setAssignee] = useState('Priya Sharma');
+  const [assignee, setAssignee] = useState('Priyanka Sharma');
   const [reviewingLead, setReviewingLead] = useState('Dr. Harshit Mishra');
   const [outputUrl, setOutputUrl] = useState('');
   const [status, setStatus] = useState<'In Progress' | 'Done' | 'Delayed' | 'Blocked'>('In Progress');
@@ -52,7 +52,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setEntity(task.entity || 'climagroanalytics');
       setParentTaskId(task.taskId || 'CA-MAR-01');
       setTaskName(task.title || '');
-      setAssignee(task.assignee || 'Priya Sharma');
+      setAssignee(task.assignee || 'Priyanka Sharma');
       setReviewingLead(task.reviewingLead || 'Dr. Harshit Mishra');
       setOutputUrl(task.outputUrl || '');
       setStatus(task.status || 'In Progress');
@@ -228,7 +228,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="In Progress">In Progress ⏳</option>
-                  <option value="Done">Done ✅</option>
+                  <option value="To Review">To Review 🔍</option>
+                  <option value="Done">Done / Approved ✅</option>
                   <option value="Delayed">Delayed ⚠️</option>
                   <option value="Blocked">Blocked 🛑</option>
                 </select>

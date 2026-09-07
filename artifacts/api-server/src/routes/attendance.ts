@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 let attendanceList = [
   { id: 'att-1', employeeName: 'Priya Sharma', date: '2026-08-31', clockIn: '09:02 AM', clockOut: '06:15 PM', workMode: 'IN_OFFICE', status: 'PRESENT', totalHours: '9.2' },

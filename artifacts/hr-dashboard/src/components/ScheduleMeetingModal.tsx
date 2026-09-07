@@ -19,11 +19,24 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
   const [googleMeetLink, setGoogleMeetLink] = useState('https://meet.google.com/hros-auto-gen');
   const [hasGoogleMeet, setHasGoogleMeet] = useState(true);
   const [description, setDescription] = useState('');
-  const [selectedGuests, setSelectedGuests] = useState<string[]>(['Priya Sharma', 'Rahul Verma']);
+  const [selectedGuests, setSelectedGuests] = useState<string[]>(['Ashutosh Mishra', 'Priyanka Sharma']);
 
   if (!isOpen) return null;
 
-  const guestsList = ['Priya Sharma', 'Rahul Verma', 'Anita Desai', 'Vikram Mehta', 'Dr. Harshit Mishra', 'Neha Shukla'];
+  const guestsList = [
+    'Ashutosh Mishra',
+    'Priyanka Sharma',
+    'Utkarsh Mishra',
+    'Prerna Shukla',
+    'Shreyansh Siladar',
+    "Tarul Ma'am",
+    'Dr. Harshit Mishra',
+    'Neha Shukla',
+    'Dr. Utsav Mishra',
+    'Jitendra Sir',
+    'Pranshu Dubey',
+    'Himanshu Tiwari',
+  ];
 
   const toggleGuest = (name: string) => {
     if (selectedGuests.includes(name)) {

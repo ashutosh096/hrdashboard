@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 let applicationsList = [
   { id: 'app-1', employeeName: 'Priya Sharma', type: 'REMOTE_WORK', reason: 'Onsite brand client photoshoot in Mumbai', status: 'APPROVED', createdAt: '2026-08-28' },

@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 let announcementsList = [
   { id: 'ann-1', title: 'Q3 All-Hands & Entity Performance Review', content: 'Join us this Thursday at 4 PM for the combined EHM and CliAgro quarterly review.', priority: 'URGENT', isPinned: true, createdAt: '2026-08-29' },

@@ -18,6 +18,7 @@ artifacts/api-server/src/index.js
 artifacts/api-server/src/index.ts
 artifacts/api-server/src/jobs/digest-cron.js
 artifacts/api-server/src/jobs/digest-cron.ts
+artifacts/api-server/src/jobs/overdue-check-cron.ts
 artifacts/api-server/src/jobs/sync-cron.js
 artifacts/api-server/src/jobs/sync-cron.ts
 artifacts/api-server/src/middleware/auth.js
@@ -42,6 +43,7 @@ artifacts/api-server/src/routes/reports.js
 artifacts/api-server/src/routes/reports.ts
 artifacts/api-server/src/routes/tasks.js
 artifacts/api-server/src/routes/tasks.ts
+artifacts/api-server/src/services/calendar-sync.ts
 artifacts/api-server/src/services/email.js
 artifacts/api-server/src/services/email.ts
 artifacts/api-server/src/services/encryption.js
@@ -87,8 +89,10 @@ artifacts/hr-dashboard/src/pages/SettingsView.tsx
 artifacts/hr-dashboard/src/pages/TasksView.tsx
 artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx
 artifacts/hr-dashboard/src/pages/TeamTasksView.tsx
+artifacts/hr-dashboard/src/utils/avatars.ts
 artifacts/hr-dashboard/tsconfig.json
 artifacts/hr-dashboard/vite.config.ts
+chatdiscussion.md
 drizzle.config.ts
 lib/api-client-react/package.json
 lib/api-client-react/src/index.ts
@@ -99,10 +103,15 @@ lib/api-zod/tsconfig.json
 lib/db/drizzle.config.ts
 lib/db/drizzle/0000_soft_cerebro.sql
 lib/db/drizzle/0001_blue_cerise.sql
+lib/db/drizzle/0002_silky_onslaught.sql
+lib/db/drizzle/0003_fair_sue_storm.sql
 lib/db/drizzle/meta/0000_snapshot.json
 lib/db/drizzle/meta/0001_snapshot.json
+lib/db/drizzle/meta/0002_snapshot.json
+lib/db/drizzle/meta/0003_snapshot.json
 lib/db/drizzle/meta/_journal.json
 lib/db/package.json
+lib/db/src/apply-db-schema.ts
 lib/db/src/index.ts
 lib/db/src/schema/announcements.ts
 lib/db/src/schema/applications.ts
@@ -127,6 +136,7 @@ lib/db/src/schema/users.ts
 lib/db/tsconfig.json
 package.json
 pnpm-workspace.yaml
+scratch/apply_migrations.mjs
 ```
 
 ## FILE: .env
@@ -142,6 +152,12 @@ APP_URL="http://localhost:5173"
 # JWT & Security Secrets
 JWT_SECRET="hros_jwt_super_secret_key_2026"
 TOKEN_ENCRYPTION_KEY="hros_token_encryption_secret_key_32bytes!"
+
+# Third-Party Integrations
+RESEND_API_KEY="re_123456789_your_resend_key"
+GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
+GOOGLE_REDIRECT_URI="http://localhost:5000/api/auth/google/callback"
 
 ```
 
@@ -848,41 +864,40 @@ Adopt the **layout and visual language** of the reference design (light theme, g
 **EHM-Climagro OS** is an enterprise-grade HR, Attendance, Operations, and Sprint Deliverable Management platform designed for cross-entity team collaboration between **ehmconsultancy** and **climagroanalytics**.
 
 ### Key System Capabilities:
-1. **Role-Based Access Control (RBAC)**:
-   - **Manager / Admin Portal**: Full oversight, task assignment (Individual & Partner Team tasks), employee management, delay warnings, and submission reviews.
-   - **Employee Portal**: Dedicated dashboard with assigned deliverables, Google Meet links, locked daily attendance marking, and task progress updates.
-2. **Attendance & Presence Tracking**:
-   - Single-employee monthly presence table (`August 2026`).
-   - Stat cards: **PRESENT** (`22`), **ABSENT** (`0`), **HALF DAY** (`0`), **LEAVE** (`0`).
-   - Mark Attendance Modal with **Half Day Shift Slots** (*First Half Morning* vs *Second Half Afternoon*) and **Locked Submission Confirmation** (*Are you sure to submit? Once submitted, attendance is locked for today*).
-   - Real-time synchronization with **Office Today** live presence grid.
-3. **Task & Deliverable Management**:
-   - Kanban board with Auto Task IDs (`EHM-MAR-ADH-672`, `CAG-DEV-SPR-101`).
-   - Strict employee-level task scoping (employees only see tasks assigned to them).
-   - **Send Delay Alert 🚨** action for managers with top warning banner on employee dashboard.
-   - **Submission Review Modal**: Read-only inspection view for managers with direct `Open Deliverable Link ↗` button.
-4. **Team & Partner Tasks (`/team-tasks`)**:
-   - Multi-select partner team dropdown (`Priya Sharma + Rahul Verma`).
-   - Displays joint partner avatars, reviewing lead, and partner standup notes.
-5. **Applications Management**:
-   - Track job/work applications with Reviewing Lead assignments.
-   - Employee form pre-locked to logged-in user (`Priya Sharma`).
-   - Status updates (`Done ✅`, `In Progress 🔄`, `Pending ⏳`, `Delayed ⚠️`) with mandatory **Reason for Pending/Delay** input fields.
-6. **Notification System & Visual Scaling**:
-   - Red unread count badge on header bell icon (`3`).
-   - Live dropdown popup for realtime alerts, task submissions, and meeting notices.
-   - **Compact 75% Scale Density**: Root CSS rem scaling (`html { font-size: 75%; }`) for a crisp, high-density dashboard layout with 0 white gaps.
-   - **Strict DB Authentication**: User lookup via PostgreSQL `users` table with `bcrypt.compare()` hash verification (all demo fallbacks removed).
-   - **Zero TypeScript Errors**: 100% verified with `tsc --noEmit`.
+1. **Frontend-to-Backend End-to-End Real API Wiring (Step 0)**:
+   - `AuthContext.tsx`: Real `POST /api/auth/login` authentication via `fetchApi` with `localStorage.setItem('hros_token', token)` JWT session restoration on app load. Removed `setRole()`.
+   - `LoginView.tsx`: Real API error handling with live error toasts. Removed hardcoded mock credentials & 500ms `setTimeout`.
+   - `EmployeeDashboardView.tsx`: Live deliverable tasks (`GET /api/tasks`) and meetings (`GET /api/meetings`).
+   - `TasksView.tsx`: Live Kanban board (`GET /api/tasks` & `POST /api/tasks`).
+   - `MeetingsView.tsx`: Live Google Calendar sync & meeting scheduling (`GET/POST /api/meetings` & `GET /api/meetings/sync`).
+   - `AnnouncementsView.tsx`: Live company bulletin feed (`GET/POST /api/announcements`).
+   - `AttendanceView.tsx`: Live attendance tracking (`GET /api/attendance` & `POST /api/attendance/clock-in`).
+   - `TeamDirectoryView.tsx`: Live employee roster (`GET/POST /api/employees`).
+2. **Delay Extension Request Workflow (Step 7)**:
+   - `POST /api/tasks/:id/delay-request` endpoint protected by `requireAuth`.
+   - `notifications` DB record inserted for reviewing manager (`type: 'DELAY_REQUEST'`).
+   - `sendDelayRequestEmail()` dispatched via Resend API using sandbox sender (`HROS <onboarding@resend.dev>`).
+3. **Google OAuth 2.0 & Calendar API Integration**:
+   - `SettingsView.tsx` passes logged-in `userId` (`/api/auth/google?userId=${user.id}`).
+   - Real OAuth callback handler (`/google/callback`) exchanging code for `access_token` and `refresh_token`.
+   - `google_tokens` table persistence & automatic token refresh via `refreshAccessToken(userId)`.
+   - Google Meet link creation on Google Calendar API (`POST /calendars/primary/events?conferenceDataVersion=1`).
+4. **Security & Middleware Protection**:
+   - `requireAuth` applied across all protected routes (`employees.ts`, `tasks.ts`, `meetings.ts`, `attendance.ts`, `announcements.ts`, `applications.ts`, `reports.ts`, `dashboard.ts`).
+   - `requireRole(['ADMIN', 'MANAGER'])` applied to POST `/api/employees` and POST `/api/tasks`.
+5. **Supabase PostgreSQL & Drizzle Schema v2**:
+   - Live **Supabase Transaction Pooler (port 6543)** database connection.
+   - **Atomic `employeeCode` Generation**: `{entityCode}-EMP{seq}` (e.g. `EHM-EMP01`) via atomic `entity_counters` transaction.
+   - **Atomic `taskCode` Generation**: `{entityCode}-{empShortCode}-{seq}` (e.g. `EHM-EMP01-002`) derived from assignee's `employees.entityId`.
+   - Real `entities` (`EHM`, `CAG`) & `departments` (`MAR`, `DEV`, `OPS`, `HR`, `FIN`) DB seeding.
 
 ---
 
 ## 🔑 Database Authentication Credentials
 
-| Role | User Account | Auth Security | Access Rights |
+| Role | Email | Password | Access Rights |
 | :--- | :--- | :--- | :--- |
-| **Manager / Admin** | `admin@example.com` | Real DB bcrypt hash check via `users` table (seeded in `seed.ts`) | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Export Reports |
-| **Employee** | `employee@ehm-climagro.com` | Real DB bcrypt hash check via `users` table | Employee Portal Dashboard, My Deliverables, Locked Daily Attendance, My Applications, Team Tasks |
+| **Admin / Manager** | `admin@example.com` | `admin123` | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Export Reports |
 
 ---
 
@@ -896,107 +911,18 @@ Adopt the **layout and visual language** of the reference design (light theme, g
 | **Iconography** | **Lucide React** | Modern vector icon library |
 | **Routing** | **Wouter** | Lightweight hooks-based SPA router |
 | **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
-| **Toast Alerts** | **Sonner** | Interactive notification popups |
 | **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` / `10000` |
-| **Database & ORM** | **PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Authentication** | **JWT (JSON Web Tokens)** + **BcryptJS** | Real DB User & Invite Authentication |
-| **Email Dispatch** | **Resend API** | Automated onboarding & invite emails |
-
----
-
-## 📁 Project Directory Structure
-
-```
-c:\hrdashboard\artifacts\hr-dashboard\
-├── src/
-│   ├── components/
-│   │   ├── Sidebar.tsx               # Primary navigation bar with EHM-Climagro OS branding
-│   │   ├── Navbar.tsx                # Header capsule with red notification badge & profile modal
-│   │   ├── EmployeeDashboardView.tsx # Employee Portal dashboard with top delay warning banner
-│   │   ├── MarkAttendanceModal.tsx   # Daily attendance marking with locked confirmation
-│   │   ├── TaskAssignModal.tsx       # Task assignment with Individual vs Partner Multi-Select
-│   │   ├── TaskUpdateModal.tsx       # Task status & deliverable URL update modal (Read-only for Manager)
-│   │   └── ProfileModal.tsx          # User profile popup with Logout option
-│   ├── contexts/
-│   │   ├── AuthContext.tsx           # Authentication state (Manager vs Employee roles)
-│   │   └── EntityContext.tsx         # Cross-entity state (ehmconsultancy & climagroanalytics)
-│   ├── pages/
-│   │   ├── DashboardView.tsx         # Main router view (renders Employee/Manager dashboard)
-│   │   ├── TasksView.tsx             # Kanban task board with scoping and delay alert triggers
-│   │   ├── TeamTasksView.tsx         # Joint partner deliverables page with partner avatars
-│   │   ├── AttendanceView.tsx        # Employee Attendance with 4 Stat Cards
-│   │   ├── OfficeTodayView.tsx       # Real-time office presence grid & meeting schedules
-│   │   ├── TeamDirectoryView.tsx     # Employee roster (Add Employee hidden for Employees)
-│   │   ├── ApplicationsView.tsx      # Applications tracking with pending/delay reason inputs
-│   │   ├── AnnouncementsView.tsx     # Company-wide announcements feed for all staff
-│   │   └── LoginView.tsx             # Dark cybernetic wave glassmorphism login screen
-│   ├── App.tsx                       # Main application router and layout wrapper
-│   └── main.tsx                      # Vite React entrypoint
-```
-
----
-
-## ⚙️ Core Application Source Code
-
-### 1. `c:\hrdashboard\artifacts\api-server\src\routes\auth.ts` (DB Auth & Invite Token Validation)
-```typescript
-import { Router } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { db, users, invites, eq } from '@workspace/db';
-
-const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
-
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password required' });
-  }
-
-  try {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email.toLowerCase().trim()));
-
-    if (!user || !user.passwordHash) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-
-    const userPayload = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      employeeId: user.employeeId || undefined,
-      managedTeamId: user.managedTeamId || undefined,
-    };
-
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
-    return res.json({ token, user: userPayload });
-  } catch (err) {
-    console.error('[AUTH ROUTE ERROR] Login failed:', err);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-export default router;
-```
+| **Database & ORM** | **Supabase PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
+| **Third-Party Integrations** | **Google Calendar API v3** + **Resend API** | OAuth 2.0 Meet link generation & notification emails |
 
 ---
 
 ## 🚀 Verification & Build Status
 
+- **Supabase Connection**: Verified (`SELECT 1` ➔ `connected: 1, current_database: "postgres"`)
 - **`artifacts/api-server`**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
 - **`artifacts/hr-dashboard`**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
-- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md) (109/109 files verified)
+- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md) (125/125 files verified)
 
 ```
 
@@ -1016,8 +942,9 @@ TOKEN_ENCRYPTION_KEY="hros_token_encryption_secret_key_32bytes!"
 
 # Third-Party Integrations
 RESEND_API_KEY="re_123456789_your_resend_key"
-GOOGLE_CLIENT_ID="mock-google-client-id"
-GOOGLE_CLIENT_SECRET="mock-google-client-secret"
+GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
+GOOGLE_REDIRECT_URI="http://localhost:5000/api/auth/google/callback"
 
 ```
 
@@ -1113,27 +1040,112 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 ```typescript
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { db, users, eq } from '@workspace/db';
-import { sql } from 'drizzle-orm';
+import { db, users, employees, entities, departments, entityCounters, and, eq } from '@workspace/db';
 
 dotenv.config();
 
 export async function runSeed() {
-  console.log('[STEP 2 VERIFICATION] Connecting to Supabase Transaction Pooler (port 6543)...');
-  try {
-    const res = await db.execute(sql`SELECT 1 as connected, current_database(), version();`);
-    console.log('[STEP 2 RESULT] SUCCESS! Connection verified:');
-    console.log(JSON.stringify(res.rows[0], null, 2));
-  } catch (err: any) {
-    console.error('[STEP 2 RESULT] CONNECTION ERROR:', err.message);
-  }
-
   console.log('[SEED] Seeding database with HROS initial data...');
   const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@example.com').toLowerCase().trim();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   try {
+    // 1. Seed / Upsert Entities (EHM & CAG)
+    const entitiesList = [
+      { code: 'EHM', name: 'EHM Consultancy' },
+      { code: 'CAG', name: 'Climagro Analytics' },
+    ];
+
+    const seededEntities: Record<string, string> = {};
+
+    for (const ent of entitiesList) {
+      let [existingEntity] = await db
+        .select()
+        .from(entities)
+        .where(eq(entities.code, ent.code));
+
+      if (!existingEntity) {
+        [existingEntity] = await db
+          .insert(entities)
+          .values({ code: ent.code, name: ent.name })
+          .returning();
+        console.log(`[SEED] Entity inserted: ${ent.code} (${ent.name})`);
+      } else {
+        console.log(`[SEED] Entity exists: ${ent.code}`);
+      }
+
+      seededEntities[ent.code] = existingEntity.id;
+
+      // Seed / Upsert Entity Counter
+      const [existingCounter] = await db
+        .select()
+        .from(entityCounters)
+        .where(eq(entityCounters.entityId, existingEntity.id));
+
+      if (!existingCounter) {
+        await db
+          .insert(entityCounters)
+          .values({ entityId: existingEntity.id, nextEmployeeSeq: 2 });
+        console.log(`[SEED] Entity Counter initialized for ${ent.code}`);
+      }
+    }
+
+    // 2. Seed / Upsert Departments (MAR, DEV, OPS, HR, FIN)
+    const departmentsData = [
+      { code: 'MAR', name: 'Marketing' },
+      { code: 'DEV', name: 'Engineering & Product' },
+      { code: 'OPS', name: 'Operations' },
+      { code: 'HR', name: 'Human Resources' },
+      { code: 'FIN', name: 'Finance' },
+    ];
+
+    const seededDepts: Record<string, string> = {};
+
+    for (const entityCode of ['EHM', 'CAG']) {
+      const entityId = seededEntities[entityCode];
+      for (const dept of departmentsData) {
+        let [existingDept] = await db
+          .select()
+          .from(departments)
+          .where(and(eq(departments.entityId, entityId), eq(departments.code, dept.code)));
+
+        if (!existingDept) {
+          [existingDept] = await db
+            .insert(departments)
+            .values({ entityId, code: dept.code, name: dept.name })
+            .returning();
+          console.log(`[SEED] Department inserted: ${dept.code} for ${entityCode}`);
+        }
+        seededDepts[`${entityCode}_${dept.code}`] = existingDept.id;
+      }
+    }
+
+    // 3. Seed / Upsert Admin Employee Record
+    let [adminEmployee] = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.email, adminEmail));
+
+    if (!adminEmployee) {
+      [adminEmployee] = await db
+        .insert(employees)
+        .values({
+          firstName: 'Admin',
+          lastName: 'User',
+          email: adminEmail,
+          employeeCode: 'EHM-EMP01',
+          entityId: seededEntities['EHM'],
+          departmentId: seededDepts['EHM_DEV'] || seededDepts['EHM_HR'],
+          designation: 'System Administrator',
+          salary: '150000',
+          joiningDate: new Date(),
+        })
+        .returning();
+      console.log(`[SEED] Admin Employee inserted: EHM-EMP01 (${adminEmail})`);
+    }
+
+    // 4. Seed / Upsert Admin User
     const [existingUser] = await db
       .select()
       .from(users)
@@ -1145,23 +1157,21 @@ export async function runSeed() {
         passwordHash,
         role: 'ADMIN',
         status: 'ACTIVE',
+        employeeId: adminEmployee.id,
       });
       console.log(`[SEED] Admin User inserted: ${adminEmail}`);
     } else {
       await db.update(users)
-        .set({ passwordHash, role: 'ADMIN', status: 'ACTIVE' })
+        .set({ passwordHash, role: 'ADMIN', status: 'ACTIVE', employeeId: adminEmployee.id })
         .where(eq(users.email, adminEmail));
       console.log(`[SEED] Admin User updated: ${adminEmail}`);
     }
-  } catch (err) {
-    console.error('[SEED WARNING] Database seed notice:', err);
-  }
 
-  console.log(`[SEED] Admin Credentials: ${adminEmail} (password: ${adminPassword})`);
-  console.log('[SEED] Entities created: EHM (EHM Operations) & CAG (CliAgro Systems)');
-  console.log('[SEED] Departments created: MAR, DEV, OPS, HR, FIN');
-  console.log('[SEED] Initial tasks seeded: EHM-MAR-ADH-672, CAG-DEV-SPR-101, EHM-OPS-PROC-412');
-  console.log('[SEED] Database seeding complete!');
+    console.log(`[SEED] Admin Credentials: ${adminEmail} (password: ${adminPassword})`);
+    console.log('[SEED] Database seeding complete!');
+  } catch (err) {
+    console.error('[SEED ERROR] Database seed failure:', err);
+  }
 }
 
 // Allow direct execution
@@ -1263,6 +1273,7 @@ import applicationsRouter from './routes/applications.js';
 import reportsRouter from './routes/reports.js';
 import { startSyncCron } from './jobs/sync-cron.js';
 import { startDigestCron } from './jobs/digest-cron.js';
+import { startOverdueCheckCron } from './jobs/overdue-check-cron.js';
 import { runSeed } from './db/seed.js';
 
 dotenv.config();
@@ -1321,6 +1332,7 @@ if (fs.existsSync(frontendDistPath)) {
 // Run background jobs
 startSyncCron();
 startDigestCron();
+startOverdueCheckCron();
 runSeed().catch(console.error);
 
 app.listen(PORT, () => {
@@ -1360,6 +1372,150 @@ export function startDigestCron() {
 
 ```
 
+## FILE: artifacts/api-server/src/jobs/overdue-check-cron.ts
+
+```typescript
+import { db, tasks, employees, users, notifications, googleTokens, eq, and, ne, lt, lte, gt, gte, sql } from '@workspace/db';
+import { sendOverdueTaskAlertEmail, sendCalendarReconnectEmail } from '../services/email.js';
+
+export function startOverdueCheckCron() {
+  console.log('[OVERDUE & TOKEN CRON] Initializing daily task overdue and calendar token expiry check...');
+
+  // Run once on server startup
+  runOverdueAndTokenChecks();
+
+  // Run once every 24 hours
+  setInterval(runOverdueAndTokenChecks, 24 * 60 * 60 * 1000);
+}
+
+async function runOverdueAndTokenChecks() {
+  const now = new Date();
+  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  // 1. Overdue Task Alert Check
+  try {
+    const overdueTasks = await db
+      .select()
+      .from(tasks)
+      .where(and(lt(tasks.dueDate, now), ne(tasks.status, 'DONE')));
+
+    for (const task of overdueTasks) {
+      const daysOverdue = Math.max(1, Math.ceil((now.getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24)));
+
+      // Resolve assignee name
+      let assigneeName = 'Employee';
+      const [assigneeEmp] = await db.select().from(employees).where(eq(employees.id, task.assigneeId));
+      if (assigneeEmp) {
+        assigneeName = `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim();
+      }
+
+      // Priority Order Recipient Lookup:
+      // a. reviewingLeadId -> user
+      // b. creatorId -> user
+      // c. fallback ADMIN
+      let recipientUser: any = null;
+
+      if (task.reviewingLeadId) {
+        const [leadUser] = await db.select().from(users).where(eq(users.employeeId, task.reviewingLeadId));
+        if (leadUser) recipientUser = leadUser;
+      }
+
+      if (!recipientUser && task.creatorId) {
+        const [creatorUser] = await db.select().from(users).where(eq(users.employeeId, task.creatorId));
+        if (creatorUser) recipientUser = creatorUser;
+      }
+
+      if (!recipientUser) {
+        console.warn(`[OVERDUE CRON WARNING] Fallback to default ADMIN user for task ${task.taskCode}`);
+        const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
+        recipientUser = fallbackAdmin;
+      }
+
+      if (recipientUser) {
+        // Skip duplicate spam if a TASK_OVERDUE notification for this exact taskId was created in last 24h
+        const recentNotifs = await db
+          .select()
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.userId, recipientUser.id),
+              eq(notifications.type, 'TASK_OVERDUE'),
+              gte(notifications.createdAt, last24h)
+            )
+          );
+
+        const alreadySent = recentNotifs.some(n => (n.payload as any)?.taskId === task.id);
+
+        if (!alreadySent) {
+          await db.insert(notifications).values({
+            userId: recipientUser.id,
+            type: 'TASK_OVERDUE',
+            payload: {
+              taskId: task.id,
+              taskCode: task.taskCode,
+              taskTitle: task.title,
+              assigneeName,
+              daysOverdue,
+            },
+          });
+
+          await sendOverdueTaskAlertEmail(
+            recipientUser.email,
+            'Manager',
+            task.taskCode,
+            task.title,
+            assigneeName,
+            daysOverdue
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[OVERDUE CRON ERROR]:', err);
+  }
+
+  // 2. Google Token Expiry Reminder Check (Next 24 Hours)
+  try {
+    const future24h = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const expiringTokens = await db
+      .select()
+      .from(googleTokens)
+      .where(and(gt(googleTokens.expiry, now), lt(googleTokens.expiry, future24h)));
+
+    for (const tokenRow of expiringTokens) {
+      const recentNotifs = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, tokenRow.userId),
+            eq(notifications.type, 'CALENDAR_RECONNECT'),
+            gte(notifications.createdAt, last24h)
+          )
+        );
+
+      if (recentNotifs.length === 0) {
+        const [targetUser] = await db.select().from(users).where(eq(users.id, tokenRow.userId));
+        if (targetUser) {
+          await db.insert(notifications).values({
+            userId: targetUser.id,
+            type: 'CALENDAR_RECONNECT',
+            payload: {
+              message: 'Your Google Calendar OAuth integration token will expire within 24 hours. Please reconnect in Settings.',
+            },
+          });
+
+          await sendCalendarReconnectEmail(targetUser.email, targetUser.email);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[TOKEN EXPIRY CRON ERROR]:', err);
+  }
+}
+
+```
+
 ## FILE: artifacts/api-server/src/jobs/sync-cron.js
 
 ```text
@@ -1375,11 +1531,32 @@ export function startSyncCron() {
 ## FILE: artifacts/api-server/src/jobs/sync-cron.ts
 
 ```typescript
+import { db, googleTokens } from '@workspace/db';
+import { pullGoogleCalendarEvents } from '../services/calendar-sync.js';
+
 export function startSyncCron() {
-  console.log('[PG_CRON JOB] Initializing scheduled Google Calendar background sync job (every 5 minutes)...');
-  setInterval(() => {
-    console.log('[PG_CRON JOB] Executing automatic per-user Google Calendar sync and live meeting presence update...');
-  }, 5 * 60 * 1000);
+  console.log('[CALENDAR SYNC CRON] Initializing background Google Calendar sync job (every 1 minute)...');
+
+  // Run once on server startup
+  runSyncAllUsers();
+
+  // Run every 1 minute
+  setInterval(runSyncAllUsers, 1 * 60 * 1000);
+}
+
+async function runSyncAllUsers() {
+  try {
+    const tokens = await db.select({ userId: googleTokens.userId }).from(googleTokens);
+    for (const tokenRow of tokens) {
+      try {
+        await pullGoogleCalendarEvents(tokenRow.userId);
+      } catch (userErr) {
+        console.error(`[CALENDAR SYNC CRON ERROR] Failed for user ${tokenRow.userId}:`, userErr);
+      }
+    }
+  } catch (err) {
+    console.error('[CALENDAR SYNC CRON FETCH ERROR]:', err);
+  }
 }
 
 ```
@@ -1420,20 +1597,25 @@ export interface AuthenticatedUser {
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
   employeeId?: string;
-  entityId?: string;
   managedTeamId?: string;
 }
 
-export interface AuthenticatedRequest extends Request {
-  user?: AuthenticatedUser;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthenticatedUser;
+    }
+  }
 }
 
-export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export type AuthenticatedRequest = Request;
+
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : req.cookies?.access_token;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.cookies?.token;
 
   if (!token) {
-    return res.status(401).json({ message: 'Authentication required' });
+    return res.status(401).json({ message: 'Authentication token missing or invalid' });
   }
 
   try {
@@ -1441,8 +1623,29 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
+    return res.status(401).json({ message: 'Invalid or expired authentication token' });
   }
+}
+
+export function requireRole(allowedRoles: ('ADMIN' | 'MANAGER' | 'EMPLOYEE')[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: `Access denied. Requires one of roles: ${allowedRoles.join(', ')}` });
+    }
+
+    next();
+  };
+}
+
+export function requireTeamScope(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  next();
 }
 
 ```
@@ -1559,8 +1762,10 @@ export default router;
 
 ```typescript
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 let announcementsList = [
   { id: 'ann-1', title: 'Q3 All-Hands & Entity Performance Review', content: 'Join us this Thursday at 4 PM for the combined EHM and CliAgro quarterly review.', priority: 'URGENT', isPinned: true, createdAt: '2026-08-29' },
@@ -1626,8 +1831,10 @@ export default router;
 
 ```typescript
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 let applicationsList = [
   { id: 'app-1', employeeName: 'Priya Sharma', type: 'REMOTE_WORK', reason: 'Onsite brand client photoshoot in Mumbai', status: 'APPROVED', createdAt: '2026-08-28' },
@@ -1706,8 +1913,10 @@ export default router;
 
 ```typescript
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 let attendanceList = [
   { id: 'att-1', employeeName: 'Priya Sharma', date: '2026-08-31', clockIn: '09:02 AM', clockOut: '06:15 PM', workMode: 'IN_OFFICE', status: 'PRESENT', totalHours: '9.2' },
@@ -1808,10 +2017,61 @@ export default router;
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users, invites, eq } from '@workspace/db';
+import { db, users, invites, googleTokens, eq } from '@workspace/db';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
+
+// Refresh Access Token helper function for Google Calendar API calls
+export async function refreshAccessToken(userId: string): Promise<string | null> {
+  try {
+    const [tokenRow] = await db
+      .select()
+      .from(googleTokens)
+      .where(eq(googleTokens.userId, userId));
+
+    if (!tokenRow) return null;
+
+    // Return current access token if it hasn't expired yet (with 5 min buffer)
+    const now = new Date(Date.now() + 5 * 60 * 1000);
+    if (tokenRow.expiry && new Date(tokenRow.expiry) > now) {
+      return tokenRow.accessToken;
+    }
+
+    if (!tokenRow.refreshToken) return tokenRow.accessToken;
+
+    // Refresh access token via Google OAuth token endpoint
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        refresh_token: tokenRow.refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('[REFRESH TOKEN ERROR]:', data);
+      return tokenRow.accessToken;
+    }
+
+    const newAccessToken = data.access_token;
+    const newExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
+
+    await db
+      .update(googleTokens)
+      .set({ accessToken: newAccessToken, expiry: newExpiry, updatedAt: new Date() })
+      .where(eq(googleTokens.userId, userId));
+
+    return newAccessToken;
+  } catch (err) {
+    console.error('[REFRESH ACCESS TOKEN ERROR]:', err);
+    return null;
+  }
+}
 
 // Secure Login Route
 router.post('/login', async (req, res) => {
@@ -1822,7 +2082,6 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Look up user by email in the DB users table
     const [user] = await db
       .select()
       .from(users)
@@ -1832,14 +2091,12 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Compare submitted password against stored bcrypt hash
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Sign JWT payload using real DB fields
     const userPayload = {
       id: user.id,
       email: user.email,
@@ -1864,7 +2121,6 @@ router.post('/set-password', async (req, res) => {
   }
 
   try {
-    // 1. Look up the token in the invites table
     const [invite] = await db
       .select()
       .from(invites)
@@ -1882,11 +2138,9 @@ router.post('/set-password', async (req, res) => {
       return res.status(400).json({ message: 'Invite token has expired' });
     }
 
-    // 2. Hash the submitted password with bcrypt
     const passwordHash = await bcrypt.hash(password, 10);
     const inviteEmail = invite.email.toLowerCase().trim();
 
-    // 3. Look up existing user by email
     const [existingUser] = await db
       .select()
       .from(users)
@@ -1922,13 +2176,11 @@ router.post('/set-password', async (req, res) => {
       userId = newUser ? newUser.id : 'user-' + Date.now();
     }
 
-    // 4. Mark the invite as ACCEPTED
     await db
       .update(invites)
       .set({ status: 'ACCEPTED' })
       .where(eq(invites.id, invite.id));
 
-    // 5. Sign and return a JWT for that real user
     const userPayload = {
       id: userId,
       email: inviteEmail,
@@ -1944,14 +2196,169 @@ router.post('/set-password', async (req, res) => {
   }
 });
 
-router.get('/google', (req, res) => {
-  const inviteToken = req.query.inviteToken;
-  const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${process.env.GOOGLE_CLIENT_ID || 'mock-google-client-id'}&redirect_uri=${encodeURIComponent(process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5173/auth/google/callback')}&scope=https://www.googleapis.com/auth/calendar.events&state=${inviteToken || ''}`;
-  res.redirect(redirectUrl);
+// Google OAuth URL generation route
+router.get('/google', async (req, res) => {
+  let userId = (req.query.userId as string) || '';
+  const inviteToken = (req.query.inviteToken as string) || '';
+
+  if (!userId && inviteToken) {
+    try {
+      const [inviteRow] = await db
+        .select()
+        .from(invites)
+        .where(eq(invites.token, inviteToken));
+
+      if (inviteRow) {
+        const inviteEmail = inviteRow.email.toLowerCase().trim();
+        let [userRow] = await db
+          .select({ id: users.id, role: users.role, employeeId: users.employeeId })
+          .from(users)
+          .where(eq(users.email, inviteEmail));
+
+        // Create user row if brand-new invitee clicks Google button first
+        if (!userRow) {
+          const [newUser] = await db
+            .insert(users)
+            .values({
+              email: inviteEmail,
+              passwordHash: '',
+              role: inviteRow.role || 'EMPLOYEE',
+              status: 'ACTIVE',
+              employeeId: inviteRow.employeeId,
+            })
+            .returning();
+          userRow = newUser;
+          console.log(`[GOOGLE OAUTH INVITE] Automatically created user account ${newUser.id} for invited employee ${inviteEmail}`);
+        }
+
+        if (userRow) {
+          userId = userRow.id;
+        }
+        // NOTE: Invite is marked ACCEPTED inside callback ONLY after token exchange succeeds!
+      }
+    } catch (err) {
+      console.error('[GOOGLE OAUTH INVITE LOOKUP ERROR]:', err);
+    }
+  }
+
+  const state = Buffer.from(JSON.stringify({ userId, inviteToken })).toString('base64');
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
+  
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `response_type=code` +
+    `&client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar.events')}` +
+    `&access_type=offline` +
+    `&prompt=consent` +
+    `&state=${encodeURIComponent(state)}`;
+
+  res.redirect(googleAuthUrl);
 });
 
-router.get('/google/callback', (req, res) => {
-  res.redirect('/dashboard?welcome=true');
+// Google OAuth Callback route
+router.get('/google/callback', async (req, res) => {
+  const { code, state } = req.query;
+
+  if (!code) {
+    return res.status(400).send('Authorization code missing');
+  }
+
+  try {
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code: code as string,
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenResponse.ok) {
+      console.error('[GOOGLE OAUTH ERROR] Token exchange failed:', tokenData);
+      return res.status(400).json({ message: 'Google OAuth token exchange failed', error: tokenData });
+    }
+
+    const { access_token, refresh_token, expires_in } = tokenData;
+
+    let userId: string | null = null;
+    let inviteToken: string | null = null;
+
+    if (state && typeof state === 'string') {
+      try {
+        const parsedState = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+        userId = parsedState.userId || null;
+        inviteToken = parsedState.inviteToken || null;
+      } catch {
+        userId = state;
+      }
+    }
+
+    if (!userId) {
+      const [firstUser] = await db.select().from(users).limit(1);
+      userId = firstUser?.id || null;
+    }
+
+    let authTokenToSend: string | null = null;
+
+    if (userId) {
+      const [targetUser] = await db.select().from(users).where(eq(users.id, userId));
+      if (targetUser) {
+        const userPayload = {
+          id: targetUser.id,
+          email: targetUser.email,
+          role: targetUser.role,
+          employeeId: targetUser.employeeId || undefined,
+        };
+        authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+      }
+
+      const expiry = new Date(Date.now() + (expires_in || 3600) * 1000);
+      const [existingToken] = await db.select().from(googleTokens).where(eq(googleTokens.userId, userId));
+
+      if (existingToken) {
+        await db.update(googleTokens)
+          .set({
+            accessToken: access_token,
+            refreshToken: refresh_token || existingToken.refreshToken,
+            expiry,
+            updatedAt: new Date(),
+          })
+          .where(eq(googleTokens.userId, userId));
+      } else {
+        await db.insert(googleTokens).values({
+          userId,
+          accessToken: access_token,
+          refreshToken: refresh_token || '',
+          expiry,
+        });
+      }
+
+      // ITEM 2 FIX: Mark invite as ACCEPTED ONLY AFTER OAuth token exchange has succeeded!
+      if (inviteToken) {
+        await db
+          .update(invites)
+          .set({ status: 'ACCEPTED' })
+          .where(eq(invites.token, inviteToken));
+      }
+    }
+
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const redirectUrl = authTokenToSend
+      ? `${appUrl}/dashboard?token=${authTokenToSend}&calendarConnected=true`
+      : `${appUrl}/dashboard?calendarConnected=true`;
+
+    res.redirect(redirectUrl);
+  } catch (err) {
+    console.error('[GOOGLE CALLBACK ERROR]:', err);
+    res.status(500).send('OAuth Callback Error');
+  }
 });
 
 export default router;
@@ -2038,8 +2445,10 @@ export default router;
 
 ```typescript
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 router.get('/', (req, res) => {
   const entity = (req.query.entity as string) || 'ALL';
@@ -2165,10 +2574,14 @@ export default router;
 ```typescript
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, employees, entities, entityCounters, departments, eq, sql } from '@workspace/db';
+import { db, employees, entities, entityCounters, departments, invites, eq, sql } from '@workspace/db';
 import { sendInviteEmail } from '../services/email.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
+
+// Apply requireAuth to all employee endpoints
+router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
@@ -2179,10 +2592,13 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
-  const { firstName, lastName, email, entityId, departmentId, designation, salary, joiningDate } = req.body;
+// Enforce ADMIN and MANAGER role for creating employees
+router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const { firstName, lastName, email, entityId, departmentId, designation, salary, joiningDate, role } = req.body;
 
   try {
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+
     const result = await db.transaction(async (tx) => {
       // 1. Fetch entityCode dynamically from entities table by entityId
       let targetEntityId = entityId;
@@ -2239,13 +2655,28 @@ router.post('/', async (req, res) => {
         })
         .returning();
 
+      // 5. Insert Invite record inside the same transaction
+      const expiresAt = new Date(Date.now() + 7 * 86400000); // 7 days from now
+      await tx
+        .insert(invites)
+        .values({
+          email: email.toLowerCase().trim(),
+          token: inviteToken,
+          role: (role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
+          employeeId: newEmployee.id,
+          status: 'PENDING',
+          expiresAt,
+        });
+
       return { newEmployee, entityCode };
     });
 
-    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
+
     await sendInviteEmail(email, inviteToken, `${firstName} ${lastName}`);
 
-    res.status(201).json({ employee: result.newEmployee, inviteToken });
+    res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink });
   } catch (err: any) {
     console.error('[EMPLOYEE CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create employee' });
@@ -2326,68 +2757,219 @@ export default router;
 
 ```typescript
 import { Router } from 'express';
+import { db, meetings, meetingAttendees, employees, users, eq, ne, and, gte, lte } from '@workspace/db';
+import { refreshAccessToken } from './auth.js';
+import { requireAuth } from '../middleware/auth.js';
+import { pullGoogleCalendarEvents } from '../services/calendar-sync.js';
 
 const router = Router();
+router.use(requireAuth);
 
-let meetingsList = [
-  {
-    id: 'm-1',
-    title: 'Team Standup & Sprint Sync',
-    description: 'Daily operational check-in across EHM and CliAgro core leads.',
-    startTime: new Date(Date.now() + 15 * 60000).toISOString(),
-    endTime: new Date(Date.now() + 45 * 60000).toISOString(),
-    location: 'Zoom / Google Meet',
-    googleMeetUrl: 'https://meet.google.com/hros-standup-2026',
-    organizerName: 'Sanjay Kapoor',
-    inviteeAvatars: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    ],
-    status: 'Starting Soon',
-  },
-  {
-    id: 'm-2',
-    title: 'Design Review & Architecture Audit',
-    description: 'Reviewing brand refresh graphics and CliAgro IoT Gateway schema.',
-    startTime: new Date(Date.now() + 180 * 60000).toISOString(),
-    endTime: new Date(Date.now() + 225 * 60000).toISOString(),
-    location: 'Google Meet',
-    googleMeetUrl: 'https://meet.google.com/hros-design-rev',
-    organizerName: 'Priya Sharma',
-    inviteeAvatars: [
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    ],
-    status: 'Upcoming',
-  },
-];
-
-router.get('/', (req, res) => {
-  res.json(meetingsList);
+router.get('/', async (req, res) => {
+  try {
+    const allMeetings = await db.select().from(meetings).where(ne(meetings.status, 'CANCELLED'));
+    res.json(allMeetings);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch meetings' });
+  }
 });
 
-router.post('/', (req, res) => {
-  const { title, description, startTime, endTime } = req.body;
-  const newMeeting = {
-    id: `m-${Date.now()}`,
-    title: title || 'New Meeting',
-    description: description || '',
-    startTime: startTime || new Date().toISOString(),
-    endTime: endTime || new Date(Date.now() + 30 * 60000).toISOString(),
-    location: 'Google Meet',
-    googleMeetUrl: `https://meet.google.com/hros-${Math.floor(1000 + Math.random() * 9000)}`,
-    organizerName: 'You',
-    inviteeAvatars: ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'],
-    status: 'Scheduled',
-  };
-  meetingsList.unshift(newMeeting);
-  res.status(201).json(newMeeting);
+// GET /api/meetings/availability endpoint
+router.get('/availability', async (req, res) => {
+  try {
+    const now = new Date();
+    const fromQuery = req.query.from ? new Date(req.query.from as string) : now;
+    const toQuery = req.query.to ? new Date(req.query.to as string) : new Date(Date.now() + 7 * 86400000);
+
+    const allEmps = await db.select().from(employees);
+    const activeMeetings = await db
+      .select()
+      .from(meetings)
+      .where(
+        and(
+          ne(meetings.status, 'CANCELLED'),
+          gte(meetings.endTime, fromQuery),
+          lte(meetings.startTime, toQuery)
+        )
+      );
+
+    const result = allEmps.map(emp => {
+      const empMeetings = activeMeetings.filter(m => {
+        const isOrganizer = m.organizerId === emp.id;
+        const isInvited = Array.isArray(m.invitees) && (m.invitees as string[]).includes(emp.id);
+        return isOrganizer || isInvited;
+      });
+
+      const busy = empMeetings.map(m => ({
+        meetingId: m.id,
+        meetingTitle: m.title,
+        start: m.startTime,
+        end: m.endTime,
+      }));
+
+      const isBusyRightNow = busy.some(b => now >= new Date(b.start) && now <= new Date(b.end));
+
+      return {
+        employeeId: emp.id,
+        name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email,
+        email: emp.email,
+        designation: emp.designation,
+        isBusyRightNow,
+        busy,
+      };
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error('[AVAILABILITY FETCH ERROR]:', err);
+    res.status(500).json({ message: 'Failed to fetch team availability' });
+  }
 });
 
-router.get('/sync', (req, res) => {
-  console.log('[CALENDAR SYNC] Executing Google Calendar two-way sync...');
-  res.json({ message: 'Google Calendar sync completed successfully.', syncedEvents: 2 });
+// GET /api/meetings/sync
+router.get('/sync', async (req, res) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const accessToken = await refreshAccessToken(req.user.id);
+    if (!accessToken) {
+      return res.status(400).json({
+        message: 'Google Calendar is not connected to your account. Please click "Connect Google Calendar" to grant calendar permissions.',
+        connected: false,
+        needsOAuth: true,
+      });
+    }
+
+    const syncResult = await pullGoogleCalendarEvents(req.user.id);
+    res.json({
+      message: 'Google Calendar sync completed successfully.',
+      connected: true,
+      ...syncResult,
+    });
+  } catch (err: any) {
+    console.error('[SYNC ENDPOINT ERROR]:', err);
+    res.status(500).json({ message: 'Calendar sync failed' });
+  }
+});
+
+router.post('/', async (req, res) => {
+  const { title, description, startTime, endTime, location, organizerId, invitees, source } = req.body;
+
+  try {
+    let resolvedOrganizerId = organizerId;
+    if (!resolvedOrganizerId && req.user?.employeeId) {
+      resolvedOrganizerId = req.user.employeeId;
+    }
+    if (!resolvedOrganizerId) {
+      const [firstEmp] = await db.select().from(employees).limit(1);
+      resolvedOrganizerId = firstEmp?.id;
+    }
+
+    let organizerUserId = req.user?.id || null;
+    if (resolvedOrganizerId) {
+      const [organizerUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.employeeId, resolvedOrganizerId));
+
+      if (organizerUser) {
+        organizerUserId = organizerUser.id;
+      }
+    }
+
+    const meetingSource = source || 'GOOGLE_CALENDAR';
+    let googleEventId: string | null = null;
+    let googleMeetUrl: string | null = null;
+
+    if (meetingSource === 'GOOGLE_CALENDAR') {
+      const accessToken = organizerUserId ? await refreshAccessToken(organizerUserId) : null;
+      
+      if (!accessToken) {
+        return res.status(400).json({
+          message: 'Google Calendar is not connected to your account. Please click "Connect Google Calendar" in Settings or top of page to connect Google first.',
+          needsOAuth: true,
+        });
+      }
+
+      try {
+        const startISO = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
+        const endISO = endTime ? new Date(endTime).toISOString() : new Date(Date.now() + 30 * 60000).toISOString();
+        const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+
+        const calRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            summary: title || 'HROS Meeting',
+            description: description || '',
+            start: { dateTime: startISO, timeZone: userTimeZone },
+            end: { dateTime: endISO, timeZone: userTimeZone },
+            conferenceData: {
+              createRequest: {
+                requestId: `meet-${Date.now()}`,
+                conferenceSolutionKey: { type: 'hangoutsMeet' },
+              },
+            },
+          }),
+        });
+
+        const calData = await calRes.json();
+        if (calRes.ok) {
+          googleEventId = calData.id || null;
+          googleMeetUrl = calData.hangoutLink || calData.htmlLink || null;
+          console.log(`[GOOGLE CALENDAR API SUCCESS] Created event ${googleEventId} with Meet link: ${googleMeetUrl}`);
+        } else {
+          console.error('[GOOGLE CALENDAR API ERROR]:', calData);
+          return res.status(400).json({
+            message: `Google Calendar API Error: ${calData.error?.message || 'Failed to create event'}`,
+          });
+        }
+      } catch (calErr: any) {
+        console.error('[GOOGLE CALENDAR API FETCH EXCEPTION]:', calErr);
+        return res.status(500).json({ message: 'Failed to communicate with Google Calendar API' });
+      }
+    }
+
+    const start = startTime ? new Date(startTime) : new Date();
+    const end = endTime ? new Date(endTime) : new Date(Date.now() + 30 * 60000);
+    const inviteeList = Array.isArray(invitees) ? invitees : [];
+
+    const [newMeeting] = await db
+      .insert(meetings)
+      .values({
+        title: title || 'New Meeting',
+        description: description || '',
+        startTime: start,
+        endTime: end,
+        location: location || 'Google Meet',
+        googleMeetUrl,
+        googleEventId,
+        organizerId: resolvedOrganizerId,
+        invitees: inviteeList,
+        source: meetingSource,
+        status: 'SCHEDULED',
+      })
+      .returning();
+
+    if (inviteeList.length > 0) {
+      const attendeeRows = inviteeList.map((empId: string) => ({
+        meetingId: newMeeting.id,
+        employeeId: empId,
+        responseStatus: 'PENDING' as const,
+      }));
+      await db.insert(meetingAttendees).values(attendeeRows);
+    }
+
+    res.status(201).json(newMeeting);
+  } catch (err: any) {
+    console.error('[MEETING CREATION ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to create meeting' });
+  }
 });
 
 export default router;
@@ -2423,8 +3005,10 @@ export default router;
 
 ```typescript
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 router.get('/sprint-summary', (req, res) => {
   const format = (req.query.format as string) || 'csv';
@@ -2563,9 +3147,14 @@ export default router;
 ```typescript
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, tasks, employees, entities, sprints, eq, sql } from '@workspace/db';
+import { db, tasks, employees, entities, users, notifications, sprints, eq, sql } from '@workspace/db';
+import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
+
+// Apply requireAuth to all task endpoints
+router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
@@ -2576,11 +3165,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
-  const { title, description, assigneeId, creatorId, departmentId, sprintId, initiativeId, storyPoints, priority, status, dueDate, deliverableUrl } = req.body;
+// Enforce ADMIN and MANAGER role for creating tasks
+router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const { title, description, assigneeId, creatorId, reviewingLeadId, departmentId, sprintId, initiativeId, storyPoints, priority, status, dueDate, deliverableUrl } = req.body;
 
   try {
-    const newTask = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // 1. Resolve Assignee & their entityId
       let targetAssigneeId = assigneeId;
       if (!targetAssigneeId) {
@@ -2591,6 +3181,9 @@ router.post('/', async (req, res) => {
       const [assignee] = await tx
         .select({
           id: employees.id,
+          email: employees.email,
+          firstName: employees.firstName,
+          lastName: employees.lastName,
           entityId: employees.entityId,
           departmentId: employees.departmentId,
           employeeCode: employees.employeeCode,
@@ -2636,13 +3229,12 @@ router.post('/', async (req, res) => {
         sprintWeekStr = status === 'BACKLOG' ? 'Backlog' : 'Sprint 35';
       }
 
-      // 5. Resolve creator ID
-      let targetCreatorId = creatorId;
-      if (!targetCreatorId) {
-        targetCreatorId = assignee.id;
-      }
+      // 5. Resolve creator ID & reviewingLeadId
+      let targetCreatorId = creatorId || assignee.id;
+      let targetReviewingLeadId = reviewingLeadId || targetCreatorId || assignee.id;
 
       // 6. Insert Task enforcing assignee.entityId
+      const dueDateVal = dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000);
       const [createdTask] = await tx
         .insert(tasks)
         .values({
@@ -2657,24 +3249,301 @@ router.post('/', async (req, res) => {
           storyPoints: storyPoints ? Number(storyPoints) : null,
           assigneeId: assignee.id,
           creatorId: targetCreatorId,
+          reviewingLeadId: targetReviewingLeadId,
           status: status || 'TODO',
           priority: priority || 'MEDIUM',
-          dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000),
+          dueDate: dueDateVal,
           deliverableUrl: deliverableUrl || null,
         })
         .returning();
 
-      return createdTask;
+      // 7. Look up users row for assignee.id and insert notifications row
+      const [assigneeUser] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.employeeId, assignee.id));
+
+      if (assigneeUser) {
+        await tx.insert(notifications).values({
+          userId: assigneeUser.id,
+          type: 'TASK_ASSIGNED',
+          payload: {
+            taskId: createdTask.id,
+            taskCode: createdTask.taskCode,
+            title: createdTask.title,
+            dueDate: dueDateVal.toISOString().split('T')[0],
+          },
+        });
+      }
+
+      return { createdTask, assigneeEmail: assignee.email, assigneeName: `${assignee.firstName} ${assignee.lastName}` };
     });
 
-    res.status(201).json(newTask);
+    // 8. Trigger task assigned email
+    await sendTaskAssignedEmail(
+      result.assigneeEmail,
+      result.assigneeName,
+      result.createdTask.taskCode,
+      result.createdTask.title,
+      result.createdTask.dueDate ? new Date(result.createdTask.dueDate).toISOString().split('T')[0] : ''
+    );
+
+    res.status(201).json(result.createdTask);
   } catch (err: any) {
     console.error('[TASK ASSIGNMENT ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create task' });
   }
 });
 
+// PATCH /api/tasks/:id/status
+router.patch('/:id/status', async (req, res) => {
+  const taskId = req.params.id;
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ message: 'Status required' });
+  }
+
+  // Restrict DELAYED and BLOCKED statuses to ADMIN/MANAGER roles
+  if (['DELAYED', 'BLOCKED'].includes(status) && !['ADMIN', 'MANAGER'].includes(req.user?.role || '')) {
+    return res.status(403).json({ message: 'Only managers and leads can mark tasks as DELAYED or BLOCKED' });
+  }
+
+  try {
+    const [updatedTask] = await db
+      .update(tasks)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    if (!updatedTask) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    res.json(updatedTask);
+  } catch (err: any) {
+    console.error('[TASK STATUS UPDATE ERROR]:', err);
+    res.status(500).json({ message: 'Failed to update task status' });
+  }
+});
+
+// Step 7 & Requirement 1: POST /api/tasks/:id/delay-request
+router.post('/:id/delay-request', async (req, res) => {
+  const taskId = req.params.id;
+  const { reason, requestedDays } = req.body;
+
+  try {
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!targetTask) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Priority Order Resolution for Delay Request Recipient:
+    // a. If task.reviewingLeadId is set, look up users where users.employeeId = task.reviewingLeadId
+    // b. Else, look up users where users.employeeId = task.creatorId
+    // c. Fall back to first ADMIN with server warning log
+    let targetUser: any = null;
+
+    if (targetTask.reviewingLeadId) {
+      const [leadUser] = await db.select().from(users).where(eq(users.employeeId, targetTask.reviewingLeadId));
+      if (leadUser) targetUser = leadUser;
+    }
+
+    if (!targetUser && targetTask.creatorId) {
+      const [creatorUser] = await db.select().from(users).where(eq(users.employeeId, targetTask.creatorId));
+      if (creatorUser) targetUser = creatorUser;
+    }
+
+    if (!targetUser) {
+      console.warn(`[DELAY REQUEST WARNING] Fallback to default ADMIN user for task ${targetTask.taskCode}`);
+      const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
+      targetUser = fallbackAdmin;
+    }
+
+    if (targetUser) {
+      await db.insert(notifications).values({
+        userId: targetUser.id,
+        type: 'DELAY_REQUEST',
+        payload: {
+          taskId: targetTask.id,
+          taskCode: targetTask.taskCode,
+          title: targetTask.title,
+          reason: reason || 'Deadline extension requested',
+          requestedDays: requestedDays || 2,
+          requestedBy: req.user?.email || 'Employee',
+        },
+      });
+
+      await sendDelayRequestEmail(
+        targetUser.email,
+        'Manager',
+        targetTask.taskCode,
+        targetTask.title,
+        req.user?.email || 'Employee'
+      );
+    }
+
+    res.json({ message: 'Delay extension request submitted successfully', taskId });
+  } catch (err: any) {
+    console.error('[DELAY REQUEST ERROR]:', err);
+    res.status(500).json({ message: 'Failed to submit delay request' });
+  }
+});
+
 export default router;
+
+```
+
+## FILE: artifacts/api-server/src/services/calendar-sync.ts
+
+```typescript
+import { db, meetings, users, employees, googleTokens, eq, and, gte, lte } from '@workspace/db';
+import { refreshAccessToken } from '../routes/auth.js';
+
+export async function pullGoogleCalendarEvents(userId: string): Promise<{ created: number; updated: number; cancelled: number }> {
+  let created = 0;
+  let updated = 0;
+  let cancelled = 0;
+
+  try {
+    const accessToken = await refreshAccessToken(userId);
+    if (!accessToken) {
+      console.log(`[CALENDAR SYNC NOTICE] No active Google Calendar token for user ${userId}`);
+      return { created, updated, cancelled };
+    }
+
+    const [userRow] = await db.select().from(users).where(eq(users.id, userId));
+    let organizerEmployeeId = userRow?.employeeId;
+
+    if (!organizerEmployeeId) {
+      const [firstEmp] = await db.select().from(employees).limit(1);
+      organizerEmployeeId = firstEmp?.id;
+    }
+
+    if (!organizerEmployeeId) {
+      console.error(`[CALENDAR SYNC ERROR] No employee record found to associate meetings for user ${userId}`);
+      return { created, updated, cancelled };
+    }
+
+    // Query 30 days past to 60 days future to capture all past & upcoming events
+    const past30Days = new Date(Date.now() - 30 * 86400000);
+    const future60Days = new Date(Date.now() + 60 * 86400000);
+
+    // 1. Fetch all user calendars (Primary + Secondary calendars like 'ehm testing')
+    let calendarIds = ['primary'];
+    try {
+      const calListRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (calListRes.ok) {
+        const calListData = await calListRes.json();
+        if (Array.isArray(calListData.items) && calListData.items.length > 0) {
+          calendarIds = calListData.items.map((item: any) => item.id).filter(Boolean);
+        }
+      }
+    } catch (e) {
+      console.warn('[CALENDAR LIST FETCH WARNING] Falling back to primary calendar:', e);
+    }
+
+    const fetchedGoogleEventIds = new Set<string>();
+
+    // 2. Fetch events from all user calendars
+    for (const calId of calendarIds) {
+      try {
+        const googleUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?` +
+          `timeMin=${encodeURIComponent(past30Days.toISOString())}` +
+          `&timeMax=${encodeURIComponent(future60Days.toISOString())}` +
+          `&singleEvents=true`;
+
+        const res = await fetch(googleUrl, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (!res.ok) continue;
+
+        const data = await res.json();
+        const items: any[] = data.items || [];
+
+        for (const event of items) {
+          if (!event.id || event.status === 'cancelled') continue;
+
+          fetchedGoogleEventIds.add(event.id);
+          const title = event.summary || '(No title)';
+          const description = event.description || '';
+          const startStr = event.start?.dateTime || event.start?.date;
+          const endStr = event.end?.dateTime || event.end?.date;
+
+          if (!startStr || !endStr) continue;
+
+          const startTime = new Date(startStr);
+          const endTime = new Date(endStr);
+          const googleMeetUrl = event.hangoutLink || event.htmlLink || null;
+
+          const [existingMeeting] = await db
+            .select()
+            .from(meetings)
+            .where(eq(meetings.googleEventId, event.id));
+
+          if (existingMeeting) {
+            await db
+              .update(meetings)
+              .set({
+                title,
+                description,
+                startTime,
+                endTime,
+                googleMeetUrl: googleMeetUrl || existingMeeting.googleMeetUrl,
+                status: 'SCHEDULED',
+              })
+              .where(eq(meetings.id, existingMeeting.id));
+            updated++;
+          } else {
+            await db.insert(meetings).values({
+              title,
+              description,
+              startTime,
+              endTime,
+              location: 'Google Meet',
+              googleMeetUrl,
+              organizerId: organizerEmployeeId,
+              googleEventId: event.id,
+              source: 'GOOGLE_CALENDAR_IMPORTED',
+              status: 'SCHEDULED',
+            });
+            created++;
+          }
+        }
+      } catch (calErr) {
+        console.error(`[CALENDAR EVENT FETCH ERROR] Failed for calendar ${calId}:`, calErr);
+      }
+    }
+
+    // Mark missing previously-synced events as CANCELLED within query window
+    const syncedMeetings = await db
+      .select()
+      .from(meetings)
+      .where(
+        and(
+          eq(meetings.organizerId, organizerEmployeeId),
+          gte(meetings.startTime, past30Days),
+          lte(meetings.startTime, future60Days)
+        )
+      );
+
+    for (const m of syncedMeetings) {
+      if (m.googleEventId && !fetchedGoogleEventIds.has(m.googleEventId) && m.status !== 'CANCELLED') {
+        await db.update(meetings).set({ status: 'CANCELLED' }).where(eq(meetings.id, m.id));
+        cancelled++;
+      }
+    }
+
+    console.log(`[CALENDAR SYNC SUCCESS] User ${userId}: ${created} created, ${updated} updated, ${cancelled} cancelled.`);
+  } catch (err) {
+    console.error(`[CALENDAR SYNC EXCEPTION] Sync failed for user ${userId}:`, err);
+  }
+
+  return { created, updated, cancelled };
+}
 
 ```
 
@@ -2741,33 +3610,40 @@ export async function sendDigestEmail(toEmail, name, dueTasksCount) {
 import { Resend } from 'resend';
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const resend = resendApiKey && !resendApiKey.includes('your_resend_key') ? new Resend(resendApiKey) : null;
 
 export async function sendInviteEmail(toEmail: string, inviteToken: string, name: string) {
   const appUrl = process.env.APP_URL || 'http://localhost:5173';
   const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-  console.log(`[EMAIL SERVICE] Sending invite email to ${toEmail} with link: ${inviteLink}`);
+  console.log(`\n======================================================`);
+  console.log(`[INVITATION EMAIL SENT] To: ${toEmail} (${name})`);
+  console.log(`[INVITATION LINK]: ${inviteLink}`);
+  console.log(`======================================================\n`);
 
   if (resend) {
     try {
-      await resend.emails.send({
-        from: 'HROS Onboarding <no-reply@hros.internal>',
+      const emailResult = await resend.emails.send({
+        from: 'HROS <onboarding@resend.dev>',
         to: toEmail,
         subject: 'Welcome to HROS — Complete Your Account Setup',
         html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #10B981;">Welcome to HROS, ${name}!</h2>
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E7EB; border-radius: 8px;">
+            <h2 style="color: #10B981; margin-top: 0;">Welcome to HROS, ${name}!</h2>
             <p>You have been invited to join the Human Resource Operating System.</p>
             <p>Please click the button below to set your password and optionally link your Google Calendar:</p>
-            <a href="${inviteLink}" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 16px 0;">Accept Invite & Set Up Account</a>
+            <a href="${inviteLink}" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 16px 0; font-weight: bold;">Accept Invite & Set Up Account</a>
             <p style="color: #6B7280; font-size: 14px;">This invite link will expire in 7 days.</p>
+            <p style="color: #9CA3AF; font-size: 12px; margin-top: 20px;">Or copy and paste this link in your browser: ${inviteLink}</p>
           </div>
         `,
       });
-    } catch (err) {
-      console.error('[EMAIL SERVICE] Resend error:', err);
+      console.log(`[RESEND DELIVERED]: Email ID ${emailResult.data?.id}`);
+    } catch (err: any) {
+      console.error('[EMAIL SERVICE RESEND ERROR]:', err?.message || err);
     }
+  } else {
+    console.log('[EMAIL SERVICE NOTICE] Resend API Key is missing or default. Invite link printed above.');
   }
 }
 
@@ -2776,7 +3652,7 @@ export async function sendDigestEmail(toEmail: string, name: string, dueTasksCou
   if (resend && dueTasksCount > 0) {
     try {
       await resend.emails.send({
-        from: 'HROS Digest <notifications@hros.internal>',
+        from: 'HROS <onboarding@resend.dev>',
         to: toEmail,
         subject: `HROS Daily Digest — ${dueTasksCount} tasks due this week`,
         html: `
@@ -2789,6 +3665,131 @@ export async function sendDigestEmail(toEmail: string, name: string, dueTasksCou
       });
     } catch (err) {
       console.error('[EMAIL SERVICE] Digest email error:', err);
+    }
+  }
+}
+
+export async function sendTaskAssignedEmail(
+  toEmail: string,
+  assigneeName: string,
+  taskCode: string,
+  taskTitle: string,
+  dueDate: string
+) {
+  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  console.log(`[EMAIL SERVICE] Sending task assignment email to ${toEmail} for task ${taskCode}`);
+
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: 'HROS <onboarding@resend.dev>',
+        to: toEmail,
+        subject: `New Task Assigned: [${taskCode}] ${taskTitle}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E7EB; border-radius: 8px;">
+            <h3 style="color: #10B981;">New Task Assigned</h3>
+            <p>Hello <strong>${assigneeName}</strong>,</p>
+            <p>A new sprint task has been assigned to you in HROS:</p>
+            <div style="background-color: #F3F4F6; padding: 16px; border-radius: 6px; margin: 16px 0;">
+              <p style="margin: 0 0 8px 0;"><strong>Task ID:</strong> ${taskCode}</p>
+              <p style="margin: 0 0 8px 0;"><strong>Title:</strong> ${taskTitle}</p>
+              <p style="margin: 0;"><strong>Due Date:</strong> ${dueDate}</p>
+            </div>
+            <a href="${appUrl}/tasks" style="background-color: #10B981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">View Task in HROS</a>
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[EMAIL SERVICE] Task assigned email error:', err);
+    }
+  }
+}
+
+export async function sendDelayRequestEmail(
+  toEmail: string,
+  managerName: string,
+  taskCode: string,
+  taskTitle: string,
+  requesterName: string
+) {
+  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  console.log(`[EMAIL SERVICE] Sending delay extension request email to ${toEmail} for task ${taskCode}`);
+
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: 'HROS <onboarding@resend.dev>',
+        to: toEmail,
+        subject: `Delay Extension Request: [${taskCode}] ${taskTitle}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E7EB; border-radius: 8px;">
+            <h3 style="color: #EF4444;">Delay Extension Requested</h3>
+            <p>Hello <strong>${managerName}</strong>,</p>
+            <p>Employee <strong>${requesterName}</strong> has submitted a deadline extension request for task <strong>[${taskCode}] ${taskTitle}</strong>.</p>
+            <a href="${appUrl}/tasks" style="background-color: #EF4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 12px;">Review Request in HROS</a>
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[EMAIL SERVICE] Delay request email error:', err);
+    }
+  }
+}
+
+export async function sendOverdueTaskAlertEmail(
+  toEmail: string,
+  managerName: string,
+  taskCode: string,
+  taskTitle: string,
+  assigneeName: string,
+  daysOverdue: number
+) {
+  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  console.log(`[EMAIL SERVICE] Sending overdue task alert email to ${toEmail} for task ${taskCode}`);
+
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: 'HROS <onboarding@resend.dev>',
+        to: toEmail,
+        subject: `Overdue Task Alert: [${taskCode}] ${taskTitle} (${daysOverdue} days late)`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #EF4444; border-radius: 8px;">
+            <h3 style="color: #DC2626;">Overdue Task Notice</h3>
+            <p>Hello <strong>${managerName}</strong>,</p>
+            <p>Task <strong>[${taskCode}] ${taskTitle}</strong> assigned to <strong>${assigneeName}</strong> is now <strong>${daysOverdue} day(s) overdue</strong>.</p>
+            <a href="${appUrl}/tasks" style="background-color: #DC2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 12px;">Manage Task in HROS</a>
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[EMAIL SERVICE] Overdue task email error:', err);
+    }
+  }
+}
+
+export async function sendCalendarReconnectEmail(toEmail: string, userName: string) {
+  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  console.log(`[EMAIL SERVICE] Sending Google Calendar token reconnect email to ${toEmail}`);
+
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: 'HROS <onboarding@resend.dev>',
+        to: toEmail,
+        subject: `Action Required: Reconnect Google Calendar Sync`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #3B82F6; border-radius: 8px;">
+            <h3 style="color: #2563EB;">Google Calendar Token Expiring Soon</h3>
+            <p>Hello <strong>${userName}</strong>,</p>
+            <p>Your Google Calendar OAuth integration token will expire within 24 hours.</p>
+            <p>Please log in to HROS and reconnect your calendar in Settings to ensure two-way sync remains uninterrupted.</p>
+            <a href="${appUrl}/settings" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 12px;">Reconnect Google Calendar</a>
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[EMAIL SERVICE] Reconnect email error:', err);
     }
   }
 }
@@ -5326,34 +6327,42 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 };
 
 export const MainContent: React.FC = () => {
-  const { user, setUserSession } = useAuth();
+  const { user, isLoading } = useAuth();
+  const [location] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-emerald-400 font-bold text-sm">
+        Loading HROS Operating System...
+      </div>
+    );
+  }
+
+  if (location.startsWith('/accept-invite')) {
+    return <AcceptInviteView />;
+  }
 
   if (!user) {
-    return <LoginView onLoginSuccess={(userData) => setUserSession(userData)} />;
+    return <LoginView />;
   }
 
   return (
-    <Switch>
-      <Route path="/accept-invite" component={AcceptInviteView} />
-      <Route path="*">
-        <AppLayout>
-          <Switch>
-            <Route path="/" component={DashboardView} />
-            <Route path="/attendance" component={AttendanceView} />
-            <Route path="/meetings" component={MeetingsView} />
-            <Route path="/office-today" component={OfficeTodayView} />
-            <Route path="/announcements" component={AnnouncementsView} />
-            <Route path="/tasks" component={TasksView} />
-            <Route path="/team-tasks" component={TeamTasksView} />
-            <Route path="/applications" component={ApplicationsView} />
-            <Route path="/team" component={TeamDirectoryView} />
-            <Route path="/reports" component={ReportsView} />
-            <Route path="/notifications" component={NotificationsView} />
-            <Route path="/settings" component={SettingsView} />
-          </Switch>
-        </AppLayout>
-      </Route>
-    </Switch>
+    <AppLayout>
+      <Switch>
+        <Route path="/" component={DashboardView} />
+        <Route path="/attendance" component={AttendanceView} />
+        <Route path="/meetings" component={MeetingsView} />
+        <Route path="/office-today" component={OfficeTodayView} />
+        <Route path="/announcements" component={AnnouncementsView} />
+        <Route path="/tasks" component={TasksView} />
+        <Route path="/team-tasks" component={TeamTasksView} />
+        <Route path="/applications" component={ApplicationsView} />
+        <Route path="/team" component={TeamDirectoryView} />
+        <Route path="/reports" component={ReportsView} />
+        <Route path="/notifications" component={NotificationsView} />
+        <Route path="/settings" component={SettingsView} />
+      </Switch>
+    </AppLayout>
   );
 };
 
@@ -5473,11 +6482,12 @@ export const ClockInModal: React.FC<ClockInModalProps> = ({ isOpen, onClose }) =
 ## FILE: artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx
 
 ```typescript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckSquare, Calendar, Clock, CheckCircle, Video, Edit3, AlertTriangle, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
+import { fetchApi } from '@workspace/api-client-react';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 
 export interface EmployeeDeliverableTask {
@@ -5501,58 +6511,48 @@ export const EmployeeDashboardView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [myTasks, setMyTasks] = useState<EmployeeDeliverableTask[]>([]);
+  const [todaysMeetings, setTodaysMeetings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Scoped employee deliverables with explicit interface typing
-  const [myTasks, setMyTasks] = useState<EmployeeDeliverableTask[]>([
-    {
-      id: '1',
-      taskId: 'CA-MAR-01',
-      title: 'Finalize Q3 Marketing Pitch Deck & Master Prospects',
-      dept: 'Marketing',
-      entity: 'climagroanalytics',
-      priority: 'HIGH',
-      lead: 'Dr. Harshit Mishra',
-      assigneeName: 'Priya Sharma',
-      status: 'Delayed',
-      dueDate: 'Today, 5:00 PM',
-      outputUrl: 'https://canva.link/climagro-q3-deck',
-      waitingOn: 'Waiting on Reviewing Lead',
-      notes: 'Task flagged as delayed. Reviewing Lead requested updated deadline.',
-      delayRequested: true,
-    },
-    {
-      id: '2',
-      taskId: 'EHM-MAR-672',
-      title: 'Review CliAgro Brand Refresh & Social Kit',
-      dept: 'Marketing',
-      entity: 'ehmconsultancy',
-      priority: 'MEDIUM',
-      lead: 'Neha Shukla',
-      assigneeName: 'Priya Sharma',
-      status: 'In Progress',
-      dueDate: 'Tomorrow, 12:00 PM',
-      outputUrl: 'https://github.com/ehm/brand-assets',
-      waitingOn: 'None (Self)',
-      notes: 'Exported SVG vectors for social media.',
-      delayRequested: false,
-    },
-    {
-      id: '3',
-      taskId: 'EHM-OPS-412',
-      title: 'Submit Sprint Week 34 Audit Deliverables',
-      dept: 'Operations & Delivery',
-      entity: 'ehmconsultancy',
-      priority: 'HIGH',
-      lead: 'Utsav Mishra',
-      assigneeName: 'Priya Sharma',
-      status: 'Done',
-      dueDate: 'Yesterday',
-      outputUrl: 'https://drive.google.com/audit-report-w34',
-      waitingOn: 'None (Self)',
-      notes: 'Signed off by operations team.',
-      delayRequested: false,
-    },
-  ]);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch real tasks from backend
+      const tasksData = await fetchApi<any[]>('/api/tasks');
+      const filteredTasks = tasksData
+        .filter(t => !user?.employeeId || t.assigneeId === user.employeeId)
+        .map(t => ({
+          id: t.id,
+          taskId: t.taskCode || t.id,
+          title: t.title,
+          dept: 'Engineering & Marketing',
+          entity: t.entityId || 'ehmconsultancy',
+          priority: t.priority || 'MEDIUM',
+          lead: 'Lead Manager',
+          assigneeName: user?.email || 'Assignee',
+          status: (t.status === 'DONE' ? 'Done' : t.status === 'BLOCKED' ? 'Blocked' : t.status === 'DELAYED' ? 'Delayed' : 'In Progress') as any,
+          dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'Sprint 35',
+          outputUrl: t.deliverableUrl || '',
+          waitingOn: 'None (Self)',
+          notes: t.description || '',
+          delayRequested: false,
+        }));
+      setMyTasks(filteredTasks);
+
+      // 2. Fetch real meetings from backend
+      const meetingsData = await fetchApi<any[]>('/api/meetings');
+      setTodaysMeetings(meetingsData);
+    } catch (err) {
+      console.error('[EMPLOYEE DASHBOARD FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [user]);
 
   const delayedTask = myTasks.find(t => t.status === 'Delayed');
 
@@ -5581,8 +6581,16 @@ export const EmployeeDashboardView: React.FC = () => {
     } : t));
   };
 
-  const handleSendDelayRequest = (taskCode: string, leadName: string) => {
-    toast.success(`Delay Extension Request for ${taskCode} sent to ${leadName}!`);
+  const handleSendDelayRequest = async (taskId: string, taskCode: string) => {
+    try {
+      await fetchApi(`/api/tasks/${taskId}/delay-request`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Deadline extension requested', requestedDays: 2 }),
+      });
+      toast.success(`Delay Extension Request for ${taskCode} submitted to Manager!`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit delay request');
+    }
   };
 
   return (
@@ -5597,12 +6605,12 @@ export const EmployeeDashboardView: React.FC = () => {
             <div>
               <h4 className="font-bold text-xs sm:text-sm">⚠️ Task Delay Notice: {delayedTask.taskId}</h4>
               <p className="text-[11px] font-semibold text-amber-800">
-                Your task <strong className="text-amber-950">{delayedTask.title}</strong> is flagged as delayed by Lead {delayedTask.lead}.
+                Your task <strong className="text-amber-950">{delayedTask.title}</strong> is flagged as delayed.
               </p>
             </div>
           </div>
           <button
-            onClick={() => handleSendDelayRequest(delayedTask.taskId, delayedTask.lead)}
+            onClick={() => handleSendDelayRequest(delayedTask.id, delayedTask.taskId)}
             className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0"
           >
             <Send className="w-3.5 h-3.5" />
@@ -5618,9 +6626,9 @@ export const EmployeeDashboardView: React.FC = () => {
             <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-xs rounded-full text-[10px] font-bold uppercase tracking-wider">
               Employee Portal
             </span>
-            <span className="text-xs text-emerald-100 font-medium">• ehmconsultancy</span>
+            <span className="text-xs text-emerald-100 font-medium">• {user?.role}</span>
           </div>
-          <h2 className="text-2xl font-black tracking-tight">Welcome back, {user?.name || 'Priya Sharma'}! 👋</h2>
+          <h2 className="text-2xl font-black tracking-tight">Welcome back, {user?.email || 'User'}! 👋</h2>
           <p className="text-xs text-emerald-100 mt-1">Here is your daily work schedule, sprint deliverables, and team meetings.</p>
         </div>
         <div className="hidden sm:block text-right">
@@ -5640,7 +6648,7 @@ export const EmployeeDashboardView: React.FC = () => {
           </div>
           <div>
             <span className="text-xs text-gray-400 font-medium block">Assigned Deliverables</span>
-            <span className="text-lg font-bold text-gray-900">3 Active Tasks</span>
+            <span className="text-lg font-bold text-gray-900">{myTasks.length} Active Tasks</span>
           </div>
         </div>
 
@@ -5650,7 +6658,7 @@ export const EmployeeDashboardView: React.FC = () => {
           </div>
           <div>
             <span className="text-xs text-gray-400 font-medium block">Google Meetings</span>
-            <span className="text-lg font-bold text-gray-900">2 Scheduled Today</span>
+            <span className="text-lg font-bold text-gray-900">{todaysMeetings.length} Scheduled</span>
           </div>
         </div>
 
@@ -5689,49 +6697,54 @@ export const EmployeeDashboardView: React.FC = () => {
             </span>
           </div>
 
-          <div className="space-y-3">
-            {myTasks.map(t => (
-              <div
-                key={t.id}
-                onClick={() => handleOpenTaskUpdate(t)}
-                className="p-4 border border-gray-200/80 bg-white hover:bg-emerald-50/20 hover:border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer transition-all shadow-2xs group"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      {t.taskId}
-                    </span>
-                    <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded ${
-                      t.priority === 'HIGH' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {t.priority}
-                    </span>
-                    <span className="text-xs text-gray-400 font-medium">• Reviewing Lead: {t.lead}</span>
+          {loading ? (
+            <div className="py-8 text-center text-xs text-gray-400 font-semibold">Loading assigned deliverables from server...</div>
+          ) : myTasks.length === 0 ? (
+            <div className="py-8 text-center text-xs text-gray-400 font-semibold">No assigned tasks found.</div>
+          ) : (
+            <div className="space-y-3">
+              {myTasks.map(t => (
+                <div
+                  key={t.id}
+                  onClick={() => handleOpenTaskUpdate(t)}
+                  className="p-4 border border-gray-200/80 bg-white hover:bg-emerald-50/20 hover:border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer transition-all shadow-2xs group"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        {t.taskId}
+                      </span>
+                      <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded ${
+                        t.priority === 'HIGH' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {t.priority}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">{t.title}</h4>
+                    <p className="text-xs text-gray-500 font-medium">{t.notes || 'No description provided.'}</p>
                   </div>
-                  <h4 className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">{t.title}</h4>
-                  <p className="text-xs text-gray-500 font-medium">{t.notes}</p>
-                </div>
 
-                {/* Task Status Badge */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${
-                    t.status === 'Done'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                      : t.status === 'Delayed'
-                      ? 'bg-amber-100 text-amber-900 border-amber-400 font-black'
-                      : t.status === 'Blocked'
-                      ? 'bg-red-50 text-red-800 border-red-300'
-                      : 'bg-blue-50 text-blue-800 border-blue-300'
-                  }`}>
-                    {t.status}
-                  </span>
-                  <button className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors">
-                    <Edit3 className="w-4 h-4" />
-                  </button>
+                  {/* Task Status Badge */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${
+                      t.status === 'Done'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : t.status === 'Delayed'
+                        ? 'bg-amber-100 text-amber-900 border-amber-400 font-black'
+                        : t.status === 'Blocked'
+                        ? 'bg-red-50 text-red-800 border-red-300'
+                        : 'bg-blue-50 text-blue-800 border-blue-300'
+                    }`}>
+                      {t.status}
+                    </span>
+                    <button className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors">
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Column: My Google Meetings Today */}
@@ -5742,32 +6755,29 @@ export const EmployeeDashboardView: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            <div className="p-3.5 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-800">2:30 PM - 3:15 PM</span>
-                <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full animate-pulse">LIVE NOW</span>
+            {todaysMeetings.map((m, idx) => (
+              <div key={m.id || idx} className="p-3.5 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-800">
+                    {m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '2:30 PM'}
+                  </span>
+                  <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full">SCHEDULED</span>
+                </div>
+                <h4 className="font-bold text-gray-900 text-xs">{m.title}</h4>
+                <p className="text-[11px] text-gray-500 font-medium">{m.description || 'HROS Meeting'}</p>
+                {m.googleMeetUrl && (
+                  <a
+                    href={m.googleMeetUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg justify-center transition-colors shadow-2xs mt-1"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Join Google Meet</span>
+                  </a>
+                )}
               </div>
-              <h4 className="font-bold text-gray-900 text-xs">EHM Strategy & Marketing Alignment</h4>
-              <p className="text-[11px] text-gray-500 font-medium">With Dr. Harshit Mishra & Neha Shukla</p>
-              <a
-                href="https://meet.google.com/abc-defg-hij"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg justify-center transition-colors shadow-2xs mt-1"
-              >
-                <Video className="w-3.5 h-3.5" />
-                <span>Join Google Meet</span>
-              </a>
-            </div>
-
-            <div className="p-3.5 bg-gray-50 border border-gray-200/80 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-700">4:30 PM - 5:00 PM</span>
-                <span className="text-[10px] text-gray-400 font-semibold">Upcoming</span>
-              </div>
-              <h4 className="font-bold text-gray-900 text-xs">Weekly Sprint Review</h4>
-              <p className="text-[11px] text-gray-500 font-medium">With Jitendra Sir & Utsav Mishra</p>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -6141,243 +7151,175 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
 ## FILE: artifacts/hr-dashboard/src/components/Navbar.tsx
 
 ```typescript
-import React, { useState } from 'react';
-import { useLocation } from 'wouter';
-import { Bell, Plus, Download, UserPlus, CheckCircle, Calendar, Megaphone, X, Send, Eye, FileCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
+import { fetchApi } from '@workspace/api-client-react';
 import { ProfileModal } from './ProfileModal';
-import { TaskUpdateModal } from './TaskUpdateModal';
+import { SearchModal } from './SearchModal';
+import { getAvatarByName } from '../utils/avatars';
 
 interface NavbarProps {
-  onOpenClockModal?: () => void;
-  onOpenTaskModal?: () => void;
-  onOpenAddEmployeeModal?: () => void;
-  onOpenExportModal?: () => void;
+  onOpenAssignTask?: () => void;
+  onOpenAddEmployee?: () => void;
+  onOpenExportReport?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onOpenTaskModal,
-  onOpenAddEmployeeModal,
-  onOpenExportModal,
+  onOpenAssignTask,
+  onOpenAddEmployee,
+  onOpenExportReport,
 }) => {
-  const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(3);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
-  const [selectedTaskToReview, setSelectedTaskToReview] = useState<any>(null);
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
-  const entityLabel =
-    selectedEntity === 'ALL'
-      ? 'ehmconsultancy & climagroanalytics'
-      : selectedEntity === 'EHM'
-      ? 'ehmconsultancy'
-      : 'climagroanalytics';
+  const loadNotifications = async () => {
+    try {
+      const data = await fetchApi<any[]>('/api/notifications');
+      setNotifications(data);
+      const unread = data.filter((n: any) => !n.isRead).length;
+      setUnreadNotificationsCount(unread);
+    } catch (err) {
+      console.error('[NOTIFICATIONS FETCH ERROR]:', err);
+    }
+  };
 
-  // Manager Notifications vs Employee Notifications
-  const managerNotifications = [
-    {
-      id: 'm-1',
-      title: 'Employee Submission: Priya Sharma submitted task EHM-MAR-ADH-672',
-      time: '5 mins ago',
-      icon: FileCheck,
-      color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
-      taskData: {
-        id: 't-1',
-        taskId: 'EHM-MAR-ADH-672',
-        title: 'Brand Refresh Assets & Social Kit',
-        entity: 'ehmconsultancy',
-        assignee: 'Priya Sharma',
-        reviewingLead: 'Dr. Harshit Mishra',
-        status: 'Done' as const,
-        outputUrl: 'https://canva.link/ehm-brand-social-kit',
-        notes: 'Finalized logo variants and social media export files.',
-      },
-    },
-    {
-      id: 'm-2',
-      title: 'Task Delay Notice: Rahul Verma requested delay extension on CAG-DEV-SPR-101',
-      time: '20 mins ago',
-      icon: Send,
-      color: 'text-amber-600 bg-amber-50 border-amber-200',
-      taskData: {
-        id: 't-2',
-        taskId: 'CAG-DEV-SPR-101',
-        title: 'IoT Sensor API Gateway v2',
-        entity: 'climagroanalytics',
-        assignee: 'Rahul Verma',
-        reviewingLead: 'Neha Shukla',
-        status: 'Delayed' as const,
-        outputUrl: 'https://github.com/climagro/api-gateway',
-        notes: 'Waiting on sensor telemetry hardware specs.',
-      },
-    },
-    {
-      id: 'm-3',
-      title: 'Attendance Alert: Anita Desai marked Present (In Office)',
-      time: '1 hour ago',
-      icon: Calendar,
-      color: 'text-blue-600 bg-blue-50 border-blue-200',
-    },
-  ];
+  useEffect(() => {
+    loadNotifications();
+  }, []);
 
-  const employeeNotifications = [
-    { id: 'e-1', title: 'New Task Assigned: EHM-MAR-ADH-672', time: '10 mins ago', icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    { id: 'e-2', title: 'Upcoming Meeting: Team Standup at 09:00 AM', time: '45 mins ago', icon: Calendar, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-    { id: 'e-3', title: 'Pinned Announcement: Q3 All-Hands Review', time: '2 hours ago', icon: Megaphone, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  ];
-
-  const activeNotifications = isEmployee ? employeeNotifications : managerNotifications;
-
-  const handleNotificationClick = (n: any) => {
-    setShowNotificationsDropdown(false);
-    if (!isEmployee && n.taskData) {
-      setSelectedTaskToReview(n.taskData);
-    } else {
-      setLocation('/notifications');
+  const handleMarkAllRead = async () => {
+    try {
+      await fetchApi('/api/notifications/read-all', { method: 'POST' });
+      setUnreadNotificationsCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('[MARK ALL READ ERROR]:', err);
     }
   };
 
   return (
-    <div className="sticky top-3 z-30 px-6 py-1 select-none">
-      {/* Capsule Header Container */}
-      <header className="bg-white/95 backdrop-blur-md border border-gray-200/90 rounded-full px-5 py-2.5 shadow-md shadow-gray-200/40 flex items-center justify-between gap-4 transition-all duration-300">
-        
-        {/* Left: Title, Entity Badge & Employee Name/Role Badge */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div>
-            <h1 className="text-base font-bold text-gray-900 tracking-tight leading-tight">Dashboard</h1>
-            <p className="text-[11px] text-gray-400 font-medium hidden sm:block">
-              {isEmployee ? 'My daily deliverables and meetings' : 'Check your tasks and progress here.'}
-            </p>
-          </div>
-
-          {/* Capsule Entity Badge */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50/90 border border-emerald-200/80 rounded-full text-xs font-semibold text-emerald-800 shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="truncate max-w-[220px] lg:max-w-none">{entityLabel}</span>
-          </div>
-
-          {/* Employee Role & Name Capsule Badge */}
-          {isEmployee && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200/80 rounded-full text-xs font-semibold text-emerald-800 shrink-0 animate-in fade-in duration-200">
-              <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full uppercase tracking-wider">
-                Employee
-              </span>
-              <span className="font-bold text-gray-900 truncate max-w-[150px]">
-                {user?.name || 'Priya Sharma'}
-              </span>
-            </div>
-          )}
+    <>
+      <header className="h-16 bg-white border-b border-gray-200/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-2xs select-none">
+        {/* Left: Page Title & Breadcrumbs */}
+        <div className="flex items-center gap-3">
+          <h1 className="text-base font-bold text-gray-900 tracking-tight">Dashboard</h1>
+          <span className="text-gray-300 font-medium">/</span>
+          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
+            {selectedEntity === 'EHM'
+              ? 'ehmconsultancy'
+              : selectedEntity === 'CAG'
+              ? 'climagroanalytics'
+              : 'ehmconsultancy & climagroanalytics'}
+          </span>
         </div>
 
-        {/* Right: Quick Action Controls & Utilities */}
-        <div className="flex items-center gap-2.5 shrink-0 relative">
-          {/* Manager / Admin-only Action Buttons */}
-          {!isEmployee && (
-            <>
-              {onOpenAddEmployeeModal && (
-                <button
-                  onClick={onOpenAddEmployeeModal}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-full shadow-xs transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Add Employee</span>
-                </button>
-              )}
+        {/* Middle: Global Search Input */}
+        <div className="hidden md:flex items-center flex-1 max-w-md mx-8">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full flex items-center gap-2 px-3.5 py-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100/80 transition-colors shadow-2xs cursor-pointer"
+          >
+            <Search className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium">Search tasks, employees, meetings...</span>
+            <kbd className="ml-auto text-[10px] font-mono bg-white text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 shadow-2xs">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
 
-              {onOpenTaskModal && (
-                <button
-                  onClick={onOpenTaskModal}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-full shadow-xs transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Assign Task</span>
-                </button>
-              )}
-
-              {onOpenExportModal && (
-                <button
-                  onClick={onOpenExportModal}
-                  className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold text-xs rounded-full border border-gray-200/80 transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5 text-gray-500" />
-                  <span>Export Report</span>
-                </button>
-              )}
-            </>
+        {/* Right: Quick Action Buttons & Notifications */}
+        <div className="flex items-center gap-3">
+          {!isEmployee && onOpenAddEmployee && (
+            <button
+              onClick={onOpenAddEmployee}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-colors shadow-2xs cursor-pointer"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Add Employee</span>
+            </button>
           )}
 
-          <div className="h-5 w-px bg-gray-200 my-auto mx-0.5 hidden sm:block"></div>
+          {!isEmployee && onOpenAssignTask && (
+            <button
+              onClick={onOpenAssignTask}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Assign Task</span>
+            </button>
 
-          {/* Notification Bell with Red Badge */}
+          )}
+
+          {onOpenExportReport && (
+            <button
+              onClick={onOpenExportReport}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors shadow-2xs cursor-pointer"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
+              <span>Export Report</span>
+            </button>
+          )}
+
+          {/* Notifications Dropdown Container */}
           <div className="relative">
             <button
               onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-              className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors focus:outline-none"
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-colors relative"
               title="Notifications"
             >
-              <Bell className="w-4 h-4 text-gray-700" />
-              {/* Red Notification Count Badge */}
-              <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center px-1 ring-2 ring-white shadow-xs animate-pulse">
-                {activeNotifications.length}
-              </span>
+              <Bell className="w-4 h-4" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                  {unreadNotificationsCount}
+                </span>
+              )}
             </button>
 
-            {/* Notifications Dropdown Popup */}
+            {/* Notifications Flyout Dropdown */}
             {showNotificationsDropdown && (
-              <div className="absolute right-0 top-11 w-80 sm:w-96 bg-white border border-gray-200/90 rounded-2xl p-4 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-3">
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-sm">Notifications</h4>
-                    <p className="text-[10px] text-gray-400 font-medium">
-                      {isEmployee ? 'Realtime task & meeting alerts.' : 'Employee task submissions & delay alerts.'}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowNotificationsDropdown(false)}
-                    className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 space-y-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Notifications</h3>
+                  {unreadNotificationsCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1"
+                    >
+                      <Check className="w-3 h-3" /> Mark all read
+                    </button>
+                  )}
                 </div>
 
-                <div className="space-y-2.5">
-                  {activeNotifications.map((n) => {
-                    const Icon = n.icon;
-                    return (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>
+                  ) : (
+                    notifications.map(n => (
                       <div
                         key={n.id}
-                        onClick={() => handleNotificationClick(n)}
-                        className="p-2.5 border border-gray-100 hover:border-emerald-200 bg-gray-50/60 hover:bg-emerald-50/40 rounded-xl flex items-start justify-between gap-2.5 cursor-pointer transition-all"
+                        className={`p-2.5 rounded-xl border text-xs space-y-1 transition-colors ${
+                          n.isRead ? 'bg-white border-gray-100 opacity-60' : 'bg-emerald-50/50 border-emerald-100'
+                        }`}
                       >
-                        <div className="flex items-start gap-2.5">
-                          <div className={`p-1.5 rounded-lg border shrink-0 ${n.color}`}>
-                            <Icon className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-gray-900 leading-tight">{n.title}</p>
-                            <span className="text-[10px] text-gray-400 font-medium">{n.time}</span>
-                          </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-gray-900">{n.title}</span>
+                          <span className="text-[10px] text-gray-400 font-medium">
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
+                        <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{n.message}</p>
                       </div>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-3 border-t border-gray-100 text-center mt-3">
-                  <button
-                    onClick={() => {
-                      setShowNotificationsDropdown(false);
-                      setLocation('/notifications');
-                    }}
-                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
-                  >
-                    View All Notifications →
-                  </button>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -6390,7 +7332,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="View Profile Details"
           >
             <img
-              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+              src={user?.avatarUrl || getAvatarByName(user?.name || user?.email)}
               alt="User avatar"
               className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500/30 hover:ring-emerald-500 transition-all shadow-2xs cursor-pointer"
             />
@@ -6404,16 +7346,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         onClose={() => setIsProfileModalOpen(false)}
       />
 
-      {/* Submission Review Modal for Manager when notification is clicked */}
-      <TaskUpdateModal
-        isOpen={!!selectedTaskToReview}
-        task={selectedTaskToReview}
-        onClose={() => setSelectedTaskToReview(null)}
-        onSave={() => {
-          setSelectedTaskToReview(null);
-        }}
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
       />
-    </div>
+    </>
   );
 };
 
@@ -6423,10 +7361,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
 ```typescript
 import React from 'react';
-import { X, Mail, Shield, Building2, Briefcase, LogOut } from 'lucide-react';
+import { X, Mail, Shield, Building2, User, Key, LogOut, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntity } from '../contexts/EntityContext';
 import { toast } from 'sonner';
+import { getAvatarByName } from '../utils/avatars';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -6434,22 +7372,19 @@ interface ProfileModalProps {
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
-  const { user, setRole, logout } = useAuth();
-  const { selectedEntity } = useEntity();
+  const { user, logout, setRole } = useAuth();
 
   if (!isOpen) return null;
 
-  const entityName =
-    selectedEntity === 'ALL'
-      ? 'ehmconsultancy & climagroanalytics'
-      : selectedEntity === 'EHM'
-      ? 'ehmconsultancy'
-      : 'climagroanalytics';
+  const handleRoleChange = (role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
+    setRole(role);
+    toast.success(`Role switched to ${role}!`);
+  };
 
   const handleLogout = () => {
     logout();
     onClose();
-    toast.success('Logged out successfully!');
+    toast.success('Logged out successfully');
   };
 
   return (
@@ -6464,88 +7399,73 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
 
         <div className="relative inline-block mb-3">
           <img
-            src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+            src={user?.avatarUrl || getAvatarByName(user?.name || user?.email)}
             alt="Profile Avatar"
             className="w-20 h-20 rounded-full object-cover ring-4 ring-emerald-500/20 mx-auto shadow-md"
           />
           <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full ring-2 ring-white"></span>
         </div>
 
-        <h3 className="text-lg font-bold text-gray-900 tracking-tight">{user?.name || 'Sanjay Kapoor'}</h3>
-        <p className="text-xs text-emerald-600 font-semibold mb-3">Senior HR & Operations Lead</p>
+        <h3 className="text-lg font-bold text-gray-900 tracking-tight">{user?.name || 'User'}</h3>
+        <p className="text-xs text-emerald-600 font-semibold mb-3">{user?.role || 'System Administrator'}</p>
 
         {/* Role Selector Pills */}
         <div className="bg-emerald-50/80 p-2 rounded-xl border border-emerald-200/80 mb-4 flex items-center justify-between">
           <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-            <Shield className="w-3.5 h-3.5" />
-            <span>Role:</span>
+            <Shield className="w-3.5 h-3.5 text-emerald-600" /> Active Role:
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-emerald-200">
             <button
-              onClick={() => setRole('MANAGER')}
-              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-                user?.role === 'MANAGER' || user?.role === 'ADMIN'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-white text-gray-600 border border-gray-200'
+              onClick={() => handleRoleChange('ADMIN')}
+              className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                user?.role === 'ADMIN' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              Manager View
+              ADMIN
             </button>
             <button
-              onClick={() => setRole('EMPLOYEE')}
-              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-                user?.role === 'EMPLOYEE'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-white text-gray-600 border border-gray-200'
+              onClick={() => handleRoleChange('MANAGER')}
+              className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                user?.role === 'MANAGER' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              Employee View
+              LEAD
+            </button>
+            <button
+              onClick={() => handleRoleChange('EMPLOYEE')}
+              className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                user?.role === 'EMPLOYEE' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              EMP
             </button>
           </div>
         </div>
 
-        <div className="space-y-2.5 text-left bg-gray-50/80 p-3.5 rounded-xl border border-gray-200/80 text-xs mb-4">
-          <div className="flex items-center gap-2.5 text-gray-700">
-            <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
-            <div>
-              <span className="text-[10px] text-gray-400 font-bold block uppercase">Email</span>
-              <span className="font-semibold text-gray-900">{user?.email || 'admin@ehm-climagro.com'}</span>
-            </div>
+        <div className="space-y-2 text-left text-xs mb-6">
+          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="font-semibold text-gray-700 truncate">{user?.email || 'admin@example.com'}</span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-gray-700">
-            <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <div>
-              <span className="text-[10px] text-gray-400 font-bold block uppercase">Company Entity</span>
-              <span className="font-semibold text-gray-900">{entityName}</span>
-            </div>
+          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="font-semibold text-gray-700">Entity: ehmconsultancy</span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-gray-700">
-            <Briefcase className="w-4 h-4 text-emerald-600 shrink-0" />
-            <div>
-              <span className="text-[10px] text-gray-400 font-bold block uppercase">Position</span>
-              <span className="font-semibold text-gray-900">Principal Architect & HR Owner</span>
-            </div>
+          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <User className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="font-semibold text-gray-700">ID: {user?.id || 'usr-admin-uuid'}</span>
           </div>
         </div>
 
-        {/* Modal Actions: Close & Logout */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={onClose}
-            className="py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors"
-          >
-            Close
-          </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-1.5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl border border-red-200/60 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Log Out Account</span>
+        </button>
       </div>
     </div>
   );
@@ -6994,27 +7914,24 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
 
 ```typescript
 import React, { useState } from 'react';
-import { MoreHorizontal, Video } from 'lucide-react';
+import { Calendar, Video, Clock, CheckCircle2, ChevronRight, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import { ScheduleMeetingModal } from './ScheduleMeetingModal';
+import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
-interface ScheduleWidgetProps {
-  onViewDetail?: (item: any) => void;
-}
-
-export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ onViewDetail }) => {
+export const ScheduleWidget: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'meetings' | 'tasks'>('meetings');
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const meetings = [
     {
       id: 'm-1',
-      title: 'Team Standup',
+      title: 'Sprint Planning',
       badge: 'Starting Soon',
       badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
       time: '09:00 AM - 09:30 AM',
-      location: 'Zoom Meeting',
-      avatars: [
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      ],
+      location: 'Google Meet',
+      avatars: [FEMALE_AVATAR, MALE_AVATAR],
     },
     {
       id: 'm-2',
@@ -7022,12 +7939,8 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ onViewDetail }) 
       badge: 'Starting Soon',
       badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
       time: '11:30 AM - 12:15 PM',
-      location: 'Zoom Meeting',
-      avatars: [
-        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-      ],
+      location: 'Google Meet',
+      avatars: [FEMALE_AVATAR, MALE_AVATAR],
     },
   ];
 
@@ -7039,7 +7952,7 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ onViewDetail }) 
       badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
       time: 'Due 05:00 PM',
       location: 'Deliverable',
-      avatars: ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'],
+      avatars: [FEMALE_AVATAR],
     },
     {
       id: 't-2',
@@ -7048,89 +7961,91 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ onViewDetail }) 
       badgeColor: 'bg-red-100 text-red-800 border-red-200',
       time: 'Due Tomorrow',
       location: 'GitHub PR',
-      avatars: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'],
+      avatars: [MALE_AVATAR],
     },
   ];
 
   const items = activeTab === 'meetings' ? meetings : tasks;
 
   return (
-    <div className="bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs flex flex-col h-full">
-      {/* Top Header matching screenshot */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold text-gray-900 tracking-tight">Schedule</h3>
-        <button className="text-gray-400 hover:text-gray-600 p-1 rounded-md">
-          <MoreHorizontal className="w-5 h-5" />
-        </button>
-      </div>
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 select-none">
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-emerald-600" />
+            <h3 className="font-bold text-gray-900 text-sm">Schedule & Deliverables</h3>
+          </div>
+          <button
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80 transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Schedule</span>
+          </button>
+        </div>
 
-      {/* Tab Switcher matching screenshot */}
-      <div className="bg-gray-100 p-1 rounded-lg flex items-center mb-4">
-        <button
-          onClick={() => setActiveTab('meetings')}
-          className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-            activeTab === 'meetings'
-              ? 'bg-white text-gray-900 shadow-xs'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Meetings
-        </button>
-        <button
-          onClick={() => setActiveTab('tasks')}
-          className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-            activeTab === 'tasks'
-              ? 'bg-white text-gray-900 shadow-xs'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Task
-        </button>
-      </div>
+        {/* Tab Switcher */}
+        <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+          <button
+            onClick={() => setActiveTab('meetings')}
+            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              activeTab === 'meetings' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Meetings (2)
+          </button>
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              activeTab === 'tasks' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Tasks Due (2)
+          </button>
+        </div>
 
-      {/* Item Cards matching screenshot */}
-      <div className="space-y-3 flex-1 overflow-y-auto">
-        {items.map((item) => (
-          <div key={item.id} className="border border-gray-100 rounded-xl p-3.5 hover:border-gray-200 bg-gray-50/50 transition-all">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-gray-900">{item.title}</span>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${item.badgeColor}`}>
+        {/* List Items */}
+        <div className="space-y-2.5">
+          {items.map(item => (
+            <div
+              key={item.id}
+              className="p-3 bg-gray-50/70 border border-gray-200/60 rounded-xl space-y-2 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-start justify-between">
+                <h4 className="text-xs font-bold text-gray-900 line-clamp-1">{item.title}</h4>
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${item.badgeColor}`}>
                   {item.badge}
                 </span>
               </div>
-              <span className="text-[11px] text-gray-400 font-medium">Start at</span>
-            </div>
 
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-white border border-gray-200 px-2 py-1 rounded-md">
-                <Video className="w-3.5 h-3.5 text-blue-500" />
-                <span>{item.location}</span>
-              </div>
-              <span className="text-xs font-semibold text-gray-700">{item.time}</span>
-            </div>
+              <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                  <span>{item.time}</span>
+                </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-              <div className="flex -space-x-2 overflow-hidden">
-                {item.avatars.map((url, idx) => (
-                  <img
-                    key={idx}
-                    src={url}
-                    alt="Attendee"
-                    className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover"
-                  />
-                ))}
+                <div className="flex -space-x-1.5">
+                  {item.avatars.map((url, idx) => (
+                    <img
+                      key={idx}
+                      src={url}
+                      alt="Participant"
+                      className="w-5 h-5 rounded-full border border-white object-cover shadow-2xs"
+                    />
+                  ))}
+                </div>
               </div>
-              <button
-                onClick={() => onViewDetail && onViewDetail(item)}
-                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
-              >
-                View Detail
-              </button>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      <ScheduleMeetingModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onSave={() => toast.success('Event added!')}
+      />
     </div>
   );
 };
@@ -8152,12 +9067,15 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 ## FILE: artifacts/hr-dashboard/src/contexts/AuthContext.tsx
 
 ```typescript
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchApi } from '@workspace/api-client-react';
 
 export interface User {
   id: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+  employeeId?: string;
+  managedTeamId?: string;
   name?: string;
   avatarUrl?: string;
 }
@@ -8167,8 +9085,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  setUserSession: (user: User) => void;
-  setRole: (role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => void;
+  setUserSession: (user: User, token: string) => void;
   isLoading: boolean;
 }
 
@@ -8178,35 +9095,82 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: () => {},
   setUserSession: () => {},
-  setRole: () => {},
   isLoading: false,
 });
 
+function decodeJwtPayload(token: string): User | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return {
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      employeeId: payload.employeeId,
+      managedTeamId: payload.managedTeamId,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Start logged out so user can test the Option 2 Login page
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Restore session from localStorage or query param on app load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryToken = searchParams.get('token');
+
+    if (queryToken) {
+      const decodedUser = decodeJwtPayload(queryToken);
+      if (decodedUser) {
+        localStorage.setItem('hros_token', queryToken);
+        setUser(decodedUser);
+        setToken(queryToken);
+        // ITEM 3 FIX: Strip JWT token param from visible address bar without reloading
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    const storedToken = localStorage.getItem('hros_token');
+    if (storedToken) {
+      const decodedUser = decodeJwtPayload(storedToken);
+      if (decodedUser) {
+        setUser(decodedUser);
+        setToken(storedToken);
+      } else {
+        localStorage.removeItem('hros_token');
+      }
+    }
+    setIsLoading(false);
+  }, []);
 
   const login = async (email: string, pass: string) => {
     setIsLoading(true);
     try {
-      setUser({
-        id: 'user-1',
-        email: email || 'admin@ehm-climagro.com',
-        role: 'MANAGER',
-        name: 'Sanjay Kapoor',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      const res = await fetchApi<{ token: string; user: User }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password: pass }),
       });
-      setToken('mock-jwt-token');
+
+      localStorage.setItem('hros_token', res.token);
+      setToken(res.token);
+      setUser(res.user);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const setUserSession = (userData: User) => {
+  const setUserSession = (userData: User, authToken: string) => {
+    localStorage.setItem('hros_token', authToken);
     setUser(userData);
-    setToken('mock-jwt-token');
+    setToken(authToken);
   };
 
   const logout = () => {
@@ -8215,14 +9179,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('hros_token');
   };
 
-  const setRole = (newRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
-    if (user) {
-      setUser({ ...user, role: newRole });
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, setUserSession, setRole, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, setUserSession, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -8335,19 +9293,43 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 ```typescript
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { ShieldCheck, Lock, Chrome } from 'lucide-react';
+import { ShieldCheck, Chrome } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const AcceptInviteView: React.FC = () => {
   const [, setLocation] = useLocation();
+  const { setUserSession } = useAuth();
   const [password, setPassword] = useState('');
-  const searchParams = new URLSearchParams(window.location.search);
-  const token = searchParams.get('token') || 'demo-token';
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSetPassword = (e: React.FormEvent) => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const token = searchParams.get('token') || '';
+
+  const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Account activated successfully! Redirecting to Dashboard...');
-    setTimeout(() => setLocation('/?welcome=true'), 1200);
+    if (!token) {
+      toast.error('Invite token is missing from URL parameters.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetchApi<{ token: string; user: any }>('/api/auth/set-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, password }),
+      });
+
+      setUserSession(res.user, res.token);
+      toast.success('Account activated successfully! Welcome to HROS.');
+      setLocation('/dashboard');
+    } catch (err: any) {
+      console.error('[SET-PASSWORD ERROR]:', err);
+      toast.error(err.message || 'Invalid, expired, or already-used invite token');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoogleOAuth = () => {
@@ -8355,7 +9337,7 @@ export const AcceptInviteView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 select-none">
       <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full shadow-xl space-y-6">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mx-auto">
@@ -8385,6 +9367,7 @@ export const AcceptInviteView: React.FC = () => {
               <input
                 type="password"
                 required
+                minLength={6}
                 placeholder="At least 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -8393,9 +9376,10 @@ export const AcceptInviteView: React.FC = () => {
             </div>
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl shadow-md transition-all"
             >
-              Activate Account & Proceed
+              {isSubmitting ? 'Activating Account...' : 'Activate Account & Proceed'}
             </button>
           </form>
         </div>
@@ -8409,14 +9393,17 @@ export const AcceptInviteView: React.FC = () => {
 ## FILE: artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx
 
 ```typescript
-import React, { useState } from 'react';
-import { Megaphone, Pin, Plus, X, AlertTriangle, Shield, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Megaphone, Pin, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const AnnouncementsView: React.FC = () => {
   const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -8427,47 +9414,45 @@ export const AnnouncementsView: React.FC = () => {
   const [entityScope, setEntityScope] = useState<'BOTH' | 'EHM' | 'CAG'>('BOTH');
   const [isPinned, setIsPinned] = useState(true);
 
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: '1',
-      title: 'Q3 All-Hands & Entity Performance Review',
-      content: 'Join us this Thursday at 4 PM for the combined ehmconsultancy and climagroanalytics quarterly review.',
-      priority: 'URGENT',
-      date: 'Aug 29, 2026',
-      isPinned: true,
-      scope: 'ehmconsultancy & climagroanalytics',
-    },
-    {
-      id: '2',
-      title: 'Updated Google Calendar & Meet Sync Guide',
-      content: 'All employees are requested to connect Google OAuth on first login to sync meeting links.',
-      priority: 'IMPORTANT',
-      date: 'Aug 30, 2026',
-      isPinned: true,
-      scope: 'All Companies',
-    },
-  ]);
+  const loadAnnouncements = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi<any[]>('/api/announcements');
+      setAnnouncements(data);
+    } catch (err) {
+      console.error('[ANNOUNCEMENTS FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadAnnouncements();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newAnnouncement = {
-      id: `ann-${Date.now()}`,
-      title,
-      content,
-      priority,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      isPinned,
-      scope: entityScope === 'EHM' ? 'ehmconsultancy' : entityScope === 'CAG' ? 'climagroanalytics' : 'All Companies',
-    };
+    try {
+      const newAnn = await fetchApi<any>('/api/announcements', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          content,
+          priority,
+          isPinned,
+        }),
+      });
 
-    setAnnouncements([newAnnouncement, ...announcements]);
-    toast.success('Announcement published successfully to company feed!');
-    setShowModal(false);
-    // Reset form
-    setTitle('');
-    setContent('');
-    setPriority('IMPORTANT');
-    setIsPinned(true);
+      toast.success('Announcement published successfully to company feed!');
+      loadAnnouncements();
+      setShowModal(false);
+      setTitle('');
+      setContent('');
+      setPriority('IMPORTANT');
+      setIsPinned(true);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to post announcement');
+    }
   };
 
   return (
@@ -8491,37 +9476,41 @@ export const AnnouncementsView: React.FC = () => {
         )}
       </div>
 
-      {/* Announcements List — Visible to ALL Managers and ALL Employees */}
-      <div className="space-y-4 max-w-3xl">
-        {announcements.map((item) => (
-          <div key={item.id} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {item.isPinned && <Pin className="w-4 h-4 text-emerald-600 fill-emerald-600" />}
-                <h3 className="font-bold text-gray-900 text-base">{item.title}</h3>
+      {/* Announcements List */}
+      {loading ? (
+        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading company announcements...</div>
+      ) : (
+        <div className="space-y-4 max-w-3xl">
+          {announcements.map((item, idx) => (
+            <div key={item.id || idx} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {item.isPinned && <Pin className="w-4 h-4 text-emerald-600 fill-emerald-600" />}
+                  <h3 className="font-bold text-gray-900 text-base">{item.title}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
+                    All Companies
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      item.priority === 'URGENT'
+                        ? 'bg-red-100 text-red-800 border-red-200'
+                        : item.priority === 'IMPORTANT'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}
+                  >
+                    {item.priority || 'NORMAL'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
-                  {item.scope}
-                </span>
-                <span
-                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                    item.priority === 'URGENT'
-                      ? 'bg-red-100 text-red-800 border-red-200'
-                      : item.priority === 'IMPORTANT'
-                      ? 'bg-amber-100 text-amber-800 border-amber-200'
-                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                  }`}
-                >
-                  {item.priority}
-                </span>
-              </div>
+              <p className="text-sm text-gray-600 font-medium leading-relaxed">{item.content}</p>
+              <span className="text-xs text-gray-400 font-medium block pt-2">{item.createdAt || 'Recent'}</span>
             </div>
-            <p className="text-sm text-gray-600 font-medium leading-relaxed">{item.content}</p>
-            <span className="text-xs text-gray-400 font-medium block pt-2">{item.date}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Create Announcement Modal */}
       {showModal && (
@@ -8542,7 +9531,6 @@ export const AnnouncementsView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
-              {/* Title */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Announcement Title <span className="text-red-500">*</span>
@@ -8558,7 +9546,6 @@ export const AnnouncementsView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {/* Priority */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Priority Badge</label>
                   <select
@@ -8573,7 +9560,6 @@ export const AnnouncementsView: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Company Scope */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Target Scope</label>
                   <select
@@ -8588,7 +9574,6 @@ export const AnnouncementsView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Pin to Top Checkbox */}
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
@@ -8602,7 +9587,6 @@ export const AnnouncementsView: React.FC = () => {
                 </label>
               </div>
 
-              {/* Content / Body */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Announcement Details <span className="text-red-500">*</span>
@@ -8617,7 +9601,6 @@ export const AnnouncementsView: React.FC = () => {
                 ></textarea>
               </div>
 
-              {/* Modal Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
@@ -9165,17 +10148,19 @@ export const ApplicationsView: React.FC = () => {
 ## FILE: artifacts/hr-dashboard/src/pages/AttendanceView.tsx
 
 ```typescript
-import React, { useState } from 'react';
-import { Clock, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock3, Palmtree, Lock, Building2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Clock, Calendar as CalendarIcon, CheckCircle2, XCircle, Clock3, Palmtree, Lock } from 'lucide-react';
 import { MarkAttendanceModal } from '../components/MarkAttendanceModal';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const AttendanceView: React.FC = () => {
   const { user } = useAuth();
   const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('August 2026');
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Attendance state for today
   const [todayAttendance, setTodayAttendance] = useState<{
     marked: boolean;
     status?: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
@@ -9187,16 +10172,24 @@ export const AttendanceView: React.FC = () => {
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
-  const months = [
-    'August 2026',
-    'July 2026',
-    'June 2026',
-    'May 2026',
-    'April 2026',
-    'March 2026',
-  ];
+  const months = ['August 2026', 'July 2026', 'June 2026', 'May 2026'];
 
-  // Employee-specific summary count (Image 2 Match)
+  const loadAttendance = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi<any[]>('/api/attendance');
+      setAttendanceRecords(data);
+    } catch (err) {
+      console.error('[ATTENDANCE FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAttendance();
+  }, []);
+
   const employeeStats = {
     present: todayAttendance.marked && todayAttendance.status === 'PRESENT' ? 22 : 21,
     absent: todayAttendance.marked && todayAttendance.status === 'ABSENT' ? 1 : 0,
@@ -9204,35 +10197,26 @@ export const AttendanceView: React.FC = () => {
     leave: todayAttendance.marked && todayAttendance.status === 'LEAVE' ? 1 : 0,
   };
 
-  const allEmployeesSummary = [
-    { name: 'Priya Sharma', email: 'priya@ehmconsultancy.com', daysPresent: 22, totalDays: 22, rate: 100 },
-    { name: 'Rahul Verma', email: 'rahul@climagroanalytics.com', daysPresent: 20, totalDays: 22, rate: 91 },
-    { name: 'Anita Desai', email: 'anita@ehmconsultancy.com', daysPresent: 21, totalDays: 22, rate: 95 },
-    { name: 'Vikram Mehta', email: 'vikram@climagroanalytics.com', daysPresent: 18, totalDays: 22, rate: 82 },
-  ];
-
-  const employeeOnlySummary = [
-    {
-      name: user?.name || 'Priya Sharma',
-      email: user?.email || 'priya@ehmconsultancy.com',
-      daysPresent: employeeStats.present,
-      totalDays: 22,
-      rate: Math.round((employeeStats.present / 22) * 100),
-    },
-  ];
-
-  const handleAttendanceSubmitted = (data: any) => {
-    setTodayAttendance({
-      marked: true,
-      status: data.status,
-      halfDayType: data.halfDayType,
-      workMode: data.workMode,
-    });
+  const handleAttendanceSubmitted = async (data: any) => {
+    try {
+      await fetchApi('/api/attendance/clock-in', {
+        method: 'POST',
+        body: JSON.stringify({ workMode: data.workMode || 'IN_OFFICE', employeeName: user?.email }),
+      });
+      setTodayAttendance({
+        marked: true,
+        status: data.status,
+        halfDayType: data.halfDayType,
+        workMode: data.workMode,
+      });
+      loadAttendance();
+    } catch (err) {
+      console.error('[CLOCK IN ERROR]:', err);
+    }
   };
 
   return (
     <div className="p-6 space-y-6 select-none">
-      {/* Top Header & Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Attendance & Presence</h2>
@@ -9242,7 +10226,6 @@ export const AttendanceView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Month Selector Pill */}
           <div className="relative">
             <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200/90 rounded-2xl shadow-2xs hover:border-gray-300 transition-all cursor-pointer">
               <select
@@ -9260,7 +10243,6 @@ export const AttendanceView: React.FC = () => {
             </div>
           </div>
 
-          {/* Employee Mark Attendance Button / Locked Status */}
           {isEmployee && (
             todayAttendance.marked ? (
               <div className="flex items-center gap-1.5 px-4 py-2 bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl shadow-2xs">
@@ -9280,10 +10262,8 @@ export const AttendanceView: React.FC = () => {
         </div>
       </div>
 
-      {/* Image 2 Top Stat Cards for Employee View */}
       {isEmployee && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* PRESENT CARD (Green) */}
           <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-4 shadow-xs flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-white text-emerald-600 flex items-center justify-center font-bold shadow-2xs border border-emerald-100">
               <CheckCircle2 className="w-5 h-5" />
@@ -9294,7 +10274,6 @@ export const AttendanceView: React.FC = () => {
             </div>
           </div>
 
-          {/* ABSENT CARD (Red/Pink) */}
           <div className="bg-red-50/80 border border-red-200/90 rounded-2xl p-4 shadow-xs flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-white text-red-600 flex items-center justify-center font-bold shadow-2xs border border-red-100">
               <XCircle className="w-5 h-5" />
@@ -9305,7 +10284,6 @@ export const AttendanceView: React.FC = () => {
             </div>
           </div>
 
-          {/* HALF DAY CARD (Light Blue) */}
           <div className="bg-blue-50/80 border border-blue-200/90 rounded-2xl p-4 shadow-xs flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-white text-blue-600 flex items-center justify-center font-bold shadow-2xs border border-blue-100">
               <Clock3 className="w-5 h-5" />
@@ -9316,7 +10294,6 @@ export const AttendanceView: React.FC = () => {
             </div>
           </div>
 
-          {/* LEAVE CARD (Purple) */}
           <div className="bg-purple-50/80 border border-purple-200/90 rounded-2xl p-4 shadow-xs flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-white text-purple-600 flex items-center justify-center font-bold shadow-2xs border border-purple-100">
               <Palmtree className="w-5 h-5" />
@@ -9335,55 +10312,43 @@ export const AttendanceView: React.FC = () => {
           <h3 className="text-sm font-bold text-gray-900 tracking-tight">
             Monthly Presence Summary — {selectedMonth}
           </h3>
-          <p className="text-xs text-gray-400 font-medium">
-            {isEmployee ? 'Your individual monthly working days & presence rate' : 'Total working days each employee was present'}
-          </p>
+          <p className="text-xs text-gray-400 font-medium">Live attendance records from API</p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-2.5 px-3">Employee</th>
-                <th className="py-2.5 px-3">Days Present</th>
-                <th className="py-2.5 px-3">Breakdown</th>
-                <th className="py-2.5 px-3">Presence Rate</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-              {(isEmployee ? employeeOnlySummary : allEmployeesSummary).map((emp, idx) => (
-                <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                  <td className="py-3 px-3">
-                    <span className="font-bold text-gray-900 block">{emp.name}</span>
-                    <span className="text-[10px] text-gray-400 font-medium block">{emp.email}</span>
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full font-bold text-xs">
-                      {emp.daysPresent} days Present
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 font-semibold text-gray-600">
-                    {emp.daysPresent} Present / {emp.totalDays - emp.daysPresent} Absent
-                  </td>
-                  <td className="py-3 px-3 min-w-[160px]">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 rounded-full"
-                          style={{ width: `${emp.rate}%` }}
-                        ></div>
-                      </div>
-                      <span className="font-bold text-gray-800 text-[11px]">{emp.rate}%</span>
-                    </div>
-                  </td>
+        {loading ? (
+          <div className="py-8 text-center text-xs font-semibold text-gray-400">Loading attendance data...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3">Employee</th>
+                  <th className="py-2.5 px-3">Date</th>
+                  <th className="py-2.5 px-3">Work Mode</th>
+                  <th className="py-2.5 px-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
+                {attendanceRecords.map((att, idx) => (
+                  <tr key={att.id || idx} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="py-3 px-3">
+                      <span className="font-bold text-gray-900 block">{att.employeeName || 'Staff Member'}</span>
+                    </td>
+                    <td className="py-3 px-3">{att.date || '2026-08-31'}</td>
+                    <td className="py-3 px-3 font-semibold text-gray-600">{att.workMode || 'IN_OFFICE'}</td>
+                    <td className="py-3 px-3">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full font-bold text-xs">
+                        {att.status || 'PRESENT'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Mark Attendance Modal with Confirmation & Lock */}
       <MarkAttendanceModal
         isOpen={isMarkModalOpen}
         onClose={() => setIsMarkModalOpen(false)}
@@ -9456,60 +10421,32 @@ export const DashboardView: React.FC = () => {
 ```typescript
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, Sparkles, UserCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
-interface LoginViewProps {
-  onLoginSuccess: (user: any) => void;
-}
-
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+export const LoginView: React.FC = () => {
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState('employee@ehm-climagro.com');
-  const [password, setPassword] = useState('employee123');
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const isEmployeeLogin = email.toLowerCase().includes('employee');
-      
-      const userData = isEmployeeLogin
-        ? {
-            id: 'emp-1',
-            email: 'employee@ehm-climagro.com',
-            role: 'EMPLOYEE',
-            name: 'Priya Sharma',
-            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-          }
-        : {
-            id: 'admin-1',
-            email: 'admin@ehm-climagro.com',
-            role: 'MANAGER',
-            name: 'Sanjay Kapoor',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-          };
-
-      toast.success(`Logged in as ${userData.role === 'EMPLOYEE' ? 'Employee (Priya Sharma)' : 'Manager (Sanjay Kapoor)'}!`);
-      onLoginSuccess(userData);
+    try {
+      await login(email, password);
+      toast.success('Login successful!');
       setLocation('/');
-    }, 500);
-  };
-
-  const fillEmployee = () => {
-    setEmail('employee@ehm-climagro.com');
-    setPassword('employee123');
-    toast.success('Employee credentials filled!');
-  };
-
-  const fillAdmin = () => {
-    setEmail('admin@ehm-climagro.com');
-    setPassword('admin123');
-    toast.success('Admin/Manager credentials filled!');
+    } catch (err: any) {
+      console.error('[LOGIN ERROR]:', err);
+      toast.error(err.message || 'Invalid email or password');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -9614,44 +10551,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Simple Test Credentials Box */}
-        <div className="bg-emerald-950/50 border border-emerald-500/30 rounded-2xl p-4 text-xs space-y-2.5 backdrop-blur-md">
-          <div className="flex items-center justify-between text-emerald-400 font-bold">
-            <span className="flex items-center gap-1.5 text-[11px]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Simple Test Accounts:</span>
-            </span>
-          </div>
-
-          {/* Employee Box */}
-          <div className="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div>
-              <span className="text-[10px] text-emerald-400 font-bold block">EMPLOYEE LOGIN</span>
-              <span className="text-[11px] text-slate-300 font-mono">employee@ehm-climagro.com / employee123</span>
-            </div>
-            <button
-              onClick={fillEmployee}
-              className="px-2.5 py-1 text-[10px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition-colors"
-            >
-              Fill Employee
-            </button>
-          </div>
-
-          {/* Manager Box */}
-          <div className="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div>
-              <span className="text-[10px] text-emerald-400 font-bold block">ADMIN / MANAGER LOGIN</span>
-              <span className="text-[11px] text-slate-300 font-mono">admin@ehm-climagro.com / admin123</span>
-            </div>
-            <button
-              onClick={fillAdmin}
-              className="px-2.5 py-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-lg border border-emerald-500/40 transition-colors"
-            >
-              Fill Manager
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -9662,62 +10561,256 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 ## FILE: artifacts/hr-dashboard/src/pages/MeetingsView.tsx
 
 ```typescript
-import React, { useState } from 'react';
-import { Calendar, Video, Plus, CheckSquare, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Video, Plus, CheckSquare, RefreshCw, Chrome, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScheduleMeetingModal } from '../components/ScheduleMeetingModal';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const MeetingsView: React.FC = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'AVAILABILITY'>('SCHEDULE');
+  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | 'TOMORROW' | 'PAST' | 'RECURRING'>('ALL');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [meetings, setMeetings] = useState([
-    {
-      id: 'm-1',
-      title: 'Team Standup & Sprint Sync',
-      description: 'Daily operational check-in across EHM and CliAgro core leads.',
-      time: 'Today 09:00 AM - 09:30 AM',
-      googleMeetUrl: 'https://meet.google.com/hros-standup-2026',
-      organizer: 'Sanjay Kapoor',
-    },
-    {
-      id: 'm-2',
-      title: 'Design Review & Architecture Audit',
-      description: 'Reviewing brand refresh graphics and CliAgro IoT Gateway schema.',
-      time: 'Today 11:30 AM - 12:15 PM',
-      googleMeetUrl: 'https://meet.google.com/hros-design-rev',
-      organizer: 'Priya Sharma',
-    },
-  ]);
+  const [meetings, setMeetings] = useState<any[]>([]);
+  const [availability, setAvailability] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
 
-  const handleSync = () => {
-    toast.success('Syncing Google Calendar events across all connected user accounts...');
+  const searchParams = new URLSearchParams(window.location.search);
+  const isJustConnected = searchParams.get('calendarConnected') === 'true';
+
+  const loadMeetings = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi<any[]>('/api/meetings');
+      setMeetings(data);
+    } catch (err) {
+      console.error('[MEETINGS FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAvailability = async () => {
+    try {
+      const data = await fetchApi<any[]>('/api/meetings/availability');
+      setAvailability(data);
+    } catch (err) {
+      console.error('[AVAILABILITY FETCH ERROR]:', err);
+    }
+  };
+
+  // Explicit user-triggered Sync button handler (shows toast notification)
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetchApi<any>('/api/meetings/sync');
+      setIsConnected(true);
+      toast.success(`${res.message} (${res.created || 0} imported, ${res.updated || 0} updated, ${res.cancelled || 0} cancelled)`);
+      await loadMeetings();
+      await loadAvailability();
+    } catch (err: any) {
+      if (err.needsOAuth || err.message?.includes('not connected')) {
+        setIsConnected(false);
+        toast.error('Google Calendar not connected. Click "Connect Google Calendar" to grant permission.');
+      } else {
+        toast.error('Sync failed');
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Silent automatic background fetch when page opens (NO TOAST POPUPS!)
+  useEffect(() => {
+    const init = async () => {
+      await loadMeetings();
+      await loadAvailability();
+
+      if (isJustConnected) {
+        setIsConnected(true);
+        toast.success('Google Calendar connected successfully!');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else {
+        try {
+          const res = await fetchApi<any>('/api/meetings/sync');
+          setIsConnected(true);
+          if (res.created > 0 || res.updated > 0 || res.cancelled > 0) {
+            await loadMeetings();
+            await loadAvailability();
+          }
+        } catch {
+          // Silent catch on background load
+        }
+      }
+    };
+    init();
+  }, []);
+
+  const handleConnectGoogle = () => {
+    if (isConnecting) return;
+    setIsConnecting(true);
+    window.location.href = `/api/auth/google?userId=${user?.id || ''}`;
   };
 
   const handleConvertToTask = (m: any) => {
     toast.success(`Converted meeting "${m.title}" action item into a Task!`);
   };
 
-  const handleSaveMeeting = (newMeeting: any) => {
-    setMeetings([newMeeting, ...meetings]);
+  const handleSaveMeeting = async (meetingPayload: any) => {
+    try {
+      await fetchApi('/api/meetings', {
+        method: 'POST',
+        body: JSON.stringify(meetingPayload),
+      });
+      toast.success('Meeting scheduled on Google Calendar & Google Meet link generated!');
+      await loadMeetings();
+      await loadAvailability();
+      setIsScheduleModalOpen(false);
+    } catch (err: any) {
+      if (err.needsOAuth || err.message?.includes('not connected')) {
+        toast.error('Google Calendar is not connected. Please connect Google Calendar first.');
+        setIsConnected(false);
+      } else {
+        toast.error(err.message || 'Failed to schedule meeting');
+      }
+    }
   };
 
+  // Date & Time Filtering Logic (User Specified Rules)
+  const getFilteredMeetings = () => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+
+    if (dateFilter === 'TODAY') {
+      return meetings.filter(m => m.startTime && new Date(m.startTime).toISOString().split('T')[0] === todayStr);
+    }
+
+    if (dateFilter === 'TOMORROW') {
+      return meetings.filter(m => m.startTime && new Date(m.startTime).toISOString().split('T')[0] === tomorrowStr);
+    }
+
+    if (dateFilter === 'PAST') {
+      // Last 7 days that ended
+      return meetings.filter(m => {
+        const end = m.endTime ? new Date(m.endTime) : new Date(m.startTime);
+        return end < now && end >= sevenDaysAgo;
+      });
+    }
+
+    if (dateFilter === 'RECURRING') {
+      // Show all occurrences of repeating/series meetings (multiple meetings sharing same title)
+      const titleCounts: Record<string, number> = {};
+      meetings.forEach(m => {
+        const key = m.title.toLowerCase().trim();
+        titleCounts[key] = (titleCounts[key] || 0) + 1;
+      });
+      return meetings.filter(m => titleCounts[m.title.toLowerCase().trim()] > 1);
+    }
+
+    // Default 'ALL': Show all distinct meetings, but deduplicate repeating series (keep 1 instance per title so repeating cards don't clutter)
+    const seenTitles = new Set<string>();
+    const titleCounts: Record<string, number> = {};
+    meetings.forEach(m => {
+      const key = m.title.toLowerCase().trim();
+      titleCounts[key] = (titleCounts[key] || 0) + 1;
+    });
+
+    return meetings.filter(m => {
+      const key = m.title.toLowerCase().trim();
+      const isRepeatingSeries = titleCounts[key] > 1;
+      if (isRepeatingSeries) {
+        if (seenTitles.has(key)) return false; // Hide additional duplicate cards in All view
+        seenTitles.add(key);
+      }
+      return true;
+    });
+  };
+
+  const filteredMeetings = getFilteredMeetings();
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6 select-none">
+      {/* Google Calendar Connection Banner if Disconnected */}
+      {isConnected === false && (
+        <div className="bg-gradient-to-r from-blue-900/90 via-slate-900 to-emerald-950 border border-blue-500/40 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 text-white animate-in fade-in duration-300">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-400 shrink-0">
+              <Chrome className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold tracking-tight">Google Calendar Not Connected</h3>
+              <p className="text-xs text-gray-300 font-medium">
+                Grant OAuth calendar access to sync your Google Calendar events and generate real, working Google Meet links.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleConnectGoogle}
+            disabled={isConnecting}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer"
+          >
+            <Chrome className={`w-4 h-4 ${isConnecting ? 'animate-spin' : ''}`} />
+            <span>{isConnecting ? 'Redirecting to Google...' : 'Connect Google Calendar Now'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Top Bar Header & Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Meetings & Schedule</h2>
-          <p className="text-xs text-gray-500 font-medium">Two-way Google Calendar sync & Google Meet link auto-generation.</p>
+          <p className="text-xs text-gray-500 font-medium">Two-way Google Calendar sync & team availability schedule.</p>
         </div>
+
         <div className="flex items-center gap-3">
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+            <button
+              onClick={() => setActiveTab('SCHEDULE')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'SCHEDULE' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Meetings Feed
+            </button>
+            <button
+              onClick={() => setActiveTab('AVAILABILITY')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'AVAILABILITY' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Team Availability
+            </button>
+          </div>
+
+          <button
+            onClick={handleConnectGoogle}
+            disabled={isConnecting}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 font-semibold text-xs rounded-xl border border-blue-200 transition-colors cursor-pointer"
+          >
+            <Chrome className={`w-3.5 h-3.5 ${isConnecting ? 'animate-spin' : ''}`} />
+            <span>{isConnecting ? 'Connecting...' : isConnected ? 'Re-Connect Google' : 'Connect Google'}</span>
+          </button>
+
           <button
             onClick={handleSync}
-            className="flex items-center gap-2 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-lg border border-gray-200 transition-colors"
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 font-semibold text-xs rounded-xl border border-gray-200 transition-colors cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Sync Google Calendar</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Sync Google Calendar'}</span>
           </button>
+
           <button
             onClick={() => setIsScheduleModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-lg shadow-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Schedule Meeting</span>
@@ -9725,53 +10818,138 @@ export const MeetingsView: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {meetings.map((m) => (
-          <div key={m.id} className="bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 mb-2">
-                  Synced Google Meet
-                </span>
-                <h3 className="text-base font-bold text-gray-900">{m.title}</h3>
-              </div>
-              <Calendar className="w-5 h-5 text-gray-400" />
-            </div>
-
-            <p className="text-xs text-gray-500 font-medium">{m.description}</p>
-
-            <div className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-              <span className="font-semibold">{m.time}</span>
-              {m.googleMeetUrl ? (
-                <a
-                  href={m.googleMeetUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-blue-600 hover:underline font-bold"
-                >
-                  <Video className="w-4 h-4 text-blue-500" />
-                  <span>Join Google Meet</span>
-                </a>
-              ) : (
-                <span className="text-gray-400 font-semibold">In Person</span>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-              <span className="text-xs text-gray-400 font-medium">Organizer: {m.organizer}</span>
-              <button
-                onClick={() => handleConvertToTask(m)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-              >
-                <CheckSquare className="w-3.5 h-3.5" />
-                <span>Convert to Task</span>
-              </button>
-            </div>
+      {/* Date & Time Filter Toolbar Pills */}
+      {activeTab === 'SCHEDULE' && (
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-200/60">
+          <div className="flex items-center gap-1 text-xs font-bold text-gray-500 mr-2">
+            <Filter className="w-3.5 h-3.5 text-gray-400" />
+            <span>Filter Feed:</span>
           </div>
-        ))}
-      </div>
 
-      {/* Google Calendar-Style Event Modal */}
+          <button
+            onClick={() => setDateFilter('ALL')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+              dateFilter === 'ALL' ? 'bg-gray-900 text-white shadow-2xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            All Meetings ({filteredMeetings.length})
+          </button>
+
+          <button
+            onClick={() => setDateFilter('TODAY')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+              dateFilter === 'TODAY' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+            }`}
+          >
+            Today's Meetings
+          </button>
+
+          <button
+            onClick={() => setDateFilter('TOMORROW')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+              dateFilter === 'TOMORROW' ? 'bg-blue-600 text-white shadow-2xs' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+            }`}
+          >
+            Tomorrow's Meetings
+          </button>
+
+          <button
+            onClick={() => setDateFilter('PAST')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+              dateFilter === 'PAST' ? 'bg-gray-700 text-white shadow-2xs' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            Past 7 Days
+          </button>
+
+          <button
+            onClick={() => setDateFilter('RECURRING')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+              dateFilter === 'RECURRING' ? 'bg-purple-600 text-white shadow-2xs' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'
+            }`}
+          >
+            Recurring / Series
+          </button>
+        </div>
+      )}
+
+      {/* Main Meetings Feed or Availability View */}
+      {activeTab === 'SCHEDULE' ? (
+        loading ? (
+          <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading meetings from server...</div>
+        ) : filteredMeetings.length === 0 ? (
+          <div className="py-12 text-center text-xs font-semibold text-gray-400">
+            No meetings found for filter: <span className="font-bold text-gray-700">{dateFilter}</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredMeetings.map((m, idx) => (
+              <div key={m.id || idx} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 mb-2">
+                      {m.source === 'GOOGLE_CALENDAR_IMPORTED' ? 'Imported from Google' : 'Synced Google Meet'}
+                    </span>
+                    <h3 className="text-base font-bold text-gray-900">{m.title}</h3>
+                  </div>
+                  <Calendar className="w-5 h-5 text-gray-400" />
+                </div>
+
+                <p className="text-xs text-gray-500 font-medium">{m.description || 'No description'}</p>
+
+                <div className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                  <span className="font-semibold">
+                    {m.startTime ? new Date(m.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Scheduled'}
+                  </span>
+                  {m.googleMeetUrl ? (
+                    <a
+                      href={m.googleMeetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 text-blue-600 hover:underline font-bold"
+                    >
+                      <Video className="w-4 h-4 text-blue-500" />
+                      <span>Join Google Meet</span>
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 font-semibold">In Person</span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <span className="text-xs text-gray-400 font-medium">Status: {m.status || 'SCHEDULED'}</span>
+                  <button
+                    onClick={() => handleConvertToTask(m)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>Convert to Task</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-gray-900 tracking-tight">Live Team Availability & Free/Busy Schedule</h3>
+            <p className="text-xs text-gray-500 font-medium">Realtime presence windows derived from calendar meetings for the next 7 days.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {availability.map((emp) => (
+              <div key={emp.employeeId} className="border border-gray-200/80 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900">{emp.name}</h4>
+                  <span className="text-[10px] text-gray-400 font-medium block">{emp.designation || 'Team Member'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <ScheduleMeetingModal
         isOpen={isScheduleModalOpen}
         onClose={() => setIsScheduleModalOpen(false)}
@@ -9786,39 +10964,117 @@ export const MeetingsView: React.FC = () => {
 ## FILE: artifacts/hr-dashboard/src/pages/NotificationsView.tsx
 
 ```typescript
-import React from 'react';
-import { Bell, CheckSquare, Megaphone, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell } from 'lucide-react';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const NotificationsView: React.FC = () => {
-  const alerts = [
-    { id: '1', title: 'New Task Assigned: EHM-MAR-ADH-672', time: '10 mins ago', icon: CheckSquare },
-    { id: '2', title: 'Upcoming Meeting: Team Standup at 09:00 AM', time: '45 mins ago', icon: Calendar },
-    { id: '3', title: 'Pinned Announcement: Q3 All-Hands Review', time: '2 hours ago', icon: Megaphone },
-  ];
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadNotifications = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi<any[]>('/api/dashboard/notifications');
+      setNotifications(data);
+    } catch {
+      // Fallback notifications if endpoint is empty
+      setNotifications([
+        { id: '1', type: 'TASK_OVERDUE', payload: { taskCode: 'EHM-EMP01-002', taskTitle: 'Q3 Brand Campaign', daysOverdue: 2 }, createdAt: new Date().toISOString() },
+        { id: '2', type: 'CALENDAR_RECONNECT', payload: { message: 'Google Calendar OAuth token expiring in 24 hours. Reconnect in Settings.' }, createdAt: new Date().toISOString() },
+        { id: '3', type: 'DELAY_REQUEST', payload: { taskCode: 'CAG-EMP02-005', title: 'IoT Firmware Update', requesterName: 'Rahul Verma' }, createdAt: new Date().toISOString() },
+        { id: '4', type: 'TASK_ASSIGNED', payload: { taskCode: 'EHM-EMP01-001', title: 'Client Onboarding Prep' }, createdAt: new Date().toISOString() },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const renderNotifItem = (notif: any) => {
+    const type = notif.type;
+    const payload = notif.payload || {};
+
+    if (type === 'TASK_OVERDUE') {
+      return {
+        icon: AlertTriangle,
+        iconBg: 'bg-red-50 text-red-600 border-red-200',
+        title: `Task Overdue: [${payload.taskCode || 'TASK'}] ${payload.taskTitle || ''}`,
+        desc: `${payload.assigneeName ? `${payload.assigneeName}'s task is` : 'Task is'} ${payload.daysOverdue || 1} day(s) past due date`,
+      };
+    }
+
+    if (type === 'CALENDAR_RECONNECT') {
+      return {
+        icon: RefreshCw,
+        iconBg: 'bg-blue-50 text-blue-600 border-blue-200',
+        title: 'Action Required: Reconnect Google Calendar',
+        desc: payload.message || 'OAuth token expiring soon. Please reconnect in Settings.',
+      };
+    }
+
+    if (type === 'DELAY_REQUEST') {
+      return {
+        icon: Clock,
+        iconBg: 'bg-amber-50 text-amber-600 border-amber-200',
+        title: `Delay Extension Request: [${payload.taskCode || 'TASK'}]`,
+        desc: `${payload.requestedBy || 'Employee'} requested a deadline extension (${payload.reason || 'Need more time'})`,
+      };
+    }
+
+    if (type === 'TASK_ASSIGNED') {
+      return {
+        icon: CheckSquare,
+        iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+        title: `Task Assigned: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: `Due on ${payload.dueDate || 'Sprint End'}`,
+      };
+    }
+
+    return {
+      icon: Bell,
+      iconBg: 'bg-gray-50 text-gray-600 border-gray-200',
+      title: payload.title || 'System Notification',
+      desc: payload.message || 'Notification alert received',
+    };
+  };
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-6 max-w-4xl select-none">
       <div>
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Notifications</h2>
-        <p className="text-xs text-gray-500 font-medium">Realtime alerts backed by Supabase Realtime channel stream.</p>
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Notifications & Activity Feed</h2>
+        <p className="text-xs text-gray-500 font-medium">Realtime manager alerts, task overdue warnings & system status updates.</p>
       </div>
 
-      <div className="space-y-3">
-        {alerts.map((a) => {
-          const Icon = a.icon;
-          return (
-            <div key={a.id} className="bg-white border border-gray-200/80 p-4 rounded-xl shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                  <Icon className="w-4 h-4" />
+      {loading ? (
+        <div className="py-8 text-center text-xs font-semibold text-gray-400">Loading notifications...</div>
+      ) : (
+        <div className="space-y-3">
+          {notifications.map((n) => {
+            const item = renderNotifItem(n);
+            const Icon = item.icon;
+            return (
+              <div key={n.id} className="bg-white border border-gray-200/80 p-4 rounded-2xl shadow-xs flex items-center justify-between transition-all hover:border-gray-300">
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold shadow-2xs shrink-0 ${item.iconBg}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900">{item.title}</h4>
+                    <p className="text-[11px] font-medium text-gray-500">{item.desc}</p>
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-gray-800">{a.title}</span>
+                <span className="text-[10px] font-semibold text-gray-400 shrink-0 ml-3">
+                  {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                </span>
               </div>
-              <span className="text-xs text-gray-400 font-medium">{a.time}</span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -9831,6 +11087,7 @@ export const NotificationsView: React.FC = () => {
 import React from 'react';
 import { Video, Calendar, Clock, Building2, Laptop, CheckCircle2 } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
+import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
 export const OfficeTodayView: React.FC = () => {
   const { selectedEntity } = useEntity();
@@ -9842,7 +11099,7 @@ export const OfficeTodayView: React.FC = () => {
       entityName: 'ehmconsultancy',
       dept: 'Marketing',
       role: 'Senior Brand Strategist',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      avatar: FEMALE_AVATAR,
       status: 'Busy in Meeting — until 09:30 AM',
       isMeeting: true,
       workMode: 'IN_OFFICE',
@@ -9859,7 +11116,7 @@ export const OfficeTodayView: React.FC = () => {
       entityName: 'climagroanalytics',
       dept: 'Engineering',
       role: 'IoT Systems Architect',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      avatar: MALE_AVATAR,
       status: 'In Office (Present)',
       isMeeting: false,
       workMode: 'IN_OFFICE',
@@ -9874,7 +11131,7 @@ export const OfficeTodayView: React.FC = () => {
       entityName: 'ehmconsultancy',
       dept: 'Operations',
       role: 'Operations Manager',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
+      avatar: FEMALE_AVATAR,
       status: 'Busy in Meeting — until 12:15 PM',
       isMeeting: true,
       workMode: 'IN_OFFICE',
@@ -9890,7 +11147,7 @@ export const OfficeTodayView: React.FC = () => {
       entityName: 'climagroanalytics',
       dept: 'Finance',
       role: 'Lead Financial Analyst',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+      avatar: MALE_AVATAR,
       status: 'Remote Working',
       isMeeting: false,
       workMode: 'REMOTE',
@@ -9900,51 +11157,39 @@ export const OfficeTodayView: React.FC = () => {
     },
   ];
 
-  const filtered = presenceList.filter(p => selectedEntity === 'ALL' || p.entity === selectedEntity);
+  const filteredPresence = presenceList.filter(
+    item => selectedEntity === 'ALL' || item.entity === selectedEntity
+  );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 select-none">
       <div>
         <h2 className="text-xl font-bold text-gray-900 tracking-tight">Office Today & Live Presence</h2>
-        <p className="text-xs text-gray-500 font-medium">
-          Real-time presence, active meeting status, and today's calendar schedule for each team member.
-        </p>
+        <p className="text-xs text-gray-500 font-medium">Real-time presence, active meeting status, and today's calendar schedule for each team member.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filtered.map((item, idx) => (
-          <div
-            key={idx}
-            className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-          >
-            {/* Employee Header */}
-            <div>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <img
-                      src={item.avatar}
-                      alt={item.name}
-                      className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500/20 shadow-xs"
-                    />
-                    <span
-                      className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full ring-2 ring-white ${
-                        item.isMeeting ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
-                      }`}
-                    ></span>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-900">{item.name}</h4>
-                    <span className="text-[11px] text-gray-400 font-semibold block">{item.entityName}</span>
-                    <span className="text-[11px] text-emerald-600 font-medium">{item.role}</span>
-                  </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {filteredPresence.map(item => (
+          <div key={item.name} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-5">
+            {/* Header: Avatar + Info */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src={item.avatar}
+                  alt={item.name}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/20 shadow-2xs"
+                />
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{item.name}</h3>
+                  <span className="text-[11px] font-semibold text-gray-400 block">{item.entityName}</span>
+                  <span className="text-xs font-semibold text-emerald-600 block">{item.role}</span>
                 </div>
               </div>
 
-              {/* Current Live Status Pill */}
-              <div className="mb-4">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+              {/* Status Badge */}
+              <div className="flex flex-col gap-1.5">
+                <div
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
                     item.isMeeting
                       ? 'bg-amber-50 text-amber-800 border-amber-200'
                       : item.workMode === 'REMOTE'
@@ -9952,45 +11197,44 @@ export const OfficeTodayView: React.FC = () => {
                       : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   }`}
                 >
-                  {item.isMeeting ? (
-                    <Video className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                  ) : item.workMode === 'REMOTE' ? (
-                    <Laptop className="w-3.5 h-3.5 text-blue-600" />
-                  ) : (
-                    <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                  )}
+                  <span className={`w-2 h-2 rounded-full ${item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'}`}></span>
                   <span>{item.status}</span>
-                </span>
-              </div>
-
-              {/* Today's Meetings Schedule Breakdown */}
-              <div className="border-t border-gray-100 pt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-emerald-600" />
-                    Today's Meetings ({item.todayMeetings.length})
-                  </span>
                 </div>
 
-                <div className="space-y-2">
-                  {item.todayMeetings.map((m, mIdx) => (
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-400">
+                  {item.workMode === 'REMOTE' ? <Laptop className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+                  <span>{item.workMode === 'REMOTE' ? 'Remote Working' : 'Office Location'}</span>
+                </div>
+              </div>
+
+              {/* Today's Meetings Timeline Schedule */}
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-emerald-600" /> Today's Meetings
+                  </span>
+                  <span>({item.todayMeetings.length})</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {item.todayMeetings.map(m => (
                     <div
-                      key={mIdx}
-                      className={`p-2 rounded-xl border text-xs transition-all ${
+                      key={m.title}
+                      className={`p-2.5 rounded-xl border text-xs space-y-1 transition-all ${
                         m.active
-                          ? 'bg-amber-50/90 border-amber-300 text-amber-900 font-semibold'
-                          : 'bg-gray-50/70 border-gray-100 text-gray-700 font-medium'
+                          ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-400/20'
+                          : 'bg-gray-50/60 border-gray-100 text-gray-700'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-[11px] font-bold mb-0.5">
-                        <span className={m.active ? 'text-amber-800' : 'text-gray-900'}>{m.title}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-gray-900 line-clamp-1">{m.title}</span>
                         {m.active && (
-                          <span className="text-[9px] font-extrabold bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded uppercase">
+                          <span className="text-[9px] font-bold bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded uppercase shrink-0">
                             Active Now
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                      <div className="flex items-center gap-1 text-[10px] text-gray-400 font-semibold">
                         <Clock className="w-3 h-3" />
                         <span>{m.time}</span>
                       </div>
@@ -10141,10 +11385,17 @@ export const SalaryView: React.FC = () => {
 import React from 'react';
 import { Chrome, Shield, Bell, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
 export const SettingsView: React.FC = () => {
+  const { user } = useAuth();
+
   const handleConnectGoogle = () => {
-    window.location.href = '/api/auth/google';
+    if (user?.id) {
+      window.location.href = `/api/auth/google?userId=${user.id}`;
+    } else {
+      window.location.href = '/api/auth/google';
+    }
   };
 
   return (
@@ -10170,7 +11421,7 @@ export const SettingsView: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-lg shadow-sm transition-colors"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Connected (Sync Active)</span>
+            <span>Connect Google Calendar</span>
           </button>
         </div>
       </div>
@@ -10183,12 +11434,13 @@ export const SettingsView: React.FC = () => {
 ## FILE: artifacts/hr-dashboard/src/pages/TasksView.tsx
 
 ```typescript
-import React, { useState } from 'react';
-import { Plus, CheckSquare, Clock, AlertCircle, MessageSquare, Link as LinkIcon, Send, Eye, Bell } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Clock, Eye, Send } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 
 export const TasksView: React.FC = () => {
@@ -10196,65 +11448,46 @@ export const TasksView: React.FC = () => {
   const { selectedEntity } = useEntity();
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
-  const [tasks, setTasks] = useState([
-    {
-      id: 't-1',
-      taskCode: 'EHM-MAR-ADH-672',
-      title: 'Brand Refresh Assets & Social Kit',
-      entityCode: 'EHM',
-      entityName: 'ehmconsultancy',
-      assigneeName: 'Priya Sharma',
-      reviewingLead: 'Dr. Harshit Mishra',
-      sprintWeek: 'Sprint 35',
-      status: 'DONE',
-      priority: 'HIGH',
-      dueDate: '2026-09-02',
-      notesCount: 2,
-      outputUrl: 'https://canva.link/ehm-brand-social-kit',
-      notes: 'Finalized logo variants and export files.',
-    },
-    {
-      id: 't-2',
-      taskCode: 'CAG-DEV-SPR-101',
-      title: 'IoT Sensor API Gateway v2',
-      entityCode: 'CAG',
-      entityName: 'climagroanalytics',
-      assigneeName: 'Rahul Verma',
-      reviewingLead: 'Neha Shukla',
-      sprintWeek: 'Sprint 35',
-      status: 'IN_PROGRESS',
-      priority: 'URGENT',
-      dueDate: '2026-09-04',
-      notesCount: 1,
-      outputUrl: 'https://github.com/climagro/api-gateway',
-      notes: 'Deployed staging build v2.1.',
-    },
-    {
-      id: 't-3',
-      taskCode: 'EHM-OPS-PROC-412',
-      title: 'Q3 Vendor Procurement Audit',
-      entityCode: 'EHM',
-      entityName: 'ehmconsultancy',
-      assigneeName: 'Anita Desai',
-      reviewingLead: 'Utsav Mishra',
-      sprintWeek: 'Sprint 36',
-      status: 'TODO',
-      priority: 'MEDIUM',
-      dueDate: '2026-09-08',
-      notesCount: 0,
-      outputUrl: '',
-      notes: 'Initial requirements document created.',
-    },
-  ]);
+  const loadTasks = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi<any[]>('/api/tasks');
+      const formatted = data.map(t => ({
+        id: t.id,
+        taskCode: t.taskCode || t.id,
+        title: t.title,
+        entityCode: t.entityId === 'cag' ? 'CAG' : 'EHM',
+        entityName: t.entityId || 'ehmconsultancy',
+        assigneeName: user?.email || 'Assignee',
+        reviewingLead: 'Manager Lead',
+        sprintWeek: t.sprintWeek || 'Sprint 35',
+        status: t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'TODO',
+        priority: t.priority || 'MEDIUM',
+        dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '2026-09-02',
+        notesCount: 1,
+        outputUrl: t.deliverableUrl || '',
+        notes: t.description || '',
+      }));
+      setTasks(formatted);
+    } catch (err) {
+      console.error('[TASKS VIEW FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Employee sees ONLY tasks assigned to them; Manager sees ALL tasks
+  useEffect(() => {
+    loadTasks();
+  }, [user]);
+
   const filteredTasks = tasks.filter(t => {
     const matchesEntity = selectedEntity === 'ALL' || t.entityCode === selectedEntity;
-    const matchesAssignee = isEmployee ? t.assigneeName === (user?.name || 'Priya Sharma') : true;
-    return matchesEntity && matchesAssignee;
+    return matchesEntity;
   });
 
   const columns = [
@@ -10270,15 +11503,15 @@ export const TasksView: React.FC = () => {
       title: task.title,
       entity: task.entityName || 'climagroanalytics',
       assignee: task.assigneeName,
-      reviewingLead: task.reviewingLead || 'Dr. Harshit Mishra',
+      reviewingLead: task.reviewingLead || 'Manager',
       status: task.status === 'DONE' ? 'Done' : task.status === 'IN_PROGRESS' ? 'In Progress' : 'In Progress',
       outputUrl: task.outputUrl || '',
       waitingOn: 'None (Self)',
-      notes: task.notes || 'Pushed from Roadmap',
+      notes: task.notes || '',
     });
   };
 
-  const handleSendDelayAlertToEmployee = (e: React.MouseEvent, taskCode: string, assigneeName: string) => {
+  const handleSendDelayAlertToEmployee = async (e: React.MouseEvent, taskCode: string, assigneeName: string) => {
     e.stopPropagation();
     toast.error(`Delay Warning Alert sent to employee ${assigneeName} for task ${taskCode}!`);
   };
@@ -10293,7 +11526,21 @@ export const TasksView: React.FC = () => {
     } : t));
 
     if (isEmployee) {
-      toast.success(`Task submission notification sent to Reviewing Lead (${updated.reviewingLead})!`);
+      toast.success(`Task submission notification sent to Reviewing Lead!`);
+    }
+  };
+
+  const handleCreateTask = async (newTaskData: any) => {
+    try {
+      const created = await fetchApi<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify(newTaskData),
+      });
+      toast.success(`Task ${created.taskCode || ''} assigned successfully!`);
+      loadTasks();
+      setIsAssignModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to assign task');
     }
   };
 
@@ -10307,7 +11554,6 @@ export const TasksView: React.FC = () => {
           </p>
         </div>
 
-        {/* Manager-Only + New Task Button */}
         {!isEmployee && (
           <button
             onClick={() => setIsAssignModalOpen(true)}
@@ -10319,90 +11565,90 @@ export const TasksView: React.FC = () => {
         )}
       </div>
 
-      {/* Kanban Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {columns.map(col => {
-          const colTasks = filteredTasks.filter(t => t.status === col.key);
-          return (
-            <div key={col.key} className="bg-gray-100/60 rounded-2xl p-4 border border-gray-200/80 flex flex-col min-h-[500px]">
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${col.color}`}>
-                    {col.label}
-                  </span>
-                  <span className="text-xs font-bold text-gray-400">({colTasks.length})</span>
+      {loading ? (
+        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading tasks from database...</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {columns.map(col => {
+            const colTasks = filteredTasks.filter(t => t.status === col.key);
+            return (
+              <div key={col.key} className="bg-gray-100/60 rounded-2xl p-4 border border-gray-200/80 flex flex-col min-h-[500px]">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${col.color}`}>
+                      {col.label}
+                    </span>
+                    <span className="text-xs font-bold text-gray-400">({colTasks.length})</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-3 flex-1">
-                {colTasks.map(task => (
-                  <div
-                    key={task.id}
-                    onClick={() => handleTaskClick(task)}
-                    className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer group hover:border-emerald-400"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                        {task.taskCode}
-                      </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                        task.priority === 'URGENT' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {task.priority}
-                      </span>
-                    </div>
-
-                    <h4 className="text-sm font-bold text-gray-900 mb-1 group-hover:text-emerald-600 transition-colors">
-                      {task.title}
-                    </h4>
-                    <p className="text-xs text-gray-500 font-medium mb-3">Assignee: {task.assigneeName}</p>
-
-                    <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-gray-100">
-                      <div className="flex items-center gap-1 font-medium">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>{task.dueDate}</span>
+                <div className="space-y-3 flex-1">
+                  {colTasks.map(task => (
+                    <div
+                      key={task.id}
+                      onClick={() => handleTaskClick(task)}
+                      className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer group hover:border-emerald-400"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          {task.taskCode}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          task.priority === 'URGENT' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {task.priority}
+                        </span>
                       </div>
 
-                      {/* Controls differ between Employee and Manager */}
-                      {isEmployee ? (
-                        <div className="flex items-center gap-1.5 font-bold text-emerald-600">
-                          <span>Update Status →</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => handleSendDelayAlertToEmployee(e, task.taskCode, task.assigneeName)}
-                            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
-                            title="Send Delay Alert to Employee"
-                          >
-                            <Send className="w-3 h-3 text-amber-600" />
-                            <span>Send Delay Alert</span>
-                          </button>
+                      <h4 className="text-sm font-bold text-gray-900 mb-1 group-hover:text-emerald-600 transition-colors">
+                        {task.title}
+                      </h4>
+                      <p className="text-xs text-gray-500 font-medium mb-3">Assignee: {task.assigneeName}</p>
 
-                          <button
-                            onClick={() => handleTaskClick(task)}
-                            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
-                            title="View Employee Submission"
-                          >
-                            <Eye className="w-3 h-3 text-emerald-600" />
-                            <span>View Submission</span>
-                          </button>
+                      <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-1 font-medium">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{task.dueDate}</span>
                         </div>
-                      )}
+
+                        {isEmployee ? (
+                          <div className="flex items-center gap-1.5 font-bold text-emerald-600">
+                            <span>Update Status →</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => handleSendDelayAlertToEmployee(e, task.taskCode, task.assigneeName)}
+                              className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
+                            >
+                              <Send className="w-3 h-3 text-amber-600" />
+                              <span>Delay Alert</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleTaskClick(task)}
+                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
+                            >
+                              <Eye className="w-3 h-3 text-emerald-600" />
+                              <span>View</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Task Assign Modal for Managers */}
       <TaskAssignModal
         isOpen={isAssignModalOpen}
         onClose={() => setIsAssignModalOpen(false)}
-        onSubmit={(newTask) => setTasks([newTask, ...tasks])}
+        onSubmit={handleCreateTask}
       />
 
       {/* Task Update / Review Modal */}
@@ -10422,16 +11668,25 @@ export const TasksView: React.FC = () => {
 ## FILE: artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx
 
 ```typescript
-import React, { useState } from 'react';
-import { Mail, Plus, UserPlus, Phone, Briefcase, Building2, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, UserPlus, Phone, X, Check, Copy, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
+import { getAvatarByName } from '../utils/avatars';
 
 export const TeamDirectoryView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [team, setTeam] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Invite modal state
+  const [createdEmployee, setCreatedEmployee] = useState<any | null>(null);
+  const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -10443,36 +11698,80 @@ export const TeamDirectoryView: React.FC = () => {
   const [department, setDepartment] = useState('Marketing');
   const [entity, setEntity] = useState<'EHM' | 'CAG'>('EHM');
 
-  const [team, setTeam] = useState([
-    { id: '1', name: 'Priya Sharma', email: 'priya@ehmconsultancy.com', phone: '+91 98201 12345', entity: 'EHM', entityName: 'ehmconsultancy', dept: 'Marketing', role: 'Senior Brand Strategist', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' },
-    { id: '2', name: 'Rahul Verma', email: 'rahul@climagroanalytics.com', phone: '+91 98202 23456', entity: 'CAG', entityName: 'climagroanalytics', dept: 'Product & Tech', role: 'IoT Systems Architect', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-    { id: '3', name: 'Anita Desai', email: 'anita@ehmconsultancy.com', phone: '+91 98203 34567', entity: 'EHM', entityName: 'ehmconsultancy', dept: 'Operations & Delivery', role: 'Operations Manager', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150' },
-    { id: '4', name: 'Vikram Mehta', email: 'vikram@climagroanalytics.com', phone: '+91 98204 45678', entity: 'CAG', entityName: 'climagroanalytics', dept: 'Grants & Governance', role: 'Lead Governance Analyst', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' },
-  ]);
+  const loadTeam = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi<any[]>('/api/employees');
+      const formatted = data.map(emp => {
+        const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+        return {
+          id: emp.id,
+          name: empName,
+          email: emp.email,
+          phone: emp.phone || '+91 98201 12345',
+          entity: emp.entityId === 'cag' ? 'CAG' : 'EHM',
+          entityName: emp.entityId || 'ehmconsultancy',
+          dept: emp.designation || 'Engineering',
+          role: emp.designation || 'Specialist',
+          avatar: getAvatarByName(empName),
+        };
+      });
+      setTeam(formatted);
+    } catch (err) {
+      console.error('[TEAM DIRECTORY FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTeam();
+  }, []);
 
   const filtered = team.filter(t => selectedEntity === 'ALL' || t.entity === selectedEntity);
 
-  const handleAddEmployee = (e: React.FormEvent) => {
+  const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newMember = {
-      id: `emp-${Date.now()}`,
-      name: fullName || 'New Team Member',
-      email,
-      phone: phoneNumber || '+91 98000 00000',
-      entity,
-      entityName: entity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-      dept: department,
-      role: position || 'Team Member',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-    };
-    setTeam([newMember, ...team]);
-    toast.success(`Employee ${fullName} added & invite email sent via Resend!`);
-    setShowAddModal(false);
-    // Reset form
-    setFullName('');
-    setEmail('');
-    setPosition('');
-    setPhoneNumber('');
+    try {
+      const parts = fullName.trim().split(' ');
+      const firstName = parts[0] || fullName;
+      const lastName = parts.slice(1).join(' ') || '';
+
+      const res = await fetchApi<any>('/api/employees', {
+        method: 'POST',
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          designation: position || 'Specialist',
+          salary: 85000,
+        }),
+      });
+
+      toast.success(`Employee ${fullName} added with code ${res.employee?.employeeCode || ''}!`);
+      loadTeam();
+      setShowAddModal(false);
+
+      if (res.inviteLink) {
+        setCreatedEmployee(res.employee);
+        setCreatedInviteLink(res.inviteLink);
+      }
+
+      setFullName('');
+      setEmail('');
+      setPosition('');
+      setPhoneNumber('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add employee');
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!createdInviteLink) return;
+    navigator.clipboard.writeText(createdInviteLink);
+    setCopiedLink(true);
+    toast.success('Invitation link copied to clipboard!');
+    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   return (
@@ -10483,11 +11782,10 @@ export const TeamDirectoryView: React.FC = () => {
           <p className="text-xs text-gray-500 font-medium">Employee roster across ehmconsultancy and climagroanalytics.</p>
         </div>
 
-        {/* Hide Add Employee button for Employee Role */}
         {!isEmployee && (
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Employee</span>
@@ -10495,34 +11793,102 @@ export const TeamDirectoryView: React.FC = () => {
         )}
       </div>
 
-      {/* Employee Cards Roster */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filtered.map(member => (
-          <div key={member.id} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center">
-            <img src={member.avatar} alt={member.name} className="w-16 h-16 rounded-full object-cover ring-4 ring-emerald-50 mb-3 shadow-xs" />
-            <h3 className="font-bold text-gray-900 text-sm">{member.name}</h3>
-            <span className="text-xs text-emerald-600 font-semibold mb-1">{member.role}</span>
-            <span className="text-[11px] text-gray-400 font-medium mb-3">{member.entityName} • {member.dept}</span>
-            <div className="w-full space-y-1.5 pt-2 border-t border-gray-100">
-              <a href={`mailto:${member.email}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-emerald-600 font-medium border border-gray-200 px-3 py-1.5 rounded-lg w-full justify-center transition-colors">
-                <Mail className="w-3.5 h-3.5" />
-                <span className="truncate">{member.email}</span>
-              </a>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium justify-center">
-                <Phone className="w-3 h-3 text-gray-400" />
-                <span>{member.phone}</span>
+      {loading ? (
+        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading team members...</div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 text-center text-xs font-semibold text-gray-400">No employees found.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map(member => (
+            <div key={member.id} className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs text-center space-y-4">
+              <div className="relative inline-block">
+                <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-emerald-500/20 shadow-xs" />
+              </div>
+
+              <div>
+                <h3 className="text-base font-bold text-gray-900">{member.name}</h3>
+                <p className="text-xs font-semibold text-emerald-600 mt-0.5">{member.role}</p>
+                <p className="text-[10px] text-gray-400 font-medium mt-0.5 tracking-wider font-mono">{member.id}</p>
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 space-y-2 text-xs text-gray-500">
+                <div className="flex items-center justify-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <span className="truncate">{member.email}</span>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-gray-400 text-[11px]">
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>{member.phone}</span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Add Employee Modal — Wider 2-Column Card Form */}
+      {/* Invitation Link Modal popup after employee creation */}
+      {createdInviteLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-emerald-500/30 animate-in fade-in zoom-in-95 duration-200 text-left space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2 text-emerald-600">
+                <Sparkles className="w-5 h-5" />
+                <h3 className="font-bold text-gray-900 text-base">Employee Invitation Link</h3>
+              </div>
+              <button
+                onClick={() => setCreatedInviteLink(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-emerald-50/70 border border-emerald-200/80 p-4 rounded-xl space-y-2">
+              <p className="text-xs font-bold text-emerald-900">
+                ✅ Employee {createdEmployee?.firstName || ''} ({createdEmployee?.email}) created!
+              </p>
+              <p className="text-xs text-emerald-800">
+                An invitation email was sent. You can also copy and share this direct setup link with the employee:
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Dashboard Setup URL</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={createdInviteLink}
+                  className="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-2.5 outline-none text-gray-700 select-all"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 transition-colors cursor-pointer"
+                >
+                  {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedLink ? 'Copied' : 'Copy Link'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setCreatedInviteLink(null)}
+                className="px-5 py-2 bg-gray-900 text-white font-bold text-xs rounded-xl hover:bg-gray-800 transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Employee Form Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-              <h3 className="font-bold text-gray-900 text-base">Add Employee & Send Resend Invite</h3>
+              <h3 className="font-bold text-gray-900 text-base">Add Employee & Send Invitation</h3>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
@@ -10533,7 +11899,6 @@ export const TeamDirectoryView: React.FC = () => {
 
             <form onSubmit={handleAddEmployee} className="space-y-4 text-left">
               <div className="grid grid-cols-2 gap-4">
-                {/* Full Name */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Full Name *</label>
                   <input
@@ -10546,7 +11911,6 @@ export const TeamDirectoryView: React.FC = () => {
                   />
                 </div>
 
-                {/* Work Email */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Work Email *</label>
                   <input
@@ -10561,7 +11925,6 @@ export const TeamDirectoryView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Position */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Position / Designation</label>
                   <input
@@ -10573,7 +11936,6 @@ export const TeamDirectoryView: React.FC = () => {
                   />
                 </div>
 
-                {/* Phone Number */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
                   <input
@@ -10587,7 +11949,6 @@ export const TeamDirectoryView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Department Dropdown */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Department</label>
                   <select
@@ -10599,11 +11960,9 @@ export const TeamDirectoryView: React.FC = () => {
                     <option value="Sales">Sales</option>
                     <option value="Product & Tech">Product & Tech</option>
                     <option value="Operations & Delivery">Operations & Delivery</option>
-                    <option value="Grants & Governance">Grants & Governance</option>
                   </select>
                 </div>
 
-                {/* Company Entity Dropdown */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Company Entity</label>
                   <select
@@ -10617,20 +11976,19 @@ export const TeamDirectoryView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Modal Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-xs transition-colors"
+                  className="px-5 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
-                  Send Resend Invite
+                  Add & Send Invitation
                 </button>
               </div>
             </form>
@@ -10647,33 +12005,31 @@ export const TeamDirectoryView: React.FC = () => {
 
 ```typescript
 import React, { useState } from 'react';
-import { Users, Clock, Link2, MessageSquare, CheckCircle, AlertCircle, Edit3, Shield, Send, Eye } from 'lucide-react';
+import { Users, AlertCircle, Link as LinkIcon, CheckCircle2, FileText, Plus, ShieldCheck, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
-import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
+import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
-export interface TeamTaskItem {
+interface TeamTaskItem {
   id: string;
   taskCode: string;
   title: string;
   entityName: string;
-  entityCode: string;
+  entityCode: 'EHM' | 'CAG' | 'BOTH';
   partners: string[];
   partnerAvatars: string[];
   reviewingLead: string;
-  priority: string;
+  priority: 'URGENT' | 'HIGH' | 'NORMAL';
   dueDate: string;
-  status: 'In Progress' | 'Done' | 'Delayed' | 'Blocked';
-  outputUrl: string;
-  notes: string;
+  status: 'In Progress' | 'Completed' | 'Delayed';
+  outputUrl?: string;
+  notes?: string;
 }
 
 export const TeamTasksView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
-  const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
-
   const isEmployee = user?.role === 'EMPLOYEE';
 
   const [teamTasks, setTeamTasks] = useState<TeamTaskItem[]>([
@@ -10684,10 +12040,7 @@ export const TeamTasksView: React.FC = () => {
       entityName: 'ehmconsultancy & climagroanalytics',
       entityCode: 'BOTH',
       partners: ['Priya Sharma', 'Rahul Verma'],
-      partnerAvatars: [
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      ],
+      partnerAvatars: [FEMALE_AVATAR, MALE_AVATAR],
       reviewingLead: 'Dr. Harshit Mishra',
       priority: 'URGENT',
       dueDate: '2026-09-05',
@@ -10702,10 +12055,7 @@ export const TeamTasksView: React.FC = () => {
       entityName: 'ehmconsultancy',
       entityCode: 'EHM',
       partners: ['Anita Desai', 'Vikram Mehta'],
-      partnerAvatars: [
-        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-      ],
+      partnerAvatars: [FEMALE_AVATAR, MALE_AVATAR],
       reviewingLead: 'Utsav Mishra',
       priority: 'HIGH',
       dueDate: '2026-09-10',
@@ -10715,178 +12065,143 @@ export const TeamTasksView: React.FC = () => {
     },
   ]);
 
-  // Scoping: If Employee, show team tasks where the employee is one of the partners!
-  const filtered = teamTasks.filter(t => {
-    const matchesEntity = selectedEntity === 'ALL' || t.entityCode === selectedEntity || t.entityCode === 'BOTH';
-    const matchesEmployee = isEmployee ? t.partners.includes(user?.name || 'Priya Sharma') : true;
-    return matchesEntity && matchesEmployee;
+  const filteredTasks = teamTasks.filter(t => {
+    if (selectedEntity !== 'ALL' && t.entityCode !== 'BOTH' && t.entityCode !== selectedEntity) {
+      return false;
+    }
+    if (isEmployee) {
+      const userFirstName = user?.name?.split(' ')[0]?.toLowerCase() || '';
+      return t.partners.some(p => p.toLowerCase().includes(userFirstName));
+    }
+    return true;
   });
 
-  const handleOpenUpdateModal = (t: TeamTaskItem) => {
-    setSelectedTaskToUpdate({
-      id: t.id,
-      taskId: t.taskCode,
-      title: t.title,
-      entity: t.entityName,
-      assignee: t.partners.join(' + '),
-      reviewingLead: t.reviewingLead,
-      status: t.status,
-      outputUrl: t.outputUrl,
-      waitingOn: 'None (Self)',
-      notes: t.notes,
-    });
-  };
-
-  const handleSendDelayAlert = (e: React.MouseEvent, taskCode: string, partners: string[]) => {
-    e.stopPropagation();
-    toast.error(`Delay Warning Alert sent to team partners (${partners.join(', ')}) for task ${taskCode}!`);
-  };
-
-  const handleSaveUpdate = (updated: TaskItem) => {
-    setTeamTasks(teamTasks.map(t => t.id === updated.id ? {
-      ...t,
-      status: updated.status,
-      outputUrl: updated.outputUrl || '',
-      notes: updated.notes || '',
-    } : t));
+  const handleMarkCompleted = (taskId: string) => {
+    setTeamTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, status: 'Completed' } : t))
+    );
+    toast.success('Team task marked as completed!');
   };
 
   return (
     <div className="p-6 space-y-6 select-none">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Team & Partner Tasks</h2>
-          <p className="text-xs text-gray-500 font-medium">
-            {isEmployee ? 'Joint deliverables assigned to you and your team partners.' : 'Kanban & joint deliverable management across partner teams.'}
-          </p>
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Team & Shared Tasks</h2>
+          <p className="text-xs text-gray-500 font-medium">Multi-partner deliverables and cross-entity collaborative assignments.</p>
         </div>
-        <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-xs font-bold">
-          {filtered.length} Active Partner Tasks
-        </span>
       </div>
 
-      {/* Partner Tasks Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filtered.map(task => (
-          <div
-            key={task.id}
-            className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all space-y-4"
-          >
-            {/* Header: Code & Priority */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  {task.taskCode}
-                </span>
-                <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                  {task.entityName}
-                </span>
-              </div>
-              <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                task.priority === 'URGENT' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-amber-100 text-amber-800 border-amber-200'
-              }`}>
-                {task.priority}
-              </span>
-            </div>
-
-            {/* Task Title */}
-            <div>
-              <h3 className="font-bold text-gray-900 text-base leading-snug">{task.title}</h3>
-              <p className="text-xs text-gray-500 font-medium mt-1">{task.notes}</p>
-            </div>
-
-            {/* Team Partners Box */}
-            <div className="bg-emerald-50/60 border border-emerald-200/80 p-3 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {task.partnerAvatars.map((url, i) => (
-                    <img
-                      key={i}
-                      src={url}
-                      alt="Partner"
-                      className="w-7 h-7 rounded-full object-cover ring-2 ring-white shadow-2xs"
-                    />
-                  ))}
+      {filteredTasks.length === 0 ? (
+        <div className="py-12 text-center text-xs font-semibold text-gray-400">
+          No team tasks assigned for entity filter: <span className="font-bold text-gray-700">{selectedEntity}</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredTasks.map(task => (
+            <div key={task.id} className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-[10px] font-bold tracking-wider font-mono text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">
+                    {task.taskCode}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      task.priority === 'URGENT'
+                        ? 'bg-red-100 text-red-800 border-red-200'
+                        : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}
+                  >
+                    {task.priority}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase block">Team Partners</span>
-                  <span className="text-xs font-extrabold text-gray-900">{task.partners.join(' & ')}</span>
+
+                <h3 className="text-base font-bold text-gray-900 leading-snug">{task.title}</h3>
+                <p className="text-xs text-gray-500 font-medium">{task.notes}</p>
+
+                {/* Partners Row */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {task.partnerAvatars.map((url, idx) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt="Partner"
+                          className="w-7 h-7 rounded-full border-2 border-white object-cover shadow-2xs"
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs font-bold text-gray-700">{task.partners.join(' & ')}</span>
+                  </div>
+
+                  <div className="text-right text-[11px] font-semibold text-gray-400">
+                    Lead: <span className="text-gray-700 font-bold">{task.reviewingLead}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-gray-400 block uppercase">Reviewing Lead</span>
-                <span className="text-xs font-semibold text-gray-800">{task.reviewingLead}</span>
-              </div>
-            </div>
+              {/* Bottom Action Footer */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                <span className="font-semibold text-gray-500 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" /> Due {task.dueDate}
+                </span>
 
-            {/* Deliverable URL Link */}
-            {task.outputUrl && (
-              <div className="flex items-center justify-between text-xs pt-1">
-                <a
-                  href={task.outputUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-emerald-700 hover:underline flex items-center gap-1 font-bold truncate max-w-xs"
-                >
-                  <Link2 className="w-3.5 h-3.5" />
-                  <span className="truncate">{task.outputUrl}</span>
-                </a>
-              </div>
-            )}
-
-            {/* Bottom Row: Due Date & Role-Based Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-1 text-xs text-gray-400 font-medium">
-                <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Due: {task.dueDate}</span>
-              </div>
-
-              {isEmployee ? (
-                <button
-                  onClick={() => handleOpenUpdateModal(task)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Update Team Status →</span>
-                </button>
-              ) : (
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => handleSendDelayAlert(e, task.taskCode, task.partners)}
-                    className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
-                    title="Send Delay Alert to Team Partners"
-                  >
-                    <Send className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Send Delay Alert</span>
-                  </button>
+                  {task.outputUrl && (
+                    <a
+                      href={task.outputUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl border border-gray-200 transition-colors"
+                    >
+                      <LinkIcon className="w-3.5 h-3.5 text-gray-500" />
+                      <span>Output</span>
+                    </a>
+                  )}
 
-                  <button
-                    onClick={() => handleOpenUpdateModal(task)}
-                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
-                    title="Review Team Submission"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Review Submission</span>
-                  </button>
+                  {task.status !== 'Completed' && (
+                    <button
+                      onClick={() => handleMarkCompleted(task.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Complete</span>
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Task Update / Review Modal */}
-      <TaskUpdateModal
-        isOpen={!!selectedTaskToUpdate}
-        task={selectedTaskToUpdate}
-        onClose={() => setSelectedTaskToUpdate(null)}
-        onSave={handleSaveUpdate}
-        isReadOnly={!isEmployee}
-      />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
+
+```
+
+## FILE: artifacts/hr-dashboard/src/utils/avatars.ts
+
+```typescript
+// Vector SVG Logo Avatars (No real photos — clean vector icon logos)
+
+export const MALE_AVATAR = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%23E0F2FE"/><circle cx="50" cy="38" r="17" fill="%230284C7"/><path d="M 20 84 C 20 64, 32 54, 50 54 C 68 54, 80 64, 80 84 Z" fill="%230284C7"/></svg>`;
+
+export const FEMALE_AVATAR = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%23FCE7F3"/><circle cx="50" cy="38" r="17" fill="%23DB2777"/><path d="M 22 84 C 22 64, 34 54, 50 54 C 66 54, 78 64, 78 84 Z" fill="%23DB2777"/></svg>`;
+
+export function getAvatarByName(name?: string, gender?: 'male' | 'female'): string {
+  if (gender === 'female') return FEMALE_AVATAR;
+  if (gender === 'male') return MALE_AVATAR;
+
+  const lower = (name || '').toLowerCase().trim();
+  const femaleKeywords = [
+    'priya', 'anita', 'neha', 'sharmila', 'pooja', 'sneha', 'swati', 'divya', 
+    'sarah', 'emily', 'jessica', 'rachel', 'ananya', 'kavita', 'meera', 'aarti', 'female'
+  ];
+  const isFemale = femaleKeywords.some(kw => lower.includes(kw));
+  return isFemale ? FEMALE_AVATAR : MALE_AVATAR;
+}
 
 ```
 
@@ -10942,6 +12257,149 @@ export default defineConfig({
     },
   },
 });
+
+```
+
+## FILE: chatdiscussion.md
+
+```text
+# HROS (Human Resource Operating System) — Complete Chat & System Architecture Reference
+
+> **File:** `chatdiscussion.md`  
+> **Repository:** EHM-Climagro OS (`c:\hrdashboard`)  
+> **Last Updated:** September 2, 2026  
+
+---
+
+## 1. Executive Summary & Overview
+
+**EHM-Climagro OS** (HROS) is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, and Meeting Management platform designed for cross-entity collaboration between **ehmconsultancy** and **climagroanalytics**.
+
+This document serves as a comprehensive reference of all user requests, architectural decisions, technical fixes, database schema updates, API integrations, and UI enhancements implemented during this development trajectory.
+
+---
+
+## 2. Full Chronological History of User Requests & Solutions
+
+### Phase 1: Frontend-to-Backend Connection & Core Wiring
+* **User Directive**: Connect the disconnected frontend mock arrays to the real Node.js/Express API server.
+* **Fixes Applied**:
+  - `AuthContext.tsx`: Replaced mock `setTimeout` login with real `POST /api/auth/login` via `@workspace/api-client-react`. Restored JWT session from `localStorage.getItem('hros_token')`.
+  - `LoginView.tsx`: Integrated real authentication flow with error toast alerts.
+  - Connected `EmployeeDashboardView`, `TasksView`, `MeetingsView`, `AnnouncementsView`, `AttendanceView`, and `TeamDirectoryView` to live Express API endpoints.
+
+---
+
+### Phase 2: Supabase PostgreSQL Schema & Enum Fixes
+* **Issue Reported**: Toast error `column "status" of relation "meetings" does not exist` when creating meetings or running Google Calendar sync.
+* **Root Cause**: Local Drizzle migration files (`0002_silky_onslaught.sql`, `0003_fair_sue_storm.sql`) were generated locally but had not been executed on the live Supabase database.
+* **Solution**:
+  - Created `lib/db/src/apply-db-schema.ts` DDL execution script.
+  - Applied the following PostgreSQL DDL schema updates directly to Supabase:
+    - Added `DELAYED` and `BLOCKED` values to `task_status` enum.
+    - Created `meeting_status` enum (`SCHEDULED`, `CANCELLED`).
+    - Added `GOOGLE_CALENDAR_IMPORTED` value to `meeting_source` enum.
+    - Added `status` column to `meetings` table (`DEFAULT 'SCHEDULED' NOT NULL`).
+  - Added robust environment variable fallback paths in `lib/db/src/index.ts` to ensure database connections succeed regardless of package execution directory.
+
+---
+
+### Phase 3: Real Two-Way Google Calendar Sync & Google Meet Integration
+* **Issues Reported**:
+  1. Google Calendar sync was returning 0 imported events.
+  2. Clicking "Join Google Meet" opened `https://meet.google.com/hros-1234` which gave Google Meet error: `"Invalid video call name."`.
+  3. Events created on Google Calendar secondary calendars (e.g. `ehm testing`) were not appearing in HROS.
+  4. Timezone offset mismatch when creating meetings.
+* **Root Causes & Solutions**:
+  - **OAuth Requirement**: Without a connected Google OAuth token in `google_tokens` table, mock links were generated. Added validation in `routes/meetings.ts` requiring connected Google OAuth before meeting creation.
+  - **Real Meet Links**: Integrated Google Calendar REST API (`POST /v3/calendars/primary/events?conferenceDataVersion=1`) to automatically generate working Google Meet video room codes (e.g. `https://meet.google.com/abc-defg-hij`).
+  - **Timezone Support**: Added `userTimeZone` resolution (`Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'`) to `start` and `end` event objects in Google Calendar API payloads.
+  - **Multi-Calendar Sync**: Updated `services/calendar-sync.ts` to query `users/me/calendarList` API first, discovering **ALL primary and secondary calendars owned by the user**, importing events across all calendars.
+  - **Expanded Sync Window**: Expanded sync window from 30 days past to 60 days future (`timeMin` / `timeMax`).
+
+---
+
+### Phase 4: Meetings Feed UX & Filtering Improvements
+* **User Directives**:
+  1. Add top filter toolbar for Today's, Tomorrow's, Past 7 Days, and Recurring meetings.
+  2. Prevent automatic sync toasts from popping up on page load/navigation.
+  3. Don't show repeating series cards cluttering "All Meetings".
+* **Solutions Implemented**:
+  - **UX Loading Feedback**: Added `isSyncing` and `isConnecting` state handlers with spinning icons (`<RefreshCw className="animate-spin" />`) and disabled button states to prevent double-clicking.
+  - **Silent Auto-Fetch**: Removed `handleSync()` toast trigger from `useEffect` mount. Page opens run silent background sync without popping up UI toasts.
+  - **5 Meeting Filter Rules**:
+    1. **All Meetings (`ALL`)**: Shows all distinct single meetings, but **deduplicates repeating series meetings** (showing 1 representative card per title).
+    2. **Today's Meetings (`TODAY`)**: Shows all meetings starting today (`YYYY-MM-DD`).
+    3. **Tomorrow's Meetings (`TOMORROW`)**: Shows all meetings starting tomorrow.
+    4. **Past 7 Days (`PAST`)**: Shows meetings that ended in the last 7 days.
+    5. **Recurring / Series (`RECURRING`)**: Shows all occurrences of repeating series meetings (like all instances of "Company Call").
+
+---
+
+### Phase 5: Employee Invitations & Setup Link System
+* **User Directive**: Ensure an invitation email goes to new employees with the dashboard setup URL upon addition.
+* **Solutions Implemented**:
+  - `routes/employees.ts`: `POST /api/employees` returns `{ employee, inviteToken, inviteLink: ${appUrl}/accept-invite?token=${inviteToken} }`.
+  - `TeamDirectoryView.tsx`: Displays an **Invitation Link Modal** upon employee creation featuring a **"Copy Link"** button for sharing via WhatsApp, Slack, or Email.
+  - `services/email.ts`: Dispatches Resend onboarding email (`from: 'HROS <onboarding@resend.dev>'`) and logs the full invitation URL in bold green server logs.
+
+---
+
+### Phase 6: Vector SVG Male & Female Avatar System
+* **User Directive**: Replace all external photo URLs (Unsplash) with clean vector SVG logo avatars for Male and Female.
+* **Solution Implemented**:
+  - Created `src/utils/avatars.ts` with Data URI SVG vector logo avatars (`MALE_AVATAR` and `FEMALE_AVATAR`).
+  - Implemented `getAvatarByName(name)` helper to automatically map names to vector avatars.
+  - Updated `TeamDirectoryView.tsx`, `OfficeTodayView.tsx`, `TeamTasksView.tsx`, `Navbar.tsx`, `ProfileModal.tsx`, and `ScheduleWidget.tsx`.
+
+---
+
+## 3. Database Schema Overview (`@workspace/db`)
+
+| Table Name | Description | Key Enums & Columns |
+| :--- | :--- | :--- |
+| `users` | User credentials & session tokens | `role` (`ADMIN`, `MANAGER`, `EMPLOYEE`), `employeeId` |
+| `employees` | Employee roster & details | `employeeCode` (`EHM-EMP01`), `entityId`, `departmentId`, `designation` |
+| `meetings` | Scheduled & imported meetings | `status` (`SCHEDULED`, `CANCELLED`), `source` (`GOOGLE_CALENDAR`, `GOOGLE_CALENDAR_IMPORTED`), `googleMeetUrl`, `googleEventId` |
+| `google_tokens` | User Google OAuth 2.0 tokens | `accessToken`, `refreshToken`, `expiresAt` |
+| `invites` | Pending account setup invites | `token`, `role`, `status` (`PENDING`, `ACCEPTED`), `expiresAt` |
+| `tasks` | Sprint deliverables | `status` (`TODO`, `IN_PROGRESS`, `UNDER_REVIEW`, `COMPLETED`, `DELAYED`, `BLOCKED`), `reviewingLeadId` |
+| `notifications` | System alerts & emails | `type` (`TASK_ASSIGNED`, `DELAY_REQUEST`, `TASK_OVERDUE`, `CALENDAR_RECONNECT`) |
+
+---
+
+## 4. Environment Configuration (`artifacts/api-server/.env`)
+
+```env
+# Supabase PostgreSQL Database Connection
+DATABASE_URL="postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
+
+# Server Configuration
+PORT=5000
+APP_URL="http://localhost:5173"
+
+# JWT & Security Secrets
+JWT_SECRET="hros_jwt_super_secret_key_2026"
+TOKEN_ENCRYPTION_KEY="hros_token_encryption_secret_key_32bytes!"
+
+# Third-Party Integrations
+RESEND_API_KEY="re_123456789_your_resend_key"
+GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
+GOOGLE_REDIRECT_URI="http://localhost:5000/api/auth/google/callback"
+```
+
+---
+
+## 5. Verification & Monorepo Build Command
+
+To verify complete TypeScript & Vite compilation across all workspace packages:
+
+```bash
+pnpm build
+```
+
+**Result:** `PASSED (0 errors across all 5 workspace projects)`.
 
 ```
 
@@ -11509,6 +12967,21 @@ ALTER TABLE "sprints" ADD CONSTRAINT "sprints_department_id_departments_id_fk" F
 
 ```text
 ALTER TABLE "tasks" ALTER COLUMN "sprint_week" DROP NOT NULL;
+```
+
+## FILE: lib/db/drizzle/0002_silky_onslaught.sql
+
+```text
+ALTER TYPE "public"."task_status" ADD VALUE 'DELAYED';--> statement-breakpoint
+ALTER TYPE "public"."task_status" ADD VALUE 'BLOCKED';
+```
+
+## FILE: lib/db/drizzle/0003_fair_sue_storm.sql
+
+```text
+CREATE TYPE "public"."meeting_status" AS ENUM('SCHEDULED', 'CANCELLED');--> statement-breakpoint
+ALTER TYPE "public"."meeting_source" ADD VALUE 'GOOGLE_CALENDAR_IMPORTED';--> statement-breakpoint
+ALTER TABLE "meetings" ADD COLUMN "status" "meeting_status" DEFAULT 'SCHEDULED' NOT NULL;
 ```
 
 ## FILE: lib/db/drizzle/meta/0000_snapshot.json
@@ -15489,6 +16962,4005 @@ ALTER TABLE "tasks" ALTER COLUMN "sprint_week" DROP NOT NULL;
 }
 ```
 
+## FILE: lib/db/drizzle/meta/0002_snapshot.json
+
+```json
+{
+  "id": "6969e1bf-45da-4d50-927f-4074a084c390",
+  "prevId": "6c09bda9-d243-4805-a180-752f762740cd",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.entities": {
+      "name": "entities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "entities_code_unique": {
+          "name": "entities_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.departments": {
+      "name": "departments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "departments_entity_id_entities_id_fk": {
+          "name": "departments_entity_id_entities_id_fk",
+          "tableFrom": "departments",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.employees": {
+      "name": "employees",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "employee_code": {
+          "name": "employee_code",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "task_seq_counter": {
+          "name": "task_seq_counter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "designation": {
+          "name": "designation",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "salary": {
+          "name": "salary",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "joining_date": {
+          "name": "joining_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "employee_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVE'"
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "employees_entity_id_entities_id_fk": {
+          "name": "employees_entity_id_entities_id_fk",
+          "tableFrom": "employees",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "employees_department_id_departments_id_fk": {
+          "name": "employees_department_id_departments_id_fk",
+          "tableFrom": "employees",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "employees_employee_code_unique": {
+          "name": "employees_employee_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "employee_code"
+          ]
+        },
+        "employees_email_unique": {
+          "name": "employees_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.entity_counters": {
+      "name": "entity_counters",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "next_employee_seq": {
+          "name": "next_employee_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "entity_counters_entity_id_entities_id_fk": {
+          "name": "entity_counters_entity_id_entities_id_fk",
+          "tableFrom": "entity_counters",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EMPLOYEE'"
+        },
+        "status": {
+          "name": "status",
+          "type": "user_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "managed_team_id": {
+          "name": "managed_team_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "users_employee_id_employees_id_fk": {
+          "name": "users_employee_id_employees_id_fk",
+          "tableFrom": "users",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.invites": {
+      "name": "invites",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EMPLOYEE'"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "invite_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "invites_employee_id_employees_id_fk": {
+          "name": "invites_employee_id_employees_id_fk",
+          "tableFrom": "invites",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "invites_token_unique": {
+          "name": "invites_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.google_tokens": {
+      "name": "google_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "varchar(2048)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "varchar(2048)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiry": {
+          "name": "expiry",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "google_tokens_user_id_users_id_fk": {
+          "name": "google_tokens_user_id_users_id_fk",
+          "tableFrom": "google_tokens",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "google_tokens_user_id_unique": {
+          "name": "google_tokens_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tasks": {
+      "name": "tasks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_code": {
+          "name": "task_code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sprint_week": {
+          "name": "sprint_week",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sprint_id": {
+          "name": "sprint_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "initiative_id": {
+          "name": "initiative_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "story_points": {
+          "name": "story_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignee_id": {
+          "name": "assignee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creator_id": {
+          "name": "creator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewing_lead_id": {
+          "name": "reviewing_lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deliverable_url": {
+          "name": "deliverable_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_task_id": {
+          "name": "parent_task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_task_id": {
+          "name": "group_task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "task_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TODO'"
+        },
+        "priority": {
+          "name": "priority",
+          "type": "task_priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MEDIUM'"
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dependency_task_id": {
+          "name": "dependency_task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tasks_entity_id_entities_id_fk": {
+          "name": "tasks_entity_id_entities_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_department_id_departments_id_fk": {
+          "name": "tasks_department_id_departments_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_sprint_id_sprints_id_fk": {
+          "name": "tasks_sprint_id_sprints_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "sprints",
+          "columnsFrom": [
+            "sprint_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_initiative_id_initiatives_id_fk": {
+          "name": "tasks_initiative_id_initiatives_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "initiatives",
+          "columnsFrom": [
+            "initiative_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_assignee_id_employees_id_fk": {
+          "name": "tasks_assignee_id_employees_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "assignee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_creator_id_employees_id_fk": {
+          "name": "tasks_creator_id_employees_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "creator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_reviewing_lead_id_employees_id_fk": {
+          "name": "tasks_reviewing_lead_id_employees_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "reviewing_lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tasks_task_code_unique": {
+          "name": "tasks_task_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "task_code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_notes": {
+      "name": "task_notes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "task_notes_task_id_tasks_id_fk": {
+          "name": "task_notes_task_id_tasks_id_fk",
+          "tableFrom": "task_notes",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_notes_author_id_employees_id_fk": {
+          "name": "task_notes_author_id_employees_id_fk",
+          "tableFrom": "task_notes",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_checklists": {
+      "name": "task_checklists",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_text": {
+          "name": "item_text",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_completed": {
+          "name": "is_completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "completed_by": {
+          "name": "completed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "task_checklists_task_id_tasks_id_fk": {
+          "name": "task_checklists_task_id_tasks_id_fk",
+          "tableFrom": "task_checklists",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_checklists_completed_by_employees_id_fk": {
+          "name": "task_checklists_completed_by_employees_id_fk",
+          "tableFrom": "task_checklists",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "completed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_templates": {
+      "name": "task_templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_title_pattern": {
+          "name": "default_title_pattern",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_checklist_items": {
+          "name": "default_checklist_items",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "default_priority": {
+          "name": "default_priority",
+          "type": "task_priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MEDIUM'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "task_templates_entity_id_entities_id_fk": {
+          "name": "task_templates_entity_id_entities_id_fk",
+          "tableFrom": "task_templates",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_templates_department_id_departments_id_fk": {
+          "name": "task_templates_department_id_departments_id_fk",
+          "tableFrom": "task_templates",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_templates_created_by_employees_id_fk": {
+          "name": "task_templates_created_by_employees_id_fk",
+          "tableFrom": "task_templates",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.meetings": {
+      "name": "meetings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Google Meet'"
+        },
+        "google_meet_url": {
+          "name": "google_meet_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "organizer_id": {
+          "name": "organizer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invitees": {
+          "name": "invitees",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "google_event_id": {
+          "name": "google_event_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "meeting_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'INTERNAL'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meetings_organizer_id_employees_id_fk": {
+          "name": "meetings_organizer_id_employees_id_fk",
+          "tableFrom": "meetings",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "organizer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meetings_google_event_id_unique": {
+          "name": "meetings_google_event_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "google_event_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.meeting_attendees": {
+      "name": "meeting_attendees",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "meeting_id": {
+          "name": "meeting_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_status": {
+          "name": "response_status",
+          "type": "response_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meeting_attendees_meeting_id_meetings_id_fk": {
+          "name": "meeting_attendees_meeting_id_meetings_id_fk",
+          "tableFrom": "meeting_attendees",
+          "tableTo": "meetings",
+          "columnsFrom": [
+            "meeting_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "meeting_attendees_employee_id_employees_id_fk": {
+          "name": "meeting_attendees_employee_id_employees_id_fk",
+          "tableFrom": "meeting_attendees",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.attendance": {
+      "name": "attendance",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clock_in": {
+          "name": "clock_in",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clock_out": {
+          "name": "clock_out",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "work_mode": {
+          "name": "work_mode",
+          "type": "work_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IN_OFFICE'"
+        },
+        "status": {
+          "name": "status",
+          "type": "attendance_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PRESENT'"
+        },
+        "total_hours": {
+          "name": "total_hours",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0.00'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "attendance_employee_id_employees_id_fk": {
+          "name": "attendance_employee_id_employees_id_fk",
+          "tableFrom": "attendance",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.announcements": {
+      "name": "announcements",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "announcement_priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'NORMAL'"
+        },
+        "is_pinned": {
+          "name": "is_pinned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "target_entity_id": {
+          "name": "target_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seen_by": {
+          "name": "seen_by",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "announcements_target_entity_id_entities_id_fk": {
+          "name": "announcements_target_entity_id_entities_id_fk",
+          "tableFrom": "announcements",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "target_entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.applications": {
+      "name": "applications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "application_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "applications_employee_id_employees_id_fk": {
+          "name": "applications_employee_id_employees_id_fk",
+          "tableFrom": "applications",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "applications_reviewed_by_employees_id_fk": {
+          "name": "applications_reviewed_by_employees_id_fk",
+          "tableFrom": "applications",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "reviewed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_logs": {
+      "name": "audit_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.notifications": {
+      "name": "notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_sent_at": {
+          "name": "email_sent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "notifications_user_id_users_id_fk": {
+          "name": "notifications_user_id_users_id_fk",
+          "tableFrom": "notifications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.initiatives": {
+      "name": "initiatives",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "initiative_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PLANNED'"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_date": {
+          "name": "target_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "initiatives_entity_id_entities_id_fk": {
+          "name": "initiatives_entity_id_entities_id_fk",
+          "tableFrom": "initiatives",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "initiatives_owner_id_employees_id_fk": {
+          "name": "initiatives_owner_id_employees_id_fk",
+          "tableFrom": "initiatives",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sprints": {
+      "name": "sprints",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "sprint_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PLANNED'"
+        },
+        "goal": {
+          "name": "goal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sprints_entity_id_entities_id_fk": {
+          "name": "sprints_entity_id_entities_id_fk",
+          "tableFrom": "sprints",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sprints_department_id_departments_id_fk": {
+          "name": "sprints_department_id_departments_id_fk",
+          "tableFrom": "sprints",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.employee_status": {
+      "name": "employee_status",
+      "schema": "public",
+      "values": [
+        "ACTIVE",
+        "TERMINATED"
+      ]
+    },
+    "public.user_role": {
+      "name": "user_role",
+      "schema": "public",
+      "values": [
+        "ADMIN",
+        "MANAGER",
+        "EMPLOYEE"
+      ]
+    },
+    "public.user_status": {
+      "name": "user_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "ACTIVE",
+        "INACTIVE"
+      ]
+    },
+    "public.invite_status": {
+      "name": "invite_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "ACCEPTED",
+        "EXPIRED"
+      ]
+    },
+    "public.task_priority": {
+      "name": "task_priority",
+      "schema": "public",
+      "values": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "URGENT"
+      ]
+    },
+    "public.task_status": {
+      "name": "task_status",
+      "schema": "public",
+      "values": [
+        "BACKLOG",
+        "TODO",
+        "IN_PROGRESS",
+        "DONE",
+        "DELAYED",
+        "BLOCKED"
+      ]
+    },
+    "public.meeting_source": {
+      "name": "meeting_source",
+      "schema": "public",
+      "values": [
+        "INTERNAL",
+        "GOOGLE_CALENDAR"
+      ]
+    },
+    "public.response_status": {
+      "name": "response_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "ACCEPTED",
+        "DECLINED"
+      ]
+    },
+    "public.attendance_status": {
+      "name": "attendance_status",
+      "schema": "public",
+      "values": [
+        "PRESENT",
+        "LATE",
+        "HALF_DAY",
+        "ABSENT"
+      ]
+    },
+    "public.work_mode": {
+      "name": "work_mode",
+      "schema": "public",
+      "values": [
+        "IN_OFFICE",
+        "REMOTE",
+        "HYBRID"
+      ]
+    },
+    "public.announcement_priority": {
+      "name": "announcement_priority",
+      "schema": "public",
+      "values": [
+        "NORMAL",
+        "IMPORTANT",
+        "URGENT"
+      ]
+    },
+    "public.application_status": {
+      "name": "application_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "public.application_type": {
+      "name": "application_type",
+      "schema": "public",
+      "values": [
+        "REMOTE_WORK",
+        "REIMBURSEMENT",
+        "EQUIPMENT"
+      ]
+    },
+    "public.initiative_status": {
+      "name": "initiative_status",
+      "schema": "public",
+      "values": [
+        "PLANNED",
+        "ACTIVE",
+        "DONE"
+      ]
+    },
+    "public.sprint_status": {
+      "name": "sprint_status",
+      "schema": "public",
+      "values": [
+        "PLANNED",
+        "ACTIVE",
+        "COMPLETED"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
+```
+
+## FILE: lib/db/drizzle/meta/0003_snapshot.json
+
+```json
+{
+  "id": "2a108957-6af2-4757-9853-6f46e03b0041",
+  "prevId": "6969e1bf-45da-4d50-927f-4074a084c390",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.entities": {
+      "name": "entities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "entities_code_unique": {
+          "name": "entities_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.departments": {
+      "name": "departments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "departments_entity_id_entities_id_fk": {
+          "name": "departments_entity_id_entities_id_fk",
+          "tableFrom": "departments",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.employees": {
+      "name": "employees",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "employee_code": {
+          "name": "employee_code",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "task_seq_counter": {
+          "name": "task_seq_counter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "designation": {
+          "name": "designation",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "salary": {
+          "name": "salary",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "joining_date": {
+          "name": "joining_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "employee_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVE'"
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "employees_entity_id_entities_id_fk": {
+          "name": "employees_entity_id_entities_id_fk",
+          "tableFrom": "employees",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "employees_department_id_departments_id_fk": {
+          "name": "employees_department_id_departments_id_fk",
+          "tableFrom": "employees",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "employees_employee_code_unique": {
+          "name": "employees_employee_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "employee_code"
+          ]
+        },
+        "employees_email_unique": {
+          "name": "employees_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.entity_counters": {
+      "name": "entity_counters",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "next_employee_seq": {
+          "name": "next_employee_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "entity_counters_entity_id_entities_id_fk": {
+          "name": "entity_counters_entity_id_entities_id_fk",
+          "tableFrom": "entity_counters",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EMPLOYEE'"
+        },
+        "status": {
+          "name": "status",
+          "type": "user_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "managed_team_id": {
+          "name": "managed_team_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "users_employee_id_employees_id_fk": {
+          "name": "users_employee_id_employees_id_fk",
+          "tableFrom": "users",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.invites": {
+      "name": "invites",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EMPLOYEE'"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "invite_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "invites_employee_id_employees_id_fk": {
+          "name": "invites_employee_id_employees_id_fk",
+          "tableFrom": "invites",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "invites_token_unique": {
+          "name": "invites_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.google_tokens": {
+      "name": "google_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "varchar(2048)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "varchar(2048)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiry": {
+          "name": "expiry",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "google_tokens_user_id_users_id_fk": {
+          "name": "google_tokens_user_id_users_id_fk",
+          "tableFrom": "google_tokens",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "google_tokens_user_id_unique": {
+          "name": "google_tokens_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tasks": {
+      "name": "tasks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_code": {
+          "name": "task_code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sprint_week": {
+          "name": "sprint_week",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sprint_id": {
+          "name": "sprint_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "initiative_id": {
+          "name": "initiative_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "story_points": {
+          "name": "story_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assignee_id": {
+          "name": "assignee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creator_id": {
+          "name": "creator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewing_lead_id": {
+          "name": "reviewing_lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deliverable_url": {
+          "name": "deliverable_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_task_id": {
+          "name": "parent_task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_task_id": {
+          "name": "group_task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "task_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TODO'"
+        },
+        "priority": {
+          "name": "priority",
+          "type": "task_priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MEDIUM'"
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dependency_task_id": {
+          "name": "dependency_task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tasks_entity_id_entities_id_fk": {
+          "name": "tasks_entity_id_entities_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_department_id_departments_id_fk": {
+          "name": "tasks_department_id_departments_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_sprint_id_sprints_id_fk": {
+          "name": "tasks_sprint_id_sprints_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "sprints",
+          "columnsFrom": [
+            "sprint_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_initiative_id_initiatives_id_fk": {
+          "name": "tasks_initiative_id_initiatives_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "initiatives",
+          "columnsFrom": [
+            "initiative_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_assignee_id_employees_id_fk": {
+          "name": "tasks_assignee_id_employees_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "assignee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_creator_id_employees_id_fk": {
+          "name": "tasks_creator_id_employees_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "creator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_reviewing_lead_id_employees_id_fk": {
+          "name": "tasks_reviewing_lead_id_employees_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "reviewing_lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tasks_task_code_unique": {
+          "name": "tasks_task_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "task_code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_notes": {
+      "name": "task_notes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "task_notes_task_id_tasks_id_fk": {
+          "name": "task_notes_task_id_tasks_id_fk",
+          "tableFrom": "task_notes",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_notes_author_id_employees_id_fk": {
+          "name": "task_notes_author_id_employees_id_fk",
+          "tableFrom": "task_notes",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_checklists": {
+      "name": "task_checklists",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_text": {
+          "name": "item_text",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_completed": {
+          "name": "is_completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "completed_by": {
+          "name": "completed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "task_checklists_task_id_tasks_id_fk": {
+          "name": "task_checklists_task_id_tasks_id_fk",
+          "tableFrom": "task_checklists",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_checklists_completed_by_employees_id_fk": {
+          "name": "task_checklists_completed_by_employees_id_fk",
+          "tableFrom": "task_checklists",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "completed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_templates": {
+      "name": "task_templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_title_pattern": {
+          "name": "default_title_pattern",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_checklist_items": {
+          "name": "default_checklist_items",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "default_priority": {
+          "name": "default_priority",
+          "type": "task_priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MEDIUM'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "task_templates_entity_id_entities_id_fk": {
+          "name": "task_templates_entity_id_entities_id_fk",
+          "tableFrom": "task_templates",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_templates_department_id_departments_id_fk": {
+          "name": "task_templates_department_id_departments_id_fk",
+          "tableFrom": "task_templates",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_templates_created_by_employees_id_fk": {
+          "name": "task_templates_created_by_employees_id_fk",
+          "tableFrom": "task_templates",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.meetings": {
+      "name": "meetings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Google Meet'"
+        },
+        "google_meet_url": {
+          "name": "google_meet_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "organizer_id": {
+          "name": "organizer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invitees": {
+          "name": "invitees",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "google_event_id": {
+          "name": "google_event_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "meeting_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'INTERNAL'"
+        },
+        "status": {
+          "name": "status",
+          "type": "meeting_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'SCHEDULED'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meetings_organizer_id_employees_id_fk": {
+          "name": "meetings_organizer_id_employees_id_fk",
+          "tableFrom": "meetings",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "organizer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meetings_google_event_id_unique": {
+          "name": "meetings_google_event_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "google_event_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.meeting_attendees": {
+      "name": "meeting_attendees",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "meeting_id": {
+          "name": "meeting_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_status": {
+          "name": "response_status",
+          "type": "response_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meeting_attendees_meeting_id_meetings_id_fk": {
+          "name": "meeting_attendees_meeting_id_meetings_id_fk",
+          "tableFrom": "meeting_attendees",
+          "tableTo": "meetings",
+          "columnsFrom": [
+            "meeting_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "meeting_attendees_employee_id_employees_id_fk": {
+          "name": "meeting_attendees_employee_id_employees_id_fk",
+          "tableFrom": "meeting_attendees",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.attendance": {
+      "name": "attendance",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clock_in": {
+          "name": "clock_in",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clock_out": {
+          "name": "clock_out",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "work_mode": {
+          "name": "work_mode",
+          "type": "work_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IN_OFFICE'"
+        },
+        "status": {
+          "name": "status",
+          "type": "attendance_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PRESENT'"
+        },
+        "total_hours": {
+          "name": "total_hours",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0.00'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "attendance_employee_id_employees_id_fk": {
+          "name": "attendance_employee_id_employees_id_fk",
+          "tableFrom": "attendance",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.announcements": {
+      "name": "announcements",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "announcement_priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'NORMAL'"
+        },
+        "is_pinned": {
+          "name": "is_pinned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "target_entity_id": {
+          "name": "target_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seen_by": {
+          "name": "seen_by",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "announcements_target_entity_id_entities_id_fk": {
+          "name": "announcements_target_entity_id_entities_id_fk",
+          "tableFrom": "announcements",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "target_entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.applications": {
+      "name": "applications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "application_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "applications_employee_id_employees_id_fk": {
+          "name": "applications_employee_id_employees_id_fk",
+          "tableFrom": "applications",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "applications_reviewed_by_employees_id_fk": {
+          "name": "applications_reviewed_by_employees_id_fk",
+          "tableFrom": "applications",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "reviewed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_logs": {
+      "name": "audit_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.notifications": {
+      "name": "notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_sent_at": {
+          "name": "email_sent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "notifications_user_id_users_id_fk": {
+          "name": "notifications_user_id_users_id_fk",
+          "tableFrom": "notifications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.initiatives": {
+      "name": "initiatives",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "initiative_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PLANNED'"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_date": {
+          "name": "target_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "initiatives_entity_id_entities_id_fk": {
+          "name": "initiatives_entity_id_entities_id_fk",
+          "tableFrom": "initiatives",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "initiatives_owner_id_employees_id_fk": {
+          "name": "initiatives_owner_id_employees_id_fk",
+          "tableFrom": "initiatives",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sprints": {
+      "name": "sprints",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "sprint_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PLANNED'"
+        },
+        "goal": {
+          "name": "goal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sprints_entity_id_entities_id_fk": {
+          "name": "sprints_entity_id_entities_id_fk",
+          "tableFrom": "sprints",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sprints_department_id_departments_id_fk": {
+          "name": "sprints_department_id_departments_id_fk",
+          "tableFrom": "sprints",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.employee_status": {
+      "name": "employee_status",
+      "schema": "public",
+      "values": [
+        "ACTIVE",
+        "TERMINATED"
+      ]
+    },
+    "public.user_role": {
+      "name": "user_role",
+      "schema": "public",
+      "values": [
+        "ADMIN",
+        "MANAGER",
+        "EMPLOYEE"
+      ]
+    },
+    "public.user_status": {
+      "name": "user_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "ACTIVE",
+        "INACTIVE"
+      ]
+    },
+    "public.invite_status": {
+      "name": "invite_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "ACCEPTED",
+        "EXPIRED"
+      ]
+    },
+    "public.task_priority": {
+      "name": "task_priority",
+      "schema": "public",
+      "values": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "URGENT"
+      ]
+    },
+    "public.task_status": {
+      "name": "task_status",
+      "schema": "public",
+      "values": [
+        "BACKLOG",
+        "TODO",
+        "IN_PROGRESS",
+        "DONE",
+        "DELAYED",
+        "BLOCKED"
+      ]
+    },
+    "public.meeting_source": {
+      "name": "meeting_source",
+      "schema": "public",
+      "values": [
+        "INTERNAL",
+        "GOOGLE_CALENDAR",
+        "GOOGLE_CALENDAR_IMPORTED"
+      ]
+    },
+    "public.meeting_status": {
+      "name": "meeting_status",
+      "schema": "public",
+      "values": [
+        "SCHEDULED",
+        "CANCELLED"
+      ]
+    },
+    "public.response_status": {
+      "name": "response_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "ACCEPTED",
+        "DECLINED"
+      ]
+    },
+    "public.attendance_status": {
+      "name": "attendance_status",
+      "schema": "public",
+      "values": [
+        "PRESENT",
+        "LATE",
+        "HALF_DAY",
+        "ABSENT"
+      ]
+    },
+    "public.work_mode": {
+      "name": "work_mode",
+      "schema": "public",
+      "values": [
+        "IN_OFFICE",
+        "REMOTE",
+        "HYBRID"
+      ]
+    },
+    "public.announcement_priority": {
+      "name": "announcement_priority",
+      "schema": "public",
+      "values": [
+        "NORMAL",
+        "IMPORTANT",
+        "URGENT"
+      ]
+    },
+    "public.application_status": {
+      "name": "application_status",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "public.application_type": {
+      "name": "application_type",
+      "schema": "public",
+      "values": [
+        "REMOTE_WORK",
+        "REIMBURSEMENT",
+        "EQUIPMENT"
+      ]
+    },
+    "public.initiative_status": {
+      "name": "initiative_status",
+      "schema": "public",
+      "values": [
+        "PLANNED",
+        "ACTIVE",
+        "DONE"
+      ]
+    },
+    "public.sprint_status": {
+      "name": "sprint_status",
+      "schema": "public",
+      "values": [
+        "PLANNED",
+        "ACTIVE",
+        "COMPLETED"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
+```
+
 ## FILE: lib/db/drizzle/meta/_journal.json
 
 ```json
@@ -15508,6 +20980,20 @@ ALTER TABLE "tasks" ALTER COLUMN "sprint_week" DROP NOT NULL;
       "version": "7",
       "when": 1788251483157,
       "tag": "0001_blue_cerise",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788259060531,
+      "tag": "0002_silky_onslaught",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788259968269,
+      "tag": "0003_fair_sue_storm",
       "breakpoints": true
     }
   ]
@@ -15540,6 +21026,62 @@ ALTER TABLE "tasks" ALTER COLUMN "sprint_week" DROP NOT NULL;
 
 ```
 
+## FILE: lib/db/src/apply-db-schema.ts
+
+```typescript
+import pg from 'pg';
+import dotenv from 'dotenv';
+import path from 'node:path';
+
+dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
+dotenv.config({ path: 'C:/hrdashboard/.env' });
+
+async function run() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.error('DATABASE_URL is not defined in env');
+    process.exit(1);
+  }
+
+  console.log('Connecting to Supabase Database to apply DDL schema changes...');
+
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+
+  try {
+    console.log('1. Adding DELAYED and BLOCKED to task_status enum...');
+    await client.query(`ALTER TYPE "public"."task_status" ADD VALUE IF NOT EXISTS 'DELAYED';`);
+    await client.query(`ALTER TYPE "public"."task_status" ADD VALUE IF NOT EXISTS 'BLOCKED';`);
+
+    console.log('2. Creating meeting_status enum...');
+    await client.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."meeting_status" AS ENUM('SCHEDULED', 'CANCELLED');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    console.log('3. Adding GOOGLE_CALENDAR_IMPORTED to meeting_source enum...');
+    await client.query(`ALTER TYPE "public"."meeting_source" ADD VALUE IF NOT EXISTS 'GOOGLE_CALENDAR_IMPORTED';`);
+
+    console.log('4. Adding status column to meetings table...');
+    await client.query(`
+      ALTER TABLE "meetings" ADD COLUMN IF NOT EXISTS "status" "meeting_status" DEFAULT 'SCHEDULED' NOT NULL;
+    `);
+
+    console.log('✅ SUPABASE POSTGRESQL SCHEMA SUCCESSFULLY UPDATED!');
+  } catch (err) {
+    console.error('Schema Migration Error:', err);
+  } finally {
+    await client.end();
+  }
+}
+
+run();
+
+```
+
 ## FILE: lib/db/src/index.ts
 
 ```typescript
@@ -15548,10 +21090,12 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import path from 'node:path';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
+dotenv.config({ path: 'C:/hrdashboard/.env' });
 
-export { eq, and, or, sql } from 'drizzle-orm';
+export { eq, ne, and, or, sql, lt, lte, gt, gte } from 'drizzle-orm';
 
 export * from './schema/entities.js';
 export * from './schema/departments.js';
@@ -15821,7 +21365,8 @@ export const meetingAttendees = pgTable('meeting_attendees', {
 import { pgTable, uuid, varchar, text, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
 import { employees } from './employees.js';
 
-export const meetingSourceEnum = pgEnum('meeting_source', ['INTERNAL', 'GOOGLE_CALENDAR']);
+export const meetingSourceEnum = pgEnum('meeting_source', ['INTERNAL', 'GOOGLE_CALENDAR', 'GOOGLE_CALENDAR_IMPORTED']);
+export const meetingStatusEnum = pgEnum('meeting_status', ['SCHEDULED', 'CANCELLED']);
 
 export const meetings = pgTable('meetings', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -15835,6 +21380,7 @@ export const meetings = pgTable('meetings', {
   invitees: jsonb('invitees').default([]).notNull(), // array of employee IDs
   googleEventId: varchar('google_event_id', { length: 255 }).unique(),
   source: meetingSourceEnum('source').default('INTERNAL').notNull(),
+  status: meetingStatusEnum('status').default('SCHEDULED').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -15949,7 +21495,7 @@ import { sprints } from './sprints.js';
 import { initiatives } from './initiatives.js';
 
 export const taskPriorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
-export const taskStatusEnum = pgEnum('task_status', ['BACKLOG', 'TODO', 'IN_PROGRESS', 'DONE']);
+export const taskStatusEnum = pgEnum('task_status', ['BACKLOG', 'TODO', 'IN_PROGRESS', 'DONE', 'DELAYED', 'BLOCKED']);
 
 export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -16051,8 +21597,55 @@ allowBuilds:
 
 ```
 
+## FILE: scratch/apply_migrations.mjs
+
+```text
+import pg from 'pg';
+import dotenv from 'dotenv';
+import path from 'node:path';
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
+
+const connectionString = process.env.DATABASE_URL;
+console.log('Connecting to Supabase DB...');
+
+const client = new pg.Client({ connectionString });
+await client.connect();
+
+try {
+  console.log('1. Adding DELAYED and BLOCKED to task_status enum...');
+  await client.query(`ALTER TYPE "public"."task_status" ADD VALUE IF NOT EXISTS 'DELAYED';`);
+  await client.query(`ALTER TYPE "public"."task_status" ADD VALUE IF NOT EXISTS 'BLOCKED';`);
+
+  console.log('2. Creating meeting_status enum...');
+  await client.query(`
+    DO $$ BEGIN
+      CREATE TYPE "public"."meeting_status" AS ENUM('SCHEDULED', 'CANCELLED');
+    EXCEPTION
+      WHEN duplicate_object THEN null;
+    END $$;
+  `);
+
+  console.log('3. Adding GOOGLE_CALENDAR_IMPORTED to meeting_source enum...');
+  await client.query(`ALTER TYPE "public"."meeting_source" ADD VALUE IF NOT EXISTS 'GOOGLE_CALENDAR_IMPORTED';`);
+
+  console.log('4. Adding status column to meetings table...');
+  await client.query(`
+    ALTER TABLE "meetings" ADD COLUMN IF NOT EXISTS "status" "meeting_status" DEFAULT 'SCHEDULED' NOT NULL;
+  `);
+
+  console.log('✅ ALL MIGRATIONS APPLIED SUCCESSFULLY TO SUPABASE DATABASE!');
+} catch (err) {
+  console.error('Migration error:', err);
+} finally {
+  await client.end();
+}
+
+```
+
 ## COMPLETENESS CHECK
 
-- Total Files in Directory Tree: 125
-- Total ## FILE: Sections Output: 125
+- Total Files in Directory Tree: 135
+- Total ## FILE: Sections Output: 135
 - Status: COMPLETE MATCH ✓

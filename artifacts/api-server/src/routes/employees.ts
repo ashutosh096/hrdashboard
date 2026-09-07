@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, employees, entities, entityCounters, departments, eq, sql } from '@workspace/db';
+import { db, employees, entities, entityCounters, departments, invites, eq, sql } from '@workspace/db';
 import { sendInviteEmail } from '../services/email.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
+
+// Apply requireAuth to all employee endpoints
+router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
@@ -14,10 +18,13 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
-  const { firstName, lastName, email, entityId, departmentId, designation, salary, joiningDate } = req.body;
+// Enforce ADMIN and MANAGER role for creating employees
+router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const { firstName, lastName, email, entityId, departmentId, designation, salary, joiningDate, role } = req.body;
 
   try {
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+
     const result = await db.transaction(async (tx) => {
       // 1. Fetch entityCode dynamically from entities table by entityId
       let targetEntityId = entityId;
@@ -74,13 +81,28 @@ router.post('/', async (req, res) => {
         })
         .returning();
 
+      // 5. Insert Invite record inside the same transaction
+      const expiresAt = new Date(Date.now() + 7 * 86400000); // 7 days from now
+      await tx
+        .insert(invites)
+        .values({
+          email: email.toLowerCase().trim(),
+          token: inviteToken,
+          role: (role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
+          employeeId: newEmployee.id,
+          status: 'PENDING',
+          expiresAt,
+        });
+
       return { newEmployee, entityCode };
     });
 
-    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
+
     await sendInviteEmail(email, inviteToken, `${firstName} ${lastName}`);
 
-    res.status(201).json({ employee: result.newEmployee, inviteToken });
+    res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink });
   } catch (err: any) {
     console.error('[EMPLOYEE CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create employee' });

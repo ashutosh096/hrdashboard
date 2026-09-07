@@ -14,6 +14,8 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  Zap,
+  TrendingUp,
 } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
 
@@ -26,10 +28,11 @@ export const Sidebar: React.FC = () => {
       title: 'Work',
       items: [
         { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-        { label: 'Tasks', path: '/tasks', icon: CheckSquare },
+        { label: 'Product Backlog', path: '/tasks', icon: CheckSquare },
+        { label: 'Sprints', path: '/sprints', icon: Zap },
+        { label: 'Applications', path: '/applications', icon: Briefcase },
         { label: 'Team Tasks', path: '/team-tasks', icon: Users },
         { label: 'Meetings', path: '/meetings', icon: Calendar },
-        { label: 'Office Today', path: '/office-today', icon: Building2 },
       ],
     },
     {
@@ -37,14 +40,13 @@ export const Sidebar: React.FC = () => {
       items: [
         { label: 'Attendance', path: '/attendance', icon: Clock },
         { label: 'Team', path: '/team', icon: Users },
-        { label: 'Applications', path: '/applications', icon: Briefcase },
+        { label: 'Notifications', path: '/notifications', icon: Bell },
       ],
     },
     {
       title: 'Company',
       items: [
         { label: 'Announcements', path: '/announcements', icon: Megaphone },
-        { label: 'Notifications', path: '/notifications', icon: Bell },
         { label: 'Reports', path: '/reports', icon: BarChart3 },
         { label: 'Settings', path: '/settings', icon: Settings },
       ],

@@ -14,8 +14,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
   const mockResults = [
     { type: 'Task', code: 'EHM-MAR-ADH-672', title: 'Brand Refresh Assets & Social Kit', icon: CheckSquare },
     { type: 'Task', code: 'CAG-DEV-SPR-101', title: 'IoT Sensor API Gateway v2', icon: CheckSquare },
-    { type: 'Employee', code: 'EHM Marketing', title: 'Priya Sharma (Senior Brand Strategist)', icon: User },
-    { type: 'Employee', code: 'CAG Engineering', title: 'Rahul Verma (IoT Systems Architect)', icon: User },
+    { type: 'Employee', code: 'EHM Marketing', title: 'Priyanka Sharma (Senior Brand Strategist)', icon: User },
+    { type: 'Employee', code: 'CAG Operations', title: "Tarul Ma'am (Delivery Associate)", icon: User },
     { type: 'Meeting', code: '09:00 AM Today', title: 'Team Standup & Sprint Sync', icon: Calendar },
     { type: 'Announcement', code: 'Pinned Notice', title: 'Q3 All-Hands & Entity Performance Review', icon: Megaphone },
   ].filter(r => query === '' || r.title.toLowerCase().includes(query.toLowerCase()) || r.code.toLowerCase().includes(query.toLowerCase()));

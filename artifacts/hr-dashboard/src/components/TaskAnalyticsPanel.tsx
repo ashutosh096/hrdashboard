@@ -6,10 +6,18 @@ export const TaskAnalyticsPanel: React.FC = () => {
   const { selectedEntity } = useEntity();
 
   const employeeAnalytics = [
-    { name: 'Priya Sharma', entity: 'EHM', total: 12, completed: 11, pending: 1, rate: 91.6, status: 'Excellent' },
-    { name: 'Rahul Verma', entity: 'CAG', total: 10, completed: 8, pending: 2, rate: 80.0, status: 'Good' },
-    { name: 'Anita Desai', entity: 'EHM', total: 15, completed: 12, pending: 3, rate: 80.0, status: 'Good' },
-    { name: 'Vikram Mehta', entity: 'CAG', total: 12, completed: 9, pending: 3, rate: 75.0, status: 'On Track' },
+    { name: 'Ashutosh Mishra', entity: 'EHM', total: 12, completed: 11, pending: 1, rate: 91.6, status: 'Excellent' },
+    { name: 'Priyanka Sharma', entity: 'EHM', total: 14, completed: 12, pending: 2, rate: 85.7, status: 'Good' },
+    { name: 'Utkarsh Mishra', entity: 'EHM', total: 15, completed: 14, pending: 1, rate: 93.3, status: 'Excellent' },
+    { name: 'Prerna Shukla', entity: 'EHM', total: 11, completed: 10, pending: 1, rate: 90.9, status: 'Excellent' },
+    { name: 'Shreyansh Siladar', entity: 'EHM', total: 10, completed: 8, pending: 2, rate: 80.0, status: 'Good' },
+    { name: "Tarul Ma'am", entity: 'CAG', total: 9, completed: 8, pending: 1, rate: 88.8, status: 'Good' },
+    { name: 'Dr. Harshit Mishra', entity: 'EHM', total: 16, completed: 16, pending: 0, rate: 100.0, status: 'Excellent' },
+    { name: 'Neha Shukla', entity: 'EHM', total: 12, completed: 11, pending: 1, rate: 91.6, status: 'Excellent' },
+    { name: 'Dr. Utsav Mishra', entity: 'CAG', total: 13, completed: 12, pending: 1, rate: 92.3, status: 'Excellent' },
+    { name: 'Jitendra Sir', entity: 'EHM', total: 18, completed: 18, pending: 0, rate: 100.0, status: 'Excellent' },
+    { name: 'Pranshu Dubey', entity: 'EHM', total: 14, completed: 13, pending: 1, rate: 92.8, status: 'Excellent' },
+    { name: 'Himanshu Tiwari', entity: 'CAG', total: 10, completed: 8, pending: 2, rate: 80.0, status: 'Good' },
   ].filter(emp => selectedEntity === 'ALL' || emp.entity === selectedEntity);
 
   const totalAssigned = employeeAnalytics.reduce((acc, curr) => acc + curr.total, 0);

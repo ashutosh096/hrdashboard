@@ -4,9 +4,10 @@ import { departments } from './departments.js';
 import { employees } from './employees.js';
 import { sprints } from './sprints.js';
 import { initiatives } from './initiatives.js';
+import { epics } from './epics.js';
 
 export const taskPriorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
-export const taskStatusEnum = pgEnum('task_status', ['BACKLOG', 'TODO', 'IN_PROGRESS', 'DONE']);
+export const taskStatusEnum = pgEnum('task_status', ['BACKLOG', 'TODO', 'IN_PROGRESS', 'DONE', 'DELAYED', 'BLOCKED']);
 
 export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -18,6 +19,7 @@ export const tasks = pgTable('tasks', {
   sprintWeek: varchar('sprint_week', { length: 50 }), // Nullable now since we have sprintId FK
   sprintId: uuid('sprint_id').references(() => sprints.id),
   initiativeId: uuid('initiative_id').references(() => initiatives.id),
+  epicId: uuid('epic_id').references(() => epics.id),
   storyPoints: integer('story_points'),
   assigneeId: uuid('assignee_id').references(() => employees.id).notNull(),
   creatorId: uuid('creator_id').references(() => employees.id).notNull(),

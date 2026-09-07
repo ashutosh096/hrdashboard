@@ -1,18 +1,42 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { ShieldCheck, Lock, Chrome } from 'lucide-react';
+import { ShieldCheck, Chrome } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const AcceptInviteView: React.FC = () => {
   const [, setLocation] = useLocation();
+  const { setUserSession } = useAuth();
   const [password, setPassword] = useState('');
-  const searchParams = new URLSearchParams(window.location.search);
-  const token = searchParams.get('token') || 'demo-token';
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSetPassword = (e: React.FormEvent) => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const token = searchParams.get('token') || '';
+
+  const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Account activated successfully! Redirecting to Dashboard...');
-    setTimeout(() => setLocation('/?welcome=true'), 1200);
+    if (!token) {
+      toast.error('Invite token is missing from URL parameters.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetchApi<{ token: string; user: any }>('/api/auth/set-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, password }),
+      });
+
+      setUserSession(res.user, res.token);
+      toast.success('Account activated successfully! Welcome to HROS.');
+      setLocation('/dashboard');
+    } catch (err: any) {
+      console.error('[SET-PASSWORD ERROR]:', err);
+      toast.error(err.message || 'Invalid, expired, or already-used invite token');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoogleOAuth = () => {
@@ -20,7 +44,7 @@ export const AcceptInviteView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 select-none">
       <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-md w-full shadow-xl space-y-6">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mx-auto">
@@ -50,6 +74,7 @@ export const AcceptInviteView: React.FC = () => {
               <input
                 type="password"
                 required
+                minLength={6}
                 placeholder="At least 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -58,9 +83,10 @@ export const AcceptInviteView: React.FC = () => {
             </div>
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl shadow-md transition-all"
             >
-              Activate Account & Proceed
+              {isSubmitting ? 'Activating Account...' : 'Activate Account & Proceed'}
             </button>
           </form>
         </div>

@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { Megaphone, Pin, Plus, X, AlertTriangle, Shield, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Megaphone, Pin, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const AnnouncementsView: React.FC = () => {
   const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -16,47 +19,45 @@ export const AnnouncementsView: React.FC = () => {
   const [entityScope, setEntityScope] = useState<'BOTH' | 'EHM' | 'CAG'>('BOTH');
   const [isPinned, setIsPinned] = useState(true);
 
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: '1',
-      title: 'Q3 All-Hands & Entity Performance Review',
-      content: 'Join us this Thursday at 4 PM for the combined ehmconsultancy and climagroanalytics quarterly review.',
-      priority: 'URGENT',
-      date: 'Aug 29, 2026',
-      isPinned: true,
-      scope: 'ehmconsultancy & climagroanalytics',
-    },
-    {
-      id: '2',
-      title: 'Updated Google Calendar & Meet Sync Guide',
-      content: 'All employees are requested to connect Google OAuth on first login to sync meeting links.',
-      priority: 'IMPORTANT',
-      date: 'Aug 30, 2026',
-      isPinned: true,
-      scope: 'All Companies',
-    },
-  ]);
+  const loadAnnouncements = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchApi<any[]>('/api/announcements');
+      setAnnouncements(data);
+    } catch (err) {
+      console.error('[ANNOUNCEMENTS FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadAnnouncements();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newAnnouncement = {
-      id: `ann-${Date.now()}`,
-      title,
-      content,
-      priority,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      isPinned,
-      scope: entityScope === 'EHM' ? 'ehmconsultancy' : entityScope === 'CAG' ? 'climagroanalytics' : 'All Companies',
-    };
+    try {
+      const newAnn = await fetchApi<any>('/api/announcements', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          content,
+          priority,
+          isPinned,
+        }),
+      });
 
-    setAnnouncements([newAnnouncement, ...announcements]);
-    toast.success('Announcement published successfully to company feed!');
-    setShowModal(false);
-    // Reset form
-    setTitle('');
-    setContent('');
-    setPriority('IMPORTANT');
-    setIsPinned(true);
+      toast.success('Announcement published successfully to company feed!');
+      loadAnnouncements();
+      setShowModal(false);
+      setTitle('');
+      setContent('');
+      setPriority('IMPORTANT');
+      setIsPinned(true);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to post announcement');
+    }
   };
 
   return (
@@ -80,37 +81,41 @@ export const AnnouncementsView: React.FC = () => {
         )}
       </div>
 
-      {/* Announcements List — Visible to ALL Managers and ALL Employees */}
-      <div className="space-y-4 max-w-3xl">
-        {announcements.map((item) => (
-          <div key={item.id} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {item.isPinned && <Pin className="w-4 h-4 text-emerald-600 fill-emerald-600" />}
-                <h3 className="font-bold text-gray-900 text-base">{item.title}</h3>
+      {/* Announcements List */}
+      {loading ? (
+        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading company announcements...</div>
+      ) : (
+        <div className="space-y-4 max-w-3xl">
+          {announcements.map((item, idx) => (
+            <div key={item.id || idx} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {item.isPinned && <Pin className="w-4 h-4 text-emerald-600 fill-emerald-600" />}
+                  <h3 className="font-bold text-gray-900 text-base">{item.title}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
+                    All Companies
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      item.priority === 'URGENT'
+                        ? 'bg-red-100 text-red-800 border-red-200'
+                        : item.priority === 'IMPORTANT'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}
+                  >
+                    {item.priority || 'NORMAL'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
-                  {item.scope}
-                </span>
-                <span
-                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                    item.priority === 'URGENT'
-                      ? 'bg-red-100 text-red-800 border-red-200'
-                      : item.priority === 'IMPORTANT'
-                      ? 'bg-amber-100 text-amber-800 border-amber-200'
-                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                  }`}
-                >
-                  {item.priority}
-                </span>
-              </div>
+              <p className="text-sm text-gray-600 font-medium leading-relaxed">{item.content}</p>
+              <span className="text-xs text-gray-400 font-medium block pt-2">{item.createdAt || 'Recent'}</span>
             </div>
-            <p className="text-sm text-gray-600 font-medium leading-relaxed">{item.content}</p>
-            <span className="text-xs text-gray-400 font-medium block pt-2">{item.date}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Create Announcement Modal */}
       {showModal && (
@@ -131,7 +136,6 @@ export const AnnouncementsView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
-              {/* Title */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Announcement Title <span className="text-red-500">*</span>
@@ -147,7 +151,6 @@ export const AnnouncementsView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {/* Priority */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Priority Badge</label>
                   <select
@@ -162,7 +165,6 @@ export const AnnouncementsView: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Company Scope */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Target Scope</label>
                   <select
@@ -177,7 +179,6 @@ export const AnnouncementsView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Pin to Top Checkbox */}
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
@@ -191,7 +192,6 @@ export const AnnouncementsView: React.FC = () => {
                 </label>
               </div>
 
-              {/* Content / Body */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Announcement Details <span className="text-red-500">*</span>
@@ -206,7 +206,6 @@ export const AnnouncementsView: React.FC = () => {
                 ></textarea>
               </div>
 
-              {/* Modal Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"

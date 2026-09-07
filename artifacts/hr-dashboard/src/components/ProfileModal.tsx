@@ -1,8 +1,8 @@
 import React from 'react';
-import { X, Mail, Shield, Building2, Briefcase, LogOut } from 'lucide-react';
+import { X, Mail, Shield, Building2, User, Key, LogOut, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntity } from '../contexts/EntityContext';
 import { toast } from 'sonner';
+import { getAvatarByName } from '../utils/avatars';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -10,22 +10,19 @@ interface ProfileModalProps {
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
-  const { user, setRole, logout } = useAuth();
-  const { selectedEntity } = useEntity();
+  const { user, logout, setRole } = useAuth();
 
   if (!isOpen) return null;
 
-  const entityName =
-    selectedEntity === 'ALL'
-      ? 'ehmconsultancy & climagroanalytics'
-      : selectedEntity === 'EHM'
-      ? 'ehmconsultancy'
-      : 'climagroanalytics';
+  const handleRoleChange = (role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
+    setRole(role);
+    toast.success(`Role switched to ${role}!`);
+  };
 
   const handleLogout = () => {
     logout();
     onClose();
-    toast.success('Logged out successfully!');
+    toast.success('Logged out successfully');
   };
 
   return (
@@ -40,88 +37,73 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
 
         <div className="relative inline-block mb-3">
           <img
-            src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+            src={user?.avatarUrl || getAvatarByName(user?.name || user?.email)}
             alt="Profile Avatar"
             className="w-20 h-20 rounded-full object-cover ring-4 ring-emerald-500/20 mx-auto shadow-md"
           />
           <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full ring-2 ring-white"></span>
         </div>
 
-        <h3 className="text-lg font-bold text-gray-900 tracking-tight">{user?.name || 'Sanjay Kapoor'}</h3>
-        <p className="text-xs text-emerald-600 font-semibold mb-3">Senior HR & Operations Lead</p>
+        <h3 className="text-lg font-bold text-gray-900 tracking-tight">{user?.name || 'User'}</h3>
+        <p className="text-xs text-emerald-600 font-semibold mb-3">{user?.role || 'System Administrator'}</p>
 
         {/* Role Selector Pills */}
         <div className="bg-emerald-50/80 p-2 rounded-xl border border-emerald-200/80 mb-4 flex items-center justify-between">
           <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-            <Shield className="w-3.5 h-3.5" />
-            <span>Role:</span>
+            <Shield className="w-3.5 h-3.5 text-emerald-600" /> Active Role:
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-emerald-200">
             <button
-              onClick={() => setRole('MANAGER')}
-              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-                user?.role === 'MANAGER' || user?.role === 'ADMIN'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-white text-gray-600 border border-gray-200'
+              onClick={() => handleRoleChange('ADMIN')}
+              className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                user?.role === 'ADMIN' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              Manager View
+              ADMIN
             </button>
             <button
-              onClick={() => setRole('EMPLOYEE')}
-              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-                user?.role === 'EMPLOYEE'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-white text-gray-600 border border-gray-200'
+              onClick={() => handleRoleChange('MANAGER')}
+              className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                user?.role === 'MANAGER' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              Employee View
+              LEAD
+            </button>
+            <button
+              onClick={() => handleRoleChange('EMPLOYEE')}
+              className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                user?.role === 'EMPLOYEE' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              EMP
             </button>
           </div>
         </div>
 
-        <div className="space-y-2.5 text-left bg-gray-50/80 p-3.5 rounded-xl border border-gray-200/80 text-xs mb-4">
-          <div className="flex items-center gap-2.5 text-gray-700">
-            <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
-            <div>
-              <span className="text-[10px] text-gray-400 font-bold block uppercase">Email</span>
-              <span className="font-semibold text-gray-900">{user?.email || 'admin@ehm-climagro.com'}</span>
-            </div>
+        <div className="space-y-2 text-left text-xs mb-6">
+          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="font-semibold text-gray-700 truncate">{user?.email || 'admin@example.com'}</span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-gray-700">
-            <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <div>
-              <span className="text-[10px] text-gray-400 font-bold block uppercase">Company Entity</span>
-              <span className="font-semibold text-gray-900">{entityName}</span>
-            </div>
+          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="font-semibold text-gray-700">Entity: ehmconsultancy</span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-gray-700">
-            <Briefcase className="w-4 h-4 text-emerald-600 shrink-0" />
-            <div>
-              <span className="text-[10px] text-gray-400 font-bold block uppercase">Position</span>
-              <span className="font-semibold text-gray-900">Principal Architect & HR Owner</span>
-            </div>
+          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+            <User className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="font-semibold text-gray-700">ID: {user?.id || 'usr-admin-uuid'}</span>
           </div>
         </div>
 
-        {/* Modal Actions: Close & Logout */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={onClose}
-            className="py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors"
-          >
-            Close
-          </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-1.5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl border border-red-200/60 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Log Out Account</span>
+        </button>
       </div>
     </div>
   );

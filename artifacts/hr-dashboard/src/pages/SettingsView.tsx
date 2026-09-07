@@ -1,10 +1,17 @@
 import React from 'react';
 import { Chrome, Shield, Bell, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
 export const SettingsView: React.FC = () => {
+  const { user } = useAuth();
+
   const handleConnectGoogle = () => {
-    window.location.href = '/api/auth/google';
+    if (user?.id) {
+      window.location.href = `/api/auth/google?userId=${user.id}`;
+    } else {
+      window.location.href = '/api/auth/google';
+    }
   };
 
   return (
@@ -30,7 +37,7 @@ export const SettingsView: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-lg shadow-sm transition-colors"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Connected (Sync Active)</span>
+            <span>Connect Google Calendar</span>
           </button>
         </div>
       </div>

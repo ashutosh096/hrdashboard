@@ -1,59 +1,31 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, Sparkles, UserCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
-interface LoginViewProps {
-  onLoginSuccess: (user: any) => void;
-}
-
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+export const LoginView: React.FC = () => {
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState('employee@ehm-climagro.com');
-  const [password, setPassword] = useState('employee123');
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const isEmployeeLogin = email.toLowerCase().includes('employee');
-      
-      const userData = isEmployeeLogin
-        ? {
-            id: 'emp-1',
-            email: 'employee@ehm-climagro.com',
-            role: 'EMPLOYEE',
-            name: 'Priya Sharma',
-            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-          }
-        : {
-            id: 'admin-1',
-            email: 'admin@ehm-climagro.com',
-            role: 'MANAGER',
-            name: 'Sanjay Kapoor',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-          };
-
-      toast.success(`Logged in as ${userData.role === 'EMPLOYEE' ? 'Employee (Priya Sharma)' : 'Manager (Sanjay Kapoor)'}!`);
-      onLoginSuccess(userData);
+    try {
+      await login(email, password);
+      toast.success('Login successful!');
       setLocation('/');
-    }, 500);
-  };
-
-  const fillEmployee = () => {
-    setEmail('employee@ehm-climagro.com');
-    setPassword('employee123');
-    toast.success('Employee credentials filled!');
-  };
-
-  const fillAdmin = () => {
-    setEmail('admin@ehm-climagro.com');
-    setPassword('admin123');
-    toast.success('Admin/Manager credentials filled!');
+    } catch (err: any) {
+      console.error('[LOGIN ERROR]:', err);
+      toast.error(err.message || 'Invalid email or password');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -158,44 +130,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Simple Test Credentials Box */}
-        <div className="bg-emerald-950/50 border border-emerald-500/30 rounded-2xl p-4 text-xs space-y-2.5 backdrop-blur-md">
-          <div className="flex items-center justify-between text-emerald-400 font-bold">
-            <span className="flex items-center gap-1.5 text-[11px]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Simple Test Accounts:</span>
-            </span>
-          </div>
-
-          {/* Employee Box */}
-          <div className="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div>
-              <span className="text-[10px] text-emerald-400 font-bold block">EMPLOYEE LOGIN</span>
-              <span className="text-[11px] text-slate-300 font-mono">employee@ehm-climagro.com / employee123</span>
-            </div>
-            <button
-              onClick={fillEmployee}
-              className="px-2.5 py-1 text-[10px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition-colors"
-            >
-              Fill Employee
-            </button>
-          </div>
-
-          {/* Manager Box */}
-          <div className="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div>
-              <span className="text-[10px] text-emerald-400 font-bold block">ADMIN / MANAGER LOGIN</span>
-              <span className="text-[11px] text-slate-300 font-mono">admin@ehm-climagro.com / admin123</span>
-            </div>
-            <button
-              onClick={fillAdmin}
-              className="px-2.5 py-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-lg border border-emerald-500/40 transition-colors"
-            >
-              Fill Manager
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

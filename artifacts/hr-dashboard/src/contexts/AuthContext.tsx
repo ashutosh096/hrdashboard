@@ -1,9 +1,12 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchApi } from '@workspace/api-client-react';
 
 export interface User {
   id: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+  employeeId?: string;
+  managedTeamId?: string;
   name?: string;
   avatarUrl?: string;
 }
@@ -13,7 +16,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  setUserSession: (user: User) => void;
+  setUserSession: (user: User, token: string) => void;
   setRole: (role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => void;
   isLoading: boolean;
 }
@@ -28,43 +31,115 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: false,
 });
 
+function decodeJwtPayload(token: string): User | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return {
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      employeeId: payload.employeeId,
+      managedTeamId: payload.managedTeamId,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Start logged out so user can test the Option 2 Login page
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Restore session & active role from localStorage or query param on app load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryToken = searchParams.get('token');
+    const storedRole = localStorage.getItem('hros_active_role') as 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | null;
+
+    if (queryToken) {
+      const decodedUser = decodeJwtPayload(queryToken);
+      if (decodedUser) {
+        if (storedRole) decodedUser.role = storedRole;
+        localStorage.setItem('hros_token', queryToken);
+        setUser(decodedUser);
+        setToken(queryToken);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    const storedToken = localStorage.getItem('hros_token');
+    if (storedToken) {
+      const decodedUser = decodeJwtPayload(storedToken);
+      if (decodedUser) {
+        if (storedRole) decodedUser.role = storedRole;
+        setUser(decodedUser);
+        setToken(storedToken);
+      } else {
+        localStorage.removeItem('hros_token');
+      }
+    } else {
+      // Default demo user session
+      setUser({
+        id: 'usr-demo-1',
+        email: 'ashutosh@ehmconsultancy.com',
+        role: storedRole || 'ADMIN',
+        name: (storedRole || 'ADMIN') === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
+      });
+    }
+    setIsLoading(false);
+  }, []);
 
   const login = async (email: string, pass: string) => {
     setIsLoading(true);
     try {
-      setUser({
-        id: 'user-1',
-        email: email || 'admin@ehm-climagro.com',
-        role: 'MANAGER',
-        name: 'Sanjay Kapoor',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      const res = await fetchApi<{ token: string; user: User }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password: pass }),
       });
-      setToken('mock-jwt-token');
+
+      localStorage.setItem('hros_token', res.token);
+      setToken(res.token);
+      setUser(res.user);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const setUserSession = (userData: User) => {
+  const setUserSession = (userData: User, authToken: string) => {
+    localStorage.setItem('hros_token', authToken);
     setUser(userData);
-    setToken('mock-jwt-token');
+    setToken(authToken);
+  };
+
+  const setRole = (newRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
+    localStorage.setItem('hros_active_role', newRole);
+    setUser((prev) => {
+      if (prev) {
+        return {
+          ...prev,
+          role: newRole,
+          name: newRole === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
+        };
+      }
+      return {
+        id: 'usr-demo-1',
+        email: 'ashutosh@ehmconsultancy.com',
+        role: newRole,
+        name: newRole === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
+      };
+    });
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('hros_token');
-  };
-
-  const setRole = (newRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
-    if (user) {
-      setUser({ ...user, role: newRole });
-    }
+    localStorage.removeItem('hros_active_role');
   };
 
   return (

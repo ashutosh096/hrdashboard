@@ -13,8 +13,12 @@ import attendanceRouter from './routes/attendance.js';
 import announcementsRouter from './routes/announcements.js';
 import applicationsRouter from './routes/applications.js';
 import reportsRouter from './routes/reports.js';
+import initiativesRouter from './routes/initiatives.js';
+import epicsRouter from './routes/epics.js';
+import sprintsRouter from './routes/sprints.js';
 import { startSyncCron } from './jobs/sync-cron.js';
 import { startDigestCron } from './jobs/digest-cron.js';
+import { startOverdueCheckCron } from './jobs/overdue-check-cron.js';
 import { runSeed } from './db/seed.js';
 
 dotenv.config();
@@ -36,6 +40,9 @@ app.use('/api/attendance', attendanceRouter);
 app.use('/api/announcements', announcementsRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/initiatives', initiativesRouter);
+app.use('/api/epics', epicsRouter);
+app.use('/api/sprints', sprintsRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });
@@ -73,6 +80,7 @@ if (fs.existsSync(frontendDistPath)) {
 // Run background jobs
 startSyncCron();
 startDigestCron();
+startOverdueCheckCron();
 runSeed().catch(console.error);
 
 app.listen(PORT, () => {

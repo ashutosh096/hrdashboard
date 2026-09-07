@@ -43,3 +43,27 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #D1D5DB;
 }
+
+/* Clothesline Hanging Swing Micro-Animations */
+@keyframes clotheslineSwing {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(2deg); }
+  50% { transform: rotate(-1.5deg); }
+  75% { transform: rotate(1deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-swing {
+  animation: clotheslineSwing 4.2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.animate-swing-delay-1 {
+  animation: clotheslineSwing 4.8s ease-in-out infinite 0.7s;
+  transform-origin: top center;
+}
+
+.animate-swing-delay-2 {
+  animation: clotheslineSwing 3.9s ease-in-out infinite 1.4s;
+  transform-origin: top center;
+}

@@ -1,7 +1,8 @@
 import { pgTable, uuid, varchar, text, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
 import { employees } from './employees.js';
 
-export const meetingSourceEnum = pgEnum('meeting_source', ['INTERNAL', 'GOOGLE_CALENDAR']);
+export const meetingSourceEnum = pgEnum('meeting_source', ['INTERNAL', 'GOOGLE_CALENDAR', 'GOOGLE_CALENDAR_IMPORTED']);
+export const meetingStatusEnum = pgEnum('meeting_status', ['SCHEDULED', 'CANCELLED']);
 
 export const meetings = pgTable('meetings', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -15,5 +16,6 @@ export const meetings = pgTable('meetings', {
   invitees: jsonb('invitees').default([]).notNull(), // array of employee IDs
   googleEventId: varchar('google_event_id', { length: 255 }).unique(),
   source: meetingSourceEnum('source').default('INTERNAL').notNull(),
+  status: meetingStatusEnum('status').default('SCHEDULED').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

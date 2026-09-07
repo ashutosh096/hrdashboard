@@ -3,10 +3,12 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import path from 'node:path';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
+dotenv.config({ path: 'C:/hrdashboard/.env' });
 
-export { eq, and, or, sql } from 'drizzle-orm';
+export { eq, ne, and, or, sql, lt, lte, gt, gte } from 'drizzle-orm';
 
 export * from './schema/entities.js';
 export * from './schema/departments.js';
@@ -27,6 +29,7 @@ export * from './schema/applications.js';
 export * from './schema/audit_logs.js';
 export * from './schema/notifications.js';
 export * from './schema/initiatives.js';
+export * from './schema/epics.js';
 export * from './schema/sprints.js';
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hros_db';
