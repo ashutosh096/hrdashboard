@@ -343,10 +343,6 @@ export const DashboardView: React.FC = () => {
         t.module.toLowerCase().includes(taskOpsSearch.toLowerCase()))
   );
 
-  if (user?.role === 'EMPLOYEE') {
-    return <EmployeeDashboardView />;
-  }
-
   return (
     <div className="p-6 space-y-6 select-none">
       {/* Top Header & Mode Switcher Controls */}
@@ -375,336 +371,261 @@ export const DashboardView: React.FC = () => {
             </button>
           </div>
 
-        {/* Time Filter Pills */}
-        <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-2xs">
-          <button
-            onClick={() => setTimeRange('WEEK1')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              timeRange === 'WEEK1' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            1st Week
-          </button>
-          <button
-            onClick={() => setTimeRange('WEEK2')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              timeRange === 'WEEK2' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            2nd Week
-          </button>
-          <button
-            onClick={() => setTimeRange('MONTH')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              timeRange === 'MONTH' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            1 Month
-          </button>
-          <button
-            onClick={() => setTimeRange('QUARTER')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              timeRange === 'QUARTER' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            Quarter
-          </button>
-        </div>
-        </div>
-      </div>
-
-      {/* SECTION 1: TOP OPERATIONAL & TASK KPI CARDS (5 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Total Employees" value={totalEmployees} label="Total Staff" icon={Users} />
-        <StatCard title="Present Employees" value={presentEmployees} label="Present Today" icon={UserCheck} />
-        <StatCard title="Active Deliverables" value={28} label="Sprint Tasks" icon={Layers} />
-        <StatCard title="Tasks Due Today" value={5} label="Urgent Execution" icon={Clock} />
-        <StatCard title="Active Meetings" value={activeMeetings} label="Meetings Today" icon={Calendar} />
-      </div>
-
-      {/* SECTION 2: ATTENDANCE TRENDS (65%) & DAILY SCHEDULE (35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RevenueChart />
-        </div>
-        <div className="lg:col-span-1">
-          <ScheduleWidget />
-        </div>
-      </div>
-
-      {/* SECTION 3: TASK PIPELINE CHART (65%) & TASK LIFECYCLE DISTRIBUTION (35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Task Priority Delivery Pipeline Bar Chart */}
-        <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 tracking-tight">Task Delivery Pipeline & Priority Distribution</h3>
-              <p className="text-xs text-gray-500 font-medium">Sprint task load across Urgent, High, Medium, and Low priorities.</p>
-            </div>
-            <div className="flex items-center gap-3 text-xs font-bold">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Urgent</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> High</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Medium</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400"></span> Low</span>
-            </div>
-          </div>
-
-          <div className="h-60 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={PRIORITY_PIPELINE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="week" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  content={({ active, payload, label }: any) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-white border border-gray-200 p-3 rounded-xl shadow-lg text-xs font-sans space-y-1">
-                          <p className="font-bold text-gray-900">{label}</p>
-                          {payload.map((entry: any) => (
-                            <p key={entry.name} className="font-semibold" style={{ color: entry.color }}>
-                              {entry.name}: {entry.value} tasks
-                            </p>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar dataKey="urgent" name="Urgent" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="high" name="High" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="medium" name="Medium" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="low" name="Low" fill="#9CA3AF" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Time Filter Pills */}
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-2xs">
+            <button
+              onClick={() => setTimeRange('WEEK1')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${timeRange === 'WEEK1' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                }`}
+            >
+              1st Week
+            </button>
+            <button
+              onClick={() => setTimeRange('WEEK2')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${timeRange === 'WEEK2' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                }`}
+            >
+              2nd Week
+            </button>
+            <button
+              onClick={() => setTimeRange('MONTH')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${timeRange === 'MONTH' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                }`}
+            >
+              1 Month
+            </button>
+            <button
+              onClick={() => setTimeRange('QUARTER')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${timeRange === 'QUARTER' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                }`}
+            >
+              Quarter
+            </button>
           </div>
         </div>
 
-        {/* Task Lifecycle Distribution Pie/Doughnut Chart */}
-        <div className="lg:col-span-1 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
-          <div>
-            <h3 className="text-base font-bold text-gray-900 tracking-tight">Task Lifecycle Distribution</h3>
-            <p className="text-xs text-gray-500 font-medium">Breakdown of done, review, in progress, and pending tasks.</p>
-          </div>
+        {/* SECTION 1: TOP OPERATIONAL & TASK KPI CARDS (5 Cards) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard title="Total Employees" value={totalEmployees} label="Total Staff" icon={Users} />
+          <StatCard title="Present Employees" value={presentEmployees} label="Present Today" icon={UserCheck} />
+          <StatCard title="Active Deliverables" value={28} label="Sprint Tasks" icon={Layers} />
+          <StatCard title="Tasks Due Today" value={5} label="Urgent Execution" icon={Clock} />
+          <StatCard title="Active Meetings" value={activeMeetings} label="Meetings Today" icon={Calendar} />
+        </div>
 
-          <div className="h-44 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData.filter((d) => d.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={4}>
-                  {pieData.filter((d) => d.value > 0).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }: any) => {
-                    if (active && payload && payload.length) {
-                      const item = payload[0];
-                      return (
-                        <div className="bg-white border border-gray-200 p-2.5 rounded-xl shadow-lg text-xs font-bold">
-                          <span style={{ color: item.payload.color }}>{item.name}:</span> {item.value} tasks
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* SECTION 2: ATTENDANCE TRENDS (65%) & DAILY SCHEDULE (35%) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RevenueChart />
           </div>
+          <div className="lg:col-span-1">
+            <ScheduleWidget />
+          </div>
+        </div>
 
-          <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
-            {pieData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
-                  <span className="text-gray-700">{item.name}</span>
+
+
+        {/* SECTION 4: LIVE TASK OPERATIONS MATRIX (65%) & TODAY'S PRIORITY QUEUE (35%) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Table: Live Task Operations */}
+          <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-indigo-600" />
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 tracking-tight">Active Task Operations & Execution Matrix</h3>
+                  <p className="text-xs text-gray-500 font-medium">Real-time status, priorities, assignees, and due dates across active sprint deliverables.</p>
                 </div>
-                <span className="font-bold text-gray-900">{item.value} tasks</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* SECTION 4: LIVE TASK OPERATIONS MATRIX (65%) & TODAY'S PRIORITY QUEUE (35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Table: Live Task Operations */}
-        <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-indigo-600" />
-              <div>
-                <h3 className="text-base font-bold text-gray-900 tracking-tight">Active Task Operations & Execution Matrix</h3>
-                <p className="text-xs text-gray-500 font-medium">Real-time status, priorities, assignees, and due dates across active sprint deliverables.</p>
+              {/* Search Bar */}
+              <div className="max-w-xs w-full relative">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl focus-within:border-indigo-500 transition-all">
+                  <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search task or assignee..."
+                    value={taskOpsSearch}
+                    onChange={(e) => setTaskOpsSearch(e.target.value)}
+                    className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent font-medium"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="max-w-xs w-full relative">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl focus-within:border-indigo-500 transition-all">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/60">
+                    <th className="py-3 px-4">Task Title & Module</th>
+                    <th className="py-3 px-4">Assignee</th>
+                    <th className="py-3 px-4 text-center">Priority</th>
+                    <th className="py-3 px-4 text-center">Due Date</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
+                  {MOCK_TASK_OPERATIONS.filter(
+                    (t) =>
+                      t.title.toLowerCase().includes(taskOpsSearch.toLowerCase()) ||
+                      t.assignee.toLowerCase().includes(taskOpsSearch.toLowerCase()) ||
+                      t.module.toLowerCase().includes(taskOpsSearch.toLowerCase())
+                  ).map((task) => (
+                    <tr key={task.id} className="hover:bg-gray-50/90 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div>
+                          <span className="font-bold text-gray-900 block text-sm">{task.title}</span>
+                          <span className="text-[11px] text-gray-400 font-semibold">{task.module}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <img src={task.avatar} alt={task.assignee} className="w-7 h-7 rounded-full object-cover border border-gray-200 shadow-2xs" />
+                          <div>
+                            <span className="font-bold text-gray-900 block text-xs">{task.assignee}</span>
+                            <span className="text-[10px] text-gray-400 font-semibold">{task.role}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${task.priority === 'Urgent'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : task.priority === 'High'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : task.priority === 'Medium'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-gray-50 text-gray-700 border-gray-200'
+                          }`}>
+                          {task.priority}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-bold text-gray-800">{task.dueDate}</td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${task.status === 'Done' || task.status === 'Completed'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : task.status === 'In Review'
+                              ? 'bg-amber-50 text-amber-900 border-amber-200'
+                              : task.status === 'In Progress'
+                                ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                : 'bg-purple-50 text-purple-800 border-purple-200'
+                          }`}>
+                          <span className={`w-2 h-2 rounded-full ${task.status === 'Done' || task.status === 'Completed'
+                              ? 'bg-emerald-500'
+                              : task.status === 'In Review'
+                                ? 'bg-amber-500'
+                                : task.status === 'In Progress'
+                                  ? 'bg-blue-500'
+                                  : 'bg-purple-500'
+                            }`}></span>
+                          <span>{task.status}</span>
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors cursor-pointer border border-emerald-200">
+                          Mark Done
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Today's Queue & Action Panel */}
+          <div className="lg:col-span-1 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-base font-bold text-gray-900 tracking-tight">Today's Priority Queue</h3>
+                <span className="px-2 py-0.5 bg-red-50 text-red-700 text-[11px] font-extrabold rounded-full border border-red-200">
+                  5 Due Today
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 font-medium">Deliverables requiring immediate action or review.</p>
+            </div>
+
+            <div className="space-y-3 overflow-y-auto max-h-64 pr-1">
+              {MOCK_TASK_OPERATIONS.slice(0, 4).map((task) => (
+                <div key={task.id} className="p-3 bg-gray-50/80 hover:bg-gray-100/80 rounded-xl border border-gray-200/70 transition-all space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${task.priority === 'Urgent'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : task.priority === 'High'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                      {task.priority} Priority
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400">{task.module}</span>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-gray-900 leading-tight">{task.title}</h4>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-gray-200/60">
+                    <div className="flex items-center gap-1.5">
+                      <img src={task.avatar} alt={task.assignee} className="w-5 h-5 rounded-full object-cover border" />
+                      <span className="text-[11px] font-semibold text-gray-700">{task.assignee}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold ${task.status === 'In Review' ? 'text-amber-600' : 'text-blue-600'}`}>
+                      {task.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+      {/* SECTION 4: UNIFIED ACTIVE RESOURCE CAPACITY & EMPLOYEE PERFORMANCE TRACKER TABLE */}
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 tracking-tight">
+                Active Resource Capacity & Employee Performance Tracker
+              </h3>
+              <p className="text-xs text-gray-500 font-medium">
+                Unified real-time view of team workload capacity, assigned tasks, completion rates, and throughput.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Quick KPI Badges */}
+            <div className="bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <div>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase block">Completion Rate</span>
+                <span className="text-xs font-extrabold text-emerald-800">{completionRate}%</span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-600" />
+              <div>
+                <span className="text-[10px] font-bold text-amber-700 uppercase block">Pending Rate</span>
+                <span className="text-xs font-extrabold text-amber-800">
+                  {totalAssigned > 0 ? Math.round((totalPending / totalAssigned) * 100) : 0}%
+                </span>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="w-56 relative">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl focus-within:border-emerald-500 transition-all">
                 <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search task or assignee..."
-                  value={taskOpsSearch}
-                  onChange={(e) => setTaskOpsSearch(e.target.value)}
+                  placeholder="Search team member..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent font-medium"
                 />
               </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/60">
-                  <th className="py-3 px-4">Task Title & Module</th>
-                  <th className="py-3 px-4">Assignee</th>
-                  <th className="py-3 px-4 text-center">Priority</th>
-                  <th className="py-3 px-4 text-center">Due Date</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-                {MOCK_TASK_OPERATIONS.filter(
-                  (t) =>
-                    t.title.toLowerCase().includes(taskOpsSearch.toLowerCase()) ||
-                    t.assignee.toLowerCase().includes(taskOpsSearch.toLowerCase()) ||
-                    t.module.toLowerCase().includes(taskOpsSearch.toLowerCase())
-                ).map((task) => (
-                  <tr key={task.id} className="hover:bg-gray-50/90 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <span className="font-bold text-gray-900 block text-sm">{task.title}</span>
-                        <span className="text-[11px] text-gray-400 font-semibold">{task.module}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <img src={task.avatar} alt={task.assignee} className="w-7 h-7 rounded-full object-cover border border-gray-200 shadow-2xs" />
-                        <div>
-                          <span className="font-bold text-gray-900 block text-xs">{task.assignee}</span>
-                          <span className="text-[10px] text-gray-400 font-semibold">{task.role}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
-                        task.priority === 'Urgent'
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : task.priority === 'High'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : task.priority === 'Medium'
-                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                          : 'bg-gray-50 text-gray-700 border-gray-200'
-                      }`}>
-                        {task.priority}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center font-bold text-gray-800">{task.dueDate}</td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
-                        task.status === 'Done' || task.status === 'Completed'
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          : task.status === 'In Review'
-                          ? 'bg-amber-50 text-amber-900 border-amber-200'
-                          : task.status === 'In Progress'
-                          ? 'bg-blue-50 text-blue-800 border-blue-200'
-                          : 'bg-purple-50 text-purple-800 border-purple-200'
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full ${
-                          task.status === 'Done' || task.status === 'Completed'
-                            ? 'bg-emerald-500'
-                            : task.status === 'In Review'
-                            ? 'bg-amber-500'
-                            : task.status === 'In Progress'
-                            ? 'bg-blue-500'
-                            : 'bg-purple-500'
-                        }`}></span>
-                        <span>{task.status}</span>
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors cursor-pointer border border-emerald-200">
-                        Mark Done
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Today's Queue & Action Panel */}
-        <div className="lg:col-span-1 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-base font-bold text-gray-900 tracking-tight">Today's Priority Queue</h3>
-              <span className="px-2 py-0.5 bg-red-50 text-red-700 text-[11px] font-extrabold rounded-full border border-red-200">
-                5 Due Today
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 font-medium">Deliverables requiring immediate action or review.</p>
-          </div>
-
-          <div className="space-y-3 overflow-y-auto max-h-64 pr-1">
-            {MOCK_TASK_OPERATIONS.slice(0, 4).map((task) => (
-              <div key={task.id} className="p-3 bg-gray-50/80 hover:bg-gray-100/80 rounded-xl border border-gray-200/70 transition-all space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                    task.priority === 'Urgent'
-                      ? 'bg-red-50 text-red-700 border-red-200'
-                      : task.priority === 'High'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}>
-                    {task.priority} Priority
-                  </span>
-                  <span className="text-[10px] font-bold text-gray-400">{task.module}</span>
-                </div>
-
-                <h4 className="text-xs font-bold text-gray-900 leading-tight">{task.title}</h4>
-
-                <div className="flex items-center justify-between pt-1 border-t border-gray-200/60">
-                  <div className="flex items-center gap-1.5">
-                    <img src={task.avatar} alt={task.assignee} className="w-5 h-5 rounded-full object-cover border" />
-                    <span className="text-[11px] font-semibold text-gray-700">{task.assignee}</span>
-                  </div>
-                  <span className={`text-[10px] font-bold ${task.status === 'In Review' ? 'text-amber-600' : 'text-blue-600'}`}>
-                    {task.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 5: ACTIVE RESOURCE CAPACITY & PERFORMANCE TRACKER TABLE */}
-      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-600" />
-            <div>
-              <h3 className="text-base font-bold text-gray-900 tracking-tight">Active Resource Capacity & Performance Tracker</h3>
-              <p className="text-xs text-gray-500 font-medium">Real-time team assigned tasks, completion rates, and workload capacity loading.</p>
-            </div>
-          </div>
-
-          {/* Table Search Input */}
-          <div className="max-w-xs w-full relative">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl focus-within:border-indigo-500 transition-all">
-              <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search team member..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent font-medium"
-              />
             </div>
           </div>
         </div>
@@ -714,83 +635,118 @@ export const DashboardView: React.FC = () => {
             <thead>
               <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/60">
                 <th className="py-3 px-4">Team Member</th>
-                <th className="py-3 px-4">Department</th>
-                <th className="py-3 px-4 text-center">Assigned Tasks</th>
+                <th className="py-3 px-4">Department & Entity</th>
+                <th className="py-3 px-4 text-center">Total Tasks</th>
                 <th className="py-3 px-4 text-center">Completed</th>
+                <th className="py-3 px-4 text-center">Pending</th>
+                <th className="py-3 px-4">Completion Rate</th>
                 <th className="py-3 px-4 text-center">Capacity Loading</th>
+                <th className="py-3 px-4 text-center">Performance Status</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-              {filteredEmployeesTable.map((emp) => (
-                <tr
-                  key={emp.id}
-                  onClick={() => setSelectedEmployeeId(emp.id)}
-                  className={`hover:bg-gray-50/90 transition-colors cursor-pointer ${
-                    selectedEmployeeId === emp.id ? 'bg-indigo-50/70 border-l-4 border-indigo-600' : ''
-                  }`}
-                >
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-3">
-                      <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-2xs" />
-                      <div>
-                        <span className="font-bold text-gray-900 block text-sm">{emp.name}</span>
-                        <span className="text-[11px] text-gray-400 font-semibold">{emp.role}</span>
+              {filteredEmployeesTable.map((emp) => {
+                const totalTasks = emp.assigned > 0 ? emp.assigned : emp.completed + emp.pending;
+                const completedTasks = emp.completed;
+                const pendingTasks = Math.max(0, totalTasks - completedTasks);
+                const rate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
+                const capacityStatus = emp.assigned > 4 ? 'Overloaded' : emp.assigned >= 3 ? 'Busy' : 'Available';
+                const perfStatus = rate >= 90 ? 'Excellent' : rate >= 80 ? 'Good' : 'Needs Focus';
+
+                return (
+                  <tr
+                    key={emp.id}
+                    onClick={() => setSelectedEmployeeId(emp.id)}
+                    className={`hover:bg-gray-50/90 transition-colors cursor-pointer ${
+                      selectedEmployeeId === emp.id ? 'bg-emerald-50/50 border-l-4 border-emerald-600' : ''
+                    }`}
+                  >
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-2xs" />
+                        <div>
+                          <span className="font-bold text-gray-900 block text-sm">{emp.name}</span>
+                          <span className="text-[11px] text-gray-400 font-semibold">{emp.role}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 font-semibold text-gray-800">{emp.dept}</td>
-                  <td className="py-3.5 px-4 text-center font-extrabold text-gray-900">{emp.assigned}</td>
-                  <td className="py-3.5 px-4 text-center font-extrabold text-emerald-700">{emp.completed}</td>
-                  <td className="py-3.5 px-4 text-center">
-                    {(() => {
-                      const status =
-                        emp.assigned > 4 ? 'Overloaded' : emp.assigned === 4 ? 'Busy' : 'Available';
-                      return (
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${
-                            status === 'Available'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : status === 'Busy'
-                              ? 'bg-amber-50 text-amber-900 border-amber-200'
-                              : 'bg-red-50 text-red-800 border-red-200'
-                          }`}
-                        >
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              status === 'Available'
-                                ? 'bg-emerald-500'
-                                : status === 'Busy'
-                                ? 'bg-amber-500'
-                                : 'bg-red-500'
-                            }`}
-                          ></span>
-                          <span>{status}</span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div>
+                        <span className="font-bold text-gray-800 block text-xs">{emp.dept}</span>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-blue-50 text-blue-800 border-blue-200 inline-block mt-0.5">
+                          {emp.entity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics'}
                         </span>
-                      );
-                    })()}
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedEmployeeId(emp.id);
-                      }}
-                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Filter Analytics</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-extrabold text-gray-900">{totalTasks}</td>
+                    <td className="py-3.5 px-4 text-center font-extrabold text-emerald-600">{completedTasks}</td>
+                    <td className="py-3.5 px-4 text-center font-extrabold text-amber-600">{pendingTasks}</td>
+                    <td className="py-3.5 px-4 min-w-[140px]">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                            style={{ width: `${rate}%` }}
+                          ></div>
+                        </div>
+                        <span className="font-extrabold text-gray-800 text-[11px] w-9 text-right">{rate}%</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                          capacityStatus === 'Available'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : capacityStatus === 'Busy'
+                            ? 'bg-amber-50 text-amber-900 border-amber-200'
+                            : 'bg-red-50 text-red-800 border-red-200'
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            capacityStatus === 'Available'
+                              ? 'bg-emerald-500'
+                              : capacityStatus === 'Busy'
+                              ? 'bg-amber-500'
+                              : 'bg-red-500'
+                          }`}
+                        ></span>
+                        <span>{capacityStatus}</span>
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          perfStatus === 'Excellent'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                            : perfStatus === 'Good'
+                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                            : 'bg-amber-100 text-amber-800 border-amber-200'
+                        }`}
+                      >
+                        {perfStatus}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEmployeeId(emp.id);
+                        }}
+                        className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Filter Analytics</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* SECTION 6: TASK ANALYTICS & EMPLOYEE PERFORMANCE PANEL */}
-      <TaskAnalyticsPanel />
     </div>
   );
 };
