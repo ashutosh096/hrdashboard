@@ -402,6 +402,7 @@ export const DashboardView: React.FC = () => {
               Quarter
             </button>
           </div>
+          </div>
         </div>
 
         {/* SECTION 1: TOP OPERATIONAL & TASK KPI CARDS (5 Cards) */}
