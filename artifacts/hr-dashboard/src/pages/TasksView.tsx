@@ -112,6 +112,42 @@ export const TasksView: React.FC = () => {
     { key: 'DONE', label: 'Done', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   ];
 
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    e.dataTransfer.setData('text/plain', taskId);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (!taskId) return;
+
+    const previousTasks = [...tasks];
+    const targetTask = tasks.find((t) => t.id === taskId);
+    if (!targetTask || targetTask.status === newStatus) return;
+
+    // Optimistic UI Update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+    toast.success(`Task ${targetTask.taskCode} moved to ${newStatus}`);
+
+    try {
+      await fetchApi(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch (err) {
+      console.error('[DRAG DROP ROLLBACK ERROR]:', err);
+      // Rollback on failure!
+      setTasks(previousTasks);
+      toast.error(`Failed to update status for ${targetTask.taskCode}. Rolling back.`);
+    }
+  };
+
   const handleTaskClick = (task: any) => {
     setSelectedTaskToUpdate({
       id: task.id,
@@ -178,28 +214,22 @@ export const TasksView: React.FC = () => {
   };
 
   // Initiatives, Epics, and Tasks tabs in Product Backlog
-  const tabs = [
-    { id: 'INITIATIVES', label: 'Initiatives', icon: Target },
-    { id: 'EPICS', label: 'Epics', icon: Layers },
-    { id: 'TASKS', label: 'Tasks', icon: ListTodo },
-  ];
-
   return (
     <div className="p-6 space-y-6 select-none">
-      {/* Top Header & Segmented Tab Navigation Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-2xs">
+      {/* Top Controls Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Product Backlog</h2>
-          <p className="text-xs text-gray-500 font-medium">
-            {isEmployee
-              ? 'Strategic initiatives, feature epics & assigned tasks backlog.'
-              : 'Strategic initiatives, feature epics breakdown & task backlog items.'}
-          </p>
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Enterprise Delivery & Product Backlog</h2>
+          <p className="text-xs text-gray-500 font-medium">3-Tier Strategic Initiative → Epic → Task hierarchy execution engine.</p>
         </div>
 
-        {/* Top Segmented Tab Switcher Buttons (Initiatives, Epics, Tasks) */}
-        <div className="flex items-center bg-gray-100/80 p-1.5 rounded-xl border border-gray-200/80">
-          {tabs.map((tab) => {
+        {/* Tab Selection */}
+        <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl border border-gray-200/80">
+          {[
+            { id: 'INITIATIVES', label: '1. Initiatives', icon: Target },
+            { id: 'EPICS', label: '2. Epics', icon: Layers },
+            { id: 'TASKS', label: '3. Tasks', icon: ListTodo },
+          ].map((tab) => {
             const Icon = tab.icon;
             const isLockedForEmp = isEmployee && (tab.id === 'INITIATIVES' || tab.id === 'EPICS');
             const isActive = currentTab === tab.id;
@@ -208,7 +238,7 @@ export const TasksView: React.FC = () => {
                 key={tab.id}
                 onClick={() => {
                   if (isLockedForEmp) {
-                    toast.info(`${tab.label} view is locked in Employee mode. Only Tasks view is active.`);
+                    toast.info(`${tab.label} view is locked in Employee mode.`);
                     return;
                   }
                   setActiveTab(tab.id as TabType);
@@ -227,17 +257,18 @@ export const TasksView: React.FC = () => {
                   <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
                 )}
                 <span>{tab.label}</span>
-                {isLockedForEmp && <span className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded">LOCKED</span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Tab Sub-View Rendering (Persistent DOM for Instant 0ms Tab Switching) */}
+      {/* Tab Sub-View Rendering */}
       <div className={currentTab === 'INITIATIVES' ? 'block' : 'hidden'}>
         <InitiativesSubView
           isManager={isManager}
+          selectedInitiativeIdToView={selectedInitiativeToViewId}
+          onClearSelectedInitiative={() => setSelectedInitiativeToViewId(null)}
           onSelectEpic={(epicId) => {
             setSelectedEpicToViewId(epicId);
             setActiveTab('EPICS');
@@ -250,6 +281,10 @@ export const TasksView: React.FC = () => {
           isManager={isManager}
           selectedEpicIdToView={selectedEpicToViewId}
           onClearSelectedEpic={() => setSelectedEpicToViewId(null)}
+          onSelectInitiative={(initId) => {
+            setSelectedInitiativeToViewId(initId);
+            setActiveTab('INITIATIVES');
+          }}
         />
       </div>
 
@@ -258,16 +293,14 @@ export const TasksView: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold text-gray-900 tracking-tight">Product Backlog Tasks</h3>
-              <p className="text-xs text-gray-500 font-medium">
-                Granular deliverable tasks aligned under Initiative → Epic → Task hierarchy.
-              </p>
+              <p className="text-xs text-gray-500 font-medium">Granular deliverable tasks aligned under Initiative → Epic → Task hierarchy.</p>
             </div>
 
             <div className="flex items-center gap-2">
               {isManager && (
                 <button
                   onClick={() => setIsCloneModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   <span>📋 Quick Clone Task</span>
@@ -275,7 +308,7 @@ export const TasksView: React.FC = () => {
               )}
               <button
                 onClick={() => setIsAssignModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>{isEmployee ? '+ Create My Task' : '+ New Task'}</span>
@@ -287,10 +320,15 @@ export const TasksView: React.FC = () => {
             <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading tasks from database...</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {columns.map(col => {
-                const colTasks = filteredTasks.filter(t => t.status === col.key);
+              {columns.map((col) => {
+                const colTasks = filteredTasks.filter((t) => t.status === col.key);
                 return (
-                  <div key={col.key} className="bg-gray-100/60 rounded-2xl p-4 border border-gray-200/80 flex flex-col min-h-[500px]">
+                  <div
+                    key={col.key}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, col.key)}
+                    className="bg-gray-100/60 rounded-2xl p-4 border border-gray-200/80 flex flex-col min-h-[500px]"
+                  >
                     <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
                       <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${col.color}`}>
@@ -301,91 +339,72 @@ export const TasksView: React.FC = () => {
                     </div>
 
                     <div className="space-y-3 flex-1">
-                      {colTasks.map(task => (
+                      {colTasks.map((task) => (
                         <div
                           key={task.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, task.id)}
                           onClick={() => handleTaskClick(task)}
-                          className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer group hover:border-emerald-400 flex flex-col justify-between"
+                          className="bg-white p-4 rounded-xl border border-gray-200/90 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-grab active:cursor-grabbing group"
                         >
-                          <div>
-                            {/* Header: Parent Epic heading + code on left, Entity Name in top corner right */}
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[10px] font-bold text-gray-500">Parent Epic:</span>
-                                <span className="text-[10px] font-mono font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-                                  [{task.parentEpicCode}]
-                                </span>
-                              </div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              {task.taskCode}
+                            </span>
+                            <span
+                              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                task.priority === 'URGENT'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : task.priority === 'HIGH'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                  : task.priority === 'LOW'
+                                  ? 'bg-slate-50 text-slate-600 border-slate-200'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}
+                            >
+                              {task.priority || 'MEDIUM'}
+                            </span>
+                          </div>
 
-                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border bg-blue-50 text-blue-800 border-blue-200 shrink-0">
-                                {task.entityName}
-                              </span>
+                          {/* Task Title */}
+                          <h4 className="text-xs font-extrabold text-gray-900 mb-2 leading-snug group-hover:text-emerald-700 transition-colors">
+                            {task.title}
+                          </h4>
+
+                          {/* Lineage Info */}
+                          {task.parentEpicCode && (
+                            <div className="text-[10px] font-semibold text-gray-500 mb-2 truncate">
+                              Epic: <span className="font-mono font-bold text-purple-700">{task.parentEpicCode}</span>
                             </div>
+                          )}
 
-                            {/* Task Code */}
-                            <div className="mb-1.5 flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold text-gray-500">Task ID:</span>
-                              <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 inline-block">
-                                {task.taskCode}
-                              </span>
+                          {/* Assignee & Reviewing Lead */}
+                          <div className="text-[11px] font-medium text-gray-600 space-y-0.5 bg-gray-50 p-2 rounded-lg border border-gray-100 mb-2">
+                            <div className="truncate">
+                              <span className="text-gray-400 font-bold">Assigned:</span>{' '}
+                              <span className="text-gray-800 font-bold">{task.assigneeName}</span>
                             </div>
-
-                            {/* Task Title */}
-                            <h4 className="text-sm font-extrabold text-emerald-700 mb-2.5 leading-tight">
-                              Task Title: {task.title}
-                            </h4>
-
-                            {/* Department Heading & Badge */}
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <span className="text-[10px] font-bold text-gray-500">Department:</span>
-                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200 inline-block">
-                                {task.department || 'Product & Tech'}
-                              </span>
-                            </div>
-
-                            {/* Assignee & Reviewing Lead */}
-                            <div className="text-[13px] font-semibold text-gray-800 mb-3 space-y-1 bg-gray-50/70 p-2.5 rounded-xl border border-gray-200/80">
-                              <div>
-                                <span className="text-gray-500 font-bold">Assigned:</span>{' '}
-                                <span className="text-gray-900 font-extrabold">{task.assigneeName}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500 font-bold">Reviewing Lead:</span>{' '}
-                                <span className="text-gray-900 font-extrabold">{task.reviewingLead}</span>
-                              </div>
+                            <div className="truncate">
+                              <span className="text-gray-400 font-bold">Lead:</span>{' '}
+                              <span className="text-gray-800 font-bold">{task.reviewingLead}</span>
                             </div>
                           </div>
 
-                          {/* Target Time Period (Date) & View / Delay Alert Buttons */}
-                          <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-gray-100 mt-2">
-                            <div className="flex items-center gap-1 font-medium text-gray-500 flex-wrap">
-                              <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                              <span className="text-[10px] font-bold text-gray-400">Target Time Period:</span>
-                              <span className="text-[11px] font-semibold text-gray-700">{task.dueDate}</span>
+                          {/* Footer */}
+                          <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-gray-100">
+                            <div className="flex items-center gap-1 font-medium text-gray-500">
+                              <Clock className="w-3 h-3 text-gray-400 shrink-0" />
+                              <span>{task.dueDate}</span>
                             </div>
 
-                            {isEmployee ? (
-                              <div className="flex items-center gap-1.5 font-bold text-emerald-600">
-                                <span>Update Status →</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                  onClick={(e) => handleSendDelayAlertToEmployee(e, task.taskCode, task.assigneeName)}
-                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Send className="w-3 h-3 text-amber-600" />
-                                  <span>Delay Alert</span>
-                                </button>
-
-                                <button
-                                  onClick={() => handleTaskClick(task)}
-                                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Eye className="w-3 h-3 text-emerald-600" />
-                                  <span>View</span>
-                                </button>
-                              </div>
+                            {!isEmployee && (
+                              <button
+                                onClick={(e) => handleSendDelayAlertToEmployee(e, task.taskCode, task.assigneeName)}
+                                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <Send className="w-2.5 h-2.5 text-amber-600" />
+                                <span>Delay Alert</span>
+                              </button>
                             )}
                           </div>
                         </div>

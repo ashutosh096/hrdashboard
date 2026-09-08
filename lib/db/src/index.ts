@@ -8,7 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
 dotenv.config({ path: 'C:/hrdashboard/.env' });
 
-export { eq, ne, and, or, sql, lt, lte, gt, gte } from 'drizzle-orm';
+export { eq, ne, and, or, sql, lt, lte, gt, gte, asc, desc } from 'drizzle-orm';
 
 export * from './schema/entities.js';
 export * from './schema/departments.js';
@@ -20,6 +20,7 @@ export * from './schema/google_tokens.js';
 export * from './schema/tasks.js';
 export * from './schema/task_notes.js';
 export * from './schema/task_checklists.js';
+export * from './schema/task_comments.js';
 export * from './schema/task_templates.js';
 export * from './schema/meetings.js';
 export * from './schema/meeting_attendees.js';

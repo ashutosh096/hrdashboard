@@ -3,6 +3,8 @@ import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, 
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
+import { MarkdownViewer } from './MarkdownViewer';
+import { RichTextEditor } from './RichTextEditor';
 
 interface EpicItem {
   id: string;
@@ -30,6 +32,7 @@ interface InitiativeOption {
 interface Props {
   isManager: boolean;
   onSelectSprint?: (sprintId: string) => void;
+  onSelectInitiative?: (initiativeId: string) => void;
   selectedEpicIdToView?: string | null;
   onClearSelectedEpic?: () => void;
 }
@@ -49,91 +52,8 @@ const TARGET_WEEK_OPTIONS = [
   'Week 4 (Days 22–28)',
 ];
 
-const DEFAULT_EPICS: EpicItem[] = [
-  {
-    id: 'ep-1',
-    epicCode: 'EHM-EPIC-001',
-    title: 'API Gateway Telemetry & Rate Limiting Pipeline',
-    description: 'Design and deploy GraphQL telemetry pipelines and Redis rate-limiting middleware.',
-    status: 'IN_PROGRESS',
-    initiativeId: 'init-1',
-    department: 'Product & Tech',
-    targetWeek: 'Week 1 (Days 1–7)',
-    sprintsCountTarget: 2,
-    targetDate: '2026-09-10',
-    sprintsCount: 2,
-    tasksCount: 4,
-    sprints: [],
-    tasks: [],
-  },
-  {
-    id: 'ep-2',
-    epicCode: 'EHM-EPIC-002',
-    title: 'Real-time WebSocket & Push Notification Engine',
-    description: 'Redis pub/sub channels setup and concurrency stress testing for push notifications.',
-    status: 'DONE',
-    initiativeId: 'init-1',
-    department: 'Product & Tech',
-    targetWeek: 'Week 2 (Days 8–14)',
-    sprintsCountTarget: 2,
-    targetDate: '2026-09-05',
-    sprintsCount: 2,
-    tasksCount: 3,
-    sprints: [],
-    tasks: [],
-  },
-  {
-    id: 'ep-3',
-    epicCode: 'EHM-EPIC-003',
-    title: 'OAuth2 & Role-Based Access Control Security Audit',
-    description: 'Audit JWT bearer scopes, token expiration, and role permissions across all endpoints.',
-    status: 'IN_PROGRESS',
-    initiativeId: 'init-1',
-    department: 'Product & Tech',
-    targetWeek: 'Week 3 (Days 15–21)',
-    sprintsCountTarget: 3,
-    targetDate: '2026-09-15',
-    sprintsCount: 3,
-    tasksCount: 5,
-    sprints: [],
-    tasks: [],
-  },
-  {
-    id: 'ep-4',
-    epicCode: 'EHM-EPIC-004',
-    title: 'Brand Identity & Client Case Study Portfolio',
-    description: 'Craft enterprise branding collateral, client pitch decks, and case studies.',
-    status: 'IN_PROGRESS',
-    initiativeId: 'init-2',
-    department: 'Marketing',
-    targetWeek: 'Week 1 (Days 1–7)',
-    sprintsCountTarget: 2,
-    targetDate: '2026-09-12',
-    sprintsCount: 2,
-    tasksCount: 4,
-    sprints: [],
-    tasks: [],
-  },
-  {
-    id: 'ep-5',
-    epicCode: 'CAG-EPIC-001',
-    title: 'Agri-Tech Subsidy & Government Compliance Report',
-    description: 'Compile government subsidy documentation and field sensor telemetry analytics.',
-    status: 'IN_PROGRESS',
-    initiativeId: 'init-3',
-    department: 'Grants & Governance',
-    targetWeek: 'Week 2 (Days 8–14)',
-    sprintsCountTarget: 2,
-    targetDate: '2026-09-14',
-    sprintsCount: 2,
-    tasksCount: 3,
-    sprints: [],
-    tasks: [],
-  },
-];
-
-export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selectedEpicIdToView, onClearSelectedEpic }) => {
-  const [epics, setEpics] = useState<EpicItem[]>(DEFAULT_EPICS);
+export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSelectInitiative, selectedEpicIdToView, onClearSelectedEpic }) => {
+  const [epics, setEpics] = useState<EpicItem[]>([]);
   const [initiatives, setInitiatives] = useState<InitiativeOption[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,11 +94,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
         fetchApi<InitiativeOption[]>('/api/initiatives'),
         fetchApi<any[]>('/api/tasks'),
       ]);
-      if (epicsData && epicsData.length > 0) {
-        setEpics(epicsData);
-      } else {
-        setEpics(DEFAULT_EPICS);
-      }
+      setEpics(epicsData || []);
       setAllTasks(tasksData || []);
 
       if (initsData && initsData.length > 0) {
@@ -187,7 +103,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
         if (!selectedInitiativeId) setSelectedInitiativeId(sortedInits[0].id);
       }
     } catch {
-      setEpics(DEFAULT_EPICS);
+      setEpics([]);
     } finally {
       setLoading(false);
     }
@@ -641,7 +557,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
           <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-              <h3 className="text-base font-bold text-gray-900 tracking-tight">Feature Epic Details</h3>
+              <h3 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">Feature Epic Details</h3>
 
               <button
                 onClick={() => {
@@ -658,26 +574,46 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
               {/* 1. First: Parent Initiative Code & Title */}
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId);
+                const parentCode = parentInit?.initiativeCode || 'N/A';
+                const parentTitle = parentInit?.title || 'No Parent Initiative Linked';
+
                 return (
-                  <div className="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200 space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+                  <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
                       <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Parent Initiative Code: <span className="font-mono text-emerald-700 font-extrabold bg-white px-2 py-0.5 rounded border border-emerald-300">{parentInit?.initiativeCode || viewingEpic.initiativeId}</span></span>
+                      <span>Parent Initiative Code:</span>
+                      {parentInit ? (
+                        <button
+                          onClick={() => {
+                            const initId = parentInit.id;
+                            setViewingEpic(null);
+                            if (onClearSelectedEpic) onClearSelectedEpic();
+                            if (onSelectInitiative) onSelectInitiative(initId);
+                          }}
+                          className="font-mono text-emerald-800 font-extrabold bg-white hover:bg-emerald-100 hover:text-emerald-900 px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer text-sm"
+                          title="Click to view Parent Initiative"
+                        >
+                          <span>{parentCode}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
+                        </button>
+                      ) : (
+                        <span className="font-mono text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200 text-sm">{parentCode}</span>
+                      )}
                     </div>
-                    <div className="text-xs font-bold text-emerald-900 pl-6">
-                      Parent Initiative Title: <span className="font-semibold text-gray-800">{parentInit?.title || 'N/A'}</span>
+                    <div className="text-sm font-bold text-emerald-900 pl-6">
+                      Parent Initiative Title: <span className="font-semibold text-gray-800">{parentTitle}</span>
                     </div>
                   </div>
                 );
               })()}
 
               {/* 2. Second: Epic Code & Title */}
-              <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-1.5 text-xs">
-                <div className="font-bold text-gray-900">
-                  Epic Code: <span className="font-mono text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{viewingEpic.epicCode}</span>
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 text-sm">
+                <div className="font-bold text-gray-700">
+                  Epic Code: <span className="font-mono text-emerald-700 font-extrabold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 text-sm">{viewingEpic.epicCode}</span>
                 </div>
-                <div className="font-bold text-gray-900">
-                  Epic Title: <span className="text-gray-900 font-extrabold">{viewingEpic.title}</span>
+                <div className="font-bold text-gray-700">
+                  Epic Title: <span className="text-gray-900 font-extrabold text-base">{viewingEpic.title}</span>
                 </div>
               </div>
 
@@ -685,24 +621,22 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
               <div className="space-y-3">
                 {viewingEpic.description && (
                   <div>
-                    <span className="text-gray-400 font-bold uppercase text-[10px] block mb-1">Description</span>
-                    <p className="text-xs text-gray-700 leading-relaxed bg-white p-3 rounded-xl border border-gray-200 font-medium">
-                      {viewingEpic.description}
-                    </p>
+                    <span className="text-gray-400 font-bold uppercase text-xs block mb-1">Description</span>
+                    <MarkdownViewer content={viewingEpic.description} className="bg-white p-4 rounded-xl border border-gray-200 text-sm text-gray-800" />
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200 text-xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm">
                   <div>
-                    <span className="text-gray-400 font-semibold block uppercase text-[10px]">Entity</span>
-                    <span className="font-bold text-blue-700 font-mono">
+                    <span className="text-gray-400 font-bold block uppercase text-xs">Entity</span>
+                    <span className="font-bold text-blue-700 font-mono text-sm">
                       {(viewingEpic.epicCode || '').startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-gray-400 font-semibold block uppercase text-[10px]">Department</span>
-                    <span className="font-bold text-amber-800">{viewingEpic.department || 'Product & Tech'}</span>
+                    <span className="text-gray-400 font-bold block uppercase text-xs">Department</span>
+                    <span className="font-bold text-amber-800 text-sm">{viewingEpic.department || 'Product & Tech'}</span>
                   </div>
 
                   <div>

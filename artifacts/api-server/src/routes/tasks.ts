@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, eq, sql } from '@workspace/db';
+import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, taskChecklists, taskComments, eq, sql, asc } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -399,6 +399,125 @@ router.post('/:id/delay-request', async (req, res) => {
   } catch (err: any) {
     console.error('[DELAY REQUEST ERROR]:', err);
     res.status(500).json({ message: 'Failed to submit delay request' });
+  }
+});
+
+// GET /api/tasks/:id/checklists
+router.get('/:id/checklists', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const items = await db
+      .select()
+      .from(taskChecklists)
+      .where(eq(taskChecklists.taskId, id))
+      .orderBy(asc(taskChecklists.sortOrder));
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch task checklists' });
+  }
+});
+
+// POST /api/tasks/:id/checklists
+router.post('/:id/checklists', async (req, res) => {
+  const { id } = req.params;
+  const { itemText } = req.body;
+  if (!itemText) return res.status(400).json({ message: 'itemText is required' });
+
+  try {
+    const existing = await db
+      .select()
+      .from(taskChecklists)
+      .where(eq(taskChecklists.taskId, id));
+
+    const nextSortOrder = existing.length + 1;
+
+    const [newItem] = await db
+      .insert(taskChecklists)
+      .values({
+        taskId: id,
+        itemText,
+        isCompleted: false,
+        sortOrder: nextSortOrder,
+      })
+      .returning();
+
+    res.status(201).json(newItem);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add checklist item' });
+  }
+});
+
+// PATCH /api/tasks/checklists/:checklistId
+router.patch('/checklists/:checklistId', async (req, res) => {
+  const { checklistId } = req.params;
+  const { isCompleted, itemText } = req.body;
+
+  try {
+    const updatePayload: any = {};
+    if (typeof itemText === 'string') updatePayload.itemText = itemText;
+
+    if (typeof isCompleted === 'boolean') {
+      updatePayload.isCompleted = isCompleted;
+      if (isCompleted) {
+        updatePayload.completedAt = new Date(); // Server-side automatic timestamp
+        if (req.user?.employeeId) {
+          updatePayload.completedBy = req.user.employeeId;
+        }
+      } else {
+        updatePayload.completedAt = null;
+        updatePayload.completedBy = null;
+      }
+    }
+
+    const [updated] = await db
+      .update(taskChecklists)
+      .set(updatePayload)
+      .where(eq(taskChecklists.id, checklistId))
+      .returning();
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update checklist item' });
+  }
+});
+
+// GET /api/tasks/:id/comments (Always ORDER BY created_at ASC)
+router.get('/:id/comments', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const comments = await db
+      .select()
+      .from(taskComments)
+      .where(eq(taskComments.taskId, id))
+      .orderBy(asc(taskComments.createdAt));
+    res.json(comments);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch task comments' });
+  }
+});
+
+// POST /api/tasks/:id/comments
+router.post('/:id/comments', async (req, res) => {
+  const { id } = req.params;
+  const { content, isSystemLog } = req.body;
+  if (!content) return res.status(400).json({ message: 'content is required' });
+
+  try {
+    const authorName = req.user?.email || 'User';
+    const [newComment] = await db
+      .insert(taskComments)
+      .values({
+        taskId: id,
+        authorId: req.user?.employeeId || null,
+        authorName,
+        content,
+        isSystemLog: Boolean(isSystemLog),
+      })
+      .returning();
+
+    res.status(201).json(newComment);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to post comment' });
   }
 });
 

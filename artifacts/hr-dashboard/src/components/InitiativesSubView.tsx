@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ChevronDown, ChevronRight, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, CheckCircle2, PlayCircle, AlertCircle, Archive, RotateCcw, Building2 } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
+import { MarkdownViewer } from './MarkdownViewer';
+import { RichTextEditor } from './RichTextEditor';
 
 interface InitiativeItem {
   id: string;
@@ -31,6 +33,8 @@ interface InitiativeItem {
 interface Props {
   isManager: boolean;
   onSelectEpic: (epicId: string) => void;
+  selectedInitiativeIdToView?: string | null;
+  onClearSelectedInitiative?: () => void;
 }
 
 const ENTITY_OPTIONS = [
@@ -46,75 +50,10 @@ const DEPARTMENT_OPTIONS = [
   'Grants & Governance',
 ];
 
-const DEFAULT_INITIATIVES: InitiativeItem[] = [
-  {
-    id: 'init-1',
-    initiativeCode: 'EHM-INIT-001',
-    title: 'Enterprise Multi-Tenant AI Platform & Telemetry Core',
-    description: 'Strategic Tech initiative to deploy GraphQL gateway, Redis pub/sub messaging engine, and Supabase DDL schema migrations across EHM & CAG.',
-    status: 'IN_PROGRESS',
-    entityId: 'ehmconsultancy',
-    entityName: 'ehmconsultancy',
-    entityCode: 'EHM',
-    departmentId: 'Product & Tech',
-    subDepartment: 'Core Engineering',
-    targetMonth: 'Month 1 (Weeks 1–4)',
-    epicsCountTarget: 4,
-    targetDeliverableMetric: '99.9% API Uptime & Telemetry Logging',
-    targetDate: '2026-09-30',
-    epicsCount: 3,
-    epics: [
-      { id: 'ep-1', epicCode: 'EHM-EPIC-001', title: 'API Gateway Telemetry & Rate Limiting Pipeline', status: 'IN_PROGRESS', targetDate: '2026-09-10' },
-      { id: 'ep-2', epicCode: 'EHM-EPIC-002', title: 'Real-time WebSocket & Push Notification Engine', status: 'DONE', targetDate: '2026-09-05' },
-      { id: 'ep-3', epicCode: 'EHM-EPIC-003', title: 'OAuth2 & Role-Based Access Control Security Audit', status: 'IN_PROGRESS', targetDate: '2026-09-15' },
-    ],
-  },
-  {
-    id: 'init-2',
-    initiativeCode: 'EHM-INIT-002',
-    title: 'Q3 Brand Marketing & Digital Client Acquisition',
-    description: 'High-growth marketing campaign targeting enterprise SaaS clients, brand strategy collateral, and social media outreach.',
-    status: 'IN_PROGRESS',
-    entityId: 'ehmconsultancy',
-    entityName: 'ehmconsultancy',
-    entityCode: 'EHM',
-    departmentId: 'Marketing',
-    subDepartment: 'Brand & Social',
-    targetMonth: 'Month 1 (Weeks 1–4)',
-    epicsCountTarget: 3,
-    targetDeliverableMetric: '500+ Qualified B2B Enterprise Leads',
-    targetDate: '2026-09-25',
-    epicsCount: 2,
-    epics: [
-      { id: 'ep-4', epicCode: 'EHM-EPIC-004', title: 'Brand Identity & Client Case Study Portfolio', status: 'IN_PROGRESS', targetDate: '2026-09-12' },
-      { id: 'ep-5', epicCode: 'EHM-EPIC-005', title: 'LinkedIn B2B Enterprise Campaign & Ad Funnel', status: 'IN_PROGRESS', targetDate: '2026-09-18' },
-    ],
-  },
-  {
-    id: 'init-3',
-    initiativeCode: 'CAG-INIT-001',
-    title: 'Climagro Analytics IoT & Agri-Tech Compliance Subsidies',
-    description: 'Cross-entity governance initiative for agri-tech telemetry sensors, grant application tracking, and delivery operations.',
-    status: 'IN_PROGRESS',
-    entityId: 'climagroanalytics',
-    entityName: 'climagroanalytics',
-    entityCode: 'CAG',
-    departmentId: 'Grants & Governance',
-    subDepartment: 'Operations & Grants',
-    targetMonth: 'Month 1 (Weeks 1–4)',
-    epicsCountTarget: 3,
-    targetDeliverableMetric: '100% Grant Compliance & Field Telemetry',
-    targetDate: '2026-09-28',
-    epicsCount: 2,
-    epics: [
-      { id: 'ep-6', epicCode: 'CAG-EPIC-001', title: 'Agri-Tech Subsidy & Government Compliance Report', status: 'IN_PROGRESS', targetDate: '2026-09-14' },
-      { id: 'ep-7', epicCode: 'CAG-EPIC-002', title: 'Vendor Logistics & Field Dispatch Telemetry', status: 'DONE', targetDate: '2026-09-08' },
-    ],
-  },
-];
-
-export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic }) => {
-  const [initiatives, setInitiatives] = useState<InitiativeItem[]>(DEFAULT_INITIATIVES);
+export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, selectedInitiativeIdToView, onClearSelectedInitiative }) => {
+  const [initiatives, setInitiatives] = useState<InitiativeItem[]>([]);
+  const [expandedInitiativeId, setExpandedInitiativeId] = useState<string | null>(null);
+  const [viewingInitiative, setViewingInitiative] = useState<InitiativeItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null); // CLOSED BY DEFAULT
 
@@ -148,13 +87,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic })
     setLoading(true);
     try {
       const initData = await fetchApi<InitiativeItem[]>('/api/initiatives');
-      if (initData && initData.length > 0) {
-        setInitiatives(initData);
-      } else {
-        setInitiatives(DEFAULT_INITIATIVES);
-      }
+      setInitiatives(initData || []);
     } catch (err) {
-      setInitiatives(DEFAULT_INITIATIVES);
+      setInitiatives([]);
     } finally {
       setLoading(false);
     }
@@ -599,12 +534,11 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic })
               {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  placeholder="Comprehensive goal summary, deliverables, and outcome objectives..."
+                <RichTextEditor
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  onChange={setDescription}
+                  placeholder="Comprehensive goal summary, deliverables, and outcome objectives..."
+                  rows={3}
                 />
               </div>
 
