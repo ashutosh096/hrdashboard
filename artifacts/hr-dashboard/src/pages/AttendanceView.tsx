@@ -234,7 +234,7 @@ export const AttendanceView: React.FC = () => {
       <MarkAttendanceModal
         isOpen={isMarkModalOpen}
         onClose={() => setIsMarkModalOpen(false)}
-        onSubmit={handleMarkAttendance}
+        onSubmitAttendance={handleMarkAttendance}
       />
     </div>
   );

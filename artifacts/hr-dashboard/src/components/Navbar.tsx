@@ -11,6 +11,10 @@ interface NavbarProps {
   onOpenAssignTask?: () => void;
   onOpenAddEmployee?: () => void;
   onOpenExportReport?: () => void;
+  onOpenClockModal?: () => void;
+  onOpenTaskModal?: () => void;
+  onOpenAddEmployeeModal?: () => void;
+  onOpenExportModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({

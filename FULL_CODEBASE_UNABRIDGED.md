@@ -8182,6 +8182,10 @@ interface NavbarProps {
   onOpenAssignTask?: () => void;
   onOpenAddEmployee?: () => void;
   onOpenExportReport?: () => void;
+  onOpenClockModal?: () => void;
+  onOpenTaskModal?: () => void;
+  onOpenAddEmployeeModal?: () => void;
+  onOpenExportModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -9805,10 +9809,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
   // Combine Sprints & Tasks into Week Groups
   const weekList = [
-    { id: 'Week 1 (Days 1–7)', label: 'Week 1 (Days 1–7)' },
-    { id: 'Week 2 (Days 8–14)', label: 'Week 2 (Days 8–14)' },
-    { id: 'Week 3 (Days 15–21)', label: 'Week 3 (Days 15–21)' },
-    { id: 'Week 4 (Days 22–28)', label: 'Week 4 (Days 22–28)' },
+    { id: 'Week 1 (Days 1–7)', label: 'Week 1 (Days 1–7)', isFuture: false },
+    { id: 'Week 2 (Days 8–14)', label: 'Week 2 (Days 8–14)', isFuture: false },
+    { id: 'Week 3 (Days 15–21)', label: 'Week 3 (Days 15–21)', isFuture: true },
+    { id: 'Week 4 (Days 22–28)', label: 'Week 4 (Days 22–28)', isFuture: true },
   ];
 
   // Filter tasks based on view controls
@@ -14059,7 +14063,7 @@ export const AttendanceView: React.FC = () => {
       <MarkAttendanceModal
         isOpen={isMarkModalOpen}
         onClose={() => setIsMarkModalOpen(false)}
-        onSubmit={handleMarkAttendance}
+        onSubmitAttendance={handleMarkAttendance}
       />
     </div>
   );
