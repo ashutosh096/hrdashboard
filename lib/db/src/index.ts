@@ -5,8 +5,6 @@ import path from 'node:path';
 
 dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
-dotenv.config({ path: 'C:/hrdashboard/.env' });
 
 export { eq, ne, and, or, sql, lt, lte, gt, gte, asc, desc } from 'drizzle-orm';
 
@@ -34,6 +32,11 @@ export * from './schema/epics.js';
 export * from './schema/sprints.js';
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hros_db';
-const pool = new pg.Pool({ connectionString });
+const isCloudDb = connectionString.includes('supabase') || connectionString.includes('aws') || connectionString.includes('neon') || connectionString.includes('render') || connectionString.includes('pooler') || process.env.NODE_ENV === 'production';
+
+const pool = new pg.Pool({
+  connectionString,
+  ssl: isCloudDb ? { rejectUnauthorized: false } : undefined,
+});
 
 export const db = drizzle(pool);

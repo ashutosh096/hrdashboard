@@ -143,6 +143,7 @@ package.json
 pnpm-workspace.yaml
 scratch/audit_epics.mjs
 scratch/backfill_db_constraints.mjs
+scratch/check_users.js
 scratch/generate_codebase_md.js
 scratch/verify_all_tests.mjs
 ```
@@ -1169,6 +1170,24 @@ export async function runSeed() {
       console.log(`[SEED] Admin User updated: ${adminEmail}`);
     }
 
+    const secondaryEmail = 'ashutosh@ehmconsultancy.com';
+    const [existingSecUser] = await db.select().from(users).where(eq(users.email, secondaryEmail));
+    if (!existingSecUser) {
+      await db.insert(users).values({
+        email: secondaryEmail,
+        passwordHash,
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        employeeId: adminEmployee.id,
+      });
+      console.log(`[SEED] Secondary Admin User inserted: ${secondaryEmail}`);
+    } else {
+      await db.update(users)
+        .set({ passwordHash, role: 'ADMIN', status: 'ACTIVE', employeeId: adminEmployee.id })
+        .where(eq(users.email, secondaryEmail));
+      console.log(`[SEED] Secondary Admin User updated: ${secondaryEmail}`);
+    }
+
     // 5. Seed / Upsert Default Strategic Initiatives (CAG-INIT-001 & EHM-INIT-001)
     let [cagInit] = await db.select().from(initiatives).where(eq(initiatives.initiativeCode, 'CAG-INIT-001'));
     if (!cagInit) {
@@ -2120,9 +2139,10 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
     return res.json({ token, user: userPayload });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
-    return res.status(500).json({ message: 'Internal server error' });
+    const detail = err?.message || String(err);
+    return res.status(500).json({ message: `Server login failed: ${detail}` });
   }
 });
 
@@ -26652,8 +26672,6 @@ import path from 'node:path';
 
 dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
-dotenv.config({ path: 'C:/hrdashboard/.env' });
 
 export { eq, ne, and, or, sql, lt, lte, gt, gte, asc, desc } from 'drizzle-orm';
 
@@ -26681,7 +26699,12 @@ export * from './schema/epics.js';
 export * from './schema/sprints.js';
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hros_db';
-const pool = new pg.Pool({ connectionString });
+const isCloudDb = connectionString.includes('supabase') || connectionString.includes('aws') || connectionString.includes('neon') || connectionString.includes('render') || connectionString.includes('pooler') || process.env.NODE_ENV === 'production';
+
+const pool = new pg.Pool({
+  connectionString,
+  ssl: isCloudDb ? { rejectUnauthorized: false } : undefined,
+});
 
 export const db = drizzle(pool);
 
@@ -27702,6 +27725,39 @@ try {
 } finally {
   await client.end();
 }
+
+```
+
+## FILE: scratch/check_users.js
+
+```javascript
+import dotenv from 'dotenv';
+import { db, users } from '@workspace/db';
+
+dotenv.config({ path: './artifacts/api-server/.env' });
+
+async function checkUsers() {
+  const result = await db.select({
+    id: users.id,
+    email: users.email,
+    role: users.role,
+    status: users.status,
+    hasPassword: users.passwordHash
+  }).from(users);
+
+  console.log('Users in Database:');
+  console.log(result.map(u => ({
+    email: u.email,
+    role: u.role,
+    status: u.status,
+    hasPasswordHash: !!u.hasPassword
+  })));
+}
+
+checkUsers().then(() => process.exit(0)).catch(err => {
+  console.error(err);
+  process.exit(1);
+});
 
 ```
 

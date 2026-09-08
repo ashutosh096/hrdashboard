@@ -91,9 +91,10 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
     return res.json({ token, user: userPayload });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
-    return res.status(500).json({ message: 'Internal server error' });
+    const detail = err?.message || String(err);
+    return res.status(500).json({ message: `Server login failed: ${detail}` });
   }
 });
 
