@@ -14368,6 +14368,14 @@ export const LoginView: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('expired') === 'true') {
+      toast.error('Session expired. Please sign in again.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -17628,8 +17636,13 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     if (res.status === 401) {
       localStorage.removeItem('hros_token');
       localStorage.removeItem('hros_active_role');
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        if (!(window as any).__redirecting_to_login) {
+          (window as any).__redirecting_to_login = true;
+          setTimeout(() => {
+            window.location.href = '/login?expired=true';
+          }, 300);
+        }
       }
     }
     const errorData = await res.json().catch(() => ({ message: res.statusText }));
