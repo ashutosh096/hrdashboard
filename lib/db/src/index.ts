@@ -32,11 +32,11 @@ export * from './schema/epics.js';
 export * from './schema/sprints.js';
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hros_db';
-const isCloudDb = connectionString.includes('supabase') || connectionString.includes('aws') || connectionString.includes('neon') || connectionString.includes('render') || connectionString.includes('pooler') || process.env.NODE_ENV === 'production';
+const isRemoteDb = !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1');
 
 const pool = new pg.Pool({
   connectionString,
-  ssl: isCloudDb ? { rejectUnauthorized: false } : undefined,
+  ssl: isRemoteDb ? { rejectUnauthorized: false } : undefined,
 });
 
 export const db = drizzle(pool);

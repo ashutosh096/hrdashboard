@@ -93,7 +93,10 @@ router.post('/login', async (req, res) => {
     return res.json({ token, user: userPayload });
   } catch (err: any) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
-    const detail = err?.message || String(err);
+    let detail = err?.message || String(err);
+    if (err?.errors && Array.isArray(err.errors)) {
+      detail = err.errors.map((e: any) => e.message || String(e)).join('; ');
+    }
     return res.status(500).json({ message: `Server login failed: ${detail}` });
   }
 });

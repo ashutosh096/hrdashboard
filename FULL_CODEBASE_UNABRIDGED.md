@@ -145,6 +145,7 @@ scratch/audit_epics.mjs
 scratch/backfill_db_constraints.mjs
 scratch/check_users.js
 scratch/generate_codebase_md.js
+scratch/test_db_conn.js
 scratch/verify_all_tests.mjs
 ```
 
@@ -2141,7 +2142,10 @@ router.post('/login', async (req, res) => {
     return res.json({ token, user: userPayload });
   } catch (err: any) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
-    const detail = err?.message || String(err);
+    let detail = err?.message || String(err);
+    if (err?.errors && Array.isArray(err.errors)) {
+      detail = err.errors.map((e: any) => e.message || String(e)).join('; ');
+    }
     return res.status(500).json({ message: `Server login failed: ${detail}` });
   }
 });
@@ -26699,11 +26703,11 @@ export * from './schema/epics.js';
 export * from './schema/sprints.js';
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hros_db';
-const isCloudDb = connectionString.includes('supabase') || connectionString.includes('aws') || connectionString.includes('neon') || connectionString.includes('render') || connectionString.includes('pooler') || process.env.NODE_ENV === 'production';
+const isRemoteDb = !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1');
 
 const pool = new pg.Pool({
   connectionString,
-  ssl: isCloudDb ? { rejectUnauthorized: false } : undefined,
+  ssl: isRemoteDb ? { rejectUnauthorized: false } : undefined,
 });
 
 export const db = drizzle(pool);
@@ -27842,6 +27846,52 @@ for (const relPath of allFiles) {
 
 fs.writeFileSync(path.join(rootDir, 'FULL_CODEBASE_UNABRIDGED.md'), output, 'utf8');
 console.log(`Successfully generated FULL_CODEBASE_UNABRIDGED.md with ${includedCount} file contents.`);
+
+```
+
+## FILE: scratch/test_db_conn.js
+
+```javascript
+import pg from 'pg';
+import dotenv from 'dotenv';
+import path from 'node:path';
+
+dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
+
+const connectionString = process.env.DATABASE_URL;
+
+console.log('Testing connectionString:', connectionString);
+
+async function testConn(sslOptions, label) {
+  console.log(`\n--- Testing ${label} ---`);
+  const pool = new pg.Pool({
+    connectionString,
+    ssl: sslOptions,
+    connectionTimeoutMillis: 5000,
+  });
+
+  try {
+    const client = await pool.connect();
+    const res = await client.query('SELECT NOW()');
+    console.log(`[SUCCESS ${label}] Time from DB:`, res.rows[0]);
+    client.release();
+    await pool.end();
+  } catch (err) {
+    console.error(`[FAIL ${label}] Error:`, err);
+    if (err.errors) {
+      console.error(`[FAIL ${label}] Sub-errors:`, err.errors);
+    }
+    await pool.end().catch(() => {});
+  }
+}
+
+async function run() {
+  await testConn({ rejectUnauthorized: false }, 'ssl rejectUnauthorized false');
+  await testConn(false, 'ssl false');
+  await testConn(true, 'ssl true');
+}
+
+run();
 
 ```
 
