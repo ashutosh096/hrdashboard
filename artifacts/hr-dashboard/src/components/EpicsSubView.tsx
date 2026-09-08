@@ -453,9 +453,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       {/* Parent Initiative (Code Only) */}
                       <td className="py-3 px-4">
                         {parentInit ? (
-                          <span className="font-mono text-[11px] font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
-                            {parentInit.initiativeCode}
-                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onSelectInitiative) onSelectInitiative(parentInit.id);
+                            }}
+                            className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 transition-all flex items-center gap-1 cursor-pointer"
+                            title="Click to view Parent Initiative"
+                          >
+                            <span>{parentInit.initiativeCode}</span>
+                            <ArrowRight className="w-3 h-3 text-emerald-600" />
+                          </button>
                         ) : (
                           <span className="text-gray-400 font-semibold text-xs">-</span>
                         )}

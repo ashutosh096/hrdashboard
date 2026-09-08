@@ -99,6 +99,23 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (selectedInitiativeIdToView && initiatives.length > 0) {
+      const match = initiatives.find(
+        (i) => i.id === selectedInitiativeIdToView || i.initiativeCode === selectedInitiativeIdToView
+      );
+      if (match) {
+        setExpandedId(match.id);
+        setTimeout(() => {
+          const el = document.getElementById(`initiative-card-${match.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
+      }
+    }
+  }, [selectedInitiativeIdToView, initiatives]);
+
   const openStatusConfirmModal = (initiative: InitiativeItem, targetStatus: string) => {
     setConfirmModal({
       isOpen: true,
@@ -248,10 +265,17 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
             const isDone = item.status === 'DONE' || item.status === 'COMPLETED';
             const isInProgress = item.status === 'ACTIVE' || item.status === 'IN_PROGRESS';
 
+            const isSelected = selectedInitiativeIdToView === item.id || selectedInitiativeIdToView === item.initiativeCode;
+
             return (
               <div
                 key={item.id}
-                className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:border-emerald-300 transition-all"
+                id={`initiative-card-${item.id}`}
+                className={`bg-white border rounded-2xl overflow-hidden shadow-xs transition-all ${
+                  isSelected
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
+                    : 'border-gray-200 hover:border-emerald-300'
+                }`}
               >
                 {/* Initiative Main Row (CLOSED BY DEFAULT) */}
                 <div

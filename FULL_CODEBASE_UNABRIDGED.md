@@ -6448,9 +6448,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       {/* Parent Initiative (Code Only) */}
                       <td className="py-3 px-4">
                         {parentInit ? (
-                          <span className="font-mono text-[11px] font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
-                            {parentInit.initiativeCode}
-                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onSelectInitiative) onSelectInitiative(parentInit.id);
+                            }}
+                            className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 transition-all flex items-center gap-1 cursor-pointer"
+                            title="Click to view Parent Initiative"
+                          >
+                            <span>{parentInit.initiativeCode}</span>
+                            <ArrowRight className="w-3 h-3 text-emerald-600" />
+                          </button>
                         ) : (
                           <span className="text-gray-400 font-semibold text-xs">-</span>
                         )}
@@ -7265,6 +7273,23 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (selectedInitiativeIdToView && initiatives.length > 0) {
+      const match = initiatives.find(
+        (i) => i.id === selectedInitiativeIdToView || i.initiativeCode === selectedInitiativeIdToView
+      );
+      if (match) {
+        setExpandedId(match.id);
+        setTimeout(() => {
+          const el = document.getElementById(`initiative-card-${match.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
+      }
+    }
+  }, [selectedInitiativeIdToView, initiatives]);
+
   const openStatusConfirmModal = (initiative: InitiativeItem, targetStatus: string) => {
     setConfirmModal({
       isOpen: true,
@@ -7414,10 +7439,17 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
             const isDone = item.status === 'DONE' || item.status === 'COMPLETED';
             const isInProgress = item.status === 'ACTIVE' || item.status === 'IN_PROGRESS';
 
+            const isSelected = selectedInitiativeIdToView === item.id || selectedInitiativeIdToView === item.initiativeCode;
+
             return (
               <div
                 key={item.id}
-                className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs hover:border-emerald-300 transition-all"
+                id={`initiative-card-${item.id}`}
+                className={`bg-white border rounded-2xl overflow-hidden shadow-xs transition-all ${
+                  isSelected
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
+                    : 'border-gray-200 hover:border-emerald-300'
+                }`}
               >
                 {/* Initiative Main Row (CLOSED BY DEFAULT) */}
                 <div
