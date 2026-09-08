@@ -89,7 +89,7 @@ router.post('/login', async (req, res) => {
       managedTeamId: user.managedTeamId || undefined,
     };
 
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
     return res.json({ token, user: userPayload });
   } catch (err) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
@@ -172,7 +172,7 @@ router.post('/set-password', async (req, res) => {
       employeeId,
     };
 
-    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
     return res.json({ message: 'Password set successfully', token: authToken, user: userPayload });
   } catch (err) {
     console.error('[SET-PASSWORD ERROR]:', err);
@@ -301,7 +301,7 @@ router.get('/google/callback', async (req, res) => {
           role: targetUser.role,
           employeeId: targetUser.employeeId || undefined,
         };
-        authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+        authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
       }
 
       const expiry = new Date(Date.now() + (expires_in || 3600) * 1000);

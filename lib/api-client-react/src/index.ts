@@ -12,6 +12,13 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
   const res = await fetch(endpoint, { ...options, headers });
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('hros_token');
+      localStorage.removeItem('hros_active_role');
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     const errorData = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(errorData.message || 'API request failed');
   }

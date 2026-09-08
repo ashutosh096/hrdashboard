@@ -2118,7 +2118,7 @@ router.post('/login', async (req, res) => {
       managedTeamId: user.managedTeamId || undefined,
     };
 
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
     return res.json({ token, user: userPayload });
   } catch (err) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
@@ -2201,7 +2201,7 @@ router.post('/set-password', async (req, res) => {
       employeeId,
     };
 
-    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
     return res.json({ message: 'Password set successfully', token: authToken, user: userPayload });
   } catch (err) {
     console.error('[SET-PASSWORD ERROR]:', err);
@@ -2330,7 +2330,7 @@ router.get('/google/callback', async (req, res) => {
           role: targetUser.role,
           employeeId: targetUser.employeeId || undefined,
         };
-        authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
+        authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
       }
 
       const expiry = new Date(Date.now() + (expires_in || 3600) * 1000);
@@ -12003,6 +12003,12 @@ function decodeJwtPayload(token: string): User | null {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const payload = JSON.parse(atob(parts[1]));
+
+    // Client-side expiry check: payload.exp (seconds) * 1000 < Date.now()
+    if (typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) {
+      return null;
+    }
+
     return {
       id: payload.id,
       email: payload.email,
@@ -12047,16 +12053,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(decodedUser);
         setToken(storedToken);
       } else {
+        // Clear invalid / expired token & lingering demo role
         localStorage.removeItem('hros_token');
+        localStorage.removeItem('hros_active_role');
+        setUser(null);
+        setToken(null);
       }
     } else {
-      // Default demo user session
-      setUser({
-        id: 'usr-demo-1',
-        email: 'ashutosh@ehmconsultancy.com',
-        role: storedRole || 'ADMIN',
-        name: (storedRole || 'ADMIN') === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
-      });
+      // Clear lingering demo role when no token exists
+      localStorage.removeItem('hros_active_role');
+      setUser(null);
+      setToken(null);
     }
     setIsLoading(false);
   }, []);
@@ -12084,20 +12091,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setRole = (newRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
+    if (!user) return;
     localStorage.setItem('hros_active_role', newRole);
     setUser((prev) => {
-      if (prev) {
-        return {
-          ...prev,
-          role: newRole,
-          name: newRole === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
-        };
-      }
+      if (!prev) return null;
       return {
-        id: 'usr-demo-1',
-        email: 'ashutosh@ehmconsultancy.com',
+        ...prev,
         role: newRole,
-        name: newRole === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
       };
     });
   };
@@ -17625,6 +17625,13 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
   const res = await fetch(endpoint, { ...options, headers });
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('hros_token');
+      localStorage.removeItem('hros_active_role');
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     const errorData = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(errorData.message || 'API request failed');
   }

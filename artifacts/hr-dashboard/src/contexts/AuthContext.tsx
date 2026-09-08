@@ -36,6 +36,12 @@ function decodeJwtPayload(token: string): User | null {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const payload = JSON.parse(atob(parts[1]));
+
+    // Client-side expiry check: payload.exp (seconds) * 1000 < Date.now()
+    if (typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) {
+      return null;
+    }
+
     return {
       id: payload.id,
       email: payload.email,
@@ -80,16 +86,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(decodedUser);
         setToken(storedToken);
       } else {
+        // Clear invalid / expired token & lingering demo role
         localStorage.removeItem('hros_token');
+        localStorage.removeItem('hros_active_role');
+        setUser(null);
+        setToken(null);
       }
     } else {
-      // Default demo user session
-      setUser({
-        id: 'usr-demo-1',
-        email: 'ashutosh@ehmconsultancy.com',
-        role: storedRole || 'ADMIN',
-        name: (storedRole || 'ADMIN') === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
-      });
+      // Clear lingering demo role when no token exists
+      localStorage.removeItem('hros_active_role');
+      setUser(null);
+      setToken(null);
     }
     setIsLoading(false);
   }, []);
@@ -117,20 +124,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setRole = (newRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
+    if (!user) return;
     localStorage.setItem('hros_active_role', newRole);
     setUser((prev) => {
-      if (prev) {
-        return {
-          ...prev,
-          role: newRole,
-          name: newRole === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
-        };
-      }
+      if (!prev) return null;
       return {
-        id: 'usr-demo-1',
-        email: 'ashutosh@ehmconsultancy.com',
+        ...prev,
         role: newRole,
-        name: newRole === 'EMPLOYEE' ? 'Ashutosh Mishra' : 'Ashutosh Mishra (Manager)',
       };
     });
   };
