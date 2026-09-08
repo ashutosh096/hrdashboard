@@ -4,6 +4,10 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
+
+dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config();
 import authRouter from './routes/auth.js';
 import dashboardRouter from './routes/dashboard.js';
 import tasksRouter from './routes/tasks.js';

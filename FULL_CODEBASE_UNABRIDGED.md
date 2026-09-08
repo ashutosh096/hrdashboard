@@ -1515,6 +1515,10 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
+
+dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config();
 import authRouter from './routes/auth.js';
 import dashboardRouter from './routes/dashboard.js';
 import tasksRouter from './routes/tasks.js';
@@ -26702,7 +26706,8 @@ export * from './schema/initiatives.js';
 export * from './schema/epics.js';
 export * from './schema/sprints.js';
 
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hros_db';
+const DEFAULT_DB_URL = 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
+const connectionString = process.env.DATABASE_URL || DEFAULT_DB_URL;
 const isRemoteDb = !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1');
 
 const pool = new pg.Pool({
