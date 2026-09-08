@@ -1,16 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Calendar,
-  Clock,
-  UserCheck,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-  Building2,
-  Laptop,
-  Search,
-  Filter,
-} from 'lucide-react';
+import { Clock, Search } from 'lucide-react';
 import { MarkAttendanceModal } from '../components/MarkAttendanceModal';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -159,6 +148,12 @@ export const AttendanceView: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {todayAttendance.marked && (
+            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs">
+              ● Today Marked ({todayAttendance.workMode || 'IN_OFFICE'})
+            </span>
+          )}
 
           <button
             onClick={() => setIsMarkModalOpen(true)}
