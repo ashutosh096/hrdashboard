@@ -24,6 +24,7 @@ export const TasksView: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>(user?.role === 'EMPLOYEE' ? 'TASKS' : 'INITIATIVES');
   const [selectedEpicToViewId, setSelectedEpicToViewId] = useState<string | null>(null);
+  const [selectedInitiativeToViewId, setSelectedInitiativeToViewId] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);

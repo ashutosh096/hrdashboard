@@ -11,7 +11,7 @@ export function startOverdueCheckCron() {
   setInterval(runOverdueAndTokenChecks, 24 * 60 * 60 * 1000);
 }
 
-async function runOverdueAndTokenChecks() {
+export async function runOverdueAndTokenChecks() {
   const now = new Date();
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -25,37 +25,49 @@ async function runOverdueAndTokenChecks() {
     for (const task of overdueTasks) {
       const daysOverdue = Math.max(1, Math.ceil((now.getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24)));
 
-      // Resolve assignee name
+      // 1. Resolve Assignee details and Assignee User Account
       let assigneeName = 'Employee';
+      let assigneeUser: any = null;
       const [assigneeEmp] = await db.select().from(employees).where(eq(employees.id, task.assigneeId));
       if (assigneeEmp) {
         assigneeName = `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim();
+        const [userRow] = await db.select().from(users).where(eq(users.employeeId, assigneeEmp.id));
+        if (userRow) assigneeUser = userRow;
       }
 
-      // Priority Order Recipient Lookup:
-      // a. reviewingLeadId -> user
-      // b. creatorId -> user
-      // c. fallback ADMIN
-      let recipientUser: any = null;
-
+      // 2. Resolve Lead / Manager Recipient (Reviewing Lead -> Creator -> Fallback Admin)
+      let leadUser: any = null;
       if (task.reviewingLeadId) {
-        const [leadUser] = await db.select().from(users).where(eq(users.employeeId, task.reviewingLeadId));
-        if (leadUser) recipientUser = leadUser;
+        const [lead] = await db.select().from(users).where(eq(users.employeeId, task.reviewingLeadId));
+        if (lead) leadUser = lead;
       }
 
-      if (!recipientUser && task.creatorId) {
-        const [creatorUser] = await db.select().from(users).where(eq(users.employeeId, task.creatorId));
-        if (creatorUser) recipientUser = creatorUser;
+      if (!leadUser && task.creatorId) {
+        const [creator] = await db.select().from(users).where(eq(users.employeeId, task.creatorId));
+        if (creator) leadUser = creator;
       }
 
-      if (!recipientUser) {
+      if (!leadUser) {
         console.warn(`[OVERDUE CRON WARNING] Fallback to default ADMIN user for task ${task.taskCode}`);
         const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
-        recipientUser = fallbackAdmin;
+        leadUser = fallbackAdmin;
       }
 
-      if (recipientUser) {
-        // Skip duplicate spam if a TASK_OVERDUE notification for this exact taskId was created in last 24h
+      // 3. Build deduplicated list of target notification recipients (Lead + Assignee)
+      const recipientUsers: any[] = [];
+      const addedUserIds = new Set<string>();
+
+      if (leadUser && !addedUserIds.has(leadUser.id)) {
+        recipientUsers.push(leadUser);
+        addedUserIds.add(leadUser.id);
+      }
+      if (assigneeUser && !addedUserIds.has(assigneeUser.id)) {
+        recipientUsers.push(assigneeUser);
+        addedUserIds.add(assigneeUser.id);
+      }
+
+      // 4. Send Notifications & Emails to both recipients with per-recipient dedupe check
+      for (const recipientUser of recipientUsers) {
         const recentNotifs = await db
           .select()
           .from(notifications)
@@ -84,7 +96,7 @@ async function runOverdueAndTokenChecks() {
 
           await sendOverdueTaskAlertEmail(
             recipientUser.email,
-            'Manager',
+            recipientUser.id === assigneeUser?.id ? assigneeName : 'Manager',
             task.taskCode,
             task.title,
             assigneeName,
