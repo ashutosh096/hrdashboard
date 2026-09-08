@@ -31,11 +31,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const loadNotifications = async () => {
     try {
       const data = await fetchApi<any[]>('/api/notifications');
-      setNotifications(data);
-      const unread = data.filter((n: any) => !n.isRead).length;
+      const notifList = Array.isArray(data) ? data : [];
+      setNotifications(notifList);
+      const unread = notifList.filter((n: any) => !n.isRead).length;
       setUnreadNotificationsCount(unread);
     } catch (err) {
       console.error('[NOTIFICATIONS FETCH ERROR]:', err);
+      setNotifications([]);
+      setUnreadNotificationsCount(0);
     }
   };
 

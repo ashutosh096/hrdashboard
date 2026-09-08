@@ -1,26 +1,73 @@
 import { Router } from 'express';
+import { db, tasks, employees, entities, sprints, eq } from '@workspace/db';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/sprint-summary', (req, res) => {
-  const format = (req.query.format as string) || 'csv';
-  const entity = (req.query.entity as string) || 'ALL';
+router.get('/sprint-summary', async (req, res) => {
+  const format = (req.query.format as string) || 'json';
+  const entityFilter = (req.query.entity as string) || 'ALL';
 
-  if (format === 'csv') {
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="sprint-summary-report.csv"');
-    const csvContent = `Task ID,Deliverable,Entity,Assignee,Sprint Week,Due Date,Status\nEHM-MAR-ADH-672,Brand Refresh Assets,EHM,Priya Sharma,Sprint 35,2026-09-02,Completed\nCAG-DEV-SPR-101,IoT Sensor API Gateway,CAG,Rahul Verma,Sprint 35,2026-09-04,Ongoing\nEHM-OPS-PROC-412,Q3 Procurement Audit,EHM,Anita Desai,Sprint 36,2026-09-08,Pending\n`;
-    return res.send(csvContent);
+  try {
+    const allTasks = await db.select().from(tasks);
+    const allEmployees = await db.select().from(employees);
+    const allEntities = await db.select().from(entities);
+
+    let filtered = allTasks;
+    if (entityFilter !== 'ALL') {
+      const ent = allEntities.find(e => e.code.toUpperCase() === entityFilter.toUpperCase());
+      if (ent) {
+        filtered = allTasks.filter(t => t.entityId === ent.id);
+      }
+    }
+
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="sprint-summary-report.csv"');
+
+      let csv = 'Task ID,Title,Entity,Assignee,Task Type,Due Date,Status\n';
+      for (const t of filtered) {
+        const emp = allEmployees.find(e => e.id === t.assigneeId);
+        const ent = allEntities.find(e => e.id === t.entityId);
+        const assigneeName = emp ? `${emp.firstName} ${emp.lastName}` : 'Unassigned';
+        const entityCode = ent?.code || 'EHM';
+        const dueDateStr = t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '';
+        const titleClean = (t.title || '').replace(/"/g, '""');
+
+        csv += `"${t.taskCode}","${titleClean}","${entityCode}","${assigneeName}","${t.taskType}","${dueDateStr}","${t.status}"\n`;
+      }
+      return res.send(csv);
+    }
+
+    const totalTasks = filtered.length;
+    const completed = filtered.filter(t => t.status === 'DONE').length;
+    const inProgress = filtered.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length;
+    const blocked = filtered.filter(t => t.status === 'BLOCKED' || t.status === 'DELAYED').length;
+
+    res.json({
+      reportTitle: 'HROS Sprint & Deliverables Executive Summary',
+      generatedAt: new Date().toISOString(),
+      entityFilter,
+      summaryStats: {
+        totalTasks,
+        completed,
+        inProgress,
+        blocked,
+        completionRate: totalTasks > 0 ? Math.min(100, Math.round((completed / totalTasks) * 100)) : 0,
+      },
+      tasks: filtered.map(t => {
+        const emp = allEmployees.find(e => e.id === t.assigneeId);
+        return {
+          ...t,
+          assigneeName: emp ? `${emp.firstName} ${emp.lastName}` : 'Unassigned',
+        };
+      }),
+    });
+  } catch (err: any) {
+    console.error('[REPORTS ERROR]:', err);
+    res.status(500).json({ message: 'Failed to generate report' });
   }
-
-  res.json({
-    reportTitle: 'HROS Sprint & Deliverables Executive Summary',
-    generatedAt: new Date().toISOString(),
-    entityFilter: entity,
-    summaryStats: { totalTasks: 28, completed: 18, inProgress: 7, blocked: 3 },
-  });
 });
 
 export default router;

@@ -15,6 +15,7 @@ export const epics = pgTable('epics', {
   department: varchar('department', { length: 100 }),
   targetWeek: varchar('target_week', { length: 100 }),
   sprintsCountTarget: integer('sprints_count_target').default(2),
+  nextTaskSeq: integer('next_task_seq').default(1).notNull(),
   status: epicStatusEnum('status').default('PLANNED').notNull(),
   ownerId: uuid('owner_id').references(() => employees.id),
   targetDate: timestamp('target_date'),

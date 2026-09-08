@@ -1,64 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Video, Clock, CheckCircle2, ChevronRight, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScheduleMeetingModal } from './ScheduleMeetingModal';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
-
 import { useEntity } from '../contexts/EntityContext';
+import { fetchApi } from '@workspace/api-client-react';
 
 export const ScheduleWidget: React.FC = () => {
   const { selectedEntity } = useEntity();
   const [activeTab, setActiveTab] = useState<'meetings' | 'tasks'>('meetings');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [liveMeetings, setLiveMeetings] = useState<any[]>([]);
+  const [liveTasks, setLiveTasks] = useState<any[]>([]);
 
-  const meetings = [
-    {
-      id: 'm-1',
-      title: 'Sprint Planning',
-      entity: 'EHM',
-      badge: 'Starting Soon',
-      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-      time: '09:00 AM - 09:30 AM',
-      location: 'Google Meet',
-      avatars: [FEMALE_AVATAR, MALE_AVATAR],
-    },
-    {
-      id: 'm-2',
-      title: 'Design Review',
-      entity: 'CAG',
-      badge: 'Starting Soon',
-      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-      time: '11:30 AM - 12:15 PM',
-      location: 'Google Meet',
-      avatars: [FEMALE_AVATAR, MALE_AVATAR],
-    },
-  ];
+  useEffect(() => {
+    async function loadWidgetData() {
+      try {
+        const [mRes, tRes] = await Promise.all([
+          fetchApi<any[]>('/api/meetings'),
+          fetchApi<any[]>('/api/tasks'),
+        ]);
 
-  const tasks = [
-    {
-      id: 't-1',
-      title: 'EHM-MAR-ADH-672: Brand Refresh',
-      entity: 'EHM',
-      badge: 'In Progress',
-      badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
-      time: 'Due 05:00 PM',
-      location: 'Deliverable',
-      avatars: [FEMALE_AVATAR],
-    },
-    {
-      id: 't-2',
-      title: 'CAG-DEV-SPR-101: IoT API Test',
-      entity: 'CAG',
-      badge: 'Urgent',
-      badgeColor: 'bg-red-100 text-red-800 border-red-200',
-      time: 'Due Tomorrow',
-      location: 'GitHub PR',
-      avatars: [MALE_AVATAR],
-    },
-  ];
+        if (Array.isArray(mRes)) {
+          setLiveMeetings(
+            mRes.map((m) => ({
+              id: m.id,
+              title: m.title,
+              entity: 'CAG',
+              badge: 'Scheduled',
+              badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+              time: m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today',
+              avatars: [FEMALE_AVATAR, MALE_AVATAR],
+            }))
+          );
+        }
 
-  const filteredMeetings = meetings.filter((m) => selectedEntity === 'ALL' || m.entity === selectedEntity);
-  const filteredTasks = tasks.filter((t) => selectedEntity === 'ALL' || t.entity === selectedEntity);
+        if (Array.isArray(tRes)) {
+          setLiveTasks(
+            tRes.map((t) => ({
+              id: t.id,
+              title: `${t.taskCode}: ${t.title}`,
+              entity: t.taskCode.startsWith('CAG') ? 'CAG' : 'EHM',
+              badge: t.priority || t.status,
+              badgeColor: t.priority === 'URGENT' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-blue-100 text-blue-800 border-blue-200',
+              time: t.dueDate ? `Due ${new Date(t.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : 'Upcoming',
+              avatars: [MALE_AVATAR],
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('[WIDGET FETCH ERROR]:', err);
+      }
+    }
+    loadWidgetData();
+  }, []);
+
+  const filteredMeetings = liveMeetings.filter((m) => selectedEntity === 'ALL' || m.entity === selectedEntity);
+  const filteredTasks = liveTasks.filter((t) => selectedEntity === 'ALL' || t.entity === selectedEntity);
 
   const items = activeTab === 'meetings' ? filteredMeetings : filteredTasks;
 
@@ -88,7 +86,7 @@ export const ScheduleWidget: React.FC = () => {
               activeTab === 'meetings' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Meetings (2)
+            Meetings ({filteredMeetings.length})
           </button>
           <button
             onClick={() => setActiveTab('tasks')}
@@ -96,43 +94,47 @@ export const ScheduleWidget: React.FC = () => {
               activeTab === 'tasks' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Tasks Due (2)
+            Tasks Due ({filteredTasks.length})
           </button>
         </div>
 
         {/* List Items */}
-        <div className="space-y-2.5">
-          {items.map(item => (
-            <div
-              key={item.id}
-              className="p-3 bg-gray-50/70 border border-gray-200/60 rounded-xl space-y-2 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <h4 className="text-xs font-bold text-gray-900 line-clamp-1">{item.title}</h4>
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${item.badgeColor}`}>
-                  {item.badge}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-gray-400" />
-                  <span>{item.time}</span>
+        <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+          {items.length === 0 ? (
+            <div className="text-center py-6 text-xs text-gray-400 font-medium">No items available</div>
+          ) : (
+            items.map((item) => (
+              <div
+                key={item.id}
+                className="p-3 bg-gray-50/70 border border-gray-200/60 rounded-xl space-y-2 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <h4 className="text-xs font-bold text-gray-900 line-clamp-1">{item.title}</h4>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${item.badgeColor}`}>
+                    {item.badge}
+                  </span>
                 </div>
 
-                <div className="flex -space-x-1.5">
-                  {item.avatars.map((url, idx) => (
-                    <img
-                      key={idx}
-                      src={url}
-                      alt="Participant"
-                      className="w-5 h-5 rounded-full border border-white object-cover shadow-2xs"
-                    />
-                  ))}
+                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                    <span>{item.time}</span>
+                  </div>
+
+                  <div className="flex -space-x-1.5">
+                    {item.avatars.map((url: string, idx: number) => (
+                      <img
+                        key={idx}
+                        src={url}
+                        alt="Participant"
+                        className="w-5 h-5 rounded-full border border-white object-cover shadow-2xs"
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

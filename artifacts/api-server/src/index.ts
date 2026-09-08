@@ -21,6 +21,8 @@ import { startDigestCron } from './jobs/digest-cron.js';
 import { startOverdueCheckCron } from './jobs/overdue-check-cron.js';
 import { runSeed } from './db/seed.js';
 
+import notificationsRouter from './routes/notifications.js';
+
 dotenv.config();
 
 const app = express();
@@ -33,6 +35,7 @@ app.use(cookieParser());
 // Mount API routes
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/notifications', notificationsRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/employees', employeesRouter);
 app.use('/api/meetings', meetingsRouter);

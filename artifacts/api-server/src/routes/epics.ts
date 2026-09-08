@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 
     const enriched = allEpics.map(epic => {
       const linkedSprints = allSprints.filter(s => s.epicId === epic.id);
-      const linkedTasks = allTasks.filter(t => t.epicId === epic.id || (epic.epicCode === 'CAG-EPIC-001' && (!t.epicId || t.epicId === epic.id)));
+      const linkedTasks = allTasks.filter(t => t.epicId === epic.id);
       return {
         ...epic,
         sprintsCount: linkedSprints.length,
@@ -72,7 +72,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .returning();
 
       const seqNumber = (counter?.nextEpicSeq || 2) - 1;
-      const epicCode = `${entityCode}-EPIC-${String(seqNumber).padStart(3, '0')}`;
+      const initCode = init.initiativeCode || 'EHM-I01';
+      const epicCode = `${initCode}-EP${String(seqNumber).padStart(2, '0')}`;
 
       // 3. Insert Epic
       const [newEpic] = await tx

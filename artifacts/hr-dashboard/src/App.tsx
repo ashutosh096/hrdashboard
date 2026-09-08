@@ -26,6 +26,7 @@ import { AcceptInviteView } from './pages/AcceptInviteView';
 import { SettingsView } from './pages/SettingsView';
 import { NotificationsView } from './pages/NotificationsView';
 import { ReportsView } from './pages/ReportsView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,14 +111,16 @@ export const MainContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <EntityProvider>
-          <Toaster position="top-right" richColors />
-          <MainContent />
-        </EntityProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <EntityProvider>
+            <Toaster position="top-right" richColors />
+            <MainContent />
+          </EntityProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

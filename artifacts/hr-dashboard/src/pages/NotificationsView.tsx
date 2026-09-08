@@ -14,7 +14,7 @@ export const NotificationsView: React.FC = () => {
     setLoading(true);
     try {
       const data = await fetchApi<any[]>('/api/dashboard/notifications');
-      setNotifications(data);
+      setNotifications(Array.isArray(data) ? data : []);
     } catch {
       // Fallback notifications with explicit tagging for employee mode
       setNotifications([

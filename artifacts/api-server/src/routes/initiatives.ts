@@ -89,7 +89,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .returning();
 
       const seqNumber = (counter?.nextInitiativeSeq || 2) - 1;
-      const initiativeCode = `${entityCode}-INIT-${String(seqNumber).padStart(3, '0')}`;
+      const initiativeCode = `${entityCode}-I${String(seqNumber).padStart(2, '0')}`;
 
       // 3. Insert Initiative
       const [newInitiative] = await tx

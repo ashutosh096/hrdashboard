@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, tasks, employees, entities, users, notifications, sprints, eq, sql } from '@workspace/db';
+import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, eq, sql } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -20,153 +20,285 @@ router.get('/', async (req, res) => {
 
 // Enforce ADMIN and MANAGER role for creating tasks
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const { title, description, assigneeId, creatorId, reviewingLeadId, departmentId, sprintId, initiativeId, epicId, storyPoints, priority, status, dueDate, deliverableUrl } = req.body;
+  const {
+    title,
+    description,
+    assigneeId,
+    assigneeIds, // Array of employee IDs for multi-employee cloning
+    creatorId,
+    reviewingLeadId,
+    departmentId,
+    sprintId,
+    initiativeId,
+    epicId,
+    storyPoints,
+    priority,
+    status,
+    dueDate,
+    deliverableUrl,
+  } = req.body;
+
+  // Resolve array of target assignees
+  let targetAssigneeIds: string[] = [];
+  if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+    targetAssigneeIds = assigneeIds;
+  } else if (assigneeId) {
+    targetAssigneeIds = [assigneeId];
+  }
+
+  if (targetAssigneeIds.length === 0) {
+    const [firstEmp] = await db.select().from(employees).limit(1);
+    if (firstEmp) targetAssigneeIds = [firstEmp.id];
+  }
+
+  if (targetAssigneeIds.length === 0) {
+    return res.status(400).json({ message: 'No assignee employee found' });
+  }
+
+  const isGroupTask = targetAssigneeIds.length > 1;
+  const groupTaskId = isGroupTask ? crypto.randomUUID() : null;
 
   try {
-    const result = await db.transaction(async (tx) => {
-      // 1. Resolve Assignee & their entityId
-      let targetAssigneeId = assigneeId;
-      if (!targetAssigneeId) {
-        const [firstEmp] = await tx.select().from(employees).limit(1);
-        targetAssigneeId = firstEmp?.id;
-      }
+    const createdTasks: any[] = [];
 
-      const [assignee] = await tx
-        .select({
-          id: employees.id,
-          email: employees.email,
-          firstName: employees.firstName,
-          lastName: employees.lastName,
-          entityId: employees.entityId,
-          departmentId: employees.departmentId,
-          employeeCode: employees.employeeCode,
-        })
-        .from(employees)
-        .where(eq(employees.id, targetAssigneeId));
+    for (const empId of targetAssigneeIds) {
+      const taskResult = await db.transaction(async (tx) => {
+        // 1. Fetch Assignee details
+        const [assignee] = await tx
+          .select()
+          .from(employees)
+          .where(eq(employees.id, empId));
 
-      if (!assignee) {
-        throw new Error(`Assignee employee not found for ID: ${targetAssigneeId}`);
-      }
+        if (!assignee) {
+          throw new Error(`Assignee employee not found for ID: ${empId}`);
+        }
 
-      // 2. Fetch entityCode using Assignee's own entityId
-      const [entity] = await tx
-        .select({ code: entities.code })
-        .from(entities)
-        .where(eq(entities.id, assignee.entityId));
+        const [entity] = await tx
+          .select({ code: entities.code })
+          .from(entities)
+          .where(eq(entities.id, assignee.entityId));
 
-      if (!entity) {
-        throw new Error(`Entity not found for ID: ${assignee.entityId}`);
-      }
+        if (!entity) {
+          throw new Error(`Entity not found for ID: ${assignee.entityId}`);
+        }
 
-      const entityCode = entity.code; // "EHM" or "CAG"
+        const entityCode = entity.code; // "EHM" or "CAG"
 
-      // 3. Atomically increment taskSeqCounter on Assignee
-      const [updatedEmp] = await tx
-        .update(employees)
-        .set({ taskSeqCounter: sql`${employees.taskSeqCounter} + 1` })
-        .where(eq(employees.id, assignee.id))
-        .returning();
+        // 2. Lineage Derivation & Task Code Generation
+        let taskType: 'EPIC_TASK' | 'SPRINT_TASK' | 'BACKLOG' = 'BACKLOG';
+        let finalEpicId: string | null = null;
+        let finalSprintId: string | null = null;
+        let finalInitiativeId: string | null = initiativeId || null;
+        let generatedTaskCode = '';
 
-      // Format taskCode (e.g. "EHM-EMP01-002")
-      const empShortCode = updatedEmp.employeeCode.replace(/^[^-]+-/, ''); // "EMP01"
-      const seqPadded = String(updatedEmp.taskSeqCounter).padStart(3, '0');
-      const taskCode = `${entityCode}-${empShortCode}-${seqPadded}`;
+        if (epicId) {
+          // EPIC_TASK Lineage
+          taskType = 'EPIC_TASK';
+          finalEpicId = epicId;
+          finalSprintId = null;
 
-      // 4. Resolve sprintWeek text from sprintId if available
-      let sprintWeekStr = req.body.sprintWeek;
-      if (!sprintWeekStr && sprintId) {
-        const [sprint] = await tx.select({ name: sprints.name }).from(sprints).where(eq(sprints.id, sprintId));
-        if (sprint) sprintWeekStr = sprint.name;
-      }
-      if (!sprintWeekStr) {
-        sprintWeekStr = status === 'BACKLOG' ? 'Backlog' : 'Sprint 35';
-      }
+          // Lock Epic row & auto-derive Initiative ID
+          const [parentEpic] = await tx
+            .select()
+            .from(epics)
+            .where(eq(epics.id, epicId))
+            .for('update');
 
-      // 5. Resolve creator ID & reviewingLeadId
-      let targetCreatorId = creatorId || assignee.id;
-      let targetReviewingLeadId = reviewingLeadId || targetCreatorId || assignee.id;
+          if (!parentEpic) throw new Error(`Parent Epic not found for ID: ${epicId}`);
 
-      // 6. Insert Task enforcing assignee.entityId
-      const dueDateVal = dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000);
-      const [createdTask] = await tx
-        .insert(tasks)
-        .values({
-          taskCode,
-          title: title || 'Untitled Task',
-          description: description || '',
-          entityId: assignee.entityId, // Derived directly from Assignee!
-          departmentId: departmentId || assignee.departmentId,
-          sprintWeek: sprintWeekStr,
-          sprintId: sprintId || null,
-          initiativeId: initiativeId || null,
-          epicId: epicId || null,
-          storyPoints: storyPoints ? Number(storyPoints) : null,
-          assigneeId: assignee.id,
-          creatorId: targetCreatorId,
-          reviewingLeadId: targetReviewingLeadId,
-          status: status || 'TODO',
-          priority: priority || 'MEDIUM',
-          dueDate: dueDateVal,
-          deliverableUrl: deliverableUrl || null,
-        })
-        .returning();
+          finalInitiativeId = parentEpic.initiativeId;
 
-      // 7. Look up users row for assignee.id and insert notifications row
-      const [assigneeUser] = await tx
-        .select()
-        .from(users)
-        .where(eq(users.employeeId, assignee.id));
+          const seqNumber = parentEpic.nextTaskSeq;
+          generatedTaskCode = `${parentEpic.epicCode}-T${String(seqNumber).padStart(3, '0')}`;
 
-      if (assigneeUser) {
-        await tx.insert(notifications).values({
-          userId: assigneeUser.id,
-          type: 'TASK_ASSIGNED',
-          payload: {
-            taskId: createdTask.id,
-            taskCode: createdTask.taskCode,
-            title: createdTask.title,
-            dueDate: dueDateVal.toISOString().split('T')[0],
-          },
-        });
-      }
+          // Increment nextTaskSeq on parent epic
+          await tx
+            .update(epics)
+            .set({ nextTaskSeq: sql`${epics.nextTaskSeq} + 1` })
+            .where(eq(epics.id, epicId));
+        } else if (sprintId) {
+          // SPRINT_TASK Lineage
+          taskType = 'SPRINT_TASK';
+          finalSprintId = sprintId;
+          finalEpicId = null;
 
-      return { createdTask, assigneeEmail: assignee.email, assigneeName: `${assignee.firstName} ${assignee.lastName}` };
-    });
+          // Lock Sprint row
+          const [parentSprint] = await tx
+            .select()
+            .from(sprints)
+            .where(eq(sprints.id, sprintId))
+            .for('update');
 
-    // 8. Trigger task assigned email
-    await sendTaskAssignedEmail(
-      result.assigneeEmail,
-      result.assigneeName,
-      result.createdTask.taskCode,
-      result.createdTask.title,
-      result.createdTask.dueDate ? new Date(result.createdTask.dueDate).toISOString().split('T')[0] : ''
-    );
+          if (!parentSprint) throw new Error(`Parent Sprint not found for ID: ${sprintId}`);
 
-    res.status(201).json(result.createdTask);
+          const seqNumber = parentSprint.nextTaskSeq;
+          generatedTaskCode = `${parentSprint.sprintCode}-T${String(seqNumber).padStart(3, '0')}`;
+
+          // Increment nextTaskSeq on parent sprint
+          await tx
+            .update(sprints)
+            .set({ nextTaskSeq: sql`${sprints.nextTaskSeq} + 1` })
+            .where(eq(sprints.id, sprintId));
+        } else {
+          // BACKLOG Lineage
+          taskType = 'BACKLOG';
+          finalEpicId = null;
+          finalSprintId = null;
+
+          // Lock entity_counters row for backlog counter
+          await tx
+            .insert(entityCounters)
+            .values({ entityId: assignee.entityId, nextBacklogTaskSeq: 1 })
+            .onConflictDoNothing();
+
+          const [counter] = await tx
+            .update(entityCounters)
+            .set({ nextBacklogTaskSeq: sql`${entityCounters.nextBacklogTaskSeq} + 1` })
+            .where(eq(entityCounters.entityId, assignee.entityId))
+            .returning();
+
+          const seqNumber = (counter?.nextBacklogTaskSeq || 2) - 1;
+          generatedTaskCode = `${entityCode}-T${String(seqNumber).padStart(3, '0')}`;
+        }
+
+        // 3. Resolve sprintWeek string
+        let sprintWeekStr = req.body.sprintWeek || null;
+        if (!sprintWeekStr && finalSprintId) {
+          const [sprint] = await tx.select({ targetWeek: sprints.targetWeek, name: sprints.name }).from(sprints).where(eq(sprints.id, finalSprintId));
+          if (sprint) sprintWeekStr = sprint.targetWeek || sprint.name;
+        }
+
+        // 4. Resolve Creator & Reviewing Lead
+        const targetCreatorId = creatorId || assignee.id;
+        const targetReviewingLeadId = reviewingLeadId || targetCreatorId;
+
+        // 5. Insert Task
+        const dueDateVal = dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000);
+        const [newTask] = await tx
+          .insert(tasks)
+          .values({
+            taskCode: generatedTaskCode,
+            title: title || 'Untitled Task',
+            description: description || '',
+            entityId: assignee.entityId,
+            departmentId: departmentId || assignee.departmentId,
+            taskType,
+            sprintWeek: sprintWeekStr,
+            sprintId: finalSprintId,
+            initiativeId: finalInitiativeId,
+            epicId: finalEpicId,
+            groupTaskId,
+            storyPoints: storyPoints ? Number(storyPoints) : null,
+            assigneeId: assignee.id,
+            creatorId: targetCreatorId,
+            reviewingLeadId: targetReviewingLeadId,
+            status: status || 'TODO',
+            priority: priority || 'MEDIUM',
+            dueDate: dueDateVal,
+            deliverableUrl: deliverableUrl || null,
+          })
+          .returning();
+
+        // 6. Insert notification for assignee
+        const [assigneeUser] = await tx
+          .select()
+          .from(users)
+          .where(eq(users.employeeId, assignee.id));
+
+        if (assigneeUser) {
+          await tx.insert(notifications).values({
+            userId: assigneeUser.id,
+            type: 'TASK_ASSIGNED',
+            payload: {
+              taskId: newTask.id,
+              taskCode: newTask.taskCode,
+              title: newTask.title,
+              dueDate: dueDateVal.toISOString().split('T')[0],
+            },
+          });
+        }
+
+        return { newTask, assigneeEmail: assignee.email, assigneeName: `${assignee.firstName} ${assignee.lastName}` };
+      });
+
+      // Send Notification Email asynchronously
+      sendTaskAssignedEmail(
+        taskResult.assigneeEmail,
+        taskResult.assigneeName,
+        taskResult.newTask.taskCode,
+        taskResult.newTask.title,
+        taskResult.newTask.dueDate ? new Date(taskResult.newTask.dueDate).toISOString().split('T')[0] : ''
+      ).catch(console.error);
+
+      createdTasks.push(taskResult.newTask);
+    }
+
+    res.status(201).json(isGroupTask ? createdTasks : createdTasks[0]);
   } catch (err: any) {
-    console.error('[TASK ASSIGNMENT ERROR]:', err);
+    console.error('[TASK CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create task' });
   }
 });
 
-// PATCH /api/tasks/:id
+// PATCH /api/tasks/:id - Update Task details with Code Immutability & Auto Ancestry Derivation
 router.patch('/:id', async (req, res) => {
   const taskId = req.params.id;
-  const { status, deliverableUrl, description, sprintWeek, priority } = req.body;
+  const { status, deliverableUrl, description, sprintWeek, priority, epicId, sprintId, title, assigneeId } = req.body;
 
   try {
-    const updateData: any = { updatedAt: new Date() };
-    if (status !== undefined) updateData.status = status;
-    if (deliverableUrl !== undefined) updateData.deliverableUrl = deliverableUrl;
-    if (description !== undefined) updateData.description = description;
-    if (sprintWeek !== undefined) updateData.sprintWeek = sprintWeek;
-    if (priority !== undefined) updateData.priority = priority;
+    const updatedTask = await db.transaction(async (tx) => {
+      const [existingTask] = await tx.select().from(tasks).where(eq(tasks.id, taskId));
+      if (!existingTask) return null;
 
-    const [updatedTask] = await db
-      .update(tasks)
-      .set(updateData)
-      .where(eq(tasks.id, taskId))
-      .returning();
+      const updateData: any = { updatedAt: new Date() };
+
+      if (status !== undefined) updateData.status = status;
+      if (deliverableUrl !== undefined) updateData.deliverableUrl = deliverableUrl;
+      if (description !== undefined) updateData.description = description;
+      if (sprintWeek !== undefined) updateData.sprintWeek = sprintWeek;
+      if (priority !== undefined) updateData.priority = priority;
+      if (title !== undefined) updateData.title = title;
+      if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
+
+      // Handle Lineage Updates (Epic / Sprint reassignment) while keeping taskCode IMMUTABLE
+      if (epicId !== undefined) {
+        if (epicId) {
+          const [newEpic] = await tx.select().from(epics).where(eq(epics.id, epicId));
+          if (!newEpic) throw new Error('Target epic not found');
+
+          updateData.epicId = epicId;
+          updateData.sprintId = null;
+          updateData.taskType = 'EPIC_TASK';
+          // Auto-update initiativeId to new epic's parent initiative!
+          updateData.initiativeId = newEpic.initiativeId;
+        } else {
+          updateData.epicId = null;
+          updateData.taskType = 'BACKLOG';
+          updateData.initiativeId = null;
+        }
+      } else if (sprintId !== undefined) {
+        if (sprintId) {
+          updateData.sprintId = sprintId;
+          updateData.epicId = null;
+          updateData.taskType = 'SPRINT_TASK';
+          updateData.initiativeId = null;
+        } else {
+          updateData.sprintId = null;
+          updateData.taskType = 'BACKLOG';
+        }
+      }
+
+      // Explicitly EXCLUDE taskCode from updates to strictly enforce taskCode IMMUTABILITY!
+      delete updateData.taskCode;
+
+      const [resTask] = await tx
+        .update(tasks)
+        .set(updateData)
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      return resTask;
+    });
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
@@ -175,7 +307,7 @@ router.patch('/:id', async (req, res) => {
     res.json(updatedTask);
   } catch (err: any) {
     console.error('[TASK UPDATE ERROR]:', err);
-    res.status(500).json({ message: 'Failed to update task' });
+    res.status(500).json({ message: err.message || 'Failed to update task' });
   }
 });
 
@@ -211,7 +343,7 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
-// Step 7 & Requirement 1: POST /api/tasks/:id/delay-request
+// POST /api/tasks/:id/delay-request
 router.post('/:id/delay-request', async (req, res) => {
   const taskId = req.params.id;
   const { reason, requestedDays } = req.body;
@@ -222,10 +354,6 @@ router.post('/:id/delay-request', async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Priority Order Resolution for Delay Request Recipient:
-    // a. If task.reviewingLeadId is set, look up users where users.employeeId = task.reviewingLeadId
-    // b. Else, look up users where users.employeeId = task.creatorId
-    // c. Fall back to first ADMIN with server warning log
     let targetUser: any = null;
 
     if (targetTask.reviewingLeadId) {
@@ -264,7 +392,7 @@ router.post('/:id/delay-request', async (req, res) => {
         targetTask.taskCode,
         targetTask.title,
         req.user?.email || 'Employee'
-      );
+      ).catch(console.error);
     }
 
     res.json({ message: 'Delay extension request submitted successfully', taskId });

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
 import { entities } from './entities.js';
 import { departments } from './departments.js';
 import { employees } from './employees.js';
@@ -16,6 +16,7 @@ export const sprints = pgTable('sprints', {
   reviewingLeadId: uuid('reviewing_lead_id').references(() => employees.id),
   department: varchar('department', { length: 100 }),
   targetWeek: varchar('target_week', { length: 100 }),
+  nextTaskSeq: integer('next_task_seq').default(1).notNull(),
   name: varchar('name', { length: 100 }).notNull(),
   startDate: timestamp('start_date'),
   endDate: timestamp('end_date'),

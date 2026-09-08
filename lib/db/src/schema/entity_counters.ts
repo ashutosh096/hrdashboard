@@ -7,4 +7,5 @@ export const entityCounters = pgTable('entity_counters', {
   nextInitiativeSeq: integer('next_initiative_seq').default(1).notNull(),
   nextEpicSeq: integer('next_epic_seq').default(1).notNull(),
   nextSprintSeq: integer('next_sprint_seq').default(1).notNull(),
+  nextBacklogTaskSeq: integer('next_backlog_task_seq').default(1).notNull(),
 });

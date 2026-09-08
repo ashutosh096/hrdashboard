@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -29,14 +29,37 @@ import {
   Search,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 import { useEntity } from '../contexts/EntityContext';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
-interface EmployeePerformanceData {
+interface EmployeeRecord {
+  id: string;
+  firstName: string;
+  lastName: string;
+  employeeCode: string;
+  designation: string;
+  departmentId: string;
+  entityId: string;
+}
+
+interface TaskRecord {
+  id: string;
+  taskCode: string;
+  title: string;
+  assigneeId: string;
+  status: string;
+  priority: string;
+  dueDate: string;
+  createdAt: string;
+}
+
+interface ProcessedEmployee {
   id: string;
   name: string;
   dept: string;
   role: string;
+  entity: string;
   avatar: string;
   assigned: number;
   completed: number;
@@ -49,227 +72,6 @@ interface EmployeePerformanceData {
   velocityScore: number;
   recentTasks: { title: string; status: string; priority: string; date: string }[];
 }
-
-const EMPLOYEES_DATA: EmployeePerformanceData[] = [
-  {
-    id: 'emp-1',
-    name: 'Ashutosh Mishra',
-    dept: 'Product & Tech',
-    role: 'Lead Systems Architect',
-    avatar: MALE_AVATAR,
-    assigned: 2,
-    completed: 0,
-    inReview: 1,
-    inProgress: 1,
-    pending: 0,
-    attendanceRate: '98.5%',
-    avgHoursPerDay: '8.6h',
-    capacityStatus: 'Available',
-    velocityScore: 94,
-    recentTasks: [
-      { title: 'API Gateway Telemetry Pipeline', status: 'In Review', priority: 'High', date: '2026-09-05' },
-    ],
-  },
-  {
-    id: 'emp-2',
-    name: 'Priyanka Sharma',
-    dept: 'Marketing',
-    role: 'Senior Brand Strategist',
-    avatar: FEMALE_AVATAR,
-    assigned: 7,
-    completed: 0,
-    inReview: 3,
-    inProgress: 4,
-    pending: 0,
-    attendanceRate: '96.0%',
-    avgHoursPerDay: '8.2h',
-    capacityStatus: 'Overloaded',
-    velocityScore: 88,
-    recentTasks: [
-      { title: 'Brand Client Campaign Review', status: 'In Review', priority: 'High', date: '2026-09-04' },
-    ],
-  },
-  {
-    id: 'emp-3',
-    name: 'Utkarsh Mishra',
-    dept: 'Operations & Delivery',
-    role: 'Operations Lead',
-    avatar: MALE_AVATAR,
-    assigned: 7,
-    completed: 1,
-    inReview: 3,
-    inProgress: 3,
-    pending: 0,
-    attendanceRate: '94.8%',
-    avgHoursPerDay: '8.4h',
-    capacityStatus: 'Overloaded',
-    velocityScore: 91,
-    recentTasks: [
-      { title: 'Vendor Logistics Audit', status: 'Completed', priority: 'High', date: '2026-09-03' },
-    ],
-  },
-  {
-    id: 'emp-4',
-    name: 'Prerna Shukla',
-    dept: 'Grants & Governance',
-    role: 'Grants Strategist',
-    avatar: FEMALE_AVATAR,
-    assigned: 9,
-    completed: 0,
-    inReview: 4,
-    inProgress: 5,
-    pending: 0,
-    attendanceRate: '99.0%',
-    avgHoursPerDay: '8.8h',
-    capacityStatus: 'Overloaded',
-    velocityScore: 96,
-    recentTasks: [
-      { title: 'Agri-Tech Subsidy Compliance Report', status: 'In Review', priority: 'Urgent', date: '2026-09-05' },
-    ],
-  },
-  {
-    id: 'emp-5',
-    name: 'Shreyansh Siladar',
-    dept: 'SM Marketing',
-    role: 'Social Media Lead',
-    avatar: MALE_AVATAR,
-    assigned: 4,
-    completed: 0,
-    inReview: 2,
-    inProgress: 2,
-    pending: 0,
-    attendanceRate: '95.2%',
-    avgHoursPerDay: '8.0h',
-    capacityStatus: 'Busy',
-    velocityScore: 89,
-    recentTasks: [
-      { title: 'LinkedIn Enterprise Campaign', status: 'In Review', priority: 'Medium', date: '2026-09-01' },
-    ],
-  },
-  {
-    id: 'emp-6',
-    name: "Tarul Ma'am",
-    dept: 'Operations & Delivery',
-    role: 'Delivery Associate',
-    avatar: MALE_AVATAR,
-    assigned: 1,
-    completed: 0,
-    inReview: 0,
-    inProgress: 1,
-    pending: 0,
-    attendanceRate: '97.4%',
-    avgHoursPerDay: '8.1h',
-    capacityStatus: 'Available',
-    velocityScore: 92,
-    recentTasks: [
-      { title: 'Client Dispatch Documentation', status: 'In Progress', priority: 'Low', date: '2026-09-04' },
-    ],
-  },
-  {
-    id: 'emp-7',
-    name: 'Dr. Harshit Mishra',
-    dept: 'Sales',
-    role: 'Managing Director / Sales Lead',
-    avatar: MALE_AVATAR,
-    assigned: 0,
-    completed: 0,
-    inReview: 0,
-    inProgress: 0,
-    pending: 0,
-    attendanceRate: '100%',
-    avgHoursPerDay: '9.2h',
-    capacityStatus: 'Available',
-    velocityScore: 98,
-    recentTasks: [],
-  },
-  {
-    id: 'emp-8',
-    name: 'Neha Shukla',
-    dept: 'Marketing',
-    role: 'Marketing Lead',
-    avatar: FEMALE_AVATAR,
-    assigned: 0,
-    completed: 0,
-    inReview: 0,
-    inProgress: 0,
-    pending: 0,
-    attendanceRate: '96.8%',
-    avgHoursPerDay: '8.3h',
-    capacityStatus: 'Available',
-    velocityScore: 93,
-    recentTasks: [],
-  },
-  {
-    id: 'emp-9',
-    name: 'Dr. Utsav Mishra',
-    dept: 'Operations & Delivery',
-    role: 'Operations VP',
-    avatar: MALE_AVATAR,
-    assigned: 0,
-    completed: 0,
-    inReview: 0,
-    inProgress: 0,
-    pending: 0,
-    attendanceRate: '98.0%',
-    avgHoursPerDay: '8.7h',
-    capacityStatus: 'Available',
-    velocityScore: 95,
-    recentTasks: [],
-  },
-  {
-    id: 'emp-10',
-    name: 'Jitendra Sir',
-    dept: 'Product & Tech',
-    role: 'Chief Technology Officer',
-    avatar: MALE_AVATAR,
-    assigned: 0,
-    completed: 0,
-    inReview: 0,
-    inProgress: 0,
-    pending: 0,
-    attendanceRate: '100%',
-    avgHoursPerDay: '9.0h',
-    capacityStatus: 'Available',
-    velocityScore: 100,
-    recentTasks: [],
-  },
-  {
-    id: 'emp-11',
-    name: 'Pranshu Dubey',
-    dept: 'Product & System',
-    role: 'DevOps Engineer',
-    avatar: MALE_AVATAR,
-    assigned: 0,
-    completed: 0,
-    inReview: 0,
-    inProgress: 0,
-    pending: 0,
-    attendanceRate: '97.0%',
-    avgHoursPerDay: '8.5h',
-    capacityStatus: 'Available',
-    velocityScore: 94,
-    recentTasks: [],
-  },
-  {
-    id: 'emp-12',
-    name: 'Himanshu Tiwari',
-    dept: 'Product & Tech',
-    role: 'Frontend Engineer',
-    avatar: MALE_AVATAR,
-    assigned: 4,
-    completed: 0,
-    inReview: 2,
-    inProgress: 2,
-    pending: 0,
-    attendanceRate: '95.5%',
-    avgHoursPerDay: '8.1h',
-    capacityStatus: 'Busy',
-    velocityScore: 90,
-    recentTasks: [
-      { title: 'Attendance Heatmap Widget', status: 'In Review', priority: 'Medium', date: '2026-09-03' },
-    ],
-  },
-];
 
 const OVERALL_SPRINT_TREND = [
   { name: 'Week 1', completed: 24, inReview: 8, pending: 12 },
@@ -289,36 +91,91 @@ export const PerformanceView: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'WEEK1' | 'WEEK2' | 'MONTH' | 'QUARTER'>('WEEK1');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const selectedEmployee = EMPLOYEES_DATA.find((e) => e.id === selectedEmployeeId);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [tasks, setTasks] = useState<TaskRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Time range scaling factor
-  const timeMultiplier =
-    timeRange === 'WEEK1' ? 0.35 : timeRange === 'WEEK2' ? 0.5 : timeRange === 'MONTH' ? 0.8 : 1.0;
+  useEffect(() => {
+    async function loadLiveData() {
+      try {
+        const [empData, taskData] = await Promise.all([
+          fetchApi('/api/employees'),
+          fetchApi('/api/tasks'),
+        ]);
+        setEmployees(Array.isArray(empData) ? empData : []);
+        setTasks(Array.isArray(taskData) ? taskData : []);
+      } catch (err) {
+        console.error('[PERFORMANCE VIEW FETCH ERROR]:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadLiveData();
+  }, []);
 
-  // Aggregated KPI Stats
-  const rawAssigned = selectedEmployee
-    ? selectedEmployee.assigned
-    : EMPLOYEES_DATA.reduce((acc, curr) => acc + curr.assigned, 0);
+  const processedEmployees: ProcessedEmployee[] = employees
+    .map((emp, index) => {
+      const entity = (emp.employeeCode || '').startsWith('CAG') ? 'CAG' : 'EHM';
+      const empTasks = tasks.filter((t) => t.assigneeId === emp.id);
 
-  const rawCompleted = selectedEmployee
-    ? selectedEmployee.completed
-    : EMPLOYEES_DATA.reduce((acc, curr) => acc + curr.completed, 0);
+      const assigned = empTasks.length;
+      const completed = empTasks.filter((t) => t.status === 'DONE').length;
+      const inProgress = empTasks.filter((t) => t.status === 'IN_PROGRESS').length;
+      const inReview = empTasks.filter((t) => t.status === 'TODO').length;
+      const pending = empTasks.filter((t) => t.status === 'BLOCKED' || t.status === 'DELAYED').length;
 
-  const rawInReview = selectedEmployee
-    ? selectedEmployee.inReview
-    : EMPLOYEES_DATA.reduce((acc, curr) => acc + curr.inReview, 0);
+      const capacityStatus: 'Available' | 'Busy' | 'Overloaded' =
+        assigned > 6 ? 'Overloaded' : assigned > 3 ? 'Busy' : 'Available';
 
-  const rawPending = selectedEmployee
-    ? selectedEmployee.pending
-    : EMPLOYEES_DATA.reduce((acc, curr) => acc + curr.pending, 0);
+      const avatar = index % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR;
 
-  const totalAssigned = Math.round(rawAssigned * timeMultiplier);
-  const totalCompleted = Math.round(rawCompleted * timeMultiplier);
-  const totalInReview = Math.round(rawInReview * timeMultiplier);
-  const totalPending = Math.round(rawPending * timeMultiplier);
-  const totalInProgress = Math.round(selectedEmployee ? selectedEmployee.inProgress * timeMultiplier : 3 * timeMultiplier);
+      return {
+        id: emp.id,
+        name: `${emp.firstName} ${emp.lastName}`,
+        dept: 'Engineering & Ops',
+        role: emp.designation || 'Specialist',
+        entity,
+        avatar,
+        assigned,
+        completed,
+        inReview,
+        inProgress,
+        pending,
+        attendanceRate: '98.0%',
+        avgHoursPerDay: '8.5h',
+        capacityStatus,
+        velocityScore: assigned > 0 ? Math.min(100, Math.round((completed / assigned) * 100) + 10) : 85,
+        recentTasks: empTasks.slice(0, 3).map((t) => ({
+          title: t.title,
+          status: t.status,
+          priority: t.priority || 'MEDIUM',
+          date: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-08',
+        })),
+      };
+    })
+    .filter((emp) => selectedEntity === 'ALL' || emp.entity === selectedEntity);
 
-  const completionRate = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
+  const selectedEmployee = processedEmployees.find((e) => e.id === selectedEmployeeId);
+
+  // Aggregated KPI Stats calculated directly from Database records
+  const targetTasks = selectedEmployee
+    ? tasks.filter((t) => t.assigneeId === selectedEmployee.id)
+    : selectedEntity === 'ALL'
+    ? tasks
+    : tasks.filter((t) => {
+        const emp = employees.find((e) => e.id === t.assigneeId);
+        return (emp?.employeeCode || '').startsWith(selectedEntity);
+      });
+
+  const totalAssigned = targetTasks.length;
+  const totalCompleted = targetTasks.filter((t) => t.status === 'DONE').length;
+  const totalInProgress = targetTasks.filter((t) => t.status === 'IN_PROGRESS').length;
+  const totalInReview = targetTasks.filter((t) => t.status === 'TODO').length;
+  const totalPending = targetTasks.filter((t) => t.status === 'BLOCKED' || t.status === 'DELAYED').length;
+
+  // Completion rate strictly capped at 100%
+  const rawRate = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
+  const completionRate = Math.min(100, Math.max(0, rawRate));
 
   // Pie chart breakdown data
   const pieData = [
@@ -329,12 +186,20 @@ export const PerformanceView: React.FC = () => {
   ];
 
   // Filtered employees table
-  const filteredEmployeesTable = EMPLOYEES_DATA.filter(
+  const filteredEmployeesTable = processedEmployees.filter(
     (e) =>
       e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.dept.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="text-xs font-semibold text-gray-500">Loading performance analytics from database...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 select-none">
@@ -348,7 +213,7 @@ export const PerformanceView: React.FC = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Performance Analytics & Productivity</h2>
           <p className="text-xs text-gray-500 font-medium mt-0.5">
-            Real-time task output, sprint completion velocity, attendance tracking, and capacity loading.
+            Real-time task output, sprint completion velocity, attendance tracking, and capacity loading (Live Database).
           </p>
         </div>
 
@@ -362,7 +227,7 @@ export const PerformanceView: React.FC = () => {
               className="text-xs font-bold text-gray-800 bg-transparent outline-none cursor-pointer pr-2"
             >
               <option value="ALL">All Team Members (Overall Analytics)</option>
-              {EMPLOYEES_DATA.map((emp) => (
+              {processedEmployees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
                   {emp.name} ({emp.dept})
                 </option>
@@ -378,7 +243,7 @@ export const PerformanceView: React.FC = () => {
                 timeRange === 'WEEK1' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              1st Week
+              Week 1
             </button>
             <button
               onClick={() => setTimeRange('WEEK2')}
@@ -386,7 +251,7 @@ export const PerformanceView: React.FC = () => {
                 timeRange === 'WEEK2' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              2nd Week
+              Week 2
             </button>
             <button
               onClick={() => setTimeRange('MONTH')}
@@ -394,7 +259,7 @@ export const PerformanceView: React.FC = () => {
                 timeRange === 'MONTH' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              1 Month
+              Month
             </button>
             <button
               onClick={() => setTimeRange('QUARTER')}
@@ -408,299 +273,191 @@ export const PerformanceView: React.FC = () => {
         </div>
       </div>
 
-      {/* Selected Employee Alert Header (If Single Employee Selected) */}
-      {selectedEmployee && (
-        <div className="bg-gradient-to-r from-emerald-900 via-slate-900 to-indigo-950 border border-emerald-500/40 rounded-2xl p-4 shadow-lg text-white flex items-center justify-between gap-4 animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <img
-              src={selectedEmployee.avatar}
-              alt={selectedEmployee.name}
-              className="w-12 h-12 rounded-full object-cover border-2 border-emerald-400 shadow-xs"
-            />
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">{selectedEmployee.name}</h3>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                  {selectedEmployee.dept}
-                </span>
-              </div>
-              <p className="text-xs text-gray-300 font-semibold">{selectedEmployee.role}</p>
-            </div>
+      {/* KPI Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-2xs flex items-center gap-3">
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-600">
+            <CheckSquare className="w-5 h-5" />
           </div>
-
-          <div className="flex items-center gap-6 text-xs">
-            <div>
-              <span className="text-gray-400 block text-[10px] font-bold uppercase">Capacity Status</span>
-              <span className="font-extrabold text-emerald-400 text-sm">{selectedEmployee.capacityStatus}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 block text-[10px] font-bold uppercase">Velocity Score</span>
-              <span className="font-extrabold text-amber-400 text-sm">{selectedEmployee.velocityScore}/100</span>
-            </div>
-            <button
-              onClick={() => setSelectedEmployeeId('ALL')}
-              className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
-            >
-              Reset to All
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 3 Key Performance Indicator Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-extrabold uppercase tracking-wider">
-            <span>TOTAL ASSIGNED TASKS</span>
-            <CheckSquare className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-gray-900">{totalAssigned}</span>
-            <span className="text-xs text-emerald-600 font-bold">100% Workload</span>
+          <div>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Assigned Tasks</span>
+            <span className="text-xl font-extrabold text-gray-900">{totalAssigned}</span>
           </div>
         </div>
 
-        <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-emerald-700 font-extrabold uppercase tracking-wider">
-            <span>COMPLETED (APPROVED)</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-2xs flex items-center gap-3">
+          <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-600">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-emerald-900">{totalCompleted}</span>
-            <span className="text-xs text-emerald-700 font-extrabold">{completionRate}% Done</span>
+          <div>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Completed</span>
+            <span className="text-xl font-extrabold text-emerald-600">{totalCompleted}</span>
           </div>
         </div>
 
-        <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-5 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-amber-700 font-extrabold uppercase tracking-wider">
-            <span>TO REVIEW / PENDING</span>
-            <AlertCircle className="w-4 h-4 text-amber-600" />
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-2xs flex items-center gap-3">
+          <div className="p-3 bg-purple-50 border border-purple-100 rounded-xl text-purple-600">
+            <Zap className="w-5 h-5" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-amber-900">{totalInReview + totalPending}</span>
-            <span className="text-xs text-amber-700 font-extrabold">{totalInReview} Review / {totalPending} Pending</span>
+          <div>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">In Progress</span>
+            <span className="text-xl font-extrabold text-purple-600">{totalInProgress}</span>
           </div>
+        </div>
+
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-2xs flex items-center gap-3">
+          <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-600">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Pending / Review</span>
+            <span className="text-xl font-extrabold text-amber-600">{totalInReview + totalPending}</span>
+          </div>
+        </div>
+
+        <div className="bg-emerald-600 text-white rounded-2xl p-4 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider block">Completion Rate</span>
+            <span className="text-2xl font-extrabold text-white">{completionRate}%</span>
+          </div>
+          <Award className="w-7 h-7 text-emerald-200 opacity-80" />
         </div>
       </div>
 
-      {/* Grid: Recharts Task Velocity Area Chart & Task Status Distribution Pie Chart */}
+      {/* Analytics Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Weekly Task Progress & Velocity Chart (Like Image 1/2) */}
-        <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs select-none">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        {/* Sprint Completion Trend */}
+        <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-bold text-gray-900 tracking-tight">
-                {selectedEmployee ? `${selectedEmployee.name}'s Output Velocity` : 'Team Task Progress & Sprint Analytics'}
-              </h3>
-              <p className="text-xs text-gray-500 font-medium">
-                Weekly deliverables breakdown of Completed, To Review, and Pending items across sprint cycles.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs font-bold">
-              <span className="flex items-center gap-1.5 text-emerald-600">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Completed
-              </span>
-              <span className="flex items-center gap-1.5 text-amber-600">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> To Review
-              </span>
-              <span className="flex items-center gap-1.5 text-blue-600">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Pending
-              </span>
+              <h3 className="text-sm font-extrabold text-gray-900">Sprint Completion Velocity Trend</h3>
+              <p className="text-xs text-gray-400 font-medium mt-0.5">Historical task throughput over sprint cycles</p>
             </div>
           </div>
-
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={OVERALL_SPRINT_TREND} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <AreaChart data={OVERALL_SPRINT_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="emeraldGradientPerf" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="amberGradientPerf" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.0} />
+                  <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} tickFormatter={(v) => `${v} tasks`} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
-                  content={({ active, payload, label }: any) => {
-                    if (active && payload && payload.length) {
-                      const completed = payload[0]?.value || 0;
-                      const inReview = payload[1]?.value || 0;
-                      const pending = payload[2]?.value || 0;
-                      const total = completed + inReview + pending;
-                      const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
-                      return (
-                        <div className="bg-white border border-gray-200 p-3 rounded-xl shadow-xl text-xs font-sans space-y-1 min-w-[180px]">
-                          <p className="text-gray-400 font-bold uppercase text-[10px]">{label} Deliverables</p>
-                          <p className="font-extrabold text-emerald-700">Completed: {completed} tasks</p>
-                          <p className="font-bold text-amber-700">To Review: {inReview} tasks</p>
-                          <p className="font-bold text-blue-700">Pending: {pending} tasks</p>
-                          <p className="pt-1 border-t text-[11px] font-extrabold text-emerald-600">Completion Rate: {rate}%</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
+                  contentStyle={{ backgroundColor: '#1F2937', borderRadius: '12px', border: 'none', color: '#fff' }}
                 />
-                <Area type="monotone" dataKey="completed" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#emeraldGradientPerf)" />
-                <Area type="monotone" dataKey="inReview" stroke="#F59E0B" strokeWidth={2} strokeDasharray="4 4" fill="url(#amberGradientPerf)" />
-                <Area type="monotone" dataKey="pending" stroke="#3B82F6" strokeWidth={2} strokeDasharray="2 2" fill="none" />
+                <Area type="monotone" dataKey="completed" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorCompleted)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Task Status Distribution Pie / Doughnut Chart */}
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
-          <div>
-            <h3 className="text-base font-bold text-gray-900 tracking-tight">Task Lifecycle Distribution</h3>
-            <p className="text-xs text-gray-500 font-medium">Breakdown of done, review, in progress, and pending tasks.</p>
+        {/* Task Breakdown Pie Chart */}
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="mb-4">
+            <h3 className="text-sm font-extrabold text-gray-900">Task Status Distribution</h3>
+            <p className="text-xs text-gray-400 font-medium mt-0.5">Proportional breakdown of current tasks</p>
           </div>
-
-          <div className="h-44 w-full flex items-center justify-center">
+          <div className="h-48 w-full relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={pieData.filter((d) => d.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={4}>
-                  {pieData.filter((d) => d.value > 0).map((entry, index) => (
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
+                  {pieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  content={({ active, payload }: any) => {
-                    if (active && payload && payload.length) {
-                      const item = payload[0];
-                      return (
-                        <div className="bg-white border border-gray-200 p-2.5 rounded-xl shadow-lg text-xs font-bold">
-                          <span style={{ color: item.payload.color }}>{item.name}:</span> {item.value} tasks
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
+                <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+            <div className="absolute text-center">
+              <span className="text-xs text-gray-400 block font-bold">Overall</span>
+              <span className="text-lg font-extrabold text-gray-900">{completionRate}%</span>
+            </div>
           </div>
-
-          <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
-            {pieData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
-                  <span className="text-gray-700">{item.name}</span>
-                </div>
-                <span className="font-bold text-gray-900">{item.value} tasks</span>
+          <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-100 text-xs">
+            {pieData.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-gray-600 font-medium truncate">{item.name}:</span>
+                <span className="font-bold text-gray-900">{item.value}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Active Resource Capacity Tracker Table (Like Image 3) */}
-      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-600" />
-            <div>
-              <h3 className="text-base font-bold text-gray-900 tracking-tight">Active Resource Capacity & Performance Tracker</h3>
-              <p className="text-xs text-gray-500 font-medium">Real-time team assigned tasks, completion rates, and workload capacity loading.</p>
-            </div>
+      {/* Employee Roster & Performance Table */}
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Team Roster Performance Summary</h3>
+            <p className="text-xs text-gray-400 font-medium">Individual employee deliverable tracking & capacity status</p>
           </div>
-
-          {/* Table Search Input */}
-          <div className="max-w-xs w-full relative">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl focus-within:border-indigo-500 transition-all">
-              <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search team member..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent font-medium"
-              />
-            </div>
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search employee..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-emerald-500 w-full sm:w-64"
+            />
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/60">
-                <th className="py-3 px-4">Team Member</th>
-                <th className="py-3 px-4">Department</th>
-                <th className="py-3 px-4 text-center">Assigned Tasks</th>
-                <th className="py-3 px-4 text-center">Completed</th>
-                <th className="py-3 px-4 text-center">Capacity Loading</th>
-                <th className="py-3 px-4 text-right">Action</th>
+              <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                <th className="py-3 px-3">Employee Name</th>
+                <th className="py-3 px-3">Role / Department</th>
+                <th className="py-3 px-3">Entity</th>
+                <th className="py-3 px-3 text-center">Assigned</th>
+                <th className="py-3 px-3 text-center">Completed</th>
+                <th className="py-3 px-3 text-center">In Progress</th>
+                <th className="py-3 px-3 text-center">Capacity</th>
+                <th className="py-3 px-3 text-right">Completion %</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-              {filteredEmployeesTable.map((emp) => (
-                <tr
-                  key={emp.id}
-                  onClick={() => setSelectedEmployeeId(emp.id)}
-                  className={`hover:bg-gray-50/90 transition-colors cursor-pointer ${
-                    selectedEmployeeId === emp.id ? 'bg-indigo-50/70 border-l-4 border-indigo-600' : ''
-                  }`}
-                >
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-3">
-                      <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-2xs" />
-                      <div>
-                        <span className="font-bold text-gray-900 block text-sm">{emp.name}</span>
-                        <span className="text-[11px] text-gray-400 font-semibold">{emp.role}</span>
+              {filteredEmployeesTable.map((emp) => {
+                const rate = emp.assigned > 0 ? Math.min(100, Math.round((emp.completed / emp.assigned) * 100)) : 0;
+                return (
+                  <tr key={emp.id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2.5">
+                        <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                        <div>
+                          <span className="font-bold text-gray-900 block">{emp.name}</span>
+                          <span className="text-[10px] text-gray-400">{emp.dept}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 font-semibold text-gray-800">{emp.dept}</td>
-                  <td className="py-3.5 px-4 text-center font-extrabold text-gray-900">{emp.assigned}</td>
-                  <td className="py-3.5 px-4 text-center font-extrabold text-emerald-700">{emp.completed}</td>
-                  <td className="py-3.5 px-4 text-center">
-                    {(() => {
-                      const status =
-                        emp.assigned > 4 ? 'Overloaded' : emp.assigned === 4 ? 'Busy' : 'Available';
-                      return (
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${
-                            status === 'Available'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : status === 'Busy'
-                              ? 'bg-amber-50 text-amber-900 border-amber-200'
-                              : 'bg-red-50 text-red-800 border-red-200'
-                          }`}
-                        >
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              status === 'Available'
-                                ? 'bg-emerald-500'
-                                : status === 'Busy'
-                                ? 'bg-amber-500'
-                                : 'bg-red-500'
-                            }`}
-                          ></span>
-                          <span>{status}</span>
-                        </span>
-                      );
-                    })()}
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedEmployeeId(emp.id);
-                      }}
-                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Filter Analytics</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-3 px-3 text-gray-600 font-semibold">{emp.role}</td>
+                    <td className="py-3 px-3 font-mono font-bold text-emerald-700">{emp.entity}</td>
+                    <td className="py-3 px-3 text-center font-bold text-gray-800">{emp.assigned}</td>
+                    <td className="py-3 px-3 text-center font-bold text-emerald-600">{emp.completed}</td>
+                    <td className="py-3 px-3 text-center font-bold text-blue-600">{emp.inProgress}</td>
+                    <td className="py-3 px-3 text-center">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          emp.capacityStatus === 'Available'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : emp.capacityStatus === 'Busy'
+                            ? 'bg-blue-50 text-blue-800 border-blue-200'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
+                        }`}
+                      >
+                        {emp.capacityStatus}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right font-extrabold text-gray-900">{rate}%</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

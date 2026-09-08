@@ -284,7 +284,8 @@ router.get('/google/callback', async (req, res) => {
       }
     }
 
-    if (!userId) {
+    const isUuid = (str: string | null) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    if (!userId || !isUuid(userId)) {
       const [firstUser] = await db.select().from(users).limit(1);
       userId = firstUser?.id || null;
     }

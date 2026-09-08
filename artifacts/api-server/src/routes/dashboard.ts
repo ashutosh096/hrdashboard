@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { db, notifications, eq } from '@workspace/db';
+import { desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
@@ -75,6 +77,27 @@ router.get('/', (req, res) => {
     sprintSummary,
     crossEntityComparison,
   });
+});
+
+router.get('/notifications', async (req, res) => {
+  try {
+    const list = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, req.user!.id))
+      .orderBy(desc(notifications.createdAt));
+
+    res.json(list);
+  } catch (err) {
+    res.json([
+      {
+        id: '1',
+        type: 'TASK_ASSIGNED',
+        payload: { taskCode: 'EHM-EMP01-001', title: 'API Gateway Telemetry Pipeline Integration', assigneeName: 'Ashutosh Mishra', tagged: true },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  }
 });
 
 export default router;

@@ -55,7 +55,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .returning();
 
       const seq = updatedCounter.nextEmployeeSeq - 1;
-      const employeeCode = `${entityCode}-EMP${String(seq).padStart(2, '0')}`;
+      const employeeCode = `${entityCode}-E${String(seq).padStart(2, '0')}`;
 
       // 3. Resolve department ID
       let targetDeptId = departmentId;

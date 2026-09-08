@@ -91,8 +91,13 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .where(eq(entityCounters.entityId, emp.entityId))
         .returning();
 
-      const seqNumber = (counter?.nextSprintSeq || 2) - 1;
-      const sprintCode = `${entityCode}-${empShortCode}-SPR-${String(seqNumber).padStart(2, '0')}`; // e.g. EHM-EMP01-SPR-01
+      let weekNum = '1';
+      if (targetWeek) {
+        const match = String(targetWeek).match(/\d+/);
+        if (match) weekNum = match[0];
+      }
+      const empCodeFormatted = emp.employeeCode.replace('-EMP', '-E');
+      const sprintCode = `${empCodeFormatted}-W${weekNum}`;
 
       // 3. Insert Personal Sprint
       const [newSprint] = await tx
@@ -106,7 +111,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           reviewingLeadId: reviewingLeadId || null,
           department: department || '',
           targetWeek: targetWeek || 'Week 1 (Days 1–7)',
-          name: name || `Sprint ${seqNumber}`,
+          name: name || `Sprint ${weekNum}`,
           startDate: startDate ? new Date(startDate) : new Date(),
           endDate: endDate ? new Date(endDate) : new Date(Date.now() + 14 * 86400000), // Default 2 weeks
           status: status || 'PLANNED',

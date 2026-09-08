@@ -8,14 +8,16 @@ import { epics } from './epics.js';
 
 export const taskPriorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
 export const taskStatusEnum = pgEnum('task_status', ['BACKLOG', 'TODO', 'IN_PROGRESS', 'DONE', 'DELAYED', 'BLOCKED']);
+export const taskTypeEnum = pgEnum('task_type', ['SPRINT_TASK', 'EPIC_TASK', 'BACKLOG']);
 
 export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
-  taskCode: varchar('task_code', { length: 50 }).notNull().unique(), // e.g. EHM-EMP01-002, CAG-DEV-SPR-101
+  taskCode: varchar('task_code', { length: 50 }).notNull().unique(), // e.g. EHM-I01-EP01-T001, EHM-E01-W1-T001
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
   entityId: uuid('entity_id').references(() => entities.id).notNull(),
   departmentId: uuid('department_id').references(() => departments.id).notNull(),
+  taskType: taskTypeEnum('task_type').default('BACKLOG').notNull(),
   sprintWeek: varchar('sprint_week', { length: 50 }), // Nullable now since we have sprintId FK
   sprintId: uuid('sprint_id').references(() => sprints.id),
   initiativeId: uuid('initiative_id').references(() => initiatives.id),

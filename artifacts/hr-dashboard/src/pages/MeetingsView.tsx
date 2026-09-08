@@ -7,176 +7,7 @@ import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
-const MOCK_PRESENCE_LIST = [
-  {
-    name: 'Ashutosh Mishra',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Product & Tech',
-    role: 'Lead Systems Architect',
-    avatar: MALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'API Telemetry & Gateway Architecture', time: '10:00 AM - 10:45 AM', active: false },
-    ],
-  },
-  {
-    name: 'Priyanka Sharma',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Marketing',
-    role: 'Senior Brand Strategist',
-    avatar: FEMALE_AVATAR,
-    status: 'Busy in Meeting — until 11:30 AM',
-    isMeeting: true,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Brand Campaign Alignment', time: '10:30 AM - 11:30 AM', active: true },
-    ],
-  },
-  {
-    name: 'Utkarsh Mishra',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Operations & Delivery',
-    role: 'Operations Lead',
-    avatar: MALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Vendor Logistics & Ops Audit', time: '11:00 AM - 11:45 AM', active: false },
-    ],
-  },
-  {
-    name: 'Prerna Shukla',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Grants & Governance',
-    role: 'Grants Strategist',
-    avatar: FEMALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Agri-Tech Subsidy Governance Sync', time: '01:30 PM - 02:15 PM', active: false },
-    ],
-  },
-  {
-    name: 'Shreyansh Siladar',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'SM Marketing',
-    role: 'Social Media Lead',
-    avatar: MALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Social Media Campaign Planning', time: '02:00 PM - 02:30 PM', active: false },
-    ],
-  },
-  {
-    name: "Tarul Ma'am",
-    entity: 'CAG',
-    entityName: 'climagroanalytics',
-    dept: 'Operations & Delivery',
-    role: 'Delivery Associate',
-    avatar: MALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Client Dispatch & Delivery Sync', time: '04:00 PM - 04:30 PM', active: false },
-    ],
-  },
-  {
-    name: 'Dr. Harshit Mishra',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Sales',
-    role: 'Managing Director / Sales Lead',
-    avatar: MALE_AVATAR,
-    status: 'Busy in Executive Sync',
-    isMeeting: true,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Executive Board & Strategy Sync', time: '10:00 AM - 11:30 AM', active: true },
-    ],
-  },
-  {
-    name: 'Neha Shukla',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Marketing',
-    role: 'Marketing Lead',
-    avatar: FEMALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Marketing Growth & Metrics', time: '01:00 PM - 01:45 PM', active: false },
-    ],
-  },
-  {
-    name: 'Dr. Utsav Mishra',
-    entity: 'CAG',
-    entityName: 'climagroanalytics',
-    dept: 'Operations & Delivery',
-    role: 'Operations VP',
-    avatar: MALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Operations Delivery Strategy', time: '11:30 AM - 12:15 PM', active: false },
-    ],
-  },
-  {
-    name: 'Jitendra Sir',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Product & Tech',
-    role: 'Chief Technology Officer',
-    avatar: MALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'Technical Leadership & Architecture Review', time: '02:30 PM - 03:30 PM', active: false },
-    ],
-  },
-  {
-    name: 'Pranshu Dubey',
-    entity: 'EHM',
-    entityName: 'ehmconsultancy',
-    dept: 'Product & System',
-    role: 'DevOps Engineer',
-    avatar: MALE_AVATAR,
-    status: 'In Office (Present)',
-    isMeeting: false,
-    workMode: 'IN_OFFICE',
-    todayMeetings: [
-      { title: 'DevOps & CI/CD Infra Sync', time: '03:00 PM - 03:45 PM', active: false },
-    ],
-  },
-  {
-    name: 'Himanshu Tiwari',
-    entity: 'CAG',
-    entityName: 'climagroanalytics',
-    dept: 'Product & Tech',
-    role: 'Frontend Engineer',
-    avatar: MALE_AVATAR,
-    status: 'Remote Working',
-    isMeeting: false,
-    workMode: 'REMOTE',
-    todayMeetings: [
-      { title: 'Frontend UI Code Review', time: '04:00 PM - 04:45 PM', active: false },
-    ],
-  },
-];
+
 
 export const MeetingsView: React.FC = () => {
   const { user } = useAuth();
@@ -185,6 +16,7 @@ export const MeetingsView: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | 'TOMORROW' | 'PAST' | 'RECURRING'>('ALL');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [availability, setAvailability] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -197,14 +29,60 @@ export const MeetingsView: React.FC = () => {
   const loadMeetings = async () => {
     setLoading(true);
     try {
-      const data = await fetchApi<any[]>('/api/meetings');
-      setMeetings(data);
+      const [meetingsData, employeesData] = await Promise.all([
+        fetchApi<any[]>('/api/meetings'),
+        fetchApi<any[]>('/api/employees'),
+      ]);
+      setMeetings(Array.isArray(meetingsData) ? meetingsData : []);
+      setEmployees(Array.isArray(employeesData) ? employeesData : []);
     } catch (err) {
       console.error('[MEETINGS FETCH ERROR]:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  const livePresenceList = employees.map((emp, idx) => {
+    const entity = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
+    const entityName = entity === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy';
+    const empMeetings = meetings.filter((m) => {
+      const isOrganizer = m.organizerId === emp.id;
+      const isInvitee = Array.isArray(m.invitees) && m.invitees.includes(emp.id);
+      return isOrganizer || isInvitee;
+    });
+
+    const now = new Date();
+    const todayMeetings = empMeetings.map((m) => {
+      const start = m.startTime ? new Date(m.startTime) : new Date();
+      const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
+      const active = now >= start && now <= end;
+      return {
+        title: m.title,
+        time: `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        active,
+      };
+    });
+
+    const isMeeting = empMeetings.some((m) => {
+      const start = m.startTime ? new Date(m.startTime) : new Date();
+      const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
+      return now >= start && now <= end;
+    });
+
+    return {
+      id: emp.id,
+      name: `${emp.firstName} ${emp.lastName}`,
+      entity,
+      entityName,
+      dept: 'Engineering & Operations',
+      role: emp.designation || 'Team Member',
+      avatar: idx % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR,
+      status: isMeeting ? 'Busy in Meeting' : 'In Office (Present)',
+      isMeeting,
+      workMode: 'IN_OFFICE',
+      todayMeetings,
+    };
+  });
 
   const loadAvailability = async () => {
     try {
@@ -562,8 +440,8 @@ export const MeetingsView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {MOCK_PRESENCE_LIST.filter(item => selectedEntity === 'ALL' || item.entity === selectedEntity).map(item => (
-              <div key={item.name} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-5">
+            {livePresenceList.filter(item => selectedEntity === 'ALL' || item.entity === selectedEntity).map(item => (
+              <div key={item.id} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-5">
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <img
@@ -588,7 +466,11 @@ export const MeetingsView: React.FC = () => {
                           : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'}`}></span>
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'
+                        }`}
+                      ></span>
                       <span>{item.status}</span>
                     </div>
 
@@ -603,11 +485,11 @@ export const MeetingsView: React.FC = () => {
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-emerald-600" /> Today's Meetings
                       </span>
-                      <span>({item.todayMeetings.length})</span>
+                      <span>({(item.todayMeetings || []).length})</span>
                     </div>
 
                     <div className="space-y-1.5">
-                      {item.todayMeetings.map(m => (
+                      {(item.todayMeetings || []).map((m: any) => (
                         <div
                           key={m.title}
                           className={`p-2.5 rounded-xl border text-xs space-y-1 transition-all ${

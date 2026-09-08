@@ -132,8 +132,25 @@ export const TasksView: React.FC = () => {
     toast.error(`Delay Warning Alert sent to employee ${assigneeName} for task ${taskCode}!`);
   };
 
-  const handleSaveTaskUpdate = (updated: TaskItem) => {
+  const handleSaveTaskUpdate = async (updated: TaskItem) => {
     const nextStatus = updated.status === 'Done' ? 'DONE' : updated.status === 'In Progress' ? 'IN_PROGRESS' : 'TODO';
+    
+    // Persist status change to Supabase via backend API
+    try {
+      await fetchApi(`/api/tasks/${updated.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: nextStatus,
+          deliverableUrl: updated.outputUrl || '',
+          description: updated.notes || '',
+        }),
+      });
+      toast.success('Task status updated successfully in database!');
+    } catch (err: any) {
+      console.error('[TASK PATCH ERROR]:', err);
+      toast.error('Failed to persist task status update to database.');
+    }
+
     setTasks(tasks.map(t => t.id === updated.id ? {
       ...t,
       status: nextStatus,

@@ -500,7 +500,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
                   // Determine Entity Code
                   const entityCode = parentInit?.initiativeCode?.startsWith('CAG') 
                     ? 'CAG' 
-                    : epic.epicCode.startsWith('CAG') 
+                    : (epic.epicCode || '').startsWith('CAG') 
                     ? 'CAG' 
                     : 'EHM';
                   const isCAG = entityCode === 'CAG';
@@ -572,7 +572,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
                               {tasksList.length} Linked Task{tasksList.length > 1 ? 's' : ''}
                             </option>
                             {tasksList.map((tsk: any) => {
-                              const isCAG = epic.epicCode.startsWith('CAG');
+                              const isCAG = (epic.epicCode || '').startsWith('CAG');
                               const displayCode = (isCAG && tsk.taskCode?.startsWith('EHM-'))
                                 ? tsk.taskCode.replace(/^EHM-/, 'CAG-')
                                 : (tsk.taskCode || 'TSK');
@@ -696,7 +696,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
                   <div>
                     <span className="text-gray-400 font-semibold block uppercase text-[10px]">Entity</span>
                     <span className="font-bold text-blue-700 font-mono">
-                      {viewingEpic.epicCode.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'}
+                      {(viewingEpic.epicCode || '').startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'}
                     </span>
                   </div>
 
@@ -727,7 +727,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, selec
 
               {/* 4. Fourth: Hanging Tasks Assigned Under Epic */}
               {(() => {
-                const isEpicCAG = viewingEpic.epicCode.startsWith('CAG');
+                const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
                 const combined = [
                   ...(viewingEpic.tasks || []),
                   ...allTasks.filter((t: any) => t.epicId === viewingEpic.id || t.parentEpicCode === viewingEpic.epicCode)

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -7,20 +7,16 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Line,
 } from 'recharts';
 import { Calendar, Settings, ExternalLink, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { fetchApi } from '@workspace/api-client-react';
 
-const taskAnalyticsData = [
-  { name: 'Week 1', completed: 22, inReview: 8, pending: 15 },
-  { name: 'Week 2', completed: 30, inReview: 12, pending: 18 },
-  { name: 'Week 3', completed: 38, inReview: 15, pending: 12 },
-  { name: 'Week 4', completed: 45, inReview: 14, pending: 10 },
-  { name: 'Week 5', completed: 52, inReview: 10, pending: 8 },
-  { name: 'Week 6', completed: 58, inReview: 9, pending: 12 },
-  { name: 'Week 7', completed: 64, inReview: 11, pending: 7 },
-  { name: 'Week 8', completed: 72, inReview: 8, pending: 5 },
-];
+interface TaskAnalyticsItem {
+  name: string;
+  completed: number;
+  inReview: number;
+  pending: number;
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -28,7 +24,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     const inReview = payload[1]?.value || 0;
     const pending = payload[2]?.value || 0;
     const total = completed + inReview + pending;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const completionRate = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
 
     return (
       <div className="bg-white border border-gray-200/90 p-3.5 rounded-xl shadow-xl text-xs font-sans space-y-1.5 select-none min-w-[190px]">
@@ -69,13 +65,82 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const RevenueChart: React.FC = () => {
+  const [taskAnalyticsData, setTaskAnalyticsData] = useState<TaskAnalyticsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTaskTrendData() {
+      try {
+        const tasks = await fetchApi<any[]>('/api/tasks');
+        const tasksList = Array.isArray(tasks) ? tasks : [];
+
+        // Determine Start of current calendar week (Monday)
+        const getStartOfWeek = (d: Date): Date => {
+          const date = new Date(d);
+          const day = date.getDay();
+          const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+          date.setDate(diff);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        };
+
+        const currentWeekStart = getStartOfWeek(new Date());
+        const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+        // Construct 4 actual calendar week buckets ending at the current week
+        const weekBuckets = [3, 2, 1, 0].map((weeksAgo, idx) => {
+          const start = new Date(currentWeekStart.getTime() - weeksAgo * ONE_WEEK_MS);
+          const end = new Date(start.getTime() + ONE_WEEK_MS);
+          const monthDay = `${start.getMonth() + 1}/${start.getDate()}`;
+          return {
+            name: `W${idx + 1} (${monthDay})`,
+            start,
+            end,
+            completed: 0,
+            inReview: 0,
+            pending: 0,
+          };
+        });
+
+        // Group live tasks into real calendar weeks by dueDate (or createdAt) with zero synthetic scaling
+        for (const task of tasksList) {
+          const dateVal = task.dueDate ? new Date(task.dueDate) : (task.createdAt ? new Date(task.createdAt) : null);
+          if (!dateVal || isNaN(dateVal.getTime())) continue;
+
+          const bucket = weekBuckets.find(b => dateVal >= b.start && dateVal < b.end);
+          if (bucket) {
+            if (task.status === 'DONE') {
+              bucket.completed += 1;
+            } else if (task.status === 'TODO') {
+              bucket.inReview += 1;
+            } else if (task.status === 'IN_PROGRESS' || task.status === 'BLOCKED' || task.status === 'DELAYED' || task.status === 'BACKLOG') {
+              bucket.pending += 1;
+            }
+          }
+        }
+
+        setTaskAnalyticsData(weekBuckets.map(b => ({
+          name: b.name,
+          completed: b.completed,
+          inReview: b.inReview,
+          pending: b.pending,
+        })));
+      } catch (err) {
+        console.error('[REVENUE CHART FETCH ERROR]:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTaskTrendData();
+  }, []);
+
   return (
     <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs select-none">
       {/* Header controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h3 className="text-base font-bold text-gray-900 tracking-tight">Task Progress & Sprint Analytics</h3>
-          <p className="text-xs text-gray-500 font-medium">Weekly status tracking of Pending, In Progress, To Review, and Completed deliverables.</p>
+          <p className="text-xs text-gray-500 font-medium">Weekly status tracking of Pending, In Progress, To Review, and Completed deliverables (Live Database).</p>
         </div>
         <div className="flex items-center gap-1.5 text-gray-400">
           <button className="p-1.5 hover:bg-gray-100 rounded-md transition-colors" title="Filter Date Range"><Calendar className="w-4 h-4" /></button>
@@ -87,8 +152,8 @@ export const RevenueChart: React.FC = () => {
       {/* Sub-info & legend badges */}
       <div className="flex flex-wrap items-center justify-between text-xs mb-4 gap-2">
         <div>
-          <span className="text-gray-400">Last update: </span>
-          <span className="font-semibold text-gray-700">09.06.26 at 11:30 PM</span>
+          <span className="text-gray-400">Live Status: </span>
+          <span className="font-semibold text-gray-700">Real-time DB Sync</span>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-1.5">
@@ -108,28 +173,34 @@ export const RevenueChart: React.FC = () => {
 
       {/* Recharts Area & Curve Chart */}
       <div className="h-60 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={taskAnalyticsData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="emeraldGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-              </linearGradient>
-              <linearGradient id="amberGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} tickFormatter={(v) => `${v} tasks`} />
-            <Tooltip content={<CustomTooltip />} />
-            
-            <Area type="monotone" dataKey="completed" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#emeraldGradient)" />
-            <Area type="monotone" dataKey="inReview" stroke="#F59E0B" strokeWidth={2} strokeDasharray="4 4" fill="url(#amberGradient)" />
-            <Area type="monotone" dataKey="pending" stroke="#3B82F6" strokeWidth={2} strokeDasharray="2 2" fill="none" />
-          </AreaChart>
-        </ResponsiveContainer>
+        {loading ? (
+          <div className="h-full flex items-center justify-center text-xs text-gray-400 font-medium">
+            Loading chart analytics from database...
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={taskAnalyticsData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="emeraldGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                </linearGradient>
+                <linearGradient id="amberGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} tickFormatter={(v) => `${v} tasks`} />
+              <Tooltip content={<CustomTooltip />} />
+              
+              <Area type="monotone" dataKey="completed" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#emeraldGradient)" />
+              <Area type="monotone" dataKey="inReview" stroke="#F59E0B" strokeWidth={2} strokeDasharray="4 4" fill="url(#amberGradient)" />
+              <Area type="monotone" dataKey="pending" stroke="#3B82F6" strokeWidth={2} strokeDasharray="2 2" fill="none" />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
