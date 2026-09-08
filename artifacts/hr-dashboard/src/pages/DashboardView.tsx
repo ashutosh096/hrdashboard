@@ -33,6 +33,7 @@ import { StatCard } from '../components/StatCard';
 import { RevenueChart } from '../components/RevenueChart';
 import { ScheduleWidget } from '../components/ScheduleWidget';
 import { TaskAnalyticsPanel } from '../components/TaskAnalyticsPanel';
+import { TaskProgressSprintAnalytics } from '../components/TaskProgressSprintAnalytics';
 import { EmployeeDashboardView } from '../components/EmployeeDashboardView';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -183,6 +184,16 @@ export const DashboardView: React.FC = () => {
         <StatCard title="Active Today (Clocked In)" value={presentEmployees} icon={<UserCheck className="w-5 h-5 text-emerald-600" />} trend="85% Attendance Rate" />
         <StatCard title="Total Live Deliverables" value={totalTasks} icon={<Layers className="w-5 h-5 text-purple-600" />} trend={`${completedTasks} Tasks Completed`} />
         <StatCard title="Completion Velocity Rate" value={`${completionRate}%`} icon={<TrendingUp className="w-5 h-5 text-amber-600" />} trend="Capped <= 100%" />
+      </div>
+
+      {/* Task Progress & Sprint Analytics Graph + Schedule & Deliverables Widget Side-by-Side Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <TaskProgressSprintAnalytics />
+        </div>
+        <div className="lg:col-span-1">
+          <ScheduleWidget />
+        </div>
       </div>
 
       {/* Embedded Task Analytics Component */}
