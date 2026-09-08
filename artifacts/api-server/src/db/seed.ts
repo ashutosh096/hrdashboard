@@ -206,6 +206,24 @@ export async function runSeed() {
       console.log(`[SEED] Admin User updated: ${adminEmail}`);
     }
 
+    const secondaryEmail = 'ashutosh@ehmconsultancy.com';
+    const [existingSecUser] = await db.select().from(users).where(eq(users.email, secondaryEmail));
+    if (!existingSecUser) {
+      await db.insert(users).values({
+        email: secondaryEmail,
+        passwordHash,
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        employeeId: adminEmployee.id,
+      });
+      console.log(`[SEED] Secondary Admin User inserted: ${secondaryEmail}`);
+    } else {
+      await db.update(users)
+        .set({ passwordHash, role: 'ADMIN', status: 'ACTIVE', employeeId: adminEmployee.id })
+        .where(eq(users.email, secondaryEmail));
+      console.log(`[SEED] Secondary Admin User updated: ${secondaryEmail}`);
+    }
+
     // 5. Seed / Upsert Default Strategic Initiatives (CAG-INIT-001 & EHM-INIT-001)
     let [cagInit] = await db.select().from(initiatives).where(eq(initiatives.initiativeCode, 'CAG-INIT-001'));
     if (!cagInit) {
