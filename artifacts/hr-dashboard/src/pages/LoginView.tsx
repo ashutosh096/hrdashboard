@@ -60,7 +60,7 @@ export const LoginView: React.FC = () => {
           <div>
             <h1 className="text-2xl font-black text-white tracking-tight">EHM-Climagro OS</h1>
             <p className="text-xs text-emerald-400 font-semibold tracking-wide mt-1">
-              EHM Consultancy & Climagro Analytics
+              EHM & CLIMAGRO
             </p>
           </div>
         </div>

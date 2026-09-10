@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
       const linkedEpics = allEpics.filter(e => e.initiativeId === init.id);
       return {
         ...init,
-        entityName: entity?.name || (init.initiativeCode.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'),
+        entityName: (entity?.name || '').toLowerCase().includes('cag') || (entity?.name || '').toLowerCase().includes('climagro') || init.initiativeCode.startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
         entityCode: entity?.code || (init.initiativeCode.startsWith('CAG') ? 'CAG' : 'EHM'),
         epicsCount: linkedEpics.length,
         epics: linkedEpics,
@@ -123,7 +123,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // PUT /api/initiatives/:id - Update initiative status & details
 router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const initId = req.params.id as string;
-  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric } = req.body;
+  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric, subDepartment, entityId } = req.body;
 
   let mappedStatus: 'PLANNED' | 'ACTIVE' | 'DONE' | undefined = undefined;
   if (status === 'IN_PROGRESS' || status === 'ACTIVE') mappedStatus = 'ACTIVE';
@@ -131,16 +131,29 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   else if (status === 'PLANNED') mappedStatus = 'PLANNED';
 
   try {
+    const updatePayload: any = {};
+    if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
+    if (title !== undefined) updatePayload.title = title;
+    if (description !== undefined) updatePayload.description = description;
+    if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth;
+    if (epicsCountTarget !== undefined) updatePayload.epicsCountTarget = Number(epicsCountTarget);
+    if (targetDeliverableMetric !== undefined) updatePayload.targetDeliverableMetric = targetDeliverableMetric;
+    if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
+
+    if (entityId !== undefined) {
+      const allEntities = await db.select().from(entities);
+      let entity = allEntities.find(e =>
+        e.id === entityId ||
+        e.code.toLowerCase() === (entityId || '').toLowerCase() ||
+        ((entityId || '').toLowerCase().includes('ehm') && e.code === 'EHM') ||
+        ((entityId || '').toLowerCase().includes('climagro') && e.code === 'CAG')
+      );
+      if (entity) updatePayload.entityId = entity.id;
+    }
+
     const [updated] = await db
       .update(initiatives)
-      .set({
-        status: mappedStatus,
-        title: title !== undefined ? title : undefined,
-        description: description !== undefined ? description : undefined,
-        targetMonth: targetMonth !== undefined ? targetMonth : undefined,
-        epicsCountTarget: epicsCountTarget !== undefined ? Number(epicsCountTarget) : undefined,
-        targetDeliverableMetric: targetDeliverableMetric !== undefined ? targetDeliverableMetric : undefined,
-      })
+      .set(updatePayload)
       .where(eq(initiatives.id, initId))
       .returning();
 

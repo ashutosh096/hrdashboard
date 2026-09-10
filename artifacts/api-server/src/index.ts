@@ -36,6 +36,14 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
+// Handle body-parser JSON syntax errors
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && 'status' in err && (err as any).status === 400 && 'body' in err) {
+    return res.status(400).json({ message: 'Invalid JSON payload format' });
+  }
+  next(err);
+});
+
 // Mount API routes
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
@@ -53,6 +61,15 @@ app.use('/api/sprints', sprintsRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });
+});
+
+// Global API error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[UNHANDLED EXPRESS ERROR]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.status(500).json({ message: err?.message || 'Internal Server Error' });
 });
 
 // Serve frontend static assets & SPA fallback (Express 5 path-to-regexp compatible)

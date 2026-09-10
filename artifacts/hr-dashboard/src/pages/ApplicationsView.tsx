@@ -1012,8 +1012,8 @@ export const ApplicationsView: React.FC = () => {
                     onChange={(e) => setProjectEntity(e.target.value as any)}
                     className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="EHM">ehmconsultancy</option>
-                    <option value="CAG">climagroanalytics</option>
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
                   </select>
                 </div>
 

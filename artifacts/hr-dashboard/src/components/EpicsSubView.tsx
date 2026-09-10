@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw } from 'lucide-react';
+import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
@@ -73,6 +73,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [department, setDepartment] = useState('Product & Tech');
   const [targetWeek, setTargetWeek] = useState('Week 1 (Days 1–7)');
   const [sprintsCountTarget, setSprintsCountTarget] = useState(2);
+  const [isClone, setIsClone] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // View & Edit Modal States (Middle Pop Card)
@@ -161,12 +163,14 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     setEditDepartment(epic.department || 'Product & Tech');
     setEditTargetWeek(epic.targetWeek || 'Week 1 (Days 1–7)');
     setEditSprintsCountTarget(epic.sprintsCountTarget || 2);
-    setEditStatus(epic.status || 'PLANNED');
+    setEditStatus(epic.status === 'COMPLETED' ? 'DONE' : (epic.status || 'PLANNED'));
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEpic) return;
+
+    const apiStatus = editStatus === 'DONE' ? 'COMPLETED' : editStatus;
 
     setIsSubmitting(true);
     try {
@@ -179,7 +183,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           department: editDepartment,
           targetWeek: editTargetWeek,
           sprintsCountTarget: editSprintsCountTarget,
-          status: editStatus,
+          status: apiStatus,
         }),
       });
       toast.success(`Epic ${editingEpic.epicCode} updated successfully!`);
@@ -195,24 +199,26 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   const handleStatusChange = async (epicId: string, newStatus: string) => {
     const targetEpic = epics.find(e => e.id === epicId);
+    const apiStatus = newStatus === 'DONE' ? 'COMPLETED' : newStatus;
+
     try {
       await fetchApi<any>(`/api/epics/${epicId}`, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: apiStatus }),
       });
 
-      const isArchivedTarget = newStatus === 'DONE' || newStatus === 'COMPLETED' || newStatus === 'ARCHIVED';
+      const isArchivedTarget = apiStatus === 'COMPLETED' || apiStatus === 'ARCHIVED';
       if (isArchivedTarget) {
-        toast.success(`Epic ${targetEpic?.epicCode || ''} status updated to ${newStatus} & pushed to Archive!`);
+        toast.success(`Epic ${targetEpic?.epicCode || ''} marked as DONE & moved to Archive!`);
       } else {
-        toast.success(`Epic ${targetEpic?.epicCode || ''} status updated to ${newStatus}`);
+        toast.success(`Epic ${targetEpic?.epicCode || ''} status updated to ${newStatus} & restored to Active!`);
       }
 
       setEpics((prev) =>
-        prev.map((e) => (e.id === epicId ? { ...e, status: newStatus } : e))
+        prev.map((e) => (e.id === epicId ? { ...e, status: apiStatus } : e))
       );
       if (viewingEpic && viewingEpic.id === epicId) {
-        setViewingEpic((prev) => (prev ? { ...prev, status: newStatus } : null));
+        setViewingEpic((prev) => (prev ? { ...prev, status: apiStatus } : null));
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update status');
@@ -226,7 +232,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   // Filtered Epics calculation
   const filteredEpics = baseEpicsPool.filter(epic => {
-    const epicStatus = epic.status || 'PLANNED';
+    const rawStatus = epic.status || 'PLANNED';
+    const epicStatus = rawStatus === 'COMPLETED' ? 'DONE' : rawStatus;
     const isDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED' || epicStatus === 'ARCHIVED';
     const isInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
 
@@ -250,6 +257,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
     return matchesStatus && matchesQuery;
   });
+
 
   const plannedCount = activeEpics.filter(e => (e.status || 'PLANNED') === 'PLANNED').length;
   const inProgressCount = activeEpics.filter(e => e.status === 'IN_PROGRESS' || e.status === 'ACTIVE').length;
@@ -409,9 +417,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
                 {filteredEpics.map((epic) => {
                   const parentInit = initiatives.find((i) => i.id === epic.initiativeId);
-                  const epicStatus = epic.status || 'PLANNED';
+                  const rawStatus = epic.status || 'PLANNED';
+                  const epicStatus = rawStatus === 'COMPLETED' ? 'DONE' : rawStatus;
                   const isDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED' || epicStatus === 'ARCHIVED';
                   const isInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
+
 
                   // Determine Entity Code
                   const entityCode = parentInit?.initiativeCode?.startsWith('CAG') 
@@ -441,7 +451,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                               : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           }`}
                         >
-                          {isCAG ? 'climagroanalytics' : 'ehmconsultancy'}
+                          {isCAG ? 'CLIMAGRO' : 'EHM'}
                         </span>
                       </td>
 
@@ -561,32 +571,114 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
       {/* 👁️ POP CARD DETAILS MODAL */}
       {viewingEpic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
+          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-              <h3 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">Feature Epic Details</h3>
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-gray-900">Feature Epic Details</h3>
+                  <p className="text-[11px] text-gray-400 font-semibold">
+                    Full breakdown of goal, metadata, and linked tasks
+                  </p>
+                </div>
+              </div>
 
-              <button
-                onClick={() => {
-                  setViewingEpic(null);
-                  if (onClearSelectedEpic) onClearSelectedEpic();
-                }}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const epicToEdit = viewingEpic;
+                      setViewingEpic(null);
+                      handleStartEdit(epicToEdit);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 transition-all cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit Epic</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setViewingEpic(null);
+                    if (onClearSelectedEpic) onClearSelectedEpic();
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {/* 1. First: Parent Initiative Code & Title */}
+            {/* Modal Body Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* 1. Epic Title */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Title
+                </span>
+                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
+                  {viewingEpic.title}
+                </h2>
+              </div>
+
+              {/* 2. Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Epic Code
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                    {viewingEpic.epicCode}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Entity / Brand
+                  </span>
+                  <span className="text-xs font-bold text-blue-700 font-mono">
+                    {(viewingEpic.epicCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Target Date / Week
+                  </span>
+                  <span className="text-xs font-bold text-purple-700">
+                    {viewingEpic.targetWeek || viewingEpic.targetDate || 'Week 1 (Days 1–7)'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Status
+                  </span>
+                  <select
+                    value={viewingEpic.status || 'PLANNED'}
+                    onChange={(e) => handleStatusChange(viewingEpic.id, e.target.value)}
+                    className="text-xs font-extrabold px-2 py-0.5 rounded uppercase border bg-white text-emerald-700 border-emerald-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="PLANNED">PLANNED</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="DONE">DONE</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Parent Initiative Link Box */}
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId);
                 const parentCode = parentInit?.initiativeCode || 'N/A';
                 const parentTitle = parentInit?.title || 'No Parent Initiative Linked';
 
                 return (
-                  <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200 space-y-2">
+                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
                       <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Parent Initiative Code:</span>
@@ -615,59 +707,21 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 );
               })()}
 
-              {/* 2. Second: Epic Code & Title */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 text-sm">
-                <div className="font-bold text-gray-700">
-                  Epic Code: <span className="font-mono text-emerald-700 font-extrabold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 text-sm">{viewingEpic.epicCode}</span>
-                </div>
-                <div className="font-bold text-gray-700">
-                  Epic Title: <span className="text-gray-900 font-extrabold text-base">{viewingEpic.title}</span>
-                </div>
-              </div>
-
-              {/* 3. Third: Description & All Epic Info */}
-              <div className="space-y-3">
-                {viewingEpic.description && (
-                  <div>
-                    <span className="text-gray-400 font-bold uppercase text-xs block mb-1">Description</span>
-                    <MarkdownViewer content={viewingEpic.description} className="bg-white p-4 rounded-xl border border-gray-200 text-sm text-gray-800" />
+              {/* 4. Description */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Description
+                </span>
+                {viewingEpic.description ? (
+                  <MarkdownViewer content={viewingEpic.description} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-sm text-gray-800" />
+                ) : (
+                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs text-gray-400 italic">
+                    No epic description provided.
                   </div>
                 )}
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm">
-                  <div>
-                    <span className="text-gray-400 font-bold block uppercase text-xs">Entity</span>
-                    <span className="font-bold text-blue-700 font-mono text-sm">
-                      {(viewingEpic.epicCode || '').startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 font-bold block uppercase text-xs">Department</span>
-                    <span className="font-bold text-amber-800 text-sm">{viewingEpic.department || 'Product & Tech'}</span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 font-semibold block uppercase text-[10px]">Target Date / Week</span>
-                    <span className="font-bold text-purple-700">{viewingEpic.targetWeek || viewingEpic.targetDate || 'Week 1 (Days 1–7)'}</span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 font-semibold block uppercase text-[10px]">Status</span>
-                    <select
-                      value={viewingEpic.status || 'PLANNED'}
-                      onChange={(e) => handleStatusChange(viewingEpic.id, e.target.value)}
-                      className="mt-0.5 text-xs font-extrabold px-2 py-0.5 rounded uppercase border bg-white text-emerald-700 border-emerald-300 focus:outline-none cursor-pointer"
-                    >
-                      <option value="PLANNED">PLANNED</option>
-                      <option value="IN_PROGRESS">IN PROGRESS</option>
-                      <option value="DONE">DONE</option>
-                    </select>
-                  </div>
-                </div>
               </div>
 
-              {/* 4. Fourth: Hanging Tasks Assigned Under Epic */}
+              {/* 5. Hanging Tasks Linked Under Epic */}
               {(() => {
                 const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
                 const combined = [
@@ -698,47 +752,45 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                             : (taskItem.taskCode || 'TSK-001');
 
                           return (
-                          <div
-                            key={taskItem.id || idx}
-                            style={{ animationDelay: `${idx * 100}ms` }}
-                            className="relative group transition-all duration-300 animate-in fade-in slide-in-from-top-3"
-                          >
-                            {/* Visual Hanging Line & Connector Node */}
-                            <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
-                            <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
+                            <div
+                              key={taskItem.id || idx}
+                              style={{ animationDelay: `${idx * 100}ms` }}
+                              className="relative group transition-all duration-300 animate-in fade-in slide-in-from-top-3"
+                            >
+                              <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
+                              <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
 
-                            {/* Hanging Task Card */}
-                            <div className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                                  {displayTaskCode}
-                                </span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                  taskItem.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                                  taskItem.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                                  'bg-amber-50 text-amber-800 border-amber-200'
-                                }`}>
-                                  {taskItem.status || 'TODO'}
-                                </span>
-                              </div>
+                              <div className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                                    {displayTaskCode}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                    taskItem.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                    taskItem.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                                    'bg-amber-50 text-amber-800 border-amber-200'
+                                  }`}>
+                                    {taskItem.status || 'TODO'}
+                                  </span>
+                                </div>
 
-                              <h5 className="font-bold text-xs text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">
-                                {taskItem.title}
-                              </h5>
+                                <h5 className="font-bold text-xs text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">
+                                  {taskItem.title}
+                                </h5>
 
-                              <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2 mt-2 border-t border-gray-100">
-                                <span className="truncate max-w-[220px]">
-                                  <span className="text-gray-400">Assignee:</span> {taskItem.assigneeName || taskItem.assignee || 'admin@example.com'}
-                                </span>
-                                <div className="flex items-center gap-1 text-gray-400 text-[10px]">
-                                  <Calendar className="w-3 h-3 text-emerald-500" />
-                                  <span>{taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '2026-09-08'}</span>
+                                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2 mt-2 border-t border-gray-100">
+                                  <span className="truncate max-w-[220px]">
+                                    <span className="text-gray-400">Assignee:</span> {taskItem.assigneeName || taskItem.assignee || 'admin@example.com'}
+                                  </span>
+                                  <div className="flex items-center gap-1 text-gray-400 text-[10px]">
+                                    <Calendar className="w-3 h-3 text-emerald-500" />
+                                    <span>{taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '2026-09-08'}</span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-center py-6 text-xs text-gray-400 bg-gray-50/80 rounded-xl border border-dashed border-gray-200">
@@ -750,27 +802,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               })()}
             </div>
 
-            {/* 5. Fifth: Footer View / Close & Edit Options */}
-            <div className="flex items-center justify-between pt-4 mt-6 border-t border-gray-100">
-              {isManager ? (
-                <button
-                  onClick={() => {
-                    const epicToEdit = viewingEpic;
-                    setViewingEpic(null);
-                    handleStartEdit(epicToEdit);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit Epic</span>
-                </button>
-              ) : <div />}
-
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end shrink-0">
               <button
-                onClick={() => setViewingEpic(null)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setViewingEpic(null);
+                  if (onClearSelectedEpic) onClearSelectedEpic();
+                }}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                Close View
+                Close View Mode
               </button>
             </div>
           </div>
@@ -991,6 +1033,59 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Clone / Duplicate Option Checkbox */}
+              <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isClone}
+                    onChange={(e) => {
+                      setIsClone(e.target.checked);
+                      if (!e.target.checked) setCloneSourceId('');
+                    }}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
+                    <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                      Check this box to duplicate an existing Feature Epic configuration into a new sequence code under this initiative.
+                    </p>
+                  </div>
+                </label>
+
+                {isClone && (
+                  <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                    <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                      Select Existing Feature Epic to Clone From (Optional):
+                    </label>
+                    <select
+                      value={cloneSourceId}
+                      onChange={(e) => {
+                        setCloneSourceId(e.target.value);
+                        const source = epics.find(ep => ep.id === e.target.value);
+                        if (source) {
+                          setTitle(`${source.title} (Clone)`);
+                          setDescription(source.description || '');
+                          if (source.initiativeId) setSelectedInitiativeId(source.initiativeId);
+                          if (source.department) setDepartment(source.department);
+                          if (source.targetWeek) setTargetWeek(source.targetWeek);
+                          if (source.sprintsCountTarget) setSprintsCountTarget(source.sprintsCountTarget);
+                          toast.success(`Form pre-filled with data from "${source.title}"!`);
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value="">-- Choose Existing Epic to Auto-Fill --</option>
+                      {epics.map(ep => (
+                        <option key={ep.id} value={ep.id}>
+                          [{ep.epicCode}] {ep.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Footer Actions */}

@@ -104,7 +104,7 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
                 entity === 'EHM' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-gray-100 text-gray-600'
               }`}
             >
-              ehmconsultancy
+              EHM
             </button>
             <button
               type="button"
@@ -113,7 +113,7 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
                 entity === 'CAG' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-gray-100 text-gray-600'
               }`}
             >
-              climagroanalytics
+              CLIMAGRO
             </button>
           </div>
 

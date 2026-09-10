@@ -69,10 +69,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="text-gray-300 font-medium">/</span>
           <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
             {selectedEntity === 'EHM'
-              ? 'ehmconsultancy'
+              ? 'EHM'
               : selectedEntity === 'CAG'
-              ? 'climagroanalytics'
-              : 'ehmconsultancy & climagroanalytics'}
+              ? 'CLIMAGRO'
+              : 'EHM & CLIMAGRO'}
           </span>
         </div>
 

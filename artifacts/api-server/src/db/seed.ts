@@ -13,8 +13,8 @@ export async function runSeed() {
   try {
     // 1. Seed / Upsert Entities (EHM & CAG)
     const entitiesList = [
-      { code: 'EHM', name: 'EHM Consultancy' },
-      { code: 'CAG', name: 'Climagro Analytics' },
+      { code: 'EHM', name: 'EHM' },
+      { code: 'CAG', name: 'CLIMAGRO' },
     ];
 
     const seededEntities: Record<string, string> = {};
@@ -229,7 +229,7 @@ export async function runSeed() {
     if (!cagInit) {
       [cagInit] = await db.insert(initiatives).values({
         initiativeCode: 'CAG-INIT-001',
-        title: 'Climagro Analytics Platform & Carbon Engine',
+        title: 'CLIMAGRO Platform & Carbon Engine',
         description: 'Core sustainability platform & AI carbon footprint analytics module',
         entityId: seededEntities['CAG'],
         departmentId: seededDepts['CAG_DEV'],
@@ -246,7 +246,7 @@ export async function runSeed() {
     if (!ehmInit) {
       [ehmInit] = await db.insert(initiatives).values({
         initiativeCode: 'EHM-INIT-001',
-        title: 'EHM Consultancy Operational ERP & Client Portal',
+        title: 'EHM Operational ERP & Client Portal',
         description: 'Environmental consultancy workflow & compliance tracking dashboard',
         entityId: seededEntities['EHM'],
         departmentId: seededDepts['EHM_DEV'],

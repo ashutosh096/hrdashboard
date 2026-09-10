@@ -82,10 +82,10 @@ export const Sidebar: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               <span className="truncate">
                 {selectedEntity === 'ALL'
-                  ? 'EHM Consultancy & Climagro Analytics'
+                  ? 'EHM & CLIMAGRO'
                   : selectedEntity === 'EHM'
-                  ? 'ehmconsultancy'
-                  : 'climagroanalytics'}
+                  ? 'EHM'
+                  : 'CLIMAGRO'}
               </span>
             </div>
             <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />

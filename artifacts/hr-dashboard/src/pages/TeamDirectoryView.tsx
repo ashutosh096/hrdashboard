@@ -250,7 +250,7 @@ export const TeamDirectoryView: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Team Directory</h2>
-          <p className="text-xs text-gray-500 font-medium">Employee roster across ehmconsultancy and climagroanalytics.</p>
+          <p className="text-xs text-gray-500 font-medium">Employee roster across EHM and CLIMAGRO.</p>
         </div>
 
         {!isEmployee && (
@@ -441,8 +441,8 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setEntity(e.target.value as any)}
                     className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="EHM">ehmconsultancy</option>
-                    <option value="CAG">climagroanalytics</option>
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
                   </select>
                 </div>
               </div>
