@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
 import {
   Users,
   UserCheck,
@@ -14,6 +15,10 @@ import {
   Search,
   Layers,
   AlertTriangle,
+  Target,
+  X,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -73,6 +78,7 @@ const PRIORITY_PIPELINE_DATA = [
 export const DashboardView: React.FC = () => {
   const { user, setRole } = useAuth();
   const { selectedEntity } = useEntity();
+  const [, setLocation] = useLocation();
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
   const [timeRange, setTimeRange] = useState<'WEEK1' | 'WEEK2' | 'MONTH' | 'QUARTER'>('WEEK1');
@@ -81,17 +87,23 @@ export const DashboardView: React.FC = () => {
 
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
+  const [initiatives, setInitiatives] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Responsive Modal Detail View State for Tiles
+  const [activeModalType, setActiveModalType] = useState<'INITIATIVES' | 'IN_PROGRESS' | 'PENDING' | 'VELOCITY' | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [empData, taskData] = await Promise.all([
+        const [empData, taskData, initData] = await Promise.all([
           fetchApi('/api/employees'),
           fetchApi('/api/tasks'),
+          fetchApi('/api/initiatives'),
         ]);
         setEmployees(Array.isArray(empData) ? empData : []);
         setTasks(Array.isArray(taskData) ? taskData : []);
+        setInitiatives(Array.isArray(initData) ? initData : []);
       } catch (err) {
         console.error('[DASHBOARD FETCH ERROR]:', err);
       } finally {
@@ -114,7 +126,12 @@ export const DashboardView: React.FC = () => {
 
   const totalEmployees = filteredEmployees.length || 12;
   const presentEmployees = Math.round(totalEmployees * 0.85);
-  const absentEmployees = totalEmployees - presentEmployees;
+
+  // Initiatives & Tasks Metrics
+  const activeInitiativesList = initiatives.filter(
+    (i) => i.status === 'ACTIVE' || i.status === 'IN_PROGRESS' || i.status === 'PLANNED'
+  );
+  const activeInitiativesCount = activeInitiativesList.length || (initiatives.length > 0 ? initiatives.length : 3);
 
   // Filter Tasks for Operations Table
   const liveTaskOperations = tasks.map((t) => {
@@ -183,28 +200,32 @@ export const DashboardView: React.FC = () => {
       {/* Overview Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Today Present (Clocked In)"
-          value={presentEmployees}
-          icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
-          trend={`${presentEmployees} of ${totalEmployees} Team Members (85%)`}
+          title="Active Strategic Initiatives"
+          value={activeInitiativesCount}
+          icon={<Target className="w-5 h-5 text-emerald-600" />}
+          trend={`${activeInitiativesCount} Strategic Goals Active`}
+          onClick={() => setActiveModalType('INITIATIVES')}
         />
         <StatCard
           title="Today's Tasks (In Progress)"
           value={inProgressTasks}
           icon={<Clock className="w-5 h-5 text-blue-600" />}
           trend="Active sprint items being executed"
+          onClick={() => setActiveModalType('IN_PROGRESS')}
         />
         <StatCard
           title="Pending & To Review"
           value={pendingTasks}
           icon={<AlertCircle className="w-5 h-5 text-purple-600" />}
           trend="Awaiting review or sprint assignment"
+          onClick={() => setActiveModalType('PENDING')}
         />
         <StatCard
           title="Completion Velocity Rate"
           value={`${completionRate}%`}
           icon={<TrendingUp className="w-5 h-5 text-amber-600" />}
           trend={`${completedTasks} of ${totalTasks} Tasks Completed`}
+          onClick={() => setActiveModalType('VELOCITY')}
         />
       </div>
 
@@ -289,6 +310,263 @@ export const DashboardView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* 🚀 RESPONSIVE KPI CARD DETAIL MODALS */}
+      {activeModalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
+          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
+            
+            {/* 1. ACTIVE INITIATIVES MODAL */}
+            {activeModalType === 'INITIATIVES' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
+                      <Target className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Active Strategic Initiatives</h3>
+                      <p className="text-xs text-gray-500 font-medium">Long-term organizational goals & milestones active in database</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  {initiatives.length === 0 ? (
+                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No initiatives loaded yet.</div>
+                  ) : (
+                    initiatives.map((init) => (
+                      <div key={init.id} className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2.5 py-0.5 rounded border border-emerald-200">
+                            {init.initiativeCode}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                            {init.targetMonth || 'Month 1'}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-gray-900">{init.title}</h4>
+                        <p className="text-xs text-gray-600 line-clamp-2">{init.description}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500 font-bold">Total Strategic Initiatives: {initiatives.length}</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/tasks');
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>View Strategic Initiatives Page</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 2. TASKS IN PROGRESS MODAL */}
+            {activeModalType === 'IN_PROGRESS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-50 rounded-xl border border-blue-200 text-blue-600">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Today's Tasks (In Progress)</h3>
+                      <p className="text-xs text-gray-500 font-medium">Sprint backlog deliverables currently being executed</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  {tasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length === 0 ? (
+                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No in-progress tasks found.</div>
+                  ) : (
+                    tasks
+                      .filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE')
+                      .map((task) => (
+                        <div key={task.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                {task.taskCode}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                {task.priority || 'MEDIUM'}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                          </div>
+                          <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-lg shrink-0">
+                            In Progress ⏳
+                          </span>
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500 font-bold">In Progress Tasks: {inProgressTasks}</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/tasks');
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>View Product Backlog & Tasks Page</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 3. PENDING & TO REVIEW MODAL */}
+            {activeModalType === 'PENDING' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 text-purple-600">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Pending & To Review Deliverables</h3>
+                      <p className="text-xs text-gray-500 font-medium">Tasks awaiting lead approval or backlog allocation</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  {tasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO').length === 0 ? (
+                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No pending items to review.</div>
+                  ) : (
+                    tasks
+                      .filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO')
+                      .map((task) => (
+                        <div key={task.id} className="p-3.5 bg-purple-50/40 rounded-xl border border-purple-100 flex items-center justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-mono font-bold text-purple-700 bg-white px-2 py-0.5 rounded border border-purple-200">
+                                {task.taskCode}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                          </div>
+                          <span className="text-[11px] font-bold text-purple-700 bg-purple-100 px-2.5 py-1 rounded-lg shrink-0">
+                            {task.status}
+                          </span>
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500 font-bold">Pending Review Items: {pendingTasks}</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/tasks');
+                    }}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>View Backlog & Review Queue</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 4. COMPLETION VELOCITY RATE MODAL */}
+            {activeModalType === 'VELOCITY' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-600">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Sprint Completion Velocity Rate</h3>
+                      <p className="text-xs text-gray-500 font-medium">Sprint execution performance and deliverable throughput rate</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200 text-center">
+                    <span className="text-xs font-bold text-amber-800">Total Deliverables</span>
+                    <p className="text-2xl font-extrabold text-amber-900 mt-1">{totalTasks}</p>
+                  </div>
+                  <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200 text-center">
+                    <span className="text-xs font-bold text-emerald-800">Completed Tasks</span>
+                    <p className="text-2xl font-extrabold text-emerald-900 mt-1">{completedTasks}</p>
+                  </div>
+                  <div className="bg-blue-50/60 p-3.5 rounded-xl border border-blue-200 text-center">
+                    <span className="text-xs font-bold text-blue-800">Velocity Rate</span>
+                    <p className="text-2xl font-extrabold text-blue-900 mt-1">{completionRate}%</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-gray-700">
+                    <span>Sprint Execution Progress</span>
+                    <span>{completionRate}%</span>
+                  </div>
+                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-500 rounded-full"
+                      style={{ width: `${completionRate}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500 font-bold">Completed Deliverables: {completedTasks} / {totalTasks}</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/performance');
+                    }}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>View Performance Reports Page</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };
