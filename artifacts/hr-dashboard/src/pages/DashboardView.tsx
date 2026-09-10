@@ -145,7 +145,9 @@ export const DashboardView: React.FC = () => {
   );
 
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === 'DONE').length;
+  const completedTasks = tasks.filter((t) => t.status === 'DONE' || t.status === 'COMPLETED').length;
+  const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length;
+  const pendingTasks = tasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO').length;
   const completionRate = totalTasks > 0 ? Math.min(100, Math.round((completedTasks / totalTasks) * 100)) : 0;
 
   return (
@@ -180,10 +182,30 @@ export const DashboardView: React.FC = () => {
 
       {/* Overview Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Team Members" value={totalEmployees} icon={<Users className="w-5 h-5 text-blue-600" />} trend="+2 this month" />
-        <StatCard title="Active Today (Clocked In)" value={presentEmployees} icon={<UserCheck className="w-5 h-5 text-emerald-600" />} trend="85% Attendance Rate" />
-        <StatCard title="Total Live Deliverables" value={totalTasks} icon={<Layers className="w-5 h-5 text-purple-600" />} trend={`${completedTasks} Tasks Completed`} />
-        <StatCard title="Completion Velocity Rate" value={`${completionRate}%`} icon={<TrendingUp className="w-5 h-5 text-amber-600" />} trend="Capped <= 100%" />
+        <StatCard
+          title="Today Present (Clocked In)"
+          value={presentEmployees}
+          icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
+          trend={`${presentEmployees} of ${totalEmployees} Team Members (85%)`}
+        />
+        <StatCard
+          title="Today's Tasks (In Progress)"
+          value={inProgressTasks}
+          icon={<Clock className="w-5 h-5 text-blue-600" />}
+          trend="Active sprint items being executed"
+        />
+        <StatCard
+          title="Pending & To Review"
+          value={pendingTasks}
+          icon={<AlertCircle className="w-5 h-5 text-purple-600" />}
+          trend="Awaiting review or sprint assignment"
+        />
+        <StatCard
+          title="Completion Velocity Rate"
+          value={`${completionRate}%`}
+          icon={<TrendingUp className="w-5 h-5 text-amber-600" />}
+          trend={`${completedTasks} of ${totalTasks} Tasks Completed`}
+        />
       </div>
 
       {/* Task Progress & Sprint Analytics Graph + Schedule & Deliverables Widget Side-by-Side Grid */}
