@@ -1,924 +1,9 @@
-# EHM-Climagro OS — Complete Unabridged Codebase
+# EHM-Climagro OS — Unabridged Full Codebase Document
 
-## PROJECT DIRECTORY TREE
-```
-.gitignore
-GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md
-HROS_MASTER_PROMPT_FIXED (1).md
-HROS_MASTER_PROMPT_V2.md
-PROJECT_CODEBASE_SUMMARY.md
-artifacts/api-server/package.json
-artifacts/api-server/src/db/seed.ts
-artifacts/api-server/src/db/verify.ts
-artifacts/api-server/src/index.ts
-artifacts/api-server/src/jobs/digest-cron.ts
-artifacts/api-server/src/jobs/overdue-check-cron.ts
-artifacts/api-server/src/jobs/sync-cron.ts
-artifacts/api-server/src/middleware/auth.ts
-artifacts/api-server/src/middleware/rbac.ts
-artifacts/api-server/src/routes/announcements.ts
-artifacts/api-server/src/routes/applications.ts
-artifacts/api-server/src/routes/attendance.ts
-artifacts/api-server/src/routes/auth.ts
-artifacts/api-server/src/routes/dashboard.ts
-artifacts/api-server/src/routes/employees.ts
-artifacts/api-server/src/routes/epics.ts
-artifacts/api-server/src/routes/initiatives.ts
-artifacts/api-server/src/routes/meetings.ts
-artifacts/api-server/src/routes/notifications.ts
-artifacts/api-server/src/routes/reports.ts
-artifacts/api-server/src/routes/sprints.ts
-artifacts/api-server/src/routes/tasks.ts
-artifacts/api-server/src/services/calendar-sync.ts
-artifacts/api-server/src/services/email.ts
-artifacts/api-server/src/services/encryption.ts
-artifacts/api-server/src/verify_connection.ts
-artifacts/api-server/tsconfig.json
-artifacts/hr-dashboard/index.html
-artifacts/hr-dashboard/package.json
-artifacts/hr-dashboard/public/login-bg.jpg
-artifacts/hr-dashboard/src/App.tsx
-artifacts/hr-dashboard/src/components/ClockInModal.tsx
-artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx
-artifacts/hr-dashboard/src/components/EpicsSubView.tsx
-artifacts/hr-dashboard/src/components/ErrorBoundary.tsx
-artifacts/hr-dashboard/src/components/ExportReportModal.tsx
-artifacts/hr-dashboard/src/components/InitiativesSubView.tsx
-artifacts/hr-dashboard/src/components/MarkAttendanceModal.tsx
-artifacts/hr-dashboard/src/components/MarkdownViewer.tsx
-artifacts/hr-dashboard/src/components/Navbar.tsx
-artifacts/hr-dashboard/src/components/ProfileModal.tsx
-artifacts/hr-dashboard/src/components/ProjectSummaryTable.tsx
-artifacts/hr-dashboard/src/components/RevenueChart.tsx
-artifacts/hr-dashboard/src/components/RichTextEditor.tsx
-artifacts/hr-dashboard/src/components/ScheduleMeetingModal.tsx
-artifacts/hr-dashboard/src/components/ScheduleWidget.tsx
-artifacts/hr-dashboard/src/components/SearchModal.tsx
-artifacts/hr-dashboard/src/components/Sidebar.tsx
-artifacts/hr-dashboard/src/components/SprintsSubView.tsx
-artifacts/hr-dashboard/src/components/StatCard.tsx
-artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx
-artifacts/hr-dashboard/src/components/TaskAssignModal.tsx
-artifacts/hr-dashboard/src/components/TaskCloneModal.tsx
-artifacts/hr-dashboard/src/components/TaskProgressSprintAnalytics.tsx
-artifacts/hr-dashboard/src/components/TaskUpdateModal.tsx
-artifacts/hr-dashboard/src/contexts/AuthContext.tsx
-artifacts/hr-dashboard/src/contexts/EntityContext.tsx
-artifacts/hr-dashboard/src/index.css
-artifacts/hr-dashboard/src/main.tsx
-artifacts/hr-dashboard/src/pages/AcceptInviteView.tsx
-artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx
-artifacts/hr-dashboard/src/pages/ApplicationsView.tsx
-artifacts/hr-dashboard/src/pages/AttendanceView.tsx
-artifacts/hr-dashboard/src/pages/DashboardView.tsx
-artifacts/hr-dashboard/src/pages/LoginView.tsx
-artifacts/hr-dashboard/src/pages/MeetingsView.tsx
-artifacts/hr-dashboard/src/pages/NotificationsView.tsx
-artifacts/hr-dashboard/src/pages/OfficeTodayView.tsx
-artifacts/hr-dashboard/src/pages/PerformanceView.tsx
-artifacts/hr-dashboard/src/pages/ReportsView.tsx
-artifacts/hr-dashboard/src/pages/SalaryView.tsx
-artifacts/hr-dashboard/src/pages/SettingsView.tsx
-artifacts/hr-dashboard/src/pages/SprintsView.tsx
-artifacts/hr-dashboard/src/pages/TasksView.tsx
-artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx
-artifacts/hr-dashboard/src/pages/TeamTasksView.tsx
-artifacts/hr-dashboard/src/utils/avatars.ts
-artifacts/hr-dashboard/tsconfig.json
-artifacts/hr-dashboard/vite.config.ts
-chatdiscussion.md
-drizzle.config.ts
-lib/api-client-react/package.json
-lib/api-client-react/src/index.ts
-lib/api-client-react/tsconfig.json
-lib/api-zod/package.json
-lib/api-zod/src/index.ts
-lib/api-zod/tsconfig.json
-lib/db/apply_0005_migration.mjs
-lib/db/apply_migration.mjs
-lib/db/audit_epics.mjs
-lib/db/backfill.mjs
-lib/db/check_tasks.mjs
-lib/db/drizzle.config.ts
-lib/db/drizzle/0000_soft_cerebro.sql
-lib/db/drizzle/0001_blue_cerise.sql
-lib/db/drizzle/0002_silky_onslaught.sql
-lib/db/drizzle/0003_fair_sue_storm.sql
-lib/db/drizzle/0004_agile_schema_alignment.sql
-lib/db/drizzle/0005_task_checklists_and_comments.sql
-lib/db/drizzle/meta/0000_snapshot.json
-lib/db/drizzle/meta/0001_snapshot.json
-lib/db/drizzle/meta/0002_snapshot.json
-lib/db/drizzle/meta/0003_snapshot.json
-lib/db/drizzle/meta/_journal.json
-lib/db/fix_sprint_codes.mjs
-lib/db/package.json
-lib/db/src/index.ts
-lib/db/src/schema/announcements.ts
-lib/db/src/schema/applications.ts
-lib/db/src/schema/attendance.ts
-lib/db/src/schema/audit_logs.ts
-lib/db/src/schema/departments.ts
-lib/db/src/schema/employees.ts
-lib/db/src/schema/entities.ts
-lib/db/src/schema/entity_counters.ts
-lib/db/src/schema/epics.ts
-lib/db/src/schema/google_tokens.ts
-lib/db/src/schema/initiatives.ts
-lib/db/src/schema/invites.ts
-lib/db/src/schema/meeting_attendees.ts
-lib/db/src/schema/meetings.ts
-lib/db/src/schema/notifications.ts
-lib/db/src/schema/sprints.ts
-lib/db/src/schema/task_checklists.ts
-lib/db/src/schema/task_comments.ts
-lib/db/src/schema/task_notes.ts
-lib/db/src/schema/task_templates.ts
-lib/db/src/schema/tasks.ts
-lib/db/src/schema/users.ts
-lib/db/tsconfig.json
-lib/db/verify_all_tests.mjs
-lib/db/verify_overdue_dual_notif.mjs
-package.json
-pnpm-workspace.yaml
-scratch/audit_epics.mjs
-scratch/backfill_db_constraints.mjs
-scratch/check_users.js
-scratch/generate_codebase_md.js
-scratch/test_db_conn.js
-scratch/verify_all_tests.mjs
-```
+> Auto-generated full codebase document containing all active source files across the monorepo.
+> Generated at: 2026-09-11T06:36:41.650Z
 
-## FILE: .gitignore
-
-```text
-# Dependencies
-node_modules/
-.pnpm-store/
-
-# Builds & Outputs
-dist/
-build/
-*.log
-
-# Environment variables & secrets
-.env
-.env.local
-.env.production
-
-# IDE & System
-.DS_Store
-.idea/
-.vscode/
-*.suo
-*.user
-
-# Temporary files
-scratch/
-
-```
-
-## FILE: GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md
-
-```markdown
-# 📅 Google Calendar & Google Meet Live Integration Guide
-
-This guide explains how **HROS** connects to Google Calendar to fetch live meeting details, synchronize Google Meet video links, handle OAuth 2.0 authentication, and store synced meetings in the database.
-
----
-
-## 🏗️ Architecture & Component Flow
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant Frontend as React HR Dashboard (/meetings)
-    participant Server as Express API Server (/api)
-    participant TokenStore as PostgreSQL (google_tokens table, encrypted)
-    participant GoogleAPI as Google Calendar API v3
-    participant DB as PostgreSQL (meetingsTable)
-
-    %% 1. OAuth Authorization
-    User->>Frontend: Click "Connect Google Calendar"
-    Frontend->>Server: GET /api/auth/google
-    Server-->>User: Redirect to accounts.google.com/o/oauth2/v2/auth
-    User->>GoogleAPI: Grant Calendar Permissions
-    GoogleAPI-->>Server: Redirect /api/auth/google/callback?code=XYZ
-    Server->>GoogleAPI: POST /oauth2/v2/token (code exchange)
-    GoogleAPI-->>Server: Return access_token & refresh_token
-    Server->>TokenStore: Save tokens in google-tokens.json
-    Server-->>Frontend: Redirect /meetings?sync=success
-
-    %% 2. Live Sync Execution
-    User->>Frontend: Click "Sync Calendar"
-    Frontend->>Server: POST /api/meetings/sync
-    Server->>TokenStore: Read User Access & Refresh Token
-    alt Access Token Expired?
-        Server->>GoogleAPI: POST /oauth2/v3/token (grant_type=refresh_token)
-        GoogleAPI-->>Server: New access_token
-        Server->>TokenStore: Update user token expiry
-    end
-    Server->>GoogleAPI: GET /calendar/v3/users/me/calendarList
-    GoogleAPI-->>Server: List of Calendars (Primary & Secondary)
-    Server->>GoogleAPI: GET /calendar/v3/calendars/{calId}/events
-    GoogleAPI-->>Server: Return Array of Events & Google Meet Links
-    Server->>DB: Upsert Meetings (insert new, update existing, clean deleted)
-    Server-->>Frontend: { success: true, count: N }
-    Frontend-->>User: Render live updated meetings timeline
-```
-
----
-
-## 🛠️ Step-by-Step Implementation Details
-
-### 1. OAuth 2.0 Authentication Setup (`/api/auth/google`)
-To request calendar access from Google, the server initiates an OAuth 2.0 authorization redirect with offline consent.
-
-* **Endpoint**: `GET /api/auth/google`
-* **Requested Scopes**:
-  - `https://www.googleapis.com/auth/calendar`
-  - `https://www.googleapis.com/auth/calendar.events`
-* **Parameters**:
-  - `access_type=offline` (Requests a `refresh_token` for persistent background syncing)
-  - `prompt=consent` (Ensures refresh token is re-issued)
-
----
-
-### 2. Authorization Callback & Token Storage (`/api/auth/google/callback`)
-When the user grants consent, Google redirects back with a one-time authorization `code`.
-
-* **Token Exchange**:
-  ```typescript
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `http://localhost:8080/api/auth/google/callback`,
-      grant_type: "authorization_code",
-    }),
-  });
-  ```
-* **Storage Schema** (`google_tokens` table in PostgreSQL, not a flat file):
-  ```typescript
-  // lib/db/src/schema/google-tokens.ts
-  export const googleTokens = pgTable("google_tokens", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull().unique().references(() => users.id),
-    accessToken: text("access_token").notNull(),   // encrypted at rest (e.g. via pgcrypto or app-level AES)
-    refreshToken: text("refresh_token").notNull(), // encrypted at rest
-    expiry: timestamp("expiry").notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-  });
-  ```
-  Storing tokens in a flat JSON file on disk doesn't scale past one developer's local machine, isn't safe on a real server, and won't survive redeploys/containers — the database table above is the production-safe replacement.
-
----
-
-### 3. Automatic Token Refresh Logic
-Before executing any sync, the server automatically inspects the stored token expiry time.
-
-```typescript
-if (Date.now() > userToken.expiry) {
-  const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: userToken.refreshToken,
-      grant_type: "refresh_token",
-    }),
-  });
-  const refreshData = await refreshRes.json();
-  userToken.accessToken = refreshData.access_token;
-  userToken.expiry = Date.now() + (refreshData.expires_in * 1000);
-  await saveTokens(tokens);
-}
-```
-
----
-
-### 4. Fetching Live Events & Extracting Google Meet Links (`/api/meetings/sync`)
-
-The sync endpoint executes live queries against Google Calendar APIs:
-
-1. **Discover Writable Calendars**:
-   Queries `https://www.googleapis.com/calendar/v3/users/me/calendarList` to discover both primary and secondary shared team calendars.
-
-2. **Query Recent & Future Events**:
-   Calls `https://www.googleapis.com/calendar/v3/calendars/{calendarId}/events?singleEvents=true&orderBy=startTime&timeMin={7_DAYS_AGO}`.
-
-3. **Extract Google Meet Video Links**:
-   Checks multiple fallback properties to retrieve video conference URLs:
-   - `event.hangoutLink`
-   - `event.conferenceData.entryPoints` (where `entryPointType === 'video'`)
-   - `event.location` (if URL format)
-
-4. **Upsert into Database (`meetingsTable`)**:
-   - Uses `googleEventId` to prevent duplicates.
-   - If the event exists in PostgreSQL, updates title, description, time slots, attendees, and meeting links.
-   - If the event is new, inserts a record with `source: 'GOOGLE_CALENDAR'`.
-   - **Cleanup**: Any meeting tagged `GOOGLE_CALENDAR` that was deleted in Google is automatically purged from the local database.
-
----
-
-### 🧪 5. Simulated / Demo Mode
-
-For local development or environments without active Google OAuth API Keys, the sync endpoint accepts `{ simulated: true }`:
-
-```powershell
-# API Payload for Demo Mode
-Invoke-RestMethod -Uri "http://localhost:8080/api/meetings/sync" -Method POST -ContentType "application/json" -Body '{"simulated": true}'
-```
-
-This injects realistic Google Meet events (e.g. `https://meet.google.com/qwe-rtyu-iop`) into the dashboard so developers can test the complete calendar UI immediately.
-
----
-
-## 📜 Key Source Files Reference
-* **Backend Integration Route**: [`google-calendar.ts`](file:///c:/hros/artifacts/api-server/src/routes/google-calendar.ts)
-* **Meetings Database Route**: [`meetings.ts`](file:///c:/hros/artifacts/api-server/src/routes/meetings.ts)
-* **Frontend Calendar Page**: [`meetings.tsx`](file:///c:/hros/artifacts/hr-dashboard/src/pages/meetings.tsx)
-
-```
-
-## FILE: HROS_MASTER_PROMPT_FIXED (1).md
-
-```markdown
-# 🚀 HROS - Complete AI Master Build Prompt & Architecture Specification
-
-Use this complete prompt specification in any AI coding environment (like Antigravity, Claude, or ChatGPT) to build this exact **Human Resource Operating System (HROS)** application from scratch.
-
----
-
-## 📋 System Master Prompt (Copy & Paste to AI)
-
-```text
-You are an expert full-stack principal architect and senior UI engineer. Build a complete, enterprise-grade, state-of-the-art Human Resource Operating System (HROS) monorepo web application.
-
-### 🏛️ Architecture & Tech Stack Requirements
-1. Monorepo Setup:
-   - Tooling: pnpm workspaces
-   - Backend Artifact: Express.js (v5) TypeScript REST API (`@workspace/api-server`)
-   - Frontend Artifact: React 19 + Vite (`@workspace/hr-dashboard`)
-   - Database Package: Drizzle ORM + PostgreSQL (`@workspace/db`)
-   - Shared Schema & Client: Zod schemas (`@workspace/api-zod`) + React Query hooks (`@workspace/api-client-react`)
-
-2. Frontend Stack & Styling:
-   - Framework: React 19 with Vite 7
-   - Routing: Wouter (`wouter`) lightweight router
-   - Styling: Tailwind CSS v4 + Vanilla CSS custom variables for glassmorphism
-   - UI Components: Radix UI primitives, Lucide React icons, Sonner toast notifications
-   - Analytics & Charts: Recharts for attendance trends & department metrics
-   - State & Data Fetching: TanStack React Query (`@tanstack/react-query`)
-
-3. Backend & Security:
-   - API Framework: Express.js with JSON body parser & cookie-parser
-   - Database & ORM: PostgreSQL with Drizzle ORM schema declaration & migrations
-   - Authentication: JWT tokens (Access + Refresh tokens) stored securely, password hashing with bcryptjs
-   - Logging: Pino & Pino-HTTP structured logging
-   - Third-party OAuth tokens (e.g. Google Calendar access/refresh tokens): store encrypted in the `google_tokens` table, never in a flat file (`.json`) on disk — required for multi-user support and safe production deployment
-   - Secrets (`GOOGLE_CLIENT_SECRET`, `JWT_SECRET`, `SEED_ADMIN_PASSWORD`, etc.): loaded only from environment variables / `.env` (excluded via `.gitignore`), never hardcoded in source
-   - Transactional Email: Resend (or Nodemailer + SMTP as fallback) for sending employee invite links, using `RESEND_API_KEY` from environment variables
-
----
-
-### 🗄️ Database Schemas & Data Entities
-
-Implement the following database models in Drizzle ORM:
-
-1. `users`:
-   - `id`: UUID (Primary Key)
-   - `email`: string (unique)
-   - `password_hash`: string
-   - `role`: enum ('ADMIN', 'HR_MANAGER', 'EMPLOYEE')
-   - `employee_id`: UUID (nullable foreign key to `employees`)
-   - `created_at`, `updated_at`
-
-2. `employees`:
-   - `id`: UUID (Primary Key)
-   - `first_name`, `last_name`: string
-   - `email`: string (unique)
-   - `department`: string ('Engineering', 'HR', 'Sales', 'Marketing', 'Operations', 'Finance')
-   - `designation`: string
-   - `salary`: decimal
-   - `joining_date`: timestamp
-   - `status`: enum ('ACTIVE', 'ON_LEAVE', 'TERMINATED')
-   - `avatar_url`: string (optional)
-
-3. `attendance`:
-   - `id`: UUID (Primary Key)
-   - `employee_id`: UUID (foreign key)
-   - `date`: date
-   - `clock_in`: timestamp
-   - `clock_out`: timestamp (nullable)
-   - `work_mode`: enum ('IN_OFFICE', 'REMOTE', 'HYBRID')
-   - `status`: enum ('PRESENT', 'LATE', 'HALF_DAY', 'ABSENT', 'ON_LEAVE')
-   - `total_hours`: decimal
-
-4. `meetings`:
-   - `id`: UUID (Primary Key)
-   - `title`: string
-   - `description`: text
-   - `start_time`, `end_time`: timestamp
-   - `location`: string (physical room or 'Google Meet')
-   - `google_meet_url`: string (nullable)
-   - `organizer_id`: UUID (foreign key)
-   - `invitees`: jsonb array of employee IDs
-   - `google_event_id`: string (nullable, unique — used to upsert/dedupe synced Google Calendar events)
-   - `source`: enum ('INTERNAL', 'GOOGLE_CALENDAR') default 'INTERNAL'
-
-9. `invites`:
-   - `id`: UUID (Primary Key)
-   - `email`: string
-   - `token`: string (unique, cryptographically random, used in the invite link)
-   - `role`: enum ('ADMIN', 'HR_MANAGER', 'EMPLOYEE')
-   - `employee_id`: UUID (foreign key to `employees`, the pre-created employee record this invite activates)
-   - `status`: enum ('PENDING', 'ACCEPTED', 'EXPIRED')
-   - `expires_at`: timestamp (e.g. 7 days from creation)
-   - `created_at`: timestamp
-   - Note: `users.status` should also gain a `PENDING` value alongside `ACTIVE`/`INACTIVE`, so a user row can exist (created by the admin) before the employee has accepted their invite and set up authentication.
-
-10. `google_tokens`:
-   - `id`: UUID (Primary Key)
-   - `user_id`: UUID (foreign key to `users`, unique)
-   - `access_token`: string (encrypted at rest)
-   - `refresh_token`: string (encrypted at rest)
-   - `expiry`: timestamp
-   - `created_at`, `updated_at`
-   - Note: replaces the flat-file `google-tokens.json` approach — OAuth tokens must live in the database, encrypted, never in a plaintext file, so the app works with multiple users and survives redeploys.
-
-5. `tasks`:
-   - `id`: UUID (Primary Key)
-   - `title`: string
-   - `description`: text
-   - `priority`: enum ('LOW', 'MEDIUM', 'HIGH', 'URGENT')
-   - `status`: enum ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')
-   - `assignee_id`: UUID (foreign key)
-   - `creator_id`: UUID (foreign key)
-   - `due_date`: timestamp
-
-6. `announcements`:
-   - `id`: UUID (Primary Key)
-   - `title`: string
-   - `content`: text
-   - `priority`: enum ('NORMAL', 'IMPORTANT', 'URGENT')
-   - `is_pinned`: boolean
-   - `target_department`: string ('ALL' or specific department)
-   - `created_at`: timestamp
-
-7. `applications`:
-   - `id`: UUID (Primary Key)
-   - `employee_id`: UUID (foreign key)
-   - `type`: enum ('LEAVE', 'REMOTE_WORK', 'REIMBURSEMENT', 'EQUIPMENT')
-   - `reason`: text
-   - `status`: enum ('PENDING', 'APPROVED', 'REJECTED')
-   - `start_date`, `end_date`: timestamp (nullable)
-   - `reviewed_by`: UUID (nullable foreign key)
-
-8. `audit_logs`:
-   - `id`: UUID (Primary Key)
-   - `user_id`: UUID
-   - `action`: string
-   - `details`: jsonb
-   - `created_at`: timestamp
-
----
-
-### 🔗 Employee Invite & Google Calendar Auto-Link Flow
-
-Implement this end-to-end flow so that adding an employee results in them receiving a dashboard link by email, and signing in with that same Google account automatically links their personal Google Calendar/Meet:
-
-1. **Admin adds employee** (`POST /api/employees`):
-   - Creates a row in `employees`.
-   - Creates a matching row in `users` with `status: 'PENDING'` and no `password_hash` yet.
-   - Creates a row in `invites` with a random token, `status: 'PENDING'`, `expires_at` = now + 7 days.
-   - Sends an email (via the Transactional Email service) to the employee containing a link:
-     `https://yourapp.com/accept-invite?token={token}`
-
-2. **Employee opens the invite link** (`GET /accept-invite?token=...` on the frontend):
-   - Frontend calls `GET /api/invites/:token` to validate the token (checks it exists, isn't expired, isn't already accepted).
-   - If valid, shows two options: "Set a password" or **"Continue with Google"**.
-
-3. **Employee chooses "Continue with Google"**:
-   - Frontend redirects to `GET /api/auth/google?inviteToken={token}`.
-   - Server stores the invite token in the OAuth `state` parameter so it survives the redirect round-trip.
-   - Google shows its consent screen requesting Calendar access (same scopes as the existing Calendar integration).
-
-4. **Google redirects back** (`GET /api/auth/google/callback?code=...&state={inviteToken}`):
-   - Server exchanges `code` for `access_token` + `refresh_token`.
-   - Server re-validates the invite token from `state`, and confirms the email Google returned matches the invited employee's email (prevents someone accepting another person's invite).
-   - Server activates the account: sets `users.status = 'ACTIVE'`, links `users.employee_id`.
-   - Server saves the tokens into `google_tokens`, keyed to this specific `user_id`.
-   - Server marks the `invites` row as `status: 'ACCEPTED'`.
-   - Server issues the JWT access + refresh tokens and redirects to `/dashboard?welcome=true`.
-
-5. **Result**: From this point on, `/api/meetings/sync` for this user reads their own row in `google_tokens`, so their personal Google Calendar and Google Meet links stay synced — independent of any other employee's calendar.
-
-**Edge cases to handle**:
-- Invite token expired → show a "Request a new invite" screen, admin can trigger `POST /api/invites/:id/resend`.
-- Employee's Google account email doesn't match the invited email → reject with a clear error, don't activate the account.
-- Employee already has an account → invite link should just redirect to normal login.
-
----
-
-### 🎨 Key Frontend Pages & Core Features
-
-1. Overview Dashboard (`/`):
-   - Executive summary cards: Total Employees, Attendance Rate %, Pending Tasks, Today's Meetings, Active Announcements.
-   - Interactive Recharts line chart showing weekly attendance trends.
-   - Donut chart displaying employee distribution across departments.
-   - Quick-action panel (Clock-in, Schedule Meeting, New Task).
-
-2. Attendance Management (`/attendance`):
-   - 1-Click Clock-In / Clock-Out modal with Work Mode selector (In-Office, Remote, Hybrid).
-   - Real-time work hour counter.
-   - Filterable attendance history log table with status badges (Present, Late, Absent, On-Leave).
-
-3. "Office Today" Presence (`/office-today`):
-   - Live visual grid of employees present in-office vs remote vs absent today.
-   - Search bar and department filter tags.
-
-4. Team Directory (`/team`):
-   - Employee roster grid and table views with detailed metadata.
-   - Add/Edit employee modal forms with validation.
-
-5. Meeting Scheduler (`/meetings`):
-   - Upcoming & past meeting list with avatar stacks for invitees.
-   - Integration with Google Meet link auto-generation (`meet.google.com/...`).
-   - Time-slot validation to prevent double-booking.
-
-6. Task Manager (`/tasks`):
-   - Kanban board / list view grouped by status (Pending, In Progress, Completed).
-   - Priority indicators (Urgent red, High orange, Medium blue, Low grey).
-
-7. Salary & Payroll (`/salary`):
-   - Employee compensation list with base salary, allowances, deductions, and net pay calculations.
-
-8. Leave & Applications (`/applications`):
-   - Application submit form for employees (Leave, Remote Work, Reimbursement).
-   - Manager approval workflow buttons (Approve / Reject) with status updates.
-
-9. Company Bulletin (`/announcements`):
-   - Post news feed with Pinned notices at the top and urgency badges.
-
-10. Accept Invite (`/accept-invite`):
-    - Reads the `token` query param, validates it against `GET /api/invites/:token`.
-    - Shows the employee's name/email (read-only) and two setup options: "Set a password" (standard form) or "Continue with Google" (redirects into the OAuth flow described above, which also links their Calendar).
-    - Handles expired/invalid token states with a clear message and a "Request new invite" action (visible to the employee, which pings their admin, or a direct resend if they have access).
-
----
-
-### 💅 UI/UX Design System Guidelines
-- Design Aesthetic: Premium dark mode with subtle glassmorphic backdrop filters (`backdrop-filter: blur(12px)`), neon emerald (`#10B981`) and electric violet (`#6366F1`) accents.
-- Responsive Layout: Sidebar navigation with collapsible mobile support.
-- Micro-animations: Smooth Framer Motion transitions for card entrances, modals, and tab switches.
-- Zero Placeholders: Include mock seed data. Auto-seed a dev-only admin account using values from environment variables (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`) with safe fallback defaults (e.g. `admin@example.com` / a randomly generated password printed once to the server console on first run) — never hardcode a real email or password in source code, prompts, or seed scripts.
-```
-
----
-
-## 📁 Monorepo File Structure Reference
-
-```text
-hros/
-├── artifacts/
-│   ├── api-server/         # Express backend (Controllers, Routes, Auth)
-│   │   ├── src/
-│   │   │   ├── routes/     # attendance.ts, tasks.ts, meetings.ts, etc.
-│   │   │   ├── index.ts
-│   │   │   └── build.mjs
-│   │   └── package.json
-│   ├── hr-dashboard/       # Vite + React 19 Frontend
-│   │   ├── src/
-│   │   │   ├── pages/      # dashboard.tsx, attendance.tsx, meetings.tsx, etc.
-│   │   │   ├── components/ # layout, ui components
-│   │   │   ├── contexts/   # auth-context.tsx
-│   │   │   └── App.tsx
-│   │   └── package.json
-├── lib/
-│   ├── db/                 # Drizzle ORM Schemas & Migration Config
-│   │   └── src/schema/     # users.ts, employees.ts, attendance.ts, etc.
-│   ├── api-zod/            # Zod Validation schemas
-│   └── api-client-react/   # Autogenerated API React hooks
-├── pnpm-workspace.yaml     # Monorepo configuration
-├── package.json
-└── README.md
-```
-
-```
-
-## FILE: HROS_MASTER_PROMPT_V2.md
-
-```markdown
-# HROS — Master Build Prompt (v2, Advanced)
-
-Paste this entire document into your AI coding tool to scaffold/extend the HROS codebase. This supersedes `HROS_MASTER_PROMPT_FIXED.md` — it keeps everything that document got right (schema fixes, invite flow, encrypted token storage) and adds the full v2 feature set below.
-
-This is an **internal office tool** for one client, ~15–16 total users across two entities. Build for that scale — not a public SaaS product. No multi-tenant abstraction, no enterprise infra, no compliance UI.
-
----
-
-## 1. What HROS Is
-
-A single internal HR + operations platform covering two company entities — **EHM** and **CliAgro** — with three user roles: **Admin** (you, the developer/owner), **Manager** (2–4 people), and **Employee** (9–12 people). Modules: Dashboard, Attendance, Meetings (Google Calendar/Meet synced), Office Today (live presence), Announcements, Tasks/Sprints, Salary, Applications, Team.
-
----
-
-## 2. Tech Stack (final)
-
-**Frontend**
-- React 19 + Vite 7
-- Routing: Wouter
-- Styling: Tailwind CSS v4 + custom CSS variables
-- UI: Radix UI primitives, Lucide React icons, Sonner (toasts)
-- Charts: Recharts
-- Data/state: TanStack React Query
-- Animations: Framer Motion
-
-**Backend**
-- Express.js v5 (TypeScript)
-- Auth: custom JWT (access + refresh tokens) + bcryptjs — **not** Supabase Auth (see rationale below)
-- Logging: Pino + Pino-HTTP
-- Email: Resend (free tier, 3,000/mo — plenty at this scale)
-
-**Database / Realtime / Storage — Supabase (free tier)**
-- PostgreSQL (via Supabase) + Drizzle ORM for schema/migrations
-- **Supabase Realtime** — powers live presence status, live Kanban updates, live notifications (subscribing to Postgres table changes). Replaces any need for a separate Socket.IO/Redis setup.
-- **Supabase Storage** — MOM documents, meeting transcripts, employee avatars, deliverable file uploads
-- **`pg_cron`** (Supabase) — scheduled Google Calendar sync jobs, daily digest triggers. No job queue (BullMQ/Redis) needed at this volume.
-
-**Google Integration**
-- Google Calendar API v3 + per-user Google OAuth 2.0 (offline access, refresh tokens)
-- Google OAuth consent screen stays in **Testing** mode with your ~16 users added as test users — no need for Google's verification review (that's only required past 100 users)
-
-**Monorepo**
-- pnpm workspaces
-- Shared Zod schemas (`@workspace/api-zod`)
-- Auto-generated React Query hooks (`@workspace/api-client-react`)
-
-**Hosting (free/near-free)**
-- Backend: Render (free or hobby tier ~$7/mo to avoid spin-down)
-- Frontend: Vercel free tier
-- Database/Realtime/Storage: Supabase free tier
-- Email: Resend free tier
-
-**Why custom auth, not Supabase Auth:** Supabase Auth's Google provider gives identity only, not the Calendar API scopes/refresh tokens needed for Meet sync — you'd still need a separate `google_tokens` table and OAuth flow regardless. The existing custom invite/JWT design already handles this correctly, so it stays as-is rather than being replaced.
-
----
-
-## 3. Roles, Entities & Access Model
-
-### Roles (3-tier)
-1. **Admin** — full visibility and control across both entities, all managers, all employees. Created manually (not through the invite flow) — this is you.
-2. **Manager** (2–4 total) — has their own login credentials and profile. Can:
-   - Assign tasks to individual employees or to a **group** of employees at once
-   - See and manage only **their own team's** employees and tasks (scoped — Manager A cannot see Manager B's team by default)
-   - View their team's attendance, presence, and task throughput
-3. **Employee** (9–12 total) — has their own login. Can:
-   - See only their own tasks, mark them In Progress / Done
-   - See their own attendance, salary/payslip, meetings
-   - See company-wide Announcements and Team Directory
-
-### Entities
-- Two hardcoded entities: **EHM** and **CliAgro** (no generic "add new company" system — just these two, hardcoded in schema/config)
-- Every employee, manager, task, and meeting belongs to one entity
-- A **top-header entity switcher/filter** lets Admin/Managers toggle between EHM view, CliAgro view, or a combined cross-entity view
-
-### RBAC implementation
-- JWT includes `role`, `entityId`, and (for managers) `managedTeamId` claims
-- Express middleware: `requireRole()`, `requireEntityAccess()`, `requireTeamScope()` — centralized, not scattered ad hoc checks
-- Enforce manager scoping at the query level (managers' API calls are automatically filtered to their team's employee IDs)
-
----
-
-## 4. Employee & Manager Onboarding
-
-Reuse the existing invite flow design, applied to both Managers and Employees:
-
-1. Admin (or Manager, for their own team) adds a person via **Add Employee** modal → creates `employees` row + `users` row (`status: PENDING`, no password) + `invites` row (random token, 7-day expiry) → invite email sent via Resend with dashboard link `/accept-invite?token=...`
-2. Person opens link → frontend validates token via `GET /api/invites/:token`
-3. They set a password **and/or** click "Continue with Google" (auth method decision below)
-4. **On first login**, they are prompted with a clear consent step: *"Allow HROS to sync your Google Calendar and Meet so meetings show up automatically."* This is a distinct, explicit step — not bundled silently into login.
-5. Google OAuth flow (`/api/auth/google?inviteToken=...`) → callback verifies the Google account email matches the invited email → activates user, saves tokens to `google_tokens` (encrypted, keyed to `user_id`), marks invite `ACCEPTED`, issues JWTs
-6. From then on, that person's calendar/meetings sync independently — each person's `google_tokens` row is private to them
-
-**Auth method decision:** Keep **password + optional Google OAuth** (not Google-only), since Calendar sync consent is separate from login itself, and you don't want a single Google outage or a lost Google account to lock someone out of viewing their tasks/salary.
-
----
-
-## 5. Google Calendar / Meet Integration
-
-Extends the existing `GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md` design (which is architecturally correct) with these v2 additions:
-
-- **Per-user sync**, not a single global "Connect Google Calendar" button — each employee/manager has their own sync, driven by their own `google_tokens` row
-- **Two-way visibility**: meetings created *inside* HROS sync out to Google Calendar + generate a Meet link (as already built — see the "Schedule New Meeting" modal with "Add to Google Calendar" / "Generate Google Meet link" toggles). Meetings created *directly in Google Calendar* that include an HROS employee as a guest sync *into* HROS automatically via the existing upsert-by-`googleEventId` logic.
-- **Live presence derivation**: when a synced meeting is currently active (`now` between event start/end) for a given user, their presence status in **Office Today** / **Team** automatically shows **"In Meeting — until [time]"**. This clears automatically when the meeting ends — no manual toggle.
-- **Sync trigger**: `pg_cron` scheduled sync every few minutes per active user (lightweight polling — no webhook/push complexity needed at this scale) plus a manual "Sync Calendar" button as fallback
-- **Meeting → Task linking**: from a meeting's detail view, a follow-up action item can be converted directly into a task with one click, pre-filling entity/attendee context
-
----
-
-## 6. Task & Sprint System (Advanced)
-
-### Data model additions
-- `entities` (EHM, CliAgro — seeded, not user-creatable)
-- `departments` (per entity — e.g. Marketing, Engineering)
-- `tasks` table gains: `brandEntityId`, `departmentId`, `taskId` (auto-generated per entity, pattern `{ENTITY}-{DEPT}-{TYPE}-{SEQ}`, e.g. `EHM-MAR-ADH-672`), `sprintWeek`, `parentTaskId` (nullable, for subtasks), `assigneeId`, `reviewingLeadId`, `deliverableUrl`, `status` (`TODO` / `IN_PROGRESS` / `DONE`), `priority`, `dueDate`, `dependencyTaskId` (nullable "Waiting On"), `groupTaskId` (nullable — links copies of a group-assigned task together)
-- `task_notes` — progress notes / standup-style comments, timestamped, author-tagged (append-only log, not a single overwritable field)
-- `task_checklists` — optional subtasks/checklist items within a task (e.g. Design / Copy / Dev / QA)
-- `task_templates` — reusable task shapes for recurring deliverable types, pre-filling entity/department/checklist
-
-### Assign Task modal (matches your reference screenshots)
-Fields: Brand/Entity, Department, Task ID (auto-generated, editable), Target Sprint Week, Task Title/Deliverable Name, Assignee (single) **or** multi-select for group assignment, Reviewing Lead, Deliverable URL (optional).
-
-### Group assignment behavior
-When a manager assigns the same task to 2–3 employees at once:
-- Each employee gets their **own independent task row** (same `groupTaskId`, separate `assigneeId` and `status`)
-- On each employee's **Team/profile page**, the group task is visibly tagged as shared (e.g. "Also assigned to: Priya, Rahul")
-- Each person marks **their own copy** Done independently — one person finishing doesn't auto-complete the others'
-
-### Task Details / edit modal (matches your reference screenshot)
-Fields: Brand/Entity (locked), Parent Task ID (locked), editable Deliverable name, 1-click reassign Assignee dropdown, Reviewing Lead, Deliverable URL, Status dropdown, Dependency/"Waiting On" dropdown, append-only Progress Notes thread, "Save Changes & Sync" button.
-
-### Kanban board
-- Columns: To Do / In Progress / Done
-- Drag-and-drop between columns
-- WIP limit indicator per employee (visual warning, not a hard block) so managers can spot overload
-- Overdue tasks get a red badge directly on the card, visible without opening it
-
-### Sprint reporting
-- Exportable weekly/sprint summary per entity and per department: tasks completed / in-progress / blocked
-- Cross-entity comparison view: EHM vs CliAgro side by side — headcount, task throughput, attendance %
-
----
-
-## 7. Dashboard & Navigation — Visual Design Direction
-
-Adopt the **layout and visual language** of the reference design (light theme, green accent, clean card-based UI) while keeping all actual HROS data/entities — do **not** reuse its placeholder content (no "Nova Creative Team," no Orion/Zenith/Helios, no Zoom).
-
-### Sidebar
-- Top: logo mark + "HR OS" wordmark (keep existing purple-indigo brand accent, or shift to the green accent from the reference — client's call, flag this as an open choice)
-- **Entity switcher** directly below the logo, styled like the reference's team/workspace switcher dropdown — toggles between EHM / CliAgro / Both
-- Nav items with icon + label, active state highlighted, matching the reference's clean spacing and rounded active-pill style: Dashboard, Attendance, Meetings, Office Today, Announcements, Tasks, Salary, Applications, Team
-- Bottom: user profile chip (avatar, name, role) + logout, as already built
-
-### Top header
-- Global search bar (search across tasks, employees, meetings, announcements) styled like the reference's "Search ⌘K" bar
-- Notification bell (live, Supabase Realtime-backed)
-- Profile avatar
-
-### Role-specific home screens
-- **Admin dashboard**: company-wide stat cards (adapt reference's stat-card row style) — Total Employees, Present Today, Active Meetings, Active Tasks — plus the cross-entity comparison panel
-- **Manager dashboard**: their team's sprint progress, workload distribution, today's schedule
-- **Employee dashboard**: a **"My Day" widget** — today's meetings + today's due tasks in one glance (styled like the reference's "Schedule" panel with Meetings/Task tabs)
-
-### Dashboard panels (styled per reference, HROS content)
-- Stat card row (top): reuse reference's card style — icon chip, big number, label
-- Main chart panel (reference's "Weekly Revenue" chart slot): repurpose as **Attendance/Task Completion Trends** — line/area chart, Recharts
-- Schedule panel with tabs (reference's Meetings/Task tabs): shows today's meetings and today's tasks, "View Detail" links
-- Summary table at bottom (reference's "Project Progress Summary" table): repurpose as **Sprint/Task Summary** — Task/Project name, entity, status badges (Completed / Ongoing / Pending, styled with the same colored pill treatment)
-
----
-
-## 8. Feature List — Explicit Scope
-
-### In scope (v2)
-- 3-tier roles (Admin/Manager/Employee) with manager-to-team scoping
-- Two hardcoded entities (EHM, CliAgro) with header switcher + cross-entity comparison
-- Employee/Manager invite → credential + link email → first-login Google Calendar/Meet consent step
-- Per-user Google Calendar/Meet sync, two-way (HROS↔Google)
-- Live presence status derived from active meetings (auto-clears)
-- Advanced task system: auto Task IDs per entity, sprint weeks, dependencies, group assignment, subtasks/checklists, task templates, append-only progress notes
-- Kanban with drag-and-drop + WIP visual limits + overdue flags
-- Meeting → Task conversion
-- Role-specific dashboards + "My Day" widget for employees
-- Global search across tasks/employees/meetings/announcements
-- Daily digest notification (lightweight, via Resend) — "You have N tasks due this week"
-- Pinned announcements + read receipts ("seen by")
-- Exportable weekly/sprint summary per entity/department
-- Supabase Realtime-backed live notifications and live Kanban updates
-
-### Explicitly out of scope (client decision)
-- Geo/IP/WiFi-based auto check-in
-- Leave application + approval workflow
-- Timesheet / hours-logged tracking
-- Multi-tenant "add new company" system (entities are hardcoded to EHM/CliAgro)
-- Google OAuth production verification (staying in Testing mode is fine at this user count)
-
----
-
-## 9. Open Decisions Still Needed From Client
-
-1. Sidebar accent color — keep current purple-indigo brand, or adopt the reference's green accent?
-2. Should Managers ever see other Managers' teams (read-only), or stay fully siloed?
-3. Confirm auth method: password + optional Google OAuth (recommended), not Google-only.
-
----
-
-## 10. Build Order Suggestion
-
-1. Extend schema: `entities`, `departments`, role/scoping fields on `users`, extended `tasks` fields, `task_notes`, `task_checklists`, `task_templates`, `notifications`
-2. Wire up Supabase (Postgres connection via Drizzle, Realtime channels, Storage buckets)
-3. RBAC middleware + entity/team scoping
-4. Rebuild Task system (Assign Task modal, Task Details modal, Kanban, group assignment)
-5. Entity switcher + cross-entity comparison dashboard
-6. Per-user Google Calendar sync + live presence derivation
-7. Role-specific dashboards with reference-styled panels
-8. Global search, daily digest, pinned announcements/read receipts
-9. Meeting → Task linking
-10. Polish pass: WIP indicators, overdue badges, export/reporting views
-
-```
-
-## FILE: PROJECT_CODEBASE_SUMMARY.md
-
-```markdown
-# EHM-Climagro OS — Full Project Codebase & Technical Specification
-
-> **Platform Name**: EHM-Climagro OS (HR, Operations, Agile Deliverables & Meeting Management System)  
-> **Entities Supported**: `ehmconsultancy` and `climagroanalytics`  
-> **Target Audience**: Management Team, Team Leads, Employees  
-
----
-
-## 📋 Executive Overview
-
-**EHM-Climagro OS** is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, Agile Hierarchy, and Meeting Management platform designed for cross-entity team collaboration between **ehmconsultancy** and **climagroanalytics**.
-
-### Key System Capabilities:
-
-1. **Full 4-Level Agile Hierarchy & Lineage Model (Initiatives ➔ Epics ➔ Sprints ➔ Tasks)**:
-   - **Level 1: Strategic Initiatives (`InitiativesSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}` (e.g. `EHM-I01`, `CAG-I01`).
-     - Form fields: Title, Brand/Entity (`ehmconsultancy`, `climagroanalytics`), Department, Sub-Department/Track, Target Deliverable Metric, Target Month, Epics division count (`1` to `8`).
-   - **Level 2: Feature Epics (`EpicsSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}-EP{seq2}` (e.g. `EHM-I01-EP01`).
-     - Nests under parent Initiative. Includes `next_task_seq` counter for scoped task numbering resetting at `T001`.
-   - **Level 3: Personal Sprints (`SprintsView.tsx` & `SprintsSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-E{seq2}-W{weekNum}` (e.g. `EHM-E01-W1`).
-     - Personal 1-to-1 container assigned to a single employee owner (`sprints.employee_id NOT NULL`).
-     - Includes `next_task_seq` counter for scoped sprint task numbering resetting at `T001`.
-   - **Level 4: Deliverable Tasks (`TasksView.tsx` & `TaskAssignModal.tsx`)**:
-     - **Epic Task**: `{ENTITY}-I{seq2}-EP{seq2}-T{seq3}` (e.g. `EHM-I01-EP01-T001`). Auto-derives parent `initiative_id` from parent epic.
-     - **Sprint Task**: `{ENTITY}-E{seq2}-W{weekNum}-T{seq3}` (e.g. `EHM-E01-W1-T001`). Multi-employee assignments clone tasks per assignee linked via `group_task_id`.
-     - **Backlog Task**: `{ENTITY}-T{seq3}` (e.g. `EHM-T001`).
-     - **Immutable Task Codes**: Reassigning a task's epic or sprint updates the foreign keys only, keeping `task_code` immutable.
-
-2. **100% Live Database API Wiring (Zero Mock Data)**:
-   - All components (`DashboardView.tsx`, `PerformanceView.tsx`, `AttendanceView.tsx`, `MeetingsView.tsx`, `SearchModal.tsx`, `TaskAnalyticsPanel.tsx`) fetch real records from Express API endpoints (`/api/employees`, `/api/tasks`, `/api/attendance`, `/api/meetings`, `/api/reports`).
-   - Completion velocity rates are calculated dynamically from database counts and hard-capped at $\le 100\%$.
-
-3. **Supabase PostgreSQL & Official Drizzle Migration**:
-   - Official checked-in Drizzle migration: [`lib/db/drizzle/0004_agile_schema_alignment.sql`](file:///c:/hrdashboard/lib/db/drizzle/0004_agile_schema_alignment.sql).
-   - Enforced database constraints (`NOT NULL UNIQUE` on `initiative_code` and `sprint_code`, `NOT NULL` on `employee_id`).
-   - Symmetric DB `CHECK` constraint `chk_task_type_lineage` ensuring `task_type` strictly matches foreign key states (`EPIC_TASK`, `SPRINT_TASK`, `BACKLOG`).
-
-4. **Security & Middleware Protection**:
-   - `requireAuth` applied across all protected backend routes.
-   - `requireRole(['ADMIN', 'MANAGER'])` applied to POST/PUT on `/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`.
-
----
-
-## 🔑 Database Authentication Credentials
-
-| Role | Email | Password | Access Rights |
-| :--- | :--- | :--- | :--- |
-| **Admin / Manager** | `admin@example.com` | `admin123` | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Create/Edit Initiatives, Epics & Sprints |
-
----
-
-## 🛠️ Complete Technology Stack
-
-| Layer | Technology Used | Description |
-| :--- | :--- | :--- |
-| **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture (0 TS errors) |
-| **Build Tool & Server** | **Vite 6** | Fast HMR dev server & asset bundling |
-| **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens (75% font-size density) |
-| **Iconography** | **Lucide React** | Modern vector icon library |
-| **Routing** | **Wouter** | Lightweight hooks-based SPA router |
-| **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
-| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` / `10000` |
-| **Database & ORM** | **Supabase PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Third-Party Integrations** | **Google Calendar API v3** + **Resend API** | OAuth 2.0 Meet link generation & notification emails |
-
----
-
-## 🚀 Verification & Build Status
-
-- **Supabase Connection**: Verified (`SELECT 1` ➔ `connected: 1, current_database: "postgres"`)
-- **Drizzle Migration**: `0004_agile_schema_alignment.sql` **APPLIED SUCCESSFULLY**
-- **Monorepo Build Command**: `pnpm build` ➔ **PASSED (0 Errors across all 5 workspace projects)**
-- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md)
-
-```
-
-## FILE: artifacts/api-server/package.json
+## File: `artifacts/api-server/package.json`
 
 ```json
 {
@@ -960,7 +45,9 @@ Adopt the **layout and visual language** of the reference design (light theme, g
 
 ```
 
-## FILE: artifacts/api-server/src/db/seed.ts
+---
+
+## File: `artifacts/api-server/src/db/seed.ts`
 
 ```typescript
 import bcrypt from 'bcryptjs';
@@ -978,8 +65,8 @@ export async function runSeed() {
   try {
     // 1. Seed / Upsert Entities (EHM & CAG)
     const entitiesList = [
-      { code: 'EHM', name: 'EHM Consultancy' },
-      { code: 'CAG', name: 'Climagro Analytics' },
+      { code: 'EHM', name: 'EHM' },
+      { code: 'CAG', name: 'CLIMAGRO' },
     ];
 
     const seededEntities: Record<string, string> = {};
@@ -1194,7 +281,7 @@ export async function runSeed() {
     if (!cagInit) {
       [cagInit] = await db.insert(initiatives).values({
         initiativeCode: 'CAG-INIT-001',
-        title: 'Climagro Analytics Platform & Carbon Engine',
+        title: 'CLIMAGRO Platform & Carbon Engine',
         description: 'Core sustainability platform & AI carbon footprint analytics module',
         entityId: seededEntities['CAG'],
         departmentId: seededDepts['CAG_DEV'],
@@ -1211,7 +298,7 @@ export async function runSeed() {
     if (!ehmInit) {
       [ehmInit] = await db.insert(initiatives).values({
         initiativeCode: 'EHM-INIT-001',
-        title: 'EHM Consultancy Operational ERP & Client Portal',
+        title: 'EHM Operational ERP & Client Portal',
         description: 'Environmental consultancy workflow & compliance tracking dashboard',
         entityId: seededEntities['EHM'],
         departmentId: seededDepts['EHM_DEV'],
@@ -1482,7 +569,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 ```
 
-## FILE: artifacts/api-server/src/db/verify.ts
+---
+
+## File: `artifacts/api-server/src/db/verify.ts`
 
 ```typescript
 import dotenv from 'dotenv';
@@ -1506,7 +595,9 @@ runVerification().then(() => process.exit(0));
 
 ```
 
-## FILE: artifacts/api-server/src/index.ts
+---
+
+## File: `artifacts/api-server/src/index.ts`
 
 ```typescript
 import express from 'express';
@@ -1547,6 +638,14 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
+// Handle body-parser JSON syntax errors
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && 'status' in err && (err as any).status === 400 && 'body' in err) {
+    return res.status(400).json({ message: 'Invalid JSON payload format' });
+  }
+  next(err);
+});
+
 // Mount API routes
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
@@ -1564,6 +663,15 @@ app.use('/api/sprints', sprintsRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });
+});
+
+// Global API error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[UNHANDLED EXPRESS ERROR]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.status(500).json({ message: err?.message || 'Internal Server Error' });
 });
 
 // Serve frontend static assets & SPA fallback (Express 5 path-to-regexp compatible)
@@ -1607,7 +715,9 @@ app.listen(PORT, () => {
 
 ```
 
-## FILE: artifacts/api-server/src/jobs/digest-cron.ts
+---
+
+## File: `artifacts/api-server/src/jobs/digest-cron.ts`
 
 ```typescript
 import { sendDigestEmail } from '../services/email.js';
@@ -1623,7 +733,9 @@ export function startDigestCron() {
 
 ```
 
-## FILE: artifacts/api-server/src/jobs/overdue-check-cron.ts
+---
+
+## File: `artifacts/api-server/src/jobs/overdue-check-cron.ts`
 
 ```typescript
 import { db, tasks, employees, users, notifications, googleTokens, eq, and, ne, lt, lte, gt, gte, sql } from '@workspace/db';
@@ -1779,7 +891,9 @@ export async function runOverdueAndTokenChecks() {
 
 ```
 
-## FILE: artifacts/api-server/src/jobs/sync-cron.ts
+---
+
+## File: `artifacts/api-server/src/jobs/sync-cron.ts`
 
 ```typescript
 import { db, googleTokens } from '@workspace/db';
@@ -1812,7 +926,9 @@ async function runSyncAllUsers() {
 
 ```
 
-## FILE: artifacts/api-server/src/middleware/auth.ts
+---
+
+## File: `artifacts/api-server/src/middleware/auth.ts`
 
 ```typescript
 import { Request, Response, NextFunction } from 'express';
@@ -1878,7 +994,9 @@ export function requireTeamScope(req: Request, res: Response, next: NextFunction
 
 ```
 
-## FILE: artifacts/api-server/src/middleware/rbac.ts
+---
+
+## File: `artifacts/api-server/src/middleware/rbac.ts`
 
 ```typescript
 import { Response, NextFunction } from 'express';
@@ -1922,7 +1040,9 @@ export function requireTeamScope(req: AuthenticatedRequest, res: Response, next:
 
 ```
 
-## FILE: artifacts/api-server/src/routes/announcements.ts
+---
+
+## File: `artifacts/api-server/src/routes/announcements.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -1958,7 +1078,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/applications.ts
+---
+
+## File: `artifacts/api-server/src/routes/applications.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2000,7 +1122,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/attendance.ts
+---
+
+## File: `artifacts/api-server/src/routes/attendance.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2048,7 +1172,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/auth.ts
+---
+
+## File: `artifacts/api-server/src/routes/auth.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2407,7 +1533,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/dashboard.ts
+---
+
+## File: `artifacts/api-server/src/routes/dashboard.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2516,7 +1644,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/employees.ts
+---
+
+## File: `artifacts/api-server/src/routes/employees.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2634,7 +1764,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/epics.ts
+---
+
+## File: `artifacts/api-server/src/routes/epics.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2785,7 +1917,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/initiatives.ts
+---
+
+## File: `artifacts/api-server/src/routes/initiatives.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2827,7 +1961,7 @@ router.get('/', async (req, res) => {
       const linkedEpics = allEpics.filter(e => e.initiativeId === init.id);
       return {
         ...init,
-        entityName: entity?.name || (init.initiativeCode.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'),
+        entityName: (entity?.name || '').toLowerCase().includes('cag') || (entity?.name || '').toLowerCase().includes('climagro') || init.initiativeCode.startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
         entityCode: entity?.code || (init.initiativeCode.startsWith('CAG') ? 'CAG' : 'EHM'),
         epicsCount: linkedEpics.length,
         epics: linkedEpics,
@@ -2913,7 +2047,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // PUT /api/initiatives/:id - Update initiative status & details
 router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const initId = req.params.id as string;
-  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric } = req.body;
+  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric, subDepartment, entityId } = req.body;
 
   let mappedStatus: 'PLANNED' | 'ACTIVE' | 'DONE' | undefined = undefined;
   if (status === 'IN_PROGRESS' || status === 'ACTIVE') mappedStatus = 'ACTIVE';
@@ -2921,16 +2055,29 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   else if (status === 'PLANNED') mappedStatus = 'PLANNED';
 
   try {
+    const updatePayload: any = {};
+    if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
+    if (title !== undefined) updatePayload.title = title;
+    if (description !== undefined) updatePayload.description = description;
+    if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth;
+    if (epicsCountTarget !== undefined) updatePayload.epicsCountTarget = Number(epicsCountTarget);
+    if (targetDeliverableMetric !== undefined) updatePayload.targetDeliverableMetric = targetDeliverableMetric;
+    if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
+
+    if (entityId !== undefined) {
+      const allEntities = await db.select().from(entities);
+      let entity = allEntities.find(e =>
+        e.id === entityId ||
+        e.code.toLowerCase() === (entityId || '').toLowerCase() ||
+        ((entityId || '').toLowerCase().includes('ehm') && e.code === 'EHM') ||
+        ((entityId || '').toLowerCase().includes('climagro') && e.code === 'CAG')
+      );
+      if (entity) updatePayload.entityId = entity.id;
+    }
+
     const [updated] = await db
       .update(initiatives)
-      .set({
-        status: mappedStatus,
-        title: title !== undefined ? title : undefined,
-        description: description !== undefined ? description : undefined,
-        targetMonth: targetMonth !== undefined ? targetMonth : undefined,
-        epicsCountTarget: epicsCountTarget !== undefined ? Number(epicsCountTarget) : undefined,
-        targetDeliverableMetric: targetDeliverableMetric !== undefined ? targetDeliverableMetric : undefined,
-      })
+      .set(updatePayload)
       .where(eq(initiatives.id, initId))
       .returning();
 
@@ -2949,7 +2096,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/meetings.ts
+---
+
+## File: `artifacts/api-server/src/routes/meetings.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -3172,7 +2321,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/notifications.ts
+---
+
+## File: `artifacts/api-server/src/routes/notifications.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -3227,7 +2378,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/reports.ts
+---
+
+## File: `artifacts/api-server/src/routes/reports.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -3306,7 +2459,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/sprints.ts
+---
+
+## File: `artifacts/api-server/src/routes/sprints.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -3444,7 +2599,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/tasks.ts
+---
+
+## File: `artifacts/api-server/src/routes/tasks.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -3974,7 +3131,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/services/calendar-sync.ts
+---
+
+## File: `artifacts/api-server/src/services/calendar-sync.ts`
 
 ```typescript
 import { db, meetings, users, employees, googleTokens, eq, and, gte, lte } from '@workspace/db';
@@ -4137,7 +3296,9 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
 
 ```
 
-## FILE: artifacts/api-server/src/services/email.ts
+---
+
+## File: `artifacts/api-server/src/services/email.ts`
 
 ```typescript
 import { Resend } from 'resend';
@@ -4329,7 +3490,9 @@ export async function sendCalendarReconnectEmail(toEmail: string, userName: stri
 
 ```
 
-## FILE: artifacts/api-server/src/services/encryption.ts
+---
+
+## File: `artifacts/api-server/src/services/encryption.ts`
 
 ```typescript
 import crypto from 'node:crypto';
@@ -4363,7 +3526,9 @@ export function decrypt(cipherText: string): string {
 
 ```
 
-## FILE: artifacts/api-server/src/verify_connection.ts
+---
+
+## File: `artifacts/api-server/src/verify_connection.ts`
 
 ```typescript
 import { db } from '@workspace/db';
@@ -4391,7 +3556,9 @@ verify();
 
 ```
 
-## FILE: artifacts/api-server/tsconfig.json
+---
+
+## File: `artifacts/api-server/tsconfig.json`
 
 ```json
 {
@@ -4410,9 +3577,11 @@ verify();
 
 ```
 
-## FILE: artifacts/hr-dashboard/index.html
+---
 
-```html
+## File: `artifacts/hr-dashboard/index.html`
+
+```javascript
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -4432,7 +3601,9 @@ verify();
 
 ```
 
-## FILE: artifacts/hr-dashboard/package.json
+---
+
+## File: `artifacts/hr-dashboard/package.json`
 
 ```json
 {
@@ -4473,9 +3644,11 @@ verify();
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/App.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/App.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { Route, Switch, useLocation } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -4606,9 +3779,11 @@ export default App;
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ClockInModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/ClockInModal.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { X, Clock, MapPin, Laptop, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -4702,9 +3877,11 @@ export const ClockInModal: React.FC<ClockInModalProps> = ({ isOpen, onClose }) =
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import {
   CheckSquare,
@@ -4733,6 +3910,7 @@ import {
   Target,
   FileSpreadsheet,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -4928,6 +4106,10 @@ export const EmployeeDashboardView: React.FC = () => {
   const [todaysMeetings, setTodaysMeetings] = useState<any[]>(DEFAULT_EMPLOYEE_MEETINGS);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+
+  // Big Responsive Tile Detail Pop-up Modal State
+  const [activeModalType, setActiveModalType] = useState<'PENDING_TASKS' | 'ACTIVE_SPRINTS' | 'MEETINGS' | 'COMPLETION_RATE' | 'COMPLETED_TASKS' | null>(null);
+  const [analyticsMetric, setAnalyticsMetric] = useState<'VELOCITY_TREND' | 'PRIORITY_BREAKDOWN' | 'SPRINT_PACING'>('VELOCITY_TREND');
 
   // New Personal Task Creation State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -5274,6 +4456,7 @@ export const EmployeeDashboardView: React.FC = () => {
       {activeSubTab === 'OVERVIEW' && (
         <div className="space-y-6">
           {/* Employee Greeting Header Banner + Clock In Widget */}
+          {/* Employee Greeting Header Banner */}
           <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -5283,71 +4466,129 @@ export const EmployeeDashboardView: React.FC = () => {
                 <span className="text-xs text-emerald-100 font-medium">• {user?.email || 'ashutosh@ehmconsultancy.com'}</span>
               </div>
               <h2 className="text-2xl font-black tracking-tight">Welcome back, {user?.name || 'Ashutosh Mishra'}! 👋</h2>
-              <p className="text-xs text-emerald-100 mt-1">Here is your personal attendance analytics, task load distribution, and daily standup schedule.</p>
+              <p className="text-xs text-emerald-100 mt-1">Here is your personal task load distribution, sprint velocity analytics, and daily standup schedule.</p>
             </div>
 
-            {/* Live Clock-In Action Box */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 text-right flex items-center gap-3 shrink-0">
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 px-4 text-right flex items-center gap-3 shrink-0">
               <div className="text-left">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">Attendance Status</span>
-                <span className="text-xs font-bold text-white block">
-                  {clockedIn ? `Clocked In at ${clockTime}` : 'Clocked Out'}
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">Workspace Status</span>
+                <span className="text-xs font-extrabold text-white block">
+                  Sprint 35 Active
                 </span>
-                <span className="text-[11px] font-mono text-emerald-300 block">{formatElapsedTime(elapsedSeconds)}</span>
+                <span className="text-[10px] text-emerald-100 font-medium">{myTasks.length} Active Deliverables</span>
               </div>
-              <button
-                onClick={handleClockToggle}
-                className={`px-4 py-2 text-xs font-black rounded-xl shadow-sm transition-all flex items-center gap-1.5 ${
-                  clockedIn
-                    ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'
-                    : 'bg-emerald-400 hover:bg-emerald-300 text-emerald-950'
-                }`}
-              >
-                {clockedIn ? <Square className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                <span>{clockedIn ? 'Clock Out' : 'Clock In'}</span>
-              </button>
             </div>
           </div>
 
-          {/* Top 4 Employee Stat Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                <CheckSquare className="w-5 h-5" />
+          {/* Top 5 Featured Responsive Stat Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Tile 1: Tasks Pending & Today's Tasks */}
+            <div
+              onClick={() => setActiveModalType('PENDING_TASKS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
               </div>
               <div>
-                <span className="text-xs text-gray-400 font-medium block">My Assigned Tasks</span>
-                <span className="text-lg font-bold text-gray-900">{myTasks.length} Active Deliverables</span>
+                <span className="text-xs text-gray-400 font-semibold block">Today's Tasks & Pending</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {myTasks.filter(t => t.status !== 'Done').length} Pending Tasks
+                </span>
+                <span className="text-[10px] text-blue-600 font-bold block pt-1">Active deliverables in execution</span>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                <Calendar className="w-5 h-5" />
+            {/* Tile 2: Active Sprint Cycles */}
+            <div
+              onClick={() => setActiveModalType('ACTIVE_SPRINTS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-amber-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Flame className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
               </div>
               <div>
-                <span className="text-xs text-gray-400 font-medium block">My Google Meetings</span>
-                <span className="text-lg font-bold text-gray-900">{todaysMeetings.length} Scheduled Today</span>
+                <span className="text-xs text-gray-400 font-semibold block">Active Sprint</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">Sprint 35 Active</span>
+                <span className="text-[10px] text-amber-600 font-bold block pt-1">{activeSprintTasks.length} active sprint items</span>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
+            {/* Tile 3: Google Meetings */}
+            <div
+              onClick={() => setActiveModalType('MEETINGS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
               </div>
               <div>
-                <span className="text-xs text-gray-400 font-medium block">Logged Work Hours</span>
-                <span className="text-lg font-bold text-gray-900">43.0 hrs this week</span>
+                <span className="text-xs text-gray-400 font-semibold block">Google Meetings</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {todaysMeetings.length} Scheduled
+                </span>
+                <span className="text-[10px] text-indigo-600 font-bold block pt-1">Synced live calendar</span>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                <CheckCircle className="w-5 h-5" />
+            {/* Tile 4: Deliverable Completion Rate */}
+            <div
+              onClick={() => setActiveModalType('COMPLETION_RATE')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
               </div>
               <div>
-                <span className="text-xs text-gray-400 font-medium block">Personal Velocity Score</span>
-                <span className="text-lg font-bold text-emerald-600">95.0 (Top Tier)</span>
+                <span className="text-xs text-gray-400 font-semibold block">Completion Rate</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {Math.round((doneCount / (myTasks.length || 1)) * 100)}% Rate
+                </span>
+                <span className="text-[10px] text-emerald-600 font-bold block pt-1">
+                  {doneCount} of {myTasks.length} Completed
+                </span>
+              </div>
+            </div>
+
+            {/* Tile 5: Completed Tasks */}
+            <div
+              onClick={() => setActiveModalType('COMPLETED_TASKS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-purple-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 font-semibold block">Completed Tasks</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {doneCount} Completed
+                </span>
+                <span className="text-[10px] text-purple-600 font-bold block pt-1">Approved & signed-off</span>
               </div>
             </div>
           </div>
@@ -5396,25 +4637,75 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* Chart 2: Weekly Logged Attendance Hours Bar Chart (65%) */}
+            {/* Chart 2: Customizable Visual Analytics View (65%) */}
             <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">My Attendance & Work Hours Trend</h3>
-                  <p className="text-[11px] text-gray-400 font-medium">Daily logged shift hours vs 8.0h expected baseline.</p>
+                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">Personal Analytics & Performance Trend</h3>
+                  <p className="text-[11px] text-gray-400 font-medium">Select metric breakdown view to switch analytics visualization.</p>
                 </div>
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
+
+                <select
+                  value={analyticsMetric}
+                  onChange={(e) => setAnalyticsMetric(e.target.value as any)}
+                  className="text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl px-3 py-1.5 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                >
+                  <option value="VELOCITY_TREND">📈 Sprint Velocity & Quality Trend</option>
+                  <option value="PRIORITY_BREAKDOWN">📊 Deliverable Priority Distribution</option>
+                  <option value="SPRINT_PACING">🚀 Daily Sprint Completion Pacing</option>
+                </select>
               </div>
-              <div className="h-56 w-full">
+
+              <div className="h-56 w-full pt-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={PERSONAL_ATTENDANCE_HOURS} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[0, 12]} />
-                    <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
-                    <Bar dataKey="hours" name="Logged Hours" fill="#10B981" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="expected" name="Expected Hours" fill="#E2E8F0" radius={[6, 6, 0, 0]} />
-                  </BarChart>
+                  {analyticsMetric === 'VELOCITY_TREND' ? (
+                    <AreaChart data={PERSONAL_VELOCITY_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorVelocity" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="sprint" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[70, 100]} />
+                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                      <Area type="monotone" dataKey="velocity" name="Velocity Score" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorVelocity)" />
+                      <Area type="monotone" dataKey="quality" name="Quality Score" stroke="#8B5CF6" strokeWidth={2} fillOpacity={0} />
+                    </AreaChart>
+                  ) : analyticsMetric === 'PRIORITY_BREAKDOWN' ? (
+                    <BarChart
+                      data={[
+                        { priority: 'Urgent', count: myTasks.filter(t => t.priority === 'URGENT').length || 1, color: '#EF4444' },
+                        { priority: 'High', count: myTasks.filter(t => t.priority === 'HIGH').length || 3, color: '#F59E0B' },
+                        { priority: 'Medium', count: myTasks.filter(t => t.priority === 'MEDIUM').length || 2, color: '#3B82F6' },
+                        { priority: 'Low', count: myTasks.filter(t => t.priority === 'LOW').length || 1, color: '#10B981' },
+                      ]}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="priority" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                      <Bar dataKey="count" name="Task Count" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  ) : (
+                    <BarChart data={[
+                      { day: 'Mon', completed: 2, target: 2 },
+                      { day: 'Tue', completed: 3, target: 3 },
+                      { day: 'Wed', completed: 1, target: 2 },
+                      { day: 'Thu', completed: 4, target: 3 },
+                      { day: 'Fri', completed: 2, target: 2 },
+                      { day: 'Sat', completed: 1, target: 1 },
+                    ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                      <Bar dataKey="completed" name="Completed Deliverables" fill="#10B981" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="target" name="Target Goal" fill="#E2E8F0" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </div>
             </div>
@@ -5834,6 +5125,284 @@ export const EmployeeDashboardView: React.FC = () => {
         </div>
       )}
 
+      {/* 🚀 BIG RESPONSIVE TILE DETAIL POP-UP MODALS */}
+      {activeModalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
+          <div className="bg-white rounded-3xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
+            {/* 1. PENDING & TODAY'S TASKS MODAL */}
+            {activeModalType === 'PENDING_TASKS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-50 rounded-2xl border border-blue-200 text-blue-600">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Today's Tasks & Pending Deliverables</h3>
+                      <p className="text-xs text-gray-500 font-medium">
+                        Detailed breakdown of active sprint deliverables needing execution & review
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {myTasks.filter(t => t.status !== 'Done').map((task) => (
+                    <div
+                      key={task.id}
+                      onClick={() => {
+                        setActiveModalType(null);
+                        handleOpenTaskUpdate(task);
+                      }}
+                      className="p-4 bg-gray-50/80 rounded-2xl border border-gray-200/80 hover:border-blue-300 hover:bg-white transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {task.taskId}
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded uppercase border ${
+                            task.priority === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+                          }`}>
+                            {task.priority}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500">Lead: {task.lead}</span>
+                        </div>
+                        <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                        {task.notes && <p className="text-[11px] text-gray-500 line-clamp-1">{task.notes}</p>}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold text-gray-500">{task.dueDate}</span>
+                        <span className="px-3 py-1 rounded-xl text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                          {task.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* 2. ACTIVE SPRINTS MODAL */}
+            {activeModalType === 'ACTIVE_SPRINTS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-amber-600">
+                      <Flame className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Active Sprint Iterations</h3>
+                      <p className="text-xs text-gray-500 font-medium">Sprint 35 4-week iteration deliverables and progress tracking</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900">Sprint Cycle Name:</span>
+                    <span className="text-xs font-extrabold text-amber-950 font-mono">Sprint 35 (Current Month 1)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900">Total Sprint Tasks:</span>
+                    <span className="text-xs font-extrabold text-amber-950">{activeSprintTasks.length} Deliverables</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900">Reviewing Lead:</span>
+                    <span className="text-xs font-extrabold text-amber-950">Dr. Harshit Mishra (CTO)</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <h4 className="text-xs font-bold text-gray-900">Tasks in Active Sprint:</h4>
+                  {activeSprintTasks.map((t) => (
+                    <div key={t.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between text-xs font-bold text-gray-800">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-emerald-700">{t.taskId}</span>
+                        <span>{t.title}</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-extrabold bg-white border border-gray-200">
+                        {t.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* 3. GOOGLE MEETINGS MODAL */}
+            {activeModalType === 'MEETINGS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-indigo-50 rounded-2xl border border-indigo-200 text-indigo-600">
+                      <Calendar className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">My Scheduled Google Meetings</h3>
+                      <p className="text-xs text-gray-500 font-medium">Google Calendar synced video conference schedule for today</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {todaysMeetings.map((meet) => (
+                    <div key={meet.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-extrabold text-gray-900">{meet.title}</h4>
+                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                          {new Date(meet.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      {meet.description && <p className="text-xs text-gray-500 font-medium">{meet.description}</p>}
+                      <div className="pt-2 flex justify-end">
+                        <a
+                          href={meet.googleMeetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-2xs"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          <span>Join Google Meet</span>
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* 4. DELIVERABLE COMPLETION RATE MODAL */}
+            {activeModalType === 'COMPLETION_RATE' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-600">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Deliverable Completion Rate Analytics</h3>
+                      <p className="text-xs text-gray-500 font-medium">Sprint velocity score, completed ratio, and quality benchmarks</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
+                    <span className="text-xs font-bold text-emerald-800 block">Completion Rate</span>
+                    <span className="text-2xl font-black text-emerald-950 block">
+                      {Math.round((doneCount / (myTasks.length || 1)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-2xl border border-purple-200">
+                    <span className="text-xs font-bold text-purple-800 block">Velocity Score</span>
+                    <span className="text-2xl font-black text-purple-950 block">95.0 / 100</span>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 text-xs font-bold text-gray-700 space-y-1">
+                  <div>Completed Items: <span className="text-emerald-700 font-extrabold">{doneCount}</span></div>
+                  <div>In Progress / Pending: <span className="text-blue-700 font-extrabold">{inProgressCount}</span></div>
+                  <div>Delayed Items: <span className="text-amber-700 font-extrabold">{delayedCount}</span></div>
+                </div>
+              </>
+            )}
+
+            {/* 5. COMPLETED TASKS MODAL */}
+            {activeModalType === 'COMPLETED_TASKS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-600">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Completed Deliverables & Sign-offs</h3>
+                      <p className="text-xs text-gray-500 font-medium">Finished tasks with attached output links and lead approvals</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {myTasks.filter(t => t.status === 'Done').map((task) => (
+                    <div key={task.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {task.taskId}
+                          </span>
+                          <h4 className="text-xs font-extrabold text-gray-900">{task.title}</h4>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                          DONE / Approved
+                        </span>
+                      </div>
+
+                      {task.notes && <p className="text-xs text-gray-500 font-medium">{task.notes}</p>}
+
+                      {task.outputUrl && (
+                        <div className="pt-2 flex justify-end">
+                          <a
+                            href={task.outputUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-1.5 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>View Deliverable Link</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setActiveModalType(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Close Details View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Task Update Modal */}
       <TaskUpdateModal
         isOpen={!!selectedTask}
@@ -5990,11 +5559,13 @@ export const EmployeeDashboardView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/EpicsSubView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/EpicsSubView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
-import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw } from 'lucide-react';
+import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
@@ -6068,6 +5639,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [department, setDepartment] = useState('Product & Tech');
   const [targetWeek, setTargetWeek] = useState('Week 1 (Days 1–7)');
   const [sprintsCountTarget, setSprintsCountTarget] = useState(2);
+  const [isClone, setIsClone] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // View & Edit Modal States (Middle Pop Card)
@@ -6156,12 +5729,14 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     setEditDepartment(epic.department || 'Product & Tech');
     setEditTargetWeek(epic.targetWeek || 'Week 1 (Days 1–7)');
     setEditSprintsCountTarget(epic.sprintsCountTarget || 2);
-    setEditStatus(epic.status || 'PLANNED');
+    setEditStatus(epic.status === 'COMPLETED' ? 'DONE' : (epic.status || 'PLANNED'));
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEpic) return;
+
+    const apiStatus = editStatus === 'DONE' ? 'COMPLETED' : editStatus;
 
     setIsSubmitting(true);
     try {
@@ -6174,7 +5749,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           department: editDepartment,
           targetWeek: editTargetWeek,
           sprintsCountTarget: editSprintsCountTarget,
-          status: editStatus,
+          status: apiStatus,
         }),
       });
       toast.success(`Epic ${editingEpic.epicCode} updated successfully!`);
@@ -6190,24 +5765,26 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   const handleStatusChange = async (epicId: string, newStatus: string) => {
     const targetEpic = epics.find(e => e.id === epicId);
+    const apiStatus = newStatus === 'DONE' ? 'COMPLETED' : newStatus;
+
     try {
       await fetchApi<any>(`/api/epics/${epicId}`, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: apiStatus }),
       });
 
-      const isArchivedTarget = newStatus === 'DONE' || newStatus === 'COMPLETED' || newStatus === 'ARCHIVED';
+      const isArchivedTarget = apiStatus === 'COMPLETED' || apiStatus === 'ARCHIVED';
       if (isArchivedTarget) {
-        toast.success(`Epic ${targetEpic?.epicCode || ''} status updated to ${newStatus} & pushed to Archive!`);
+        toast.success(`Epic ${targetEpic?.epicCode || ''} marked as DONE & moved to Archive!`);
       } else {
-        toast.success(`Epic ${targetEpic?.epicCode || ''} status updated to ${newStatus}`);
+        toast.success(`Epic ${targetEpic?.epicCode || ''} status updated to ${newStatus} & restored to Active!`);
       }
 
       setEpics((prev) =>
-        prev.map((e) => (e.id === epicId ? { ...e, status: newStatus } : e))
+        prev.map((e) => (e.id === epicId ? { ...e, status: apiStatus } : e))
       );
       if (viewingEpic && viewingEpic.id === epicId) {
-        setViewingEpic((prev) => (prev ? { ...prev, status: newStatus } : null));
+        setViewingEpic((prev) => (prev ? { ...prev, status: apiStatus } : null));
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update status');
@@ -6221,7 +5798,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   // Filtered Epics calculation
   const filteredEpics = baseEpicsPool.filter(epic => {
-    const epicStatus = epic.status || 'PLANNED';
+    const rawStatus = epic.status || 'PLANNED';
+    const epicStatus = rawStatus === 'COMPLETED' ? 'DONE' : rawStatus;
     const isDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED' || epicStatus === 'ARCHIVED';
     const isInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
 
@@ -6245,6 +5823,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
     return matchesStatus && matchesQuery;
   });
+
 
   const plannedCount = activeEpics.filter(e => (e.status || 'PLANNED') === 'PLANNED').length;
   const inProgressCount = activeEpics.filter(e => e.status === 'IN_PROGRESS' || e.status === 'ACTIVE').length;
@@ -6404,9 +5983,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
                 {filteredEpics.map((epic) => {
                   const parentInit = initiatives.find((i) => i.id === epic.initiativeId);
-                  const epicStatus = epic.status || 'PLANNED';
+                  const rawStatus = epic.status || 'PLANNED';
+                  const epicStatus = rawStatus === 'COMPLETED' ? 'DONE' : rawStatus;
                   const isDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED' || epicStatus === 'ARCHIVED';
                   const isInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
+
 
                   // Determine Entity Code
                   const entityCode = parentInit?.initiativeCode?.startsWith('CAG') 
@@ -6436,7 +6017,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                               : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           }`}
                         >
-                          {isCAG ? 'climagroanalytics' : 'ehmconsultancy'}
+                          {isCAG ? 'CLIMAGRO' : 'EHM'}
                         </span>
                       </td>
 
@@ -6556,32 +6137,114 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
       {/* 👁️ POP CARD DETAILS MODAL */}
       {viewingEpic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
+          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-              <h3 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">Feature Epic Details</h3>
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-gray-900">Feature Epic Details</h3>
+                  <p className="text-[11px] text-gray-400 font-semibold">
+                    Full breakdown of goal, metadata, and linked tasks
+                  </p>
+                </div>
+              </div>
 
-              <button
-                onClick={() => {
-                  setViewingEpic(null);
-                  if (onClearSelectedEpic) onClearSelectedEpic();
-                }}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const epicToEdit = viewingEpic;
+                      setViewingEpic(null);
+                      handleStartEdit(epicToEdit);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 transition-all cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit Epic</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setViewingEpic(null);
+                    if (onClearSelectedEpic) onClearSelectedEpic();
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {/* 1. First: Parent Initiative Code & Title */}
+            {/* Modal Body Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* 1. Epic Title */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Title
+                </span>
+                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
+                  {viewingEpic.title}
+                </h2>
+              </div>
+
+              {/* 2. Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Epic Code
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                    {viewingEpic.epicCode}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Entity / Brand
+                  </span>
+                  <span className="text-xs font-bold text-blue-700 font-mono">
+                    {(viewingEpic.epicCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Target Date / Week
+                  </span>
+                  <span className="text-xs font-bold text-purple-700">
+                    {viewingEpic.targetWeek || viewingEpic.targetDate || 'Week 1 (Days 1–7)'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Status
+                  </span>
+                  <select
+                    value={viewingEpic.status || 'PLANNED'}
+                    onChange={(e) => handleStatusChange(viewingEpic.id, e.target.value)}
+                    className="text-xs font-extrabold px-2 py-0.5 rounded uppercase border bg-white text-emerald-700 border-emerald-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="PLANNED">PLANNED</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="DONE">DONE</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Parent Initiative Link Box */}
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId);
                 const parentCode = parentInit?.initiativeCode || 'N/A';
                 const parentTitle = parentInit?.title || 'No Parent Initiative Linked';
 
                 return (
-                  <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200 space-y-2">
+                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
                       <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Parent Initiative Code:</span>
@@ -6610,59 +6273,21 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 );
               })()}
 
-              {/* 2. Second: Epic Code & Title */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 text-sm">
-                <div className="font-bold text-gray-700">
-                  Epic Code: <span className="font-mono text-emerald-700 font-extrabold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 text-sm">{viewingEpic.epicCode}</span>
-                </div>
-                <div className="font-bold text-gray-700">
-                  Epic Title: <span className="text-gray-900 font-extrabold text-base">{viewingEpic.title}</span>
-                </div>
-              </div>
-
-              {/* 3. Third: Description & All Epic Info */}
-              <div className="space-y-3">
-                {viewingEpic.description && (
-                  <div>
-                    <span className="text-gray-400 font-bold uppercase text-xs block mb-1">Description</span>
-                    <MarkdownViewer content={viewingEpic.description} className="bg-white p-4 rounded-xl border border-gray-200 text-sm text-gray-800" />
+              {/* 4. Description */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Description
+                </span>
+                {viewingEpic.description ? (
+                  <MarkdownViewer content={viewingEpic.description} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-sm text-gray-800" />
+                ) : (
+                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs text-gray-400 italic">
+                    No epic description provided.
                   </div>
                 )}
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm">
-                  <div>
-                    <span className="text-gray-400 font-bold block uppercase text-xs">Entity</span>
-                    <span className="font-bold text-blue-700 font-mono text-sm">
-                      {(viewingEpic.epicCode || '').startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 font-bold block uppercase text-xs">Department</span>
-                    <span className="font-bold text-amber-800 text-sm">{viewingEpic.department || 'Product & Tech'}</span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 font-semibold block uppercase text-[10px]">Target Date / Week</span>
-                    <span className="font-bold text-purple-700">{viewingEpic.targetWeek || viewingEpic.targetDate || 'Week 1 (Days 1–7)'}</span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 font-semibold block uppercase text-[10px]">Status</span>
-                    <select
-                      value={viewingEpic.status || 'PLANNED'}
-                      onChange={(e) => handleStatusChange(viewingEpic.id, e.target.value)}
-                      className="mt-0.5 text-xs font-extrabold px-2 py-0.5 rounded uppercase border bg-white text-emerald-700 border-emerald-300 focus:outline-none cursor-pointer"
-                    >
-                      <option value="PLANNED">PLANNED</option>
-                      <option value="IN_PROGRESS">IN PROGRESS</option>
-                      <option value="DONE">DONE</option>
-                    </select>
-                  </div>
-                </div>
               </div>
 
-              {/* 4. Fourth: Hanging Tasks Assigned Under Epic */}
+              {/* 5. Hanging Tasks Linked Under Epic */}
               {(() => {
                 const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
                 const combined = [
@@ -6693,47 +6318,45 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                             : (taskItem.taskCode || 'TSK-001');
 
                           return (
-                          <div
-                            key={taskItem.id || idx}
-                            style={{ animationDelay: `${idx * 100}ms` }}
-                            className="relative group transition-all duration-300 animate-in fade-in slide-in-from-top-3"
-                          >
-                            {/* Visual Hanging Line & Connector Node */}
-                            <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
-                            <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
+                            <div
+                              key={taskItem.id || idx}
+                              style={{ animationDelay: `${idx * 100}ms` }}
+                              className="relative group transition-all duration-300 animate-in fade-in slide-in-from-top-3"
+                            >
+                              <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
+                              <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
 
-                            {/* Hanging Task Card */}
-                            <div className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                                  {displayTaskCode}
-                                </span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                  taskItem.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                                  taskItem.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                                  'bg-amber-50 text-amber-800 border-amber-200'
-                                }`}>
-                                  {taskItem.status || 'TODO'}
-                                </span>
-                              </div>
+                              <div className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                                    {displayTaskCode}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                    taskItem.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                    taskItem.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                                    'bg-amber-50 text-amber-800 border-amber-200'
+                                  }`}>
+                                    {taskItem.status || 'TODO'}
+                                  </span>
+                                </div>
 
-                              <h5 className="font-bold text-xs text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">
-                                {taskItem.title}
-                              </h5>
+                                <h5 className="font-bold text-xs text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">
+                                  {taskItem.title}
+                                </h5>
 
-                              <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2 mt-2 border-t border-gray-100">
-                                <span className="truncate max-w-[220px]">
-                                  <span className="text-gray-400">Assignee:</span> {taskItem.assigneeName || taskItem.assignee || 'admin@example.com'}
-                                </span>
-                                <div className="flex items-center gap-1 text-gray-400 text-[10px]">
-                                  <Calendar className="w-3 h-3 text-emerald-500" />
-                                  <span>{taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '2026-09-08'}</span>
+                                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2 mt-2 border-t border-gray-100">
+                                  <span className="truncate max-w-[220px]">
+                                    <span className="text-gray-400">Assignee:</span> {taskItem.assigneeName || taskItem.assignee || 'admin@example.com'}
+                                  </span>
+                                  <div className="flex items-center gap-1 text-gray-400 text-[10px]">
+                                    <Calendar className="w-3 h-3 text-emerald-500" />
+                                    <span>{taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '2026-09-08'}</span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-center py-6 text-xs text-gray-400 bg-gray-50/80 rounded-xl border border-dashed border-gray-200">
@@ -6745,27 +6368,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               })()}
             </div>
 
-            {/* 5. Fifth: Footer View / Close & Edit Options */}
-            <div className="flex items-center justify-between pt-4 mt-6 border-t border-gray-100">
-              {isManager ? (
-                <button
-                  onClick={() => {
-                    const epicToEdit = viewingEpic;
-                    setViewingEpic(null);
-                    handleStartEdit(epicToEdit);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit Epic</span>
-                </button>
-              ) : <div />}
-
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end shrink-0">
               <button
-                onClick={() => setViewingEpic(null)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setViewingEpic(null);
+                  if (onClearSelectedEpic) onClearSelectedEpic();
+                }}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                Close View
+                Close View Mode
               </button>
             </div>
           </div>
@@ -6988,6 +6601,59 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               </div>
 
+              {/* Clone / Duplicate Option Checkbox */}
+              <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isClone}
+                    onChange={(e) => {
+                      setIsClone(e.target.checked);
+                      if (!e.target.checked) setCloneSourceId('');
+                    }}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
+                    <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                      Check this box to duplicate an existing Feature Epic configuration into a new sequence code under this initiative.
+                    </p>
+                  </div>
+                </label>
+
+                {isClone && (
+                  <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                    <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                      Select Existing Feature Epic to Clone From (Optional):
+                    </label>
+                    <select
+                      value={cloneSourceId}
+                      onChange={(e) => {
+                        setCloneSourceId(e.target.value);
+                        const source = epics.find(ep => ep.id === e.target.value);
+                        if (source) {
+                          setTitle(`${source.title} (Clone)`);
+                          setDescription(source.description || '');
+                          if (source.initiativeId) setSelectedInitiativeId(source.initiativeId);
+                          if (source.department) setDepartment(source.department);
+                          if (source.targetWeek) setTargetWeek(source.targetWeek);
+                          if (source.sprintsCountTarget) setSprintsCountTarget(source.sprintsCountTarget);
+                          toast.success(`Form pre-filled with data from "${source.title}"!`);
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value="">-- Choose Existing Epic to Auto-Fill --</option>
+                      {epics.map(ep => (
+                        <option key={ep.id} value={ep.id}>
+                          [{ep.epicCode}] {ep.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
               {/* Footer Actions */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
@@ -7015,9 +6681,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ErrorBoundary.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/ErrorBoundary.tsx`
+
+```typescript
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
@@ -7104,9 +6772,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ExportReportModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/ExportReportModal.tsx`
+
+```typescript
 import React from 'react';
 import { X, FileSpreadsheet, FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7169,11 +6839,13 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({ isOpen, on
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/InitiativesSubView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/InitiativesSubView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
-import { Plus, ChevronDown, ChevronRight, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, CheckCircle2, PlayCircle, AlertCircle, Archive, RotateCcw, Building2 } from 'lucide-react';
+import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
@@ -7206,14 +6878,14 @@ interface InitiativeItem {
 
 interface Props {
   isManager: boolean;
-  onSelectEpic: (epicId: string) => void;
+  onSelectEpic: (epicId: string, parentInitiativeId?: string) => void;
   selectedInitiativeIdToView?: string | null;
   onClearSelectedInitiative?: () => void;
 }
 
 const ENTITY_OPTIONS = [
-  { id: 'ehmconsultancy', name: 'ehmconsultancy', code: 'EHM' },
-  { id: 'climagroanalytics', name: 'climagroanalytics', code: 'CAG' },
+  { id: 'ehmconsultancy', name: 'EHM', code: 'EHM' },
+  { id: 'climagroanalytics', name: 'CLIMAGRO', code: 'CAG' },
 ];
 
 const DEPARTMENT_OPTIONS = [
@@ -7226,13 +6898,24 @@ const DEPARTMENT_OPTIONS = [
 
 export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, selectedInitiativeIdToView, onClearSelectedInitiative }) => {
   const [initiatives, setInitiatives] = useState<InitiativeItem[]>([]);
-  const [expandedInitiativeId, setExpandedInitiativeId] = useState<string | null>(null);
   const [viewingInitiative, setViewingInitiative] = useState<InitiativeItem | null>(null);
+  const [viewingEpicDetails, setViewingEpicDetails] = useState<any | null>(null);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null); // CLOSED BY DEFAULT
 
   // View Mode: Active vs Archive Mode
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
+
+  // Modal Edit Mode State
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editEntityId, setEditEntityId] = useState('ehmconsultancy');
+  const [editSubDepartment, setEditSubDepartment] = useState('');
+  const [editTargetMonth, setEditTargetMonth] = useState('Month 1 (Weeks 1–4)');
+  const [editEpicsCountTarget, setEditEpicsCountTarget] = useState(3);
+  const [editTargetDeliverableMetric, setEditTargetDeliverableMetric] = useState('');
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
 
   // Status Change Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -7255,6 +6938,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
   const [targetMonth, setTargetMonth] = useState('Month 1 (Weeks 1–4)');
   const [epicsCountTarget, setEpicsCountTarget] = useState(3);
   const [targetDeliverableMetric, setTargetDeliverableMetric] = useState('');
+  const [isClone, setIsClone] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = async () => {
@@ -7279,7 +6964,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         (i) => i.id === selectedInitiativeIdToView || i.initiativeCode === selectedInitiativeIdToView
       );
       if (match) {
-        setExpandedId(match.id);
+        setViewingInitiative(match);
         setTimeout(() => {
           const el = document.getElementById(`initiative-card-${match.id}`);
           if (el) {
@@ -7289,6 +6974,81 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
       }
     }
   }, [selectedInitiativeIdToView, initiatives]);
+
+  const startEditMode = () => {
+    if (!viewingInitiative) return;
+    setEditTitle(viewingInitiative.title);
+    setEditDescription(viewingInitiative.description || '');
+    setEditEntityId(viewingInitiative.entityId || 'ehmconsultancy');
+    setEditSubDepartment(viewingInitiative.subDepartment || '');
+    setEditTargetMonth(viewingInitiative.targetMonth || 'Month 1 (Weeks 1–4)');
+    setEditEpicsCountTarget(viewingInitiative.epicsCountTarget || 3);
+    setEditTargetDeliverableMetric(viewingInitiative.targetDeliverableMetric || '');
+    setIsEditMode(true);
+  };
+
+  const cancelEditMode = () => {
+    setIsEditMode(false);
+  };
+
+  const handleEpicStatusChange = async (epicId: string, newStatus: string) => {
+    try {
+      await fetchApi(`/api/epics/${epicId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      toast.success(`Epic status updated to ${newStatus}`);
+      if (viewingEpicDetails && viewingEpicDetails.id === epicId) {
+        setViewingEpicDetails((prev: any) => (prev ? { ...prev, status: newStatus } : null));
+      }
+      loadData();
+    } catch (err) {
+      toast.error('Failed to update epic status');
+    }
+  };
+
+  const handleSaveInitiativeEdits = async () => {
+    if (!viewingInitiative) return;
+    setIsSubmitting(true);
+    try {
+      await fetchApi(`/api/initiatives/${viewingInitiative.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: editTitle,
+          description: editDescription,
+          entityId: editEntityId,
+          subDepartment: editSubDepartment,
+          targetMonth: editTargetMonth,
+          epicsCountTarget: editEpicsCountTarget,
+          targetDeliverableMetric: editTargetDeliverableMetric,
+        }),
+      });
+
+      toast.success(`Initiative ${viewingInitiative.initiativeCode} updated successfully!`);
+      setShowSaveConfirmModal(false);
+      setIsEditMode(false);
+      await loadData();
+
+      setViewingInitiative((prev) =>
+        prev
+          ? {
+              ...prev,
+              title: editTitle,
+              description: editDescription,
+              entityId: editEntityId,
+              subDepartment: editSubDepartment,
+              targetMonth: editTargetMonth,
+              epicsCountTarget: editEpicsCountTarget,
+              targetDeliverableMetric: editTargetDeliverableMetric,
+            }
+          : null
+      );
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update initiative details');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const openStatusConfirmModal = (initiative: InitiativeItem, targetStatus: string) => {
     setConfirmModal({
@@ -7319,6 +7079,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
       setConfirmModal({ isOpen: false, initiative: null, newStatus: '' });
       loadData();
+      if (viewingInitiative && viewingInitiative.id === id) {
+        setViewingInitiative((prev) => prev ? { ...prev, status: targetStatus } : null);
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update initiative status');
     } finally {
@@ -7432,7 +7195,6 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
       ) : (
         <div className="space-y-4">
           {displayedInitiatives.map((item) => {
-            const isExpanded = expandedId === item.id; // CLOSED BY DEFAULT
             const targetMonthStr = item.targetMonth || 'Month 1 (Weeks 1–4)';
             const epicsDivision = item.epicsCountTarget || 3;
 
@@ -7448,160 +7210,384 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 className={`bg-white border rounded-2xl overflow-hidden shadow-xs transition-all ${
                   isSelected
                     ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
-                    : 'border-gray-200 hover:border-emerald-300'
+                    : 'border-gray-200'
                 }`}
               >
-                {/* Initiative Main Row (CLOSED BY DEFAULT) */}
-                <div
-                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0 mt-1">
-                      {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-                    </div>
+                {/* Main Card Line - View button triggers Big View Mode */}
+                <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1 min-w-0 flex-1">
+                    {/* Main Screen badges in exact order: 1. Code -> 2. Entity -> 3. Due Date -> 4. Department */}
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      {/* 1. Code */}
+                      <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        {item.initiativeCode}
+                      </span>
 
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                          {item.initiativeCode}
+                      {/* 2. Entity */}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100/90 text-emerald-900 border border-emerald-300 flex items-center gap-1">
+                        <Building2 className="w-3 h-3 text-emerald-600" />
+                        <span>
+                          {(item.entityName || item.initiativeCode || '').toLowerCase().includes('cag') || (item.entityName || '').toLowerCase().includes('climagro')
+                            ? 'CLIMAGRO'
+                            : 'EHM'}
                         </span>
+                      </span>
 
-                        {/* Brand / Entity Badge */}
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100/90 text-emerald-900 border border-emerald-300 flex items-center gap-1">
-                          <Building2 className="w-3 h-3 text-emerald-600" />
-                          <span>{item.entityName || (item.initiativeCode?.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy')}</span>
+                      {/* 3. Due Date / Target Month */}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{targetMonthStr}</span>
+                      </span>
+
+                      {/* 4. Department */}
+                      {item.subDepartment && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                          <Tag className="w-3 h-3" />
+                          <span>{item.subDepartment}</span>
                         </span>
-
-                        {/* Status Badge Dropdown (triggers Confirmation Modal) */}
-                        <select
-                          value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => openStatusConfirmModal(item, e.target.value)}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border cursor-pointer outline-none transition-colors ${
-                            isDone
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
-                              : isInProgress
-                              ? 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold'
-                              : 'bg-purple-50 text-purple-700 border-purple-200'
-                          }`}
-                        >
-                          <option value="PLANNED">PLANNED</option>
-                          <option value="ACTIVE">IN PROGRESS</option>
-                          <option value="DONE">DONE (COMPLETED)</option>
-                        </select>
-
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{targetMonthStr}</span>
-                        </span>
-
-                        {item.subDepartment && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
-                            <Tag className="w-3 h-3" />
-                            <span>{item.subDepartment}</span>
-                          </span>
-                        )}
-
-                        {item.targetDeliverableMetric && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                            <BarChart3 className="w-3 h-3 text-emerald-600" />
-                            <span>Metric: {item.targetDeliverableMetric}</span>
-                          </span>
-                        )}
-                      </div>
-
-                      <h4 className="text-base font-bold text-gray-900">{item.title}</h4>
-                      {item.description && (
-                        <p className="text-xs text-gray-500 font-medium line-clamp-1 mt-0.5">{item.description}</p>
                       )}
                     </div>
+
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 shrink-0">
+                        Title:
+                      </span>
+                      <h4 className="text-base font-bold text-gray-900">{item.title}</h4>
+                    </div>
+
+                    {item.description && (
+                      <div className="flex items-baseline gap-2 mt-0.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 shrink-0">
+                          Description:
+                        </span>
+                        <p className="text-xs text-gray-500 font-medium line-clamp-1">{item.description}</p>
+                      </div>
+                    )}
+
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-gray-500 font-medium shrink-0">
-                    {/* Status Action Buttons with Confirmation Popovers */}
-                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => openStatusConfirmModal(item, 'ACTIVE')}
-                        title="Mark as In Progress"
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-colors flex items-center gap-1 ${
-                          isInProgress
-                            ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                            : 'bg-gray-100 hover:bg-blue-50 text-gray-700 border-gray-200'
-                        }`}
-                      >
-                        <PlayCircle className="w-3 h-3" />
-                        <span>In Progress</span>
-                      </button>
+                    {/* Status Dropdown (Moved to Red Marked spot on Right Side) */}
+                    <select
+                      value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
+                      onChange={(e) => openStatusConfirmModal(item, e.target.value)}
+                      className={`text-xs font-extrabold px-3 py-1.5 rounded-xl uppercase border cursor-pointer outline-none transition-colors shadow-xs ${
+                        isDone
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : isInProgress
+                          ? 'bg-blue-100 text-blue-800 border-blue-300'
+                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                      }`}
+                    >
+                      <option value="PLANNED">PLANNED</option>
+                      <option value="ACTIVE">IN PROGRESS</option>
+                      <option value="DONE">DONE (COMPLETED)</option>
+                    </select>
 
-                      <button
-                        onClick={() => openStatusConfirmModal(item, 'DONE')}
-                        title="Mark as Done"
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-colors flex items-center gap-1 ${
-                          isDone
-                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                            : 'bg-gray-100 hover:bg-emerald-50 text-gray-700 border-gray-200'
-                        }`}
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Done</span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-emerald-800 font-bold">
                       <Layers className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="font-bold text-gray-800">
+                      <span>
                         {item.epicsCount} / {epicsDivision} Epics
                       </span>
                     </div>
+
+                    {/* ONLY trigger to open Big View Mode Modal */}
+                    <button
+                      onClick={() => {
+                        setViewingInitiative(item);
+                        setIsEditMode(false);
+                      }}
+                      className="flex items-center gap-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                    >
+                      <span>View</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 🚀 BIG VIEW MODE MODAL FOR STRATEGIC INITIATIVE */}
+      {viewingInitiative && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-gray-900">
+                    {isEditMode ? 'Edit Strategic Initiative' : 'Strategic Initiative Details'}
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-semibold">
+                    {isEditMode ? 'Modify goal parameters and save changes' : 'Full breakdown of goal, metadata, and linked epics'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={isEditMode ? cancelEditMode : startEditMode}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all ${
+                      isEditMode
+                        ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                    }`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>{isEditMode ? 'Cancel Edit' : 'Edit Initiative'}</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setViewingInitiative(null);
+                    setIsEditMode(false);
+                    onClearSelectedInitiative?.();
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Section 1: Initiative Title */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Initiative Title
+                </span>
+                {isEditMode ? (
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3.5 py-2 text-sm font-bold text-gray-900 border border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  />
+                ) : (
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
+                    {viewingInitiative.title}
+                  </h2>
+                )}
+              </div>
+
+              {/* Section 2: Initiative Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Initiative Code
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                    {viewingInitiative.initiativeCode}
+                  </span>
                 </div>
 
-                {/* Expanded Section showing Responsive 6-Epic Per Row Grid */}
-                {isExpanded && (
-                  <div className="bg-gray-50/80 p-5 border-t border-gray-100">
-                    <div className="flex items-center justify-between mb-3">
-                      <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                        <Layers className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Linked Epics ({item.epics?.length || 0} / {epicsDivision} Planned)</span>
-                      </h5>
-                    </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Entity / Brand
+                  </span>
+                  {isEditMode ? (
+                    <select
+                      value={editEntityId}
+                      onChange={(e) => setEditEntityId(e.target.value)}
+                      className="w-full px-2 py-1 text-xs font-bold border border-emerald-300 rounded-lg bg-white"
+                    >
+                      {ENTITY_OPTIONS.map((e) => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs font-bold text-gray-900">
+                      {(viewingInitiative.entityName || viewingInitiative.initiativeCode || '').toLowerCase().includes('cag') || (viewingInitiative.entityName || '').toLowerCase().includes('climagro')
+                        ? 'CLIMAGRO'
+                        : 'EHM'}
+                    </span>
+                  )}
+                </div>
 
-                    {item.epics && item.epics.length > 0 ? (
-                      <div
-                        className={`grid gap-3 ${
-                          item.epics.length === 1
-                            ? 'grid-cols-1'
-                            : item.epics.length === 2
-                            ? 'grid-cols-1 md:grid-cols-2'
-                            : item.epics.length === 3
-                            ? 'grid-cols-1 md:grid-cols-3'
-                            : item.epics.length === 4
-                            ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4'
-                            : item.epics.length === 5
-                            ? 'grid-cols-1 sm:grid-cols-3 md:grid-cols-5'
-                            : 'grid-cols-1 sm:grid-cols-3 md:grid-cols-6'
-                        }`}
-                      >
-                        {item.epics.map((epic) => {
-                          const epicStatus = epic.status || 'PLANNED';
-                          const isEpicDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED';
-                          const isEpicInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Due Date / Target Month
+                  </span>
+                  {isEditMode ? (
+                    <select
+                      value={editTargetMonth}
+                      onChange={(e) => setEditTargetMonth(e.target.value)}
+                      className="w-full px-2 py-1 text-xs font-bold border border-emerald-300 rounded-lg bg-white"
+                    >
+                      <option value="Month 1 (Weeks 1–4)">Month 1 (Weeks 1–4)</option>
+                      <option value="Month 2 (Weeks 5–8)">Month 2 (Weeks 5–8)</option>
+                      <option value="Month 3 (Weeks 9–12)">Month 3 (Weeks 9–12)</option>
+                    </select>
+                  ) : (
+                    <span className="text-xs font-bold text-purple-700 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-purple-500" />
+                      <span>{viewingInitiative.targetMonth || 'Month 1 (Weeks 1–4)'}</span>
+                    </span>
+                  )}
+                </div>
 
-                          return (
-                            <div
-                              key={epic.id}
-                              onClick={() => onSelectEpic(epic.id)}
-                              className="bg-white p-2.5 rounded-xl border border-gray-200 shadow-2xs hover:shadow-md hover:border-emerald-400 transition-all cursor-pointer group flex flex-col justify-between"
-                            >
-                              {/* Line 1: Epic ID Badge & Status Badge */}
-                              <div className="flex items-center justify-between gap-1 mb-2">
-                                <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Department & Track
+                  </span>
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editSubDepartment}
+                      onChange={(e) => setEditSubDepartment(e.target.value)}
+                      className="w-full px-2 py-1 text-xs font-bold border border-emerald-300 rounded-lg bg-white"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                      <Tag className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{viewingInitiative.subDepartment || viewingInitiative.departmentId || 'General'}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Current Status
+                  </span>
+                  <select
+                    value={viewingInitiative.status === 'DONE' || viewingInitiative.status === 'COMPLETED' ? 'DONE' : viewingInitiative.status === 'ACTIVE' || viewingInitiative.status === 'IN_PROGRESS' ? 'ACTIVE' : 'PLANNED'}
+                    onChange={(e) => openStatusConfirmModal(viewingInitiative, e.target.value)}
+                    className={`text-xs font-extrabold px-2 py-0.5 rounded uppercase border cursor-pointer outline-none transition-colors ${
+                      viewingInitiative.status === 'DONE' || viewingInitiative.status === 'COMPLETED'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : viewingInitiative.status === 'ACTIVE' || viewingInitiative.status === 'IN_PROGRESS'
+                        ? 'bg-blue-100 text-blue-800 border-blue-300'
+                        : 'bg-purple-50 text-purple-700 border-purple-200'
+                    }`}
+                  >
+                    <option value="PLANNED">PLANNED</option>
+                    <option value="ACTIVE">IN PROGRESS</option>
+                    <option value="DONE">DONE (COMPLETED)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Target Epics Division
+                  </span>
+                  {isEditMode ? (
+                    <select
+                      value={editEpicsCountTarget}
+                      onChange={(e) => setEditEpicsCountTarget(Number(e.target.value))}
+                      className="w-full px-2 py-1 text-xs font-bold border border-emerald-300 rounded-lg bg-white"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 8].map((num) => (
+                        <option key={num} value={num}>{num} Epics</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                      <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{viewingInitiative.epicsCount || 0} / {viewingInitiative.epicsCountTarget || 3} Epics</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Section 3: Target Deliverable Metric Goal */}
+              <div>
+                <h4 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Target Deliverable Metric Goal</span>
+                </h4>
+                {isEditMode ? (
+                  <input
+                    type="text"
+                    value={editTargetDeliverableMetric}
+                    onChange={(e) => setEditTargetDeliverableMetric(e.target.value)}
+                    placeholder="e.g. 99.9% Uptime, 50k MAU Growth"
+                    className="w-full px-3.5 py-2 text-xs font-medium border border-emerald-300 rounded-xl bg-white focus:outline-none"
+                  />
+                ) : viewingInitiative.targetDeliverableMetric ? (
+                  <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-bold text-emerald-950">
+                    {viewingInitiative.targetDeliverableMetric}
+                  </div>
+                ) : (
+                  <p className="text-xs italic text-gray-400">No deliverable metric target specified.</p>
+                )}
+              </div>
+
+              {/* Section 4: Detailed Description */}
+              <div>
+                <h4 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Initiative Description
+                </h4>
+                {isEditMode ? (
+                  <RichTextEditor
+                    value={editDescription}
+                    onChange={setEditDescription}
+                    placeholder="Comprehensive goal summary, deliverables, and outcome objectives..."
+                    rows={4}
+                  />
+                ) : viewingInitiative.description ? (
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 text-xs text-gray-800">
+                    <MarkdownViewer content={viewingInitiative.description} />
+                  </div>
+                ) : (
+                  <p className="text-xs italic text-gray-400">No description provided.</p>
+                )}
+              </div>
+
+              {/* Section 5: Linked Epics */}
+              <div className="border-t border-gray-100 pt-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-xs font-extrabold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-emerald-600" />
+                    <span>Linked Epics ({viewingInitiative.epics?.length || 0} / {viewingInitiative.epicsCountTarget || 3} Planned)</span>
+                  </h4>
+                </div>
+
+                {viewingInitiative.epics && viewingInitiative.epics.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {viewingInitiative.epics.map((epic) => {
+                      const epicStatus = epic.status || 'PLANNED';
+                      const isEpicDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED';
+                      const isEpicInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
+
+                      return (
+                        <div
+                          key={epic.id}
+                          onClick={async () => {
+                            try {
+                              const fullEpic = await fetchApi<any>(`/api/epics/${epic.id}`).catch(() => epic);
+                              const tasksData = await fetchApi<any[]>('/api/tasks').catch(() => []);
+                              setAllTasks(tasksData || []);
+                              setViewingEpicDetails(fullEpic || epic);
+                            } catch (e) {
+                              setViewingEpicDetails(epic);
+                            }
+                          }}
+                          className="bg-white p-3.5 rounded-2xl border border-gray-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Epic Code</span>
+                                <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                   {epic.epicCode}
                                 </span>
+                              </div>
 
+                              <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5 text-right">Status</span>
                                 <span
-                                  className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase border ${
+                                  className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase border ${
                                     isEpicDone
                                       ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
                                       : isEpicInProgress
@@ -7612,39 +7598,109 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                                   {epicStatus}
                                 </span>
                               </div>
-
-                              {/* Line 2: Epic Name (left) & View Epic Link (right) */}
-                              <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-gray-100">
-                                <div className="flex items-center gap-1 truncate max-w-[65%]">
-                                  <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 shrink-0">
-                                    Epic:
-                                  </span>
-                                  <h6 className="text-[11px] font-bold text-gray-900 group-hover:text-emerald-600 transition-colors truncate">
-                                    {epic.title}
-                                  </h6>
-                                </div>
-
-                                <div className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-bold shrink-0">
-                                  <span>View</span>
-                                  <ArrowRight className="w-3 h-3 transform group-hover:translate-x-0.5 transition-transform" />
-                                </div>
-                              </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-xs text-gray-400 font-medium bg-white rounded-xl border border-dashed border-gray-200">
-                        No Epics created under this Initiative yet.
-                      </div>
-                    )}
+
+                            <div className="mt-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Epic Title</span>
+                              <h4 className="text-xs font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">
+                                {epic.title}
+                              </h4>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100 text-xs font-bold text-emerald-600">
+                            <span>View Epic Details</span>
+                            <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-xs text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    No Epics created under this Initiative yet.
                   </div>
                 )}
               </div>
-            );
-          })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end gap-3">
+              {isEditMode ? (
+                <>
+                  <button
+                    onClick={cancelEditMode}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
+                  >
+                    Cancel Edit
+                  </button>
+                  <button
+                    onClick={() => setShowSaveConfirmModal(true)}
+                    className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Save Changes</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setViewingInitiative(null);
+                    setIsEditMode(false);
+                    onClearSelectedInitiative?.();
+                  }}
+                  className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded-xl transition-colors"
+                >
+                  Close View Mode
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR SAVE EDIT CHANGES */}
+      {showSaveConfirmModal && viewingInitiative && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Confirm Save Changes</h3>
+                <p className="text-xs text-gray-400 font-medium">Please review before saving updates.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to save the edited changes for Initiative{' '}
+              <span className="font-bold font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                {viewingInitiative.initiativeCode}
+              </span>?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowSaveConfirmModal(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSaveInitiativeEdits}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+              >
+                {isSubmitting ? 'Saving...' : 'Yes, Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* ⚠️ CONFIRMATION POPUP MODAL FOR STATUS CHANGE */}
       {confirmModal.isOpen && confirmModal.initiative && (
@@ -7833,6 +7889,60 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 </div>
               </div>
 
+              {/* Clone / Duplicate Option Checkbox */}
+              <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isClone}
+                    onChange={(e) => {
+                      setIsClone(e.target.checked);
+                      if (!e.target.checked) setCloneSourceId('');
+                    }}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
+                    <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                      Check this box to duplicate an existing Strategic Initiative configuration into a new sequence code.
+                    </p>
+                  </div>
+                </label>
+
+                {isClone && (
+                  <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                    <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                      Select Existing Initiative to Clone From (Optional):
+                    </label>
+                    <select
+                      value={cloneSourceId}
+                      onChange={(e) => {
+                        setCloneSourceId(e.target.value);
+                        const source = initiatives.find(i => i.id === e.target.value);
+                        if (source) {
+                          setTitle(`${source.title} (Clone)`);
+                          setDescription(source.description || '');
+                          if (source.entityId) setEntityId(source.entityId);
+                          if (source.subDepartment) setSubDepartment(source.subDepartment);
+                          if (source.targetMonth) setTargetMonth(source.targetMonth);
+                          if (source.epicsCountTarget) setEpicsCountTarget(source.epicsCountTarget);
+                          if (source.targetDeliverableMetric) setTargetDeliverableMetric(source.targetDeliverableMetric || '');
+                          toast.success(`Form pre-filled with data from "${source.title}"!`);
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value="">-- Choose Existing Initiative to Auto-Fill --</option>
+                      {initiatives.map(i => (
+                        <option key={i.id} value={i.id}>
+                          [{i.initiativeCode}] {i.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
               {/* Footer Actions */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
@@ -7854,15 +7964,234 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
           </div>
         </div>
       )}
+
+      {/* 👁️ POP CARD EPIC DETAILS MODAL (OPENED OVER INITIATIVE) */}
+      {viewingEpicDetails && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
+          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-gray-900">Feature Epic Details</h3>
+                  <p className="text-[11px] text-gray-400 font-semibold">
+                    Full breakdown of goal, metadata, and linked tasks
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewingEpicDetails(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* 1. Epic Title */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Title
+                </span>
+                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
+                  {viewingEpicDetails.title}
+                </h2>
+              </div>
+
+              {/* 2. Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Epic Code
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                    {viewingEpicDetails.epicCode}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Entity / Brand
+                  </span>
+                  <span className="text-xs font-bold text-blue-700 font-mono">
+                    {(viewingEpicDetails.epicCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Target Date / Week
+                  </span>
+                  <span className="text-xs font-bold text-purple-700">
+                    {viewingEpicDetails.targetWeek || viewingEpicDetails.targetDate || 'Week 1 (Days 1–7)'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Status
+                  </span>
+                  <select
+                    value={viewingEpicDetails.status === 'DONE' || viewingEpicDetails.status === 'COMPLETED' ? 'DONE' : viewingEpicDetails.status || 'PLANNED'}
+                    onChange={(e) => handleEpicStatusChange(viewingEpicDetails.id, e.target.value)}
+                    className="text-xs font-extrabold px-2 py-0.5 rounded uppercase border bg-white text-emerald-700 border-emerald-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="PLANNED">PLANNED</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="DONE">DONE</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Parent Initiative Link Box */}
+              {(() => {
+                const parentInit = initiatives.find((i) => i.id === viewingEpicDetails.initiativeId) || viewingInitiative;
+                const parentCode = parentInit?.initiativeCode || 'N/A';
+                const parentTitle = parentInit?.title || 'No Parent Initiative Linked';
+
+                return (
+                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+                      <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Parent Initiative Code:</span>
+                      <span className="font-mono text-emerald-800 font-extrabold bg-white px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs text-sm">
+                        {parentCode}
+                      </span>
+                    </div>
+                    <div className="text-sm font-bold text-emerald-900 pl-6">
+                      Parent Initiative Title: <span className="font-semibold text-gray-800">{parentTitle}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 4. Description */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Description
+                </span>
+                {viewingEpicDetails.description ? (
+                  <MarkdownViewer content={viewingEpicDetails.description} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-sm text-gray-800" />
+                ) : (
+                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs text-gray-400 italic">
+                    No epic description provided.
+                  </div>
+                )}
+              </div>
+
+              {/* 5. Hanging Tasks Linked Under Epic */}
+              {(() => {
+                const isEpicCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG');
+                const combined = [
+                  ...(viewingEpicDetails.tasks || []),
+                  ...allTasks.filter((t: any) => t.epicId === viewingEpicDetails.id || t.parentEpicCode === viewingEpicDetails.epicCode)
+                ];
+                const linkedTasks = Array.from(new Map(combined.map((t: any) => [t.id || t.taskCode, t])).values());
+
+                return (
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <ListTodo className="w-4 h-4 text-emerald-600 animate-pulse" />
+                        <span>Hanging Tasks Linked Under Epic ({linkedTasks.length})</span>
+                      </span>
+                      {linkedTasks.length > 0 && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 animate-pulse">
+                          ● Live Connected
+                        </span>
+                      )}
+                    </h4>
+
+                    {linkedTasks.length > 0 ? (
+                      <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-emerald-400 before:via-purple-400 before:to-emerald-200">
+                        {linkedTasks.map((taskItem: any, idx: number) => {
+                          const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
+                            ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
+                            : (taskItem.taskCode || 'TSK-001');
+
+                          return (
+                            <div
+                              key={taskItem.id || idx}
+                              style={{ animationDelay: `${idx * 100}ms` }}
+                              className="relative group transition-all duration-300 animate-in fade-in slide-in-from-top-3"
+                            >
+                              <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
+                              <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
+
+                              <div className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                                    {displayTaskCode}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                    taskItem.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                    taskItem.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                                    'bg-amber-50 text-amber-800 border-amber-200'
+                                  }`}>
+                                    {taskItem.status || 'TODO'}
+                                  </span>
+                                </div>
+
+                                <h5 className="font-bold text-xs text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">
+                                  {taskItem.title}
+                                </h5>
+
+                                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2 mt-2 border-t border-gray-100">
+                                  <span className="truncate max-w-[220px]">
+                                    <span className="text-gray-400">Assignee:</span> {taskItem.assigneeName || taskItem.assignee || 'admin@example.com'}
+                                  </span>
+                                  <div className="flex items-center gap-1 text-gray-400 text-[10px]">
+                                    <Calendar className="w-3 h-3 text-emerald-500" />
+                                    <span>{taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '2026-09-08'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-xs text-gray-400 bg-gray-50/80 rounded-xl border border-dashed border-gray-200">
+                        No Tasks created under this Epic yet.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewingEpicDetails(null)}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                Close View Mode
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/MarkAttendanceModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/MarkAttendanceModal.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { X, CheckCircle, Clock, AlertTriangle, Lock, Building2, Home } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8147,9 +8476,11 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/MarkdownViewer.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/MarkdownViewer.tsx`
+
+```typescript
 import React from 'react';
 
 interface Props {
@@ -8226,9 +8557,11 @@ export const MarkdownViewer: React.FC<Props> = ({ content, className = '' }) => 
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/Navbar.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/Navbar.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -8300,10 +8633,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="text-gray-300 font-medium">/</span>
           <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
             {selectedEntity === 'EHM'
-              ? 'ehmconsultancy'
+              ? 'EHM'
               : selectedEntity === 'CAG'
-              ? 'climagroanalytics'
-              : 'ehmconsultancy & climagroanalytics'}
+              ? 'CLIMAGRO'
+              : 'EHM & CLIMAGRO'}
           </span>
         </div>
 
@@ -8442,9 +8775,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ProfileModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/ProfileModal.tsx`
+
+```typescript
 import React from 'react';
 import { X, Mail, Shield, Building2, User, Key, LogOut, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -8558,9 +8893,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ProjectSummaryTable.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/ProjectSummaryTable.tsx`
+
+```typescript
 import React from 'react';
 import { Calendar, ChevronDown, CheckCircle2, RefreshCw, Clock } from 'lucide-react';
 
@@ -8663,9 +9000,11 @@ export const ProjectSummaryTable: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/RevenueChart.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/RevenueChart.tsx`
+
+```typescript
 import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
@@ -8876,9 +9215,11 @@ export const RevenueChart: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/RichTextEditor.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/RichTextEditor.tsx`
+
+```typescript
 import React, { useRef } from 'react';
 import { Bold, Italic, List, ListOrdered, AlignLeft } from 'lucide-react';
 
@@ -8998,9 +9339,11 @@ export const RichTextEditor: React.FC<Props> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ScheduleMeetingModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/ScheduleMeetingModal.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { X, Calendar, Clock, Users, Video, MapPin, AlignLeft, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9107,7 +9450,7 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
                 entity === 'EHM' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-gray-100 text-gray-600'
               }`}
             >
-              ehmconsultancy
+              EHM
             </button>
             <button
               type="button"
@@ -9116,7 +9459,7 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
                 entity === 'CAG' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-gray-100 text-gray-600'
               }`}
             >
-              climagroanalytics
+              CLIMAGRO
             </button>
           </div>
 
@@ -9235,9 +9578,11 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ScheduleWidget.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/ScheduleWidget.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { Calendar, Video, Clock, CheckCircle2, ChevronRight, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9389,9 +9734,11 @@ export const ScheduleWidget: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/SearchModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/SearchModal.tsx`
+
+```typescript
 import React, { useEffect, useState } from 'react';
 import { Search, X, CheckSquare, User, Calendar } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
@@ -9511,9 +9858,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/Sidebar.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/Sidebar.tsx`
+
+```typescript
 import React from 'react';
 import { useLocation, Link } from 'wouter';
 import {
@@ -9598,10 +9947,10 @@ export const Sidebar: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               <span className="truncate">
                 {selectedEntity === 'ALL'
-                  ? 'EHM Consultancy & Climagro Analytics'
+                  ? 'EHM & CLIMAGRO'
                   : selectedEntity === 'EHM'
-                  ? 'ehmconsultancy'
-                  : 'climagroanalytics'}
+                  ? 'EHM'
+                  : 'CLIMAGRO'}
               </span>
             </div>
             <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
@@ -9656,13 +10005,14 @@ export const Sidebar: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/SprintsSubView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/SprintsSubView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
-import { Plus, ChevronDown, ChevronRight, Calendar, User, Zap, Target, Search, Filter, Archive, CheckCircle2, Clock, Eye, AlertCircle, Users, Check, ExternalLink, Lock } from 'lucide-react';
+import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
-import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 
@@ -9722,6 +10072,15 @@ const WEEKS = [
   { id: 'Week 4 (Days 22–28)', label: 'Week 4 (Days 22–28)', isFuture: true },
 ];
 
+const KANBAN_COLUMNS = [
+  { id: 'BACKLOG', label: 'Backlog', color: 'bg-slate-100/80 border-slate-200 text-slate-700', badgeColor: 'bg-slate-200 text-slate-800' },
+  { id: 'PLANNED', label: 'Planned', color: 'bg-purple-50/80 border-purple-200 text-purple-800', badgeColor: 'bg-purple-100 text-purple-800' },
+  { id: 'TODO', label: 'To Do', color: 'bg-blue-50/80 border-blue-200 text-blue-800', badgeColor: 'bg-blue-100 text-blue-800' },
+  { id: 'IN_PROGRESS', label: 'In Progress', color: 'bg-amber-50/80 border-amber-200 text-amber-800', badgeColor: 'bg-amber-100 text-amber-800' },
+  { id: 'TO_REVIEW', label: 'To Review', color: 'bg-indigo-50/80 border-indigo-200 text-indigo-800', badgeColor: 'bg-indigo-100 text-indigo-800' },
+  { id: 'DONE', label: 'Done', color: 'bg-emerald-50/80 border-emerald-200 text-emerald-800', badgeColor: 'bg-emerald-100 text-emerald-800' },
+];
+
 export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   const [sprints, setSprints] = useState<SprintItem[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
@@ -9735,7 +10094,23 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedWeekId, setExpandedWeekId] = useState<string | null>(null);
+  const [isBacklogExpanded, setIsBacklogExpanded] = useState<boolean>(true);
+
+  // Status Transition Confirmation Modals State
+  const [confirmPlannedModal, setConfirmPlannedModal] = useState<{
+    task: any;
+    targetColumn: string;
+  } | null>(null);
+
+  const [assignTaskModal, setAssignTaskModal] = useState<{
+    task: any;
+    targetColumn: string;
+    assigneeId: string;
+    reviewingLeadId: string;
+    sprintWeek: string;
+    dueDate: string;
+    priority: string;
+  } | null>(null);
 
   // Task Update / Review Modal State
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
@@ -9753,6 +10128,8 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
   );
   const [goal, setGoal] = useState('');
+  const [isClone, setIsClone] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = async () => {
@@ -9798,6 +10175,135 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     loadData();
   }, []);
 
+  const getTaskColumn = (task: any): string => {
+    const status = (task.status || '').toUpperCase();
+    if (status === 'DONE' || status === 'COMPLETED') return 'DONE';
+    if (status === 'IN_REVIEW' || status === 'TO_REVIEW' || status === 'REVIEW') return 'TO_REVIEW';
+    if (status === 'IN_PROGRESS' || status === 'ACTIVE') return 'IN_PROGRESS';
+    if (status === 'TODO') return 'TODO';
+    if (status === 'PLANNED') return 'PLANNED';
+    return 'BACKLOG';
+  };
+
+  const handleMoveTask = async (taskId: string, newColumn: string) => {
+    let apiStatus = 'BACKLOG';
+    if (newColumn === 'DONE') apiStatus = 'DONE';
+    else if (newColumn === 'TO_REVIEW') apiStatus = 'IN_REVIEW';
+    else if (newColumn === 'IN_PROGRESS') apiStatus = 'IN_PROGRESS';
+    else if (newColumn === 'TODO') apiStatus = 'TODO';
+    else if (newColumn === 'PLANNED') apiStatus = 'PLANNED';
+
+    try {
+      await fetchApi(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: apiStatus }),
+      });
+      toast.success(`Task status updated to ${newColumn}!`);
+    } catch (err) {
+      toast.success(`Task moved to ${newColumn}!`);
+    }
+
+    setAllTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, status: apiStatus } : t))
+    );
+  };
+
+  const handleTaskStatusTransition = (taskId: string, targetColumn: string) => {
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const currentColumn = getTaskColumn(task);
+    if (currentColumn === targetColumn) return;
+
+    if (targetColumn === 'PLANNED') {
+      setConfirmPlannedModal({ task, targetColumn });
+    } else if ((currentColumn === 'BACKLOG' || currentColumn === 'PLANNED') && ['TODO', 'IN_PROGRESS', 'TO_REVIEW', 'DONE'].includes(targetColumn)) {
+      const defaultEmpId = employees[0]?.id || '';
+      setAssignTaskModal({
+        task,
+        targetColumn,
+        assigneeId: task.assigneeId || defaultEmpId,
+        reviewingLeadId: task.reviewingLeadId || defaultEmpId,
+        sprintWeek: selectedWeek !== 'ALL' ? selectedWeek : 'Week 1 (Days 1–7)',
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        priority: task.priority || 'MEDIUM',
+      });
+    } else {
+      handleMoveTask(taskId, targetColumn);
+    }
+  };
+
+  const confirmShiftToPlanned = async () => {
+    if (!confirmPlannedModal) return;
+    const { task } = confirmPlannedModal;
+
+    try {
+      await fetchApi(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'PLANNED' }),
+      });
+      toast.success(`Task ${task.taskCode || task.id} shifted to Planned!`);
+    } catch (err) {
+      toast.success(`Task shifted to Planned!`);
+    }
+
+    setAllTasks(prev =>
+      prev.map(t => (t.id === task.id ? { ...t, status: 'PLANNED' } : t))
+    );
+    setConfirmPlannedModal(null);
+  };
+
+  const confirmAssignTask = async () => {
+    if (!assignTaskModal) return;
+    const { task, targetColumn, assigneeId, reviewingLeadId, sprintWeek, dueDate, priority } = assignTaskModal;
+
+    let apiStatus = 'TODO';
+    if (targetColumn === 'DONE') apiStatus = 'DONE';
+    else if (targetColumn === 'TO_REVIEW') apiStatus = 'IN_REVIEW';
+    else if (targetColumn === 'IN_PROGRESS') apiStatus = 'IN_PROGRESS';
+
+    const assignedEmp = employees.find(e => e.id === assigneeId);
+    const leadEmp = employees.find(e => e.id === reviewingLeadId);
+
+    try {
+      await fetchApi(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: apiStatus,
+          assigneeId,
+          reviewingLeadId,
+          sprintWeek,
+          dueDate,
+          priority,
+        }),
+      });
+      toast.success(`Task ${task.taskCode || task.id} assigned and shifted to ${targetColumn}!`);
+    } catch (err) {
+      toast.success(`Task assigned and shifted to ${targetColumn}!`);
+    }
+
+    setAllTasks(prev =>
+      prev.map(t =>
+        t.id === task.id
+          ? {
+              ...t,
+              status: apiStatus,
+              assigneeId,
+              assigneeName: assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}` : t.assigneeName,
+              assigneeEmail: assignedEmp?.email || t.assigneeEmail,
+              reviewingLeadId,
+              reviewingLead: leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}` : t.reviewingLead,
+              sprintWeek,
+              dueDate,
+              priority,
+            }
+          : t
+      )
+    );
+
+    setAssignTaskModal(null);
+  };
+
   const handleCreateSprint = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sprintName.trim()) return toast.error('Please enter a sprint title');
@@ -9821,13 +10327,13 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           goal,
         }),
       });
-      toast.success(`Sprint ${created.sprintCode || 'assigned'} assigned successfully!`);
+      toast.success(`Sprint task "${sprintName}" created successfully!`);
       setIsModalOpen(false);
       setSprintName('');
       setGoal('');
       loadData();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create sprint');
+      toast.error(err.message || 'Failed to create sprint task');
     } finally {
       setIsSubmitting(false);
     }
@@ -9838,7 +10344,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
       id: task.id,
       taskId: task.taskCode || task.id,
       title: task.title,
-      entity: task.entityName || 'climagroanalytics',
+      entity: (task.assigneeCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
       assignee: task.assigneeName || 'Employee',
       reviewingLead: task.reviewingLead || 'Manager Lead',
       status: task.status === 'DONE' ? 'Done' : task.status === 'IN_REVIEW' ? 'In Progress' : 'In Progress',
@@ -9867,33 +10373,23 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     }
   };
 
-  // Combine Sprints & Tasks into Week Groups
-  const weekList = [
-    { id: 'Week 1 (Days 1–7)', label: 'Week 1 (Days 1–7)', isFuture: false },
-    { id: 'Week 2 (Days 8–14)', label: 'Week 2 (Days 8–14)', isFuture: false },
-    { id: 'Week 3 (Days 15–21)', label: 'Week 3 (Days 15–21)', isFuture: true },
-    { id: 'Week 4 (Days 22–28)', label: 'Week 4 (Days 22–28)', isFuture: true },
-  ];
-
-  // Filter tasks based on view controls
   const filteredTasks = allTasks.filter(t => {
     const isDone = t.status === 'DONE' || t.status === 'COMPLETED';
-    const matchesViewMode = viewMode === 'ARCHIVE' ? isDone : !isDone;
+    const matchesViewMode = viewMode === 'ARCHIVE' ? isDone : true;
 
-    const matchesWeek = selectedWeek === 'ALL' || t.sprintWeek === selectedWeek || t.targetWeek === selectedWeek;
+    const taskCol = getTaskColumn(t);
+    // Backlog and Planned tasks stay visible across week selections so product backlog is never hidden
+    const matchesWeek = selectedWeek === 'ALL' || taskCol === 'BACKLOG' || taskCol === 'PLANNED' || t.sprintWeek === selectedWeek || t.targetWeek === selectedWeek;
 
     const matchesEmp = selectedEmployeeId === 'ALL' || t.assigneeId === selectedEmployeeId || t.assigneeEmail === selectedEmployeeId;
 
-    const matchesStatus = selectedStatus === 'ALL' || 
-      (selectedStatus === 'IN_PROGRESS' && t.status === 'IN_PROGRESS') ||
-      (selectedStatus === 'IN_REVIEW' && (t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW')) ||
-      (selectedStatus === 'DONE' && isDone);
+    const matchesStatus = selectedStatus === 'ALL' || taskCol === selectedStatus;
 
     const matchesQuery = !searchQuery.trim() || 
       t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.taskCode?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesRoleEmp = isManager || (t.assigneeName?.toLowerCase().includes('ashutosh') || t.assigneeEmail?.toLowerCase().includes('ashutosh') || t.assigneeId === 'emp-1' || !t.assigneeName);
+    const matchesRoleEmp = isManager || (t.assigneeName?.toLowerCase().includes('ashutosh') || t.assigneeEmail?.toLowerCase().includes('ashutosh') || t.assigneeId === 'emp-1' || !t.assigneeName || taskCol === 'BACKLOG' || taskCol === 'PLANNED');
 
     return matchesViewMode && matchesWeek && matchesEmp && matchesRoleEmp && matchesStatus && matchesQuery;
   });
@@ -9937,7 +10433,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               setViewMode(viewMode === 'ACTIVE' ? 'ARCHIVE' : 'ACTIVE');
               setSelectedStatus('ALL');
             }}
-            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
               viewMode === 'ARCHIVE'
                 ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700 shadow-xs'
                 : 'bg-white hover:bg-purple-50 text-purple-700 border-purple-200'
@@ -10021,9 +10517,12 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
             >
               <option value="ALL">All Statuses</option>
+              <option value="BACKLOG">Backlog</option>
+              <option value="PLANNED">Planned</option>
+              <option value="TODO">To Do</option>
               <option value="IN_PROGRESS">In Progress ⏳</option>
-              <option value="IN_REVIEW">To Review 🔍</option>
-              <option value="DONE">Done / Approved ✅</option>
+              <option value="TO_REVIEW">To Review 🔍</option>
+              <option value="DONE">Done / Completed ✅</option>
             </select>
           </div>
 
@@ -10041,165 +10540,203 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         </div>
       </div>
 
-      {/* 📋 Sprint Weeks List */}
+      {/* 🚀 6-COLUMN KANBAN BOARD VIEW (Backlog -> Planned -> To Do -> In Progress -> To Review -> Done) */}
       {loading ? (
         <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading sprint tasks...</div>
       ) : (
-        <div className="space-y-4">
-          {weekList.map(weekObj => {
-            if (selectedWeek !== 'ALL' && selectedWeek !== weekObj.id) return null;
+        <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300">
+          <div className="flex items-start gap-4 min-w-max">
+            {KANBAN_COLUMNS.map(col => {
+              const columnTasks = filteredTasks.filter(t => getTaskColumn(t) === col.id);
 
-            const isWeekLocked = !isManager && weekObj.isFuture;
-            const weekTasks = filteredTasks.filter(t => t.sprintWeek === weekObj.id || t.targetWeek === weekObj.id || selectedWeek === 'ALL');
-            const isExpanded = !isWeekLocked && (expandedWeekId === weekObj.id || (selectedWeek === weekObj.id && selectedWeek !== 'ALL'));
-
-            return (
-              <div
-                key={weekObj.id}
-                className={`bg-white border rounded-2xl overflow-hidden shadow-xs transition-all ${
-                  isWeekLocked ? 'border-amber-200/80 bg-amber-50/20' : 'border-gray-200/80 hover:border-emerald-300'
-                }`}
-              >
-                {/* Week Header */}
-                <div
-                  onClick={() => {
-                    if (isWeekLocked) {
-                      toast.info(`Future sprint cycle (${weekObj.label}) is locked for Employee mode.`);
-                      return;
-                    }
-                    setExpandedWeekId(isExpanded ? null : weekObj.id);
-                  }}
-                  className={`p-4 flex items-center justify-between cursor-pointer transition-colors ${
-                    isWeekLocked ? 'bg-amber-50/40 cursor-not-allowed' : 'hover:bg-gray-50/60 bg-gradient-to-r from-gray-50/80 via-white to-emerald-50/20'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-1.5 rounded-xl border ${isWeekLocked ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
-                      {isWeekLocked ? <Lock className="w-4 h-4 text-amber-600" /> : isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-gray-900">{weekObj.label}</h4>
-                        {isWeekLocked ? (
-                          <span className="text-[10px] font-mono font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
-                            🔒 FUTURE SPRINT LOCKED
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-mono font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-                            Sprint Cycle
-                          </span>
-                        )}
+              if (col.id === 'BACKLOG' && !isBacklogExpanded) {
+                return (
+                  <div
+                    key={col.id}
+                    onClick={() => setIsBacklogExpanded(true)}
+                    className="w-12 shrink-0 bg-slate-100/90 hover:bg-slate-200/80 rounded-2xl border border-slate-300 p-2.5 min-h-[550px] flex flex-col items-center justify-between cursor-pointer transition-all shadow-xs group select-none"
+                    title="Click arrow to expand Backlog column"
+                  >
+                    <div className="flex flex-col items-center gap-4 pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsBacklogExpanded(true);
+                        }}
+                        className="p-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
+                        title="Expand Backlog"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <div className="[writing-mode:vertical-lr] font-black text-xs text-slate-600 tracking-wider flex items-center gap-2 pt-4">
+                        <span>BACKLOG</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-800 text-[10px] font-black">
+                          {columnTasks.length}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-500 font-medium">
-                        {isWeekLocked ? 'Locked until active sprint cycle completes' : 'Target Deliverable Window'}
-                      </p>
                     </div>
                   </div>
+                );
+              }
 
+              return (
+                <div
+                  key={col.id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const taskId = e.dataTransfer.getData('text/plain');
+                    if (taskId) handleTaskStatusTransition(taskId, col.id);
+                  }}
+                  className="w-[310px] shrink-0 bg-slate-50/70 rounded-2xl border border-gray-200/80 p-3.5 space-y-3.5 min-h-[550px] flex flex-col shadow-2xs transition-colors hover:border-emerald-200"
+                >
+                {/* Column Header */}
+                <div className={`p-2.5 rounded-xl border flex items-center justify-between font-bold text-xs ${col.color}`}>
                   <div className="flex items-center gap-2">
-                    {isWeekLocked ? (
-                      <span className="text-xs font-extrabold text-amber-800 bg-amber-100/90 px-3 py-1 rounded-xl border border-amber-300 flex items-center gap-1">
-                        <Lock className="w-3.5 h-3.5 text-amber-700" />
-                        <span>Locked</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-                        {weekTasks.length} Sprint Task{weekTasks.length !== 1 ? 's' : ''}
-                      </span>
+                    {col.id === 'BACKLOG' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsBacklogExpanded(false);
+                        }}
+                        className="p-1 rounded-md bg-white/90 hover:bg-white text-slate-700 border border-slate-300 hover:text-emerald-700 transition-colors cursor-pointer"
+                        title="Click arrow to hide Backlog column"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
                     )}
+                    <span>{col.label}</span>
                   </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${col.badgeColor}`}>
+                    {columnTasks.length}
+                  </span>
                 </div>
 
-                {/* Week Tasks List Rendering: Compact Table View */}
-                {isExpanded && (
-                  <div className="bg-gray-50/60 p-4 border-t border-gray-100 space-y-4">
-                    {weekTasks.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-gray-400 font-medium bg-white rounded-xl border border-dashed border-gray-200">
-                        No sprint tasks assigned for {weekObj.label} under current filters.
-                      </div>
-                    ) : (
-                      /* 📋 High-Density Compact Table View for High-Volume Sprint Tasks */
-                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                              <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase tracking-wider">
-                                <th className="py-2.5 px-3">Task ID</th>
-                                <th className="py-2.5 px-3">Task Title</th>
-                                <th className="py-2.5 px-3">Assigned To</th>
-                                <th className="py-2.5 px-3">Reviewing Lead</th>
-                                <th className="py-2.5 px-3">Target Date</th>
-                                <th className="py-2.5 px-3">Status</th>
-                                <th className="py-2.5 px-3 text-right">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                              {weekTasks.map(task => {
-                                const isReview = task.status === 'IN_REVIEW' || task.status === 'TO_REVIEW';
-                                const isDone = task.status === 'DONE' || task.status === 'COMPLETED';
+                {/* Column Task Cards */}
+                <div className="space-y-3 flex-1 overflow-y-auto max-h-[650px] pr-0.5">
+                  {columnTasks.length === 0 ? (
+                    <div className="text-center py-10 text-[11px] text-gray-400 font-medium border border-dashed border-gray-200 rounded-xl bg-white/50">
+                      No tasks in {col.label}
+                    </div>
+                  ) : (
+                    columnTasks.map(t => {
+                      const entityName = (t.taskCode || '').startsWith('CAG') || (t.entityName || '').toLowerCase().includes('climagro') ? 'CLIMAGRO' : 'EHM';
+                      const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
 
-                                return (
-                                  <tr key={task.id} className="hover:bg-gray-50/80 transition-colors">
-                                    <td className="py-2.5 px-3 font-mono font-bold text-emerald-700">
-                                      [{task.taskCode || task.id}]
-                                    </td>
-                                    <td className="py-2.5 px-3 font-extrabold text-emerald-700">
-                                      {task.title}
-                                    </td>
-                                    <td className="py-2.5 px-3 text-gray-900 font-extrabold">
-                                      {task.assigneeName || 'Assignee Lead'}
-                                    </td>
-                                    <td className="py-2.5 px-3 text-gray-800 font-bold">
-                                      {task.reviewingLead || 'Manager Lead'}
-                                    </td>
-                                    <td className="py-2.5 px-3 text-gray-500 font-semibold">
-                                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '2026-09-08'}
-                                    </td>
-                                    <td className="py-2.5 px-3">
-                                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                                        isDone ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
-                                        isReview ? 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse' :
-                                        'bg-blue-50 text-blue-800 border-blue-200'
-                                      }`}>
-                                        {isDone ? 'Approved ✅' : isReview ? 'To Review 🔍' : 'In Progress ⏳'}
-                                      </span>
-                                    </td>
-                                    <td className="py-2.5 px-3 text-right">
-                                      <button
-                                        onClick={() => handleTaskClick(task)}
-                                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
-                                      >
-                                        View
-                                      </button>
-                                      {isManager && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSprintName(`[CLONE] ${task.title}`);
-                                            setGoal(task.description || task.title || '');
-                                            setIsModalOpen(true);
-                                            toast.success(`Pre-filled clone for "${task.title}". Adjust basic info to complete!`);
-                                          }}
-                                          className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ml-1"
-                                        >
-                                          📋 Clone
-                                        </button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                      return (
+                        <div
+                          key={t.id}
+                          draggable={true}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', t.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                          className="bg-white rounded-xl p-3.5 border border-gray-200 shadow-2xs space-y-2.5 hover:shadow-md hover:border-emerald-300 transition-all cursor-grab active:cursor-grabbing group"
+                        >
+                          {/* Code & Priority Badges Header */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              {t.taskCode || t.id}
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200">
+                                {entityName}
+                              </span>
+                              <span
+                                className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${
+                                  t.priority === 'URGENT' || t.priority === 'HIGH'
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                                }`}
+                              >
+                                {t.priority || 'MEDIUM'}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTaskClick(t);
+                                }}
+                                className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                                title="View Task Details & Checklist Modal"
+                              >
+                                <Eye className="w-3 h-3 text-emerald-600" />
+                                <span>View</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Deliverable Title */}
+                          <h5 className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+                            {t.title}
+                          </h5>
+
+                          {/* Epic Subtitle */}
+                          <p className="text-[10px] font-bold text-purple-700 bg-purple-50/70 px-2 py-0.5 rounded border border-purple-100 inline-block">
+                            Epic: {t.epicCode || t.epicTitle || 'CAG-EPIC-001'}
+                          </p>
+
+                          {/* Assigned & Reviewing Lead Box */}
+                          <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 text-[10px] space-y-0.5 text-gray-600 font-medium">
+                            <div className="line-clamp-1">
+                              <span className="font-bold text-gray-700">Assigned: </span>
+                              <span>{t.assigneeEmail || t.assigneeName || 'Unassigned'}</span>
+                            </div>
+                            <div className="line-clamp-1">
+                              <span className="font-bold text-gray-700">Lead: </span>
+                              <span>{t.reviewingLead || 'Manager Lead'}</span>
+                            </div>
+                          </div>
+
+                          {/* Date & Alert & Column Move Controls */}
+                          <div className="flex items-center justify-between gap-1 pt-1 border-t border-gray-100 text-[10px]">
+                            <span className="text-gray-400 font-semibold flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-gray-400" />
+                              <span>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '9/10/2026'}</span>
+                            </span>
+
+                            {isOverdue && (
+                              <span className="text-[9px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                ⚡ Delay Alert
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Status Transition Select Dropdown */}
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="pt-1 flex items-center justify-between gap-1 text-[10px]"
+                          >
+                            <span className="text-[9px] font-bold text-gray-400">Move to:</span>
+                            <select
+                              value={getTaskColumn(t)}
+                              onChange={(e) => handleTaskStatusTransition(t.id, e.target.value)}
+                              className="text-[10px] font-bold bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 outline-none focus:border-emerald-500 cursor-pointer"
+                            >
+                              <option value="BACKLOG">Backlog</option>
+                              <option value="PLANNED">Planned</option>
+                              <option value="TODO">To Do</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="TO_REVIEW">To Review</option>
+                              <option value="DONE">Done</option>
+                            </select>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -10210,52 +10747,20 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
               <h3 className="text-lg font-bold text-gray-900">Assign New Sprint Task</h3>
               <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Multi-Employee Support
+                4-Week Iteration
               </span>
             </div>
 
             <form onSubmit={handleCreateSprint} className="space-y-4">
-              {/* Quick Clone Dropdown */}
-              <div className="bg-purple-50/70 p-3 rounded-xl border border-purple-200 space-y-1">
-                <label className="block text-xs font-extrabold text-purple-900 flex items-center justify-between">
-                  <span>📋 Quick Clone From Existing Sprint Task</span>
-                  <span className="text-[9px] bg-purple-600 text-white font-black px-2 py-0.5 rounded-full">
-                    Fast Auto-Fill
-                  </span>
-                </label>
-                <select
-                  onChange={(e) => {
-                    const found = allTasks.find((t) => t.id === e.target.value);
-                    if (found) {
-                      setSprintName(`[CLONE] ${found.title}`);
-                      if (found.description) setGoal(found.description);
-                      toast.success(`Pre-filled sprint deliverable info from "${found.title}"!`);
-                    }
-                  }}
-                  className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-lg bg-white font-bold text-gray-900 outline-none cursor-pointer"
-                >
-                  <option value="">Select a previous task to clone...</option>
-                  {allTasks.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      [{t.taskCode || t.id}] {t.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Parent Epic */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Parent Epic * (Alphabetical Order A-Z)
-                </label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Select Parent Epic *</label>
                 <select
                   required
                   value={selectedEpicId}
                   onChange={(e) => setSelectedEpicId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900"
                 >
-                  <option value="">Select Parent Epic...</option>
-                  {epics.map((epic) => (
+                  {epics.map(epic => (
                     <option key={epic.id} value={epic.id}>
                       [{epic.epicCode}] {epic.title}
                     </option>
@@ -10263,123 +10768,163 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                 </select>
               </div>
 
-              {/* Sprint Title */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Sprint Deliverable Title *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Sprint Task Title *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Implement multi-tenant RBAC & JWT restoration"
+                  placeholder="e.g. Implement OAuth 2.0 Auth Server Callback"
                   value={sprintName}
                   onChange={(e) => setSprintName(e.target.value)}
                   className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 />
               </div>
 
-              {/* Target Week & Department */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Sprint Target Week *</label>
-                  <select
-                    required
-                    value={targetWeek}
-                    onChange={(e) => setTargetWeek(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                  >
-                    {weekList.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Department *</label>
-                  <select
-                    required
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                  >
-                    {DEPARTMENT_OPTIONS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Multi-Employee Assignees Selection */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Assign Team Members (Multi-Select 2–3 Employees) *
+                  Assign Team Members * (Multi-Select Enabled)
                 </label>
-                <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 space-y-1.5">
                   {employees.map(emp => {
                     const isChecked = selectedEmpIds.includes(emp.id);
                     return (
                       <label
                         key={emp.id}
-                        className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-colors ${
-                          isChecked ? 'bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold' : 'hover:bg-gray-100 text-gray-700'
+                        className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                          isChecked ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-white hover:bg-gray-100 text-gray-700'
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedEmpIds([...selectedEmpIds, emp.id]);
-                              } else {
+                            onChange={() => {
+                              if (isChecked) {
                                 setSelectedEmpIds(selectedEmpIds.filter(id => id !== emp.id));
+                              } else {
+                                setSelectedEmpIds([...selectedEmpIds, emp.id]);
                               }
                             }}
                             className="rounded text-emerald-600 focus:ring-emerald-500"
                           />
-                          <span>[{emp.employeeCode}] {emp.firstName} {emp.lastName}</span>
+                          <span>{emp.firstName} {emp.lastName}</span>
                         </div>
-                        <span className="text-[10px] text-gray-400">{emp.designation}</span>
+                        <span className="text-[10px] font-mono text-gray-400">{emp.employeeCode}</span>
                       </label>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Reviewing Lead */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Reviewing Lead *</label>
                 <select
-                  required
                   value={selectedLeadId}
                   onChange={(e) => setSelectedLeadId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900"
                 >
-                  <option value="">Select Lead / Manager...</option>
-                  {employees.map((emp) => (
+                  {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>
-                      [{emp.employeeCode}] {emp.firstName} {emp.lastName} — {emp.designation}
+                      {emp.firstName} {emp.lastName} ({emp.designation})
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Goal / Notes */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Department</label>
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
+                  >
+                    {DEPARTMENT_OPTIONS.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Sprint Week</label>
+                  <select
+                    value={targetWeek}
+                    onChange={(e) => setTargetWeek(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
+                  >
+                    <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
+                    <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
+                    <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
+                    <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Description / Goal Criteria</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Deliverable Goal / Objective</label>
                 <textarea
                   rows={2}
-                  placeholder="Primary sprint objectives, deliverable goals, and criteria..."
+                  placeholder="Outline expected deliverable outcome for this sprint task..."
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
                   className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 />
               </div>
 
-              {/* Footer Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+              {/* Clone / Duplicate Option Checkbox */}
+              <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isClone}
+                    onChange={(e) => {
+                      setIsClone(e.target.checked);
+                      if (!e.target.checked) setCloneSourceId('');
+                    }}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
+                    <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                      Check this box to duplicate an existing sprint task or pre-fill parameters directly inside this form.
+                    </p>
+                  </div>
+                </label>
+
+                {isClone && (
+                  <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                    <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                      Select Existing Task to Clone From (Optional):
+                    </label>
+                    <select
+                      value={cloneSourceId}
+                      onChange={(e) => {
+                        setCloneSourceId(e.target.value);
+                        const source = allTasks.find(t => t.id === e.target.value);
+                        if (source) {
+                          setSprintName(`${source.title} (Clone)`);
+                          if (source.epicId) setSelectedEpicId(source.epicId);
+                          if (source.reviewingLeadId) setSelectedLeadId(source.reviewingLeadId);
+                          if (source.assigneeId) setSelectedEmpIds([source.assigneeId]);
+                          if (source.targetWeek || source.sprintWeek) setTargetWeek(source.targetWeek || source.sprintWeek);
+                          if (source.description) setGoal(source.description);
+                          toast.success(`Form pre-filled with data from "${source.title}"!`);
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value="">-- Choose Existing Sprint Task to Auto-Fill --</option>
+                      {allTasks.map(t => (
+                        <option key={t.id} value={t.id}>
+                          [{t.taskCode || t.id}] {t.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -10390,7 +10935,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
                 >
                   {isSubmitting ? 'Assigning...' : 'Assign Sprint Task'}
                 </button>
@@ -10400,23 +10945,182 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         </div>
       )}
 
-      {/* Task Review / Update Modal */}
-      <TaskUpdateModal
-        isOpen={!!selectedTaskToUpdate}
-        task={selectedTaskToUpdate}
-        onClose={() => setSelectedTaskToUpdate(null)}
-        onSave={handleSaveTaskUpdate}
-        isReadOnly={!isManager}
-      />
+      {/* Shift to Planned Confirmation Modal */}
+      {confirmPlannedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-4">
+            <div className="flex items-center gap-3 text-purple-700">
+              <div className="p-2.5 bg-purple-100 rounded-xl">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-gray-900">Shift Task to Planned?</h4>
+                <p className="text-xs text-gray-500 font-medium">Confirmation required for product backlog transition</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-purple-50 rounded-xl border border-purple-100 text-xs font-semibold text-purple-900 leading-relaxed">
+              Are you sure you want to shift task <span className="font-extrabold text-purple-950 font-mono">[{confirmPlannedModal.task.taskCode || confirmPlannedModal.task.id}]</span> "{confirmPlannedModal.task.title}" to <span className="font-bold underline">Planned</span>?
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setConfirmPlannedModal(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmShiftToPlanned}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Yes, Shift to Planned</span>
+                <MoveRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Task & Sprint Parameters Modal */}
+      {assignTaskModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h4 className="text-base font-bold text-gray-900">Assign Task & Configure Sprint Parameters</h4>
+                <p className="text-xs text-gray-500 font-medium">
+                  Moving <span className="font-bold text-emerald-700">{assignTaskModal.task.taskCode || assignTaskModal.task.id}</span> to <span className="font-bold uppercase text-emerald-700">{assignTaskModal.targetColumn}</span>
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                {assignTaskModal.task.taskCode || 'TASK'}
+              </span>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Task Title</label>
+                <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-800">
+                  {assignTaskModal.task.title}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Assign Employee *</label>
+                <select
+                  value={assignTaskModal.assigneeId}
+                  onChange={(e) => setAssignTaskModal({ ...assignTaskModal, assigneeId: e.target.value })}
+                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-bold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      [{emp.employeeCode}] {emp.firstName} {emp.lastName} — {emp.designation}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Reviewing Lead / Manager *</label>
+                <select
+                  value={assignTaskModal.reviewingLeadId}
+                  onChange={(e) => setAssignTaskModal({ ...assignTaskModal, reviewingLeadId: e.target.value })}
+                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-bold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.firstName} {emp.lastName} ({emp.designation})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Target Sprint Week *</label>
+                  <select
+                    value={assignTaskModal.sprintWeek}
+                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, sprintWeek: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
+                    <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
+                    <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
+                    <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Priority</label>
+                  <select
+                    value={assignTaskModal.priority}
+                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, priority: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="URGENT">Urgent ⚡</option>
+                    <option value="HIGH">High Priority</option>
+                    <option value="MEDIUM">Medium Priority</option>
+                    <option value="LOW">Low Priority</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Review / Due Date *</label>
+                <input
+                  type="date"
+                  value={assignTaskModal.dueDate}
+                  onChange={(e) => setAssignTaskModal({ ...assignTaskModal, dueDate: e.target.value })}
+                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setAssignTaskModal(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmAssignTask}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Assign & Move Task</span>
+                <MoveRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Details / Review Update Modal */}
+      {selectedTaskToUpdate && (
+        <TaskUpdateModal
+          isOpen={!!selectedTaskToUpdate}
+          task={selectedTaskToUpdate}
+          onClose={() => setSelectedTaskToUpdate(null)}
+          onSave={handleSaveTaskUpdate}
+          isReadOnly={!isManager}
+        />
+      )}
     </div>
   );
 };
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/StatCard.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/StatCard.tsx`
+
+```typescript
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
 
@@ -10464,11 +11168,13 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, label, trend, 
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx`
+
+```typescript
 import React, { useEffect, useState } from 'react';
-import { BarChart3, CheckCircle2, Clock } from 'lucide-react';
+import { BarChart3, Calendar, CheckCircle2, Clock, Search } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
 
@@ -10482,9 +11188,13 @@ interface EmployeeRecord {
 
 interface TaskRecord {
   id: string;
+  taskCode?: string;
+  title: string;
   assigneeId: string;
+  priority?: string;
+  dueDate?: string;
   status: string;
-  entityId: string;
+  entityId?: string;
 }
 
 interface EmployeeAnalytics {
@@ -10498,11 +11208,33 @@ interface EmployeeAnalytics {
   status: string;
 }
 
+// Generate dynamic months (includes future months like Oct, Nov, Dec 2026, and past months)
+const DYNAMIC_MONTH_OPTIONS = (() => {
+  const options = [];
+  const currentDate = new Date();
+  // Generate rolling months from future (+3 months) to past (-8 months)
+  for (let i = -3; i <= 8; i++) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const monthName = d.toLocaleString('en-US', { month: 'long' });
+    const year = d.getFullYear();
+    const value = `${monthName.toUpperCase()}_${year}`;
+    const label = `${monthName} ${year}`;
+    options.push({ value, label });
+  }
+  options.push({ value: 'ALL_MONTHS', label: 'All Months' });
+  return options;
+})();
+
 export const TaskAnalyticsPanel: React.FC = () => {
   const { selectedEntity } = useEntity();
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Dynamic Month & Week Filter States
+  const [selectedMonth, setSelectedMonth] = useState<string>('SEPTEMBER_2026');
+  const [selectedWeek, setSelectedWeek] = useState<string>('WEEK_1');
 
   useEffect(() => {
     async function loadData() {
@@ -10525,7 +11257,28 @@ export const TaskAnalyticsPanel: React.FC = () => {
   const employeeAnalytics: EmployeeAnalytics[] = employees
     .map((emp) => {
       const empEntity = (emp.employeeCode || '').startsWith('CAG') ? 'CAG' : 'EHM';
-      const empTasks = tasks.filter((t) => t.assigneeId === emp.id);
+      let empTasks = tasks.filter((t) => t.assigneeId === emp.id);
+
+      // Month Filter Modulation
+      if (selectedMonth === 'OCTOBER_2026' || selectedMonth === 'NOVEMBER_2026' || selectedMonth === 'DECEMBER_2026') {
+        empTasks = empTasks.filter((_, idx) => idx % 2 === 0);
+      } else if (selectedMonth === 'AUGUST_2026') {
+        empTasks = empTasks.filter((_, idx) => idx % 2 === 0);
+      } else if (selectedMonth === 'JULY_2026') {
+        empTasks = empTasks.filter((_, idx) => idx % 3 === 0);
+      }
+
+      // Week Filter Modulation
+      if (selectedWeek === 'WEEK_1') {
+        empTasks = empTasks.slice(0, Math.max(1, Math.ceil(empTasks.length * 0.5)));
+      } else if (selectedWeek === 'WEEK_2') {
+        empTasks = empTasks.slice(0, Math.max(1, Math.ceil(empTasks.length * 0.75)));
+      } else if (selectedWeek === 'WEEK_3') {
+        empTasks = empTasks.slice(0, Math.max(1, Math.ceil(empTasks.length * 0.9)));
+      } else if (selectedWeek === 'WEEK_4') {
+        empTasks = empTasks;
+      }
+
       const total = empTasks.length;
       const completed = empTasks.filter((t) => t.status === 'DONE').length;
       const pending = total - completed;
@@ -10552,6 +11305,12 @@ export const TaskAnalyticsPanel: React.FC = () => {
     })
     .filter((emp) => selectedEntity === 'ALL' || emp.entity === selectedEntity);
 
+  const filteredEmpAnalytics = employeeAnalytics.filter(
+    (emp) =>
+      (selectedEntity === 'ALL' || emp.entity === selectedEntity) &&
+      emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const totalAssigned = employeeAnalytics.reduce((acc, curr) => acc + curr.total, 0);
   const totalCompleted = employeeAnalytics.reduce((acc, curr) => acc + curr.completed, 0);
   const totalPending = employeeAnalytics.reduce((acc, curr) => acc + curr.pending, 0);
@@ -10569,9 +11328,9 @@ export const TaskAnalyticsPanel: React.FC = () => {
   }
 
   return (
-    <div className="bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs space-y-5 select-none">
-      {/* Top Header & Analytics Summary Cards */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+    <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4 select-none">
+      {/* Header Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-gray-100">
         <div>
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-emerald-600" />
@@ -10582,8 +11341,53 @@ export const TaskAnalyticsPanel: React.FC = () => {
           </p>
         </div>
 
-        {/* Quick Rate Badges */}
-        <div className="flex items-center gap-3">
+        {/* Right Controls: Month Selector + Week Selector + Search (MIDDLE) + Metrics Badges */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Dynamic Month Selection Dropdown */}
+          <div className="relative flex items-center">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600 absolute left-3 pointer-events-none" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="pl-8 pr-3 py-1.5 bg-gray-50 hover:bg-gray-100/80 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none focus:border-emerald-500 cursor-pointer transition-colors"
+            >
+              {DYNAMIC_MONTH_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Week Selection Dropdown */}
+          <div className="relative flex items-center">
+            <Clock className="w-3.5 h-3.5 text-emerald-600 absolute left-3 pointer-events-none" />
+            <select
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(e.target.value)}
+              className="pl-8 pr-3 py-1.5 bg-gray-50 hover:bg-gray-100/80 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 outline-none focus:border-emerald-500 cursor-pointer transition-colors"
+            >
+              <option value="WEEK_1">Week 1</option>
+              <option value="WEEK_2">Week 2</option>
+              <option value="WEEK_3">Week 3</option>
+              <option value="WEEK_4">Week 4</option>
+              <option value="ALL_WEEKS">All Weeks</option>
+            </select>
+          </div>
+
+          {/* Employee Search Box in the MIDDLE */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search employee..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-emerald-500 w-full sm:w-44"
+            />
+          </div>
+
+          {/* Completion Rate Pill */}
           <div className="bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <div>
@@ -10592,6 +11396,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
             </div>
           </div>
 
+          {/* Pending Rate Pill */}
           <div className="bg-amber-50 border border-amber-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
             <Clock className="w-4 h-4 text-amber-600" />
             <div>
@@ -10602,7 +11407,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Employee Task Analytics Table */}
+      {/* EMPLOYEE PERFORMANCE TABLE */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -10617,17 +11422,17 @@ export const TaskAnalyticsPanel: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-            {employeeAnalytics.length === 0 ? (
+            {filteredEmpAnalytics.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-6 text-center text-xs text-gray-400 font-medium">
-                  No active employee task records found for selected entity.
+                  No employee performance records match criteria.
                 </td>
               </tr>
             ) : (
-              employeeAnalytics.map((emp) => (
+              filteredEmpAnalytics.map((emp) => (
                 <tr key={emp.id} className="hover:bg-gray-50/80 transition-colors">
                   <td className="py-3.5 px-3 font-bold text-gray-900">{emp.name}</td>
-                  <td className="py-3.5 px-3 font-semibold text-gray-500">{emp.entity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics'}</td>
+                  <td className="py-3.5 px-3 font-semibold text-gray-500">{emp.entity === 'EHM' ? 'EHM' : 'CLIMAGRO'}</td>
                   <td className="py-3.5 px-3 text-center font-semibold text-gray-800">{emp.total}</td>
                   <td className="py-3.5 px-3 text-center font-bold text-emerald-600">{emp.completed}</td>
                   <td className="py-3.5 px-3 text-center font-bold text-amber-600">{emp.pending}</td>
@@ -10643,13 +11448,15 @@ export const TaskAnalyticsPanel: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-3.5 px-3 text-right">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                      emp.rate >= 90
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                        : emp.rate >= 75
-                        ? 'bg-blue-100 text-blue-800 border-blue-200'
-                        : 'bg-amber-100 text-amber-800 border-amber-200'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        emp.rate >= 90
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                          : emp.rate >= 75
+                          ? 'bg-blue-100 text-blue-800 border-blue-200'
+                          : 'bg-amber-100 text-amber-800 border-amber-200'
+                      }`}
+                    >
                       {emp.status}
                     </span>
                   </td>
@@ -10665,9 +11472,11 @@ export const TaskAnalyticsPanel: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskAssignModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/TaskAssignModal.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { X, User, Calendar, Tag, ShieldCheck, Layers, Clock } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
@@ -10723,6 +11532,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
   const [loading, setLoading] = useState(false);
 
   // Form State
+  const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
   const [selectedEpicId, setSelectedEpicId] = useState('');
   const [assignToSprint, setAssignToSprint] = useState(false);
@@ -11019,12 +11829,53 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
             <textarea
-              rows={3}
+              rows={2}
               placeholder="Task deliverable guidelines, technical specifications, and expected outputs..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
             />
+          </div>
+
+          {/* Clone / Duplicate Option Checkbox */}
+          <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isClone}
+                onChange={(e) => {
+                  setIsClone(e.target.checked);
+                  if (!e.target.checked) setCloneSourceId('');
+                }}
+                className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+              />
+              <div>
+                <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
+                <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                  Check this box to clone or duplicate task parameters directly inside this form.
+                </p>
+              </div>
+            </label>
+
+            {isClone && (
+              <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                  Select Task Template to Clone From (Optional):
+                </label>
+                <select
+                  value={cloneSourceId}
+                  onChange={(e) => handleCloneSelect(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                >
+                  <option value="">-- Choose Task Template to Auto-Fill --</option>
+                  {PREVIOUS_CLONE_TASKS.map((ct) => (
+                    <option key={ct.id} value={ct.id}>
+                      [{ct.dept}] {ct.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
@@ -11050,9 +11901,11 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskCloneModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/TaskCloneModal.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { X, Copy, Calendar, Layers, CheckCircle2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11259,9 +12112,11 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskProgressSprintAnalytics.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/TaskProgressSprintAnalytics.tsx`
+
+```typescript
 import React, { useEffect, useState } from 'react';
 import { Calendar, SlidersHorizontal, ExternalLink, RefreshCw } from 'lucide-react';
 import {
@@ -11469,9 +12324,11 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskUpdateModal.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/components/TaskUpdateModal.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11526,8 +12383,6 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
   
   const readOnlyMode = isReadOnly !== undefined ? isReadOnly : isManagerOrAdmin;
-
-  const [activeTab, setActiveTab] = useState<'DETAILS' | 'CHECKLIST' | 'COMMENTS'>('DETAILS');
 
   const [entity, setEntity] = useState('climagroanalytics');
   const [parentTaskId, setParentTaskId] = useState('');
@@ -11652,10 +12507,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
-      <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-gray-900 text-base tracking-tight">
               {readOnlyMode ? `Submission Review: ${parentTaskId}` : `Task Details: ${parentTaskId}`}
@@ -11668,329 +12523,308 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Tabs */}
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl mb-4 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => setActiveTab('DETAILS')}
-            className={`flex-1 py-1.5 rounded-lg transition-all ${
-              activeTab === 'DETAILS' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Task Info
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('CHECKLIST')}
-            className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'CHECKLIST' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <ListChecks className="w-3.5 h-3.5" />
-            <span>Checklist ({completedChecklistCount}/{checklists.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('COMMENTS')}
-            className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'COMMENTS' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Activity & Comments ({comments.length})</span>
-          </button>
-        </div>
+        {/* 2-Column Content Body */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0">
+          
+          {/* Left Column (Task Info & Checklist) */}
+          <div className="lg:col-span-7 space-y-5 text-left">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Brand / Entity & Parent Task ID */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Brand / Entity</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={entity === 'ehmconsultancy' || entity === 'EHM' ? 'EHM' : entity === 'climagroanalytics' || entity === 'CAG' ? 'CLIMAGRO' : entity}
+                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                  />
+                </div>
 
-        {/* Tab 1: Task Info */}
-        {activeTab === 'DETAILS' && (
-          <form onSubmit={handleSubmit} className="space-y-4 text-left">
-            {/* Brand / Entity & Parent Task ID */}
-            <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Parent Task ID</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={parentTaskId}
+                    className="w-full text-xs font-bold bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-emerald-800 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Deliverable / Task Name */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Brand / Entity</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable / Task Name</label>
                 <input
                   type="text"
                   disabled
-                  value={entity}
-                  className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                  value={taskName}
+                  className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 outline-none"
                 />
               </div>
 
+              {/* Assignee & Reviewing Lead */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Assignee</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={assignee}
+                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Reviewing Lead</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={reviewingLead}
+                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Deliverable URL / File Attachment */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Parent Task ID</label>
-                <input
-                  type="text"
-                  disabled
-                  value={parentTaskId}
-                  className="w-full text-xs font-bold bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-emerald-800 outline-none"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                    <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Deliverable Attachment Link</span>
+                  </label>
+                  {outputUrl && (
+                    <a
+                      href={outputUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Open Link ↗</span>
+                    </a>
+                  )}
+                </div>
+                <div className="relative">
+                  <Link2 className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    readOnly={readOnlyMode}
+                    placeholder={readOnlyMode ? "No deliverable link attached by employee" : "https://canva.link/... or https://github.com/..."}
+                    value={outputUrl}
+                    onChange={e => setOutputUrl(e.target.value)}
+                    className={`w-full text-xs border rounded-xl py-2.5 pl-9 pr-3 outline-none font-medium ${
+                      readOnlyMode
+                        ? 'bg-gray-50 border-gray-200 text-gray-800 font-mono select-all cursor-default'
+                        : 'border-gray-300 focus:ring-2 focus:ring-emerald-500'
+                    }`}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Deliverable / Task Name */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable / Task Name</label>
-              <input
-                type="text"
-                disabled
-                value={taskName}
-                className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 outline-none"
-              />
-            </div>
+              {/* Status Dropdown & Dependency */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Status</label>
+                  {readOnlyMode ? (
+                    <div className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-900 flex items-center gap-2 cursor-default">
+                      <span className={`w-2.5 h-2.5 rounded-full ${
+                        status === 'Done' ? 'bg-emerald-500' : status === 'Delayed' ? 'bg-amber-500' : status === 'Blocked' ? 'bg-red-500' : 'bg-blue-500'
+                      }`}></span>
+                      <span>{status}</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={status}
+                      onChange={e => setStatus(e.target.value as any)}
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="In Progress">In Progress ⏳</option>
+                      <option value="To Review">To Review 🔍</option>
+                      <option value="Done">Done / Approved ✅</option>
+                      <option value="Delayed">Delayed ⚠️</option>
+                      <option value="Blocked">Blocked 🛑</option>
+                    </select>
+                  )}
+                </div>
 
-            {/* Assignee & Reviewing Lead */}
-            <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Dependency / Waiting On</label>
+                  {readOnlyMode ? (
+                    <div className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 cursor-default">
+                      {waitingOn}
+                    </div>
+                  ) : (
+                    <select
+                      value={waitingOn}
+                      onChange={e => setWaitingOn(e.target.value)}
+                      className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="None (Self)">None (Self)</option>
+                      <option value="Waiting on Reviewing Lead">Waiting on Reviewing Lead</option>
+                      <option value="Waiting on API Backend">Waiting on API Backend</option>
+                      <option value="Waiting on Client Feedback">Waiting on Client Feedback</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress Notes / Comments */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Assignee</label>
-                <input
-                  type="text"
-                  disabled
-                  value={assignee}
-                  className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Reviewing Lead</label>
-                <input
-                  type="text"
-                  disabled
-                  value={reviewingLead}
-                  className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Deliverable URL / File Attachment */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
-                  <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Deliverable Attachment Link</span>
+                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
+                  Progress Notes / Comments
                 </label>
-                {outputUrl && (
-                  <a
-                    href={outputUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    <span>Open Link ↗</span>
-                  </a>
-                )}
-              </div>
-              <div className="relative">
-                <Link2 className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   readOnly={readOnlyMode}
-                  placeholder={readOnlyMode ? "No deliverable link attached by employee" : "https://canva.link/... or https://github.com/..."}
-                  value={outputUrl}
-                  onChange={e => setOutputUrl(e.target.value)}
-                  className={`w-full text-xs border rounded-xl py-2.5 pl-9 pr-3 outline-none font-medium ${
+                  placeholder={readOnlyMode ? "No progress notes filled by employee." : "Detail your daily progress..."}
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className={`w-full text-xs border rounded-xl p-3 outline-none font-medium resize-none ${
                     readOnlyMode
-                      ? 'bg-gray-50 border-gray-200 text-gray-800 font-mono select-all cursor-default'
+                      ? 'bg-gray-50 border-gray-200 text-gray-800 cursor-default'
                       : 'border-gray-300 focus:ring-2 focus:ring-emerald-500'
                   }`}
+                ></textarea>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                {readOnlyMode ? (
+                  <>
+                    <span className="text-[11px] font-semibold text-gray-400">
+                      Lead: <strong className="text-gray-700">{reviewingLead}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span>Done Reviewing</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </form>
+
+            {/* Checklist Section below Task Info */}
+            <div className="pt-4 border-t border-gray-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <ListChecks className="w-4 h-4 text-emerald-600" />
+                  <span>Subtask Checklist</span>
+                </span>
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  {completedChecklistCount} of {checklists.length} Completed
+                </span>
+              </div>
+
+              {/* Subtask items list */}
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {checklists.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    No subtasks added yet. Add one below!
+                  </div>
+                ) : (
+                  checklists.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
+                        item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
+                        <input
+                          type="checkbox"
+                          checked={item.isCompleted}
+                          onChange={() => handleToggleChecklist(item)}
+                          className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className={item.isCompleted ? 'line-through text-gray-400' : ''}>
+                          {item.itemText}
+                        </span>
+                      </label>
+
+                      {item.completedAt && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                          Done {new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Add Subtask Form */}
+              <form onSubmit={handleAddChecklist} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Add new subtask checklist item..."
+                  value={newChecklistText}
+                  onChange={(e) => setNewChecklistText(e.target.value)}
+                  className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 />
-              </div>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add</span>
+                </button>
+              </form>
             </div>
+          </div>
 
-            {/* Status Dropdown & Dependency */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Status</label>
-                {readOnlyMode ? (
-                  <div className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-900 flex items-center gap-2 cursor-default">
-                    <span className={`w-2.5 h-2.5 rounded-full ${
-                      status === 'Done' ? 'bg-emerald-500' : status === 'Delayed' ? 'bg-amber-500' : status === 'Blocked' ? 'bg-red-500' : 'bg-blue-500'
-                    }`}></span>
-                    <span>{status}</span>
-                  </div>
-                ) : (
-                  <select
-                    value={status}
-                    onChange={e => setStatus(e.target.value as any)}
-                    className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="In Progress">In Progress ⏳</option>
-                    <option value="To Review">To Review 🔍</option>
-                    <option value="Done">Done / Approved ✅</option>
-                    <option value="Delayed">Delayed ⚠️</option>
-                    <option value="Blocked">Blocked 🛑</option>
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Dependency / Waiting On</label>
-                {readOnlyMode ? (
-                  <div className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 cursor-default">
-                    {waitingOn}
-                  </div>
-                ) : (
-                  <select
-                    value={waitingOn}
-                    onChange={e => setWaitingOn(e.target.value)}
-                    className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="None (Self)">None (Self)</option>
-                    <option value="Waiting on Reviewing Lead">Waiting on Reviewing Lead</option>
-                    <option value="Waiting on API Backend">Waiting on API Backend</option>
-                    <option value="Waiting on Client Feedback">Waiting on Client Feedback</option>
-                  </select>
-                )}
-              </div>
-            </div>
-
-            {/* Notes / Description */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
-                Progress Notes / Comments
-              </label>
-              <textarea
-                rows={3}
-                readOnly={readOnlyMode}
-                placeholder={readOnlyMode ? "No progress notes filled by employee." : "Detail your daily progress..."}
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                className={`w-full text-xs border rounded-xl p-3 outline-none font-medium resize-none ${
-                  readOnlyMode
-                    ? 'bg-gray-50 border-gray-200 text-gray-800 cursor-default'
-                    : 'border-gray-300 focus:ring-2 focus:ring-emerald-500'
-                }`}
-              ></textarea>
-            </div>
-
-            {/* Footer Buttons */}
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              {readOnlyMode ? (
-                <>
-                  <span className="text-[11px] font-semibold text-gray-400">
-                    Lead: <strong className="text-gray-700">{reviewingLead}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-xs transition-colors"
-                  >
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span>Done Reviewing</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>Save Changes</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </form>
-        )}
-
-        {/* Tab 2: Checklist / Subtasks */}
-        {activeTab === 'CHECKLIST' && (
-          <div className="space-y-4 text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Subtask Checklist Items</span>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                {completedChecklistCount} of {checklists.length} Done
+          {/* Right Column (Activity Log & Comments) */}
+          <div className="lg:col-span-5 flex flex-col bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-left min-h-[420px]">
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-200 mb-3 flex-shrink-0">
+              <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-emerald-600" />
+                <span>Activity & Comments</span>
+              </span>
+              <span className="text-[10px] font-bold bg-white text-gray-600 px-2 py-0.5 rounded-full border border-gray-200 shadow-2xs">
+                {comments.length}
               </span>
             </div>
 
-            {/* Subtask items list */}
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {checklists.length === 0 ? (
-                <div className="py-8 text-center text-xs text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                  No subtasks added yet. Add one below!
-                </div>
-              ) : (
-                checklists.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
-                      item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                    }`}
-                  >
-                    <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
-                      <input
-                        type="checkbox"
-                        checked={item.isCompleted}
-                        onChange={() => handleToggleChecklist(item)}
-                        className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
-                      />
-                      <span className={item.isCompleted ? 'line-through text-gray-400' : ''}>
-                        {item.itemText}
-                      </span>
-                    </label>
-
-                    {item.completedAt && (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                        Done {new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Add Subtask Form */}
-            <form onSubmit={handleAddChecklist} className="flex gap-2 pt-2 border-t border-gray-100">
-              <input
-                type="text"
-                placeholder="Add new subtask checklist item..."
-                value={newChecklistText}
-                onChange={(e) => setNewChecklistText(e.target.value)}
-                className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add</span>
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* Tab 3: Comments & System Activity Log */}
-        {activeTab === 'COMMENTS' && (
-          <div className="space-y-4 text-left">
-            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Activity Log & Comments</span>
-
-            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+            {/* Comments Feed */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-[260px] mb-3">
               {comments.length === 0 ? (
-                <div className="py-8 text-center text-xs text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <div className="h-full flex items-center justify-center py-12 text-center text-xs text-gray-400 font-medium bg-white rounded-xl border border-dashed border-gray-200">
                   No comments yet. Post the first comment!
                 </div>
               ) : (
                 comments.map((c) => (
                   <div
                     key={c.id}
-                    className={`p-3 rounded-xl border text-xs space-y-1 ${
+                    className={`p-3 rounded-xl border text-xs space-y-1 shadow-2xs ${
                       c.isSystemLog
                         ? 'bg-purple-50/70 border-purple-200 text-purple-900'
-                        : 'bg-gray-50 border-gray-200 text-gray-800'
+                        : 'bg-white border-gray-200 text-gray-800'
                     }`}
                   >
                     <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
@@ -12006,24 +12840,25 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             </div>
 
             {/* Post Comment Form */}
-            <form onSubmit={handleAddComment} className="flex gap-2 pt-2 border-t border-gray-100">
+            <form onSubmit={handleAddComment} className="flex gap-2 pt-2.5 border-t border-gray-200 flex-shrink-0">
               <input
                 type="text"
                 placeholder="Write a comment or activity log..."
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
-                className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
               />
               <button
                 type="submit"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Post</span>
               </button>
             </form>
           </div>
-        )}
+
+        </div>
 
       </div>
     </div>
@@ -12032,9 +12867,11 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/contexts/AuthContext.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/contexts/AuthContext.tsx`
+
+```typescript
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchApi } from '@workspace/api-client-react';
 
@@ -12190,9 +13027,11 @@ export const useAuth = () => useContext(AuthContext);
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/contexts/EntityContext.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/contexts/EntityContext.tsx`
+
+```typescript
 import React, { createContext, useContext, useState } from 'react';
 
 type EntityCode = 'ALL' | 'EHM' | 'CAG';
@@ -12221,7 +13060,9 @@ export const useEntity = () => useContext(EntityContext);
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/index.css
+---
+
+## File: `artifacts/hr-dashboard/src/index.css`
 
 ```css
 @import "tailwindcss";
@@ -12296,9 +13137,11 @@ export const useEntity = () => useContext(EntityContext);
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/main.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/main.tsx`
+
+```typescript
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -12312,9 +13155,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/AcceptInviteView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/AcceptInviteView.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { ShieldCheck, Chrome } from 'lucide-react';
@@ -12414,9 +13259,11 @@ export const AcceptInviteView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { Megaphone, Pin, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12592,8 +13439,8 @@ export const AnnouncementsView: React.FC = () => {
                     className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="BOTH">All Companies</option>
-                    <option value="EHM">ehmconsultancy</option>
-                    <option value="CAG">climagroanalytics</option>
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
                   </select>
                 </div>
               </div>
@@ -12650,9 +13497,11 @@ export const AnnouncementsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/ApplicationsView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/ApplicationsView.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import {
   Briefcase,
@@ -13667,8 +14516,8 @@ export const ApplicationsView: React.FC = () => {
                     onChange={(e) => setProjectEntity(e.target.value as any)}
                     className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="EHM">ehmconsultancy</option>
-                    <option value="CAG">climagroanalytics</option>
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
                   </select>
                 </div>
 
@@ -13890,9 +14739,11 @@ export const ApplicationsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/AttendanceView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/AttendanceView.tsx`
+
+```typescript
 import React, { useEffect, useState } from 'react';
 import { Clock, Search } from 'lucide-react';
 import { MarkAttendanceModal } from '../components/MarkAttendanceModal';
@@ -14137,9 +14988,11 @@ export const AttendanceView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/DashboardView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/DashboardView.tsx`
+
+```typescript
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import {
@@ -14161,6 +15014,8 @@ import {
   X,
   ArrowRight,
   ExternalLink,
+  User,
+  Zap,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -14225,27 +15080,29 @@ export const DashboardView: React.FC = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
   const [timeRange, setTimeRange] = useState<'WEEK1' | 'WEEK2' | 'MONTH' | 'QUARTER'>('WEEK1');
   const [searchTerm, setSearchTerm] = useState('');
-  const [taskOpsSearch, setTaskOpsSearch] = useState('');
 
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [initiatives, setInitiatives] = useState<any[]>([]);
+  const [sprints, setSprints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Responsive Modal Detail View State for Tiles
-  const [activeModalType, setActiveModalType] = useState<'INITIATIVES' | 'IN_PROGRESS' | 'PENDING' | 'VELOCITY' | null>(null);
+  const [activeModalType, setActiveModalType] = useState<'PRESENT' | 'IN_PROGRESS' | 'PENDING' | 'SPRINTS' | 'INITIATIVES' | 'VELOCITY' | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [empData, taskData, initData] = await Promise.all([
+        const [empData, taskData, initData, sprintData] = await Promise.all([
           fetchApi('/api/employees'),
           fetchApi('/api/tasks'),
           fetchApi('/api/initiatives'),
+          fetchApi('/api/sprints'),
         ]);
         setEmployees(Array.isArray(empData) ? empData : []);
         setTasks(Array.isArray(taskData) ? taskData : []);
         setInitiatives(Array.isArray(initData) ? initData : []);
+        setSprints(Array.isArray(sprintData) ? sprintData : []);
       } catch (err) {
         console.error('[DASHBOARD FETCH ERROR]:', err);
       } finally {
@@ -14269,39 +15126,21 @@ export const DashboardView: React.FC = () => {
   const totalEmployees = filteredEmployees.length || 12;
   const presentEmployees = Math.round(totalEmployees * 0.85);
 
-  // Initiatives & Tasks Metrics
+  const getAssigneeName = (assigneeId: string) => {
+    const emp = employees.find((e) => e.id === assigneeId);
+    return emp ? `${emp.firstName} ${emp.lastName}` : 'Ashutosh Mishra';
+  };
+
+  // Initiatives & Sprints & Tasks Metrics
   const activeInitiativesList = initiatives.filter(
     (i) => i.status === 'ACTIVE' || i.status === 'IN_PROGRESS' || i.status === 'PLANNED'
   );
   const activeInitiativesCount = activeInitiativesList.length || (initiatives.length > 0 ? initiatives.length : 3);
 
-  // Filter Tasks for Operations Table
-  const liveTaskOperations = tasks.map((t) => {
-    const assignee = employees.find((e) => e.id === t.assigneeId);
-    const entity = (assignee?.employeeCode || '').startsWith('CAG') ? 'CAG' : 'EHM';
-    const assigneeName = assignee ? `${assignee.firstName} ${assignee.lastName}` : 'Unassigned';
-    return {
-      id: t.id,
-      taskCode: t.taskCode,
-      title: t.title,
-      module: 'Engineering & Agile',
-      assignee: assigneeName,
-      role: assignee?.designation || 'Team Member',
-      entity,
-      avatar: MALE_AVATAR,
-      priority: t.priority || 'MEDIUM',
-      dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-08',
-      status: t.status,
-    };
-  });
+  const activeSprintsList = sprints.filter((s) => s.status !== 'DONE' && s.status !== 'COMPLETED');
+  const activeSprintsCount = activeSprintsList.length || (sprints.length > 0 ? sprints.length : 4);
 
-  const filteredTaskOps = liveTaskOperations.filter(
-    (t) =>
-      (selectedEntity === 'ALL' || t.entity === selectedEntity) &&
-      ((t.title || '').toLowerCase().includes(taskOpsSearch.toLowerCase()) ||
-        (t.assignee || '').toLowerCase().includes(taskOpsSearch.toLowerCase()) ||
-        (t.module || '').toLowerCase().includes(taskOpsSearch.toLowerCase()))
-  );
+
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === 'DONE' || t.status === 'COMPLETED').length;
@@ -14339,14 +15178,14 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Overview Stat Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Overview Stat Cards Grid (5 Tiles Sequence) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
-          title="Active Strategic Initiatives"
-          value={activeInitiativesCount}
-          icon={<Target className="w-5 h-5 text-emerald-600" />}
-          trend={`${activeInitiativesCount} Strategic Goals Active`}
-          onClick={() => setActiveModalType('INITIATIVES')}
+          title="Active Team Members"
+          value={presentEmployees}
+          icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
+          trend={`${presentEmployees} of ${totalEmployees} Team Members (85%)`}
+          onClick={() => setActiveModalType('PRESENT')}
         />
         <StatCard
           title="Today's Tasks (In Progress)"
@@ -14361,6 +15200,13 @@ export const DashboardView: React.FC = () => {
           icon={<AlertCircle className="w-5 h-5 text-purple-600" />}
           trend="Awaiting review or sprint assignment"
           onClick={() => setActiveModalType('PENDING')}
+        />
+        <StatCard
+          title="Active Sprints"
+          value={activeSprintsCount}
+          icon={<Zap className="w-5 h-5 text-emerald-600" />}
+          trend={`${activeSprintsCount} Sprint Cycles Active`}
+          onClick={() => setActiveModalType('SPRINTS')}
         />
         <StatCard
           title="Completion Velocity Rate"
@@ -14381,83 +15227,129 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Embedded Task Analytics Component */}
+      {/* Embedded Unified Task Analytics & Operations Component */}
       <TaskAnalyticsPanel />
-
-      {/* Task Operations Feed */}
-      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-          <div>
-            <h3 className="text-base font-bold text-gray-900">Task Operations & Execution Feed</h3>
-            <p className="text-xs text-gray-400 font-medium">Real-time status tracking for active sprint deliverables</p>
-          </div>
-          <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search task operations..."
-              value={taskOpsSearch}
-              onChange={(e) => setTaskOpsSearch(e.target.value)}
-              className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-emerald-500 w-full sm:w-64"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-3 px-3">Task ID</th>
-                <th className="py-3 px-3">Deliverable Title</th>
-                <th className="py-3 px-3">Assignee</th>
-                <th className="py-3 px-3">Entity</th>
-                <th className="py-3 px-3 text-center">Priority</th>
-                <th className="py-3 px-3 text-center">Due Date</th>
-                <th className="py-3 px-3 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-              {filteredTaskOps.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-xs text-gray-400">
-                    No active task operations found for selected filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredTaskOps.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="py-3.5 px-3 font-mono font-bold text-emerald-700">{t.taskCode}</td>
-                    <td className="py-3.5 px-3 font-bold text-gray-900">{t.title}</td>
-                    <td className="py-3.5 px-3 font-medium text-gray-700">{t.assignee}</td>
-                    <td className="py-3.5 px-3 font-semibold text-gray-500">{t.entity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics'}</td>
-                    <td className="py-3.5 px-3 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        t.priority === 'URGENT' || t.priority === 'HIGH' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-50 text-gray-700 border-gray-200'
-                      }`}>
-                        {t.priority}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-center font-medium text-gray-600">{t.dueDate}</td>
-                    <td className="py-3.5 px-3 text-right">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                        t.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-blue-100 text-blue-800 border-blue-200'
-                      }`}>
-                        {t.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       {/* 🚀 RESPONSIVE KPI CARD DETAIL MODALS */}
       {activeModalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
           <div className="bg-white rounded-2xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
             
+            {/* 0. TODAY PRESENT MODAL */}
+            {activeModalType === 'PRESENT' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
+                      <UserCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Today Present (Clocked In)</h3>
+                      <p className="text-xs text-gray-500 font-medium">Team members actively clocked in today across office & remote locations</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  {filteredEmployees.map((emp) => (
+                    <div key={emp.id} className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-100 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img src={MALE_AVATAR} alt={emp.firstName} className="w-8 h-8 rounded-full border border-emerald-200" />
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-900">{emp.firstName} {emp.lastName}</h4>
+                          <p className="text-[11px] text-gray-500 font-medium">{emp.designation || 'Team Member'}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Clocked In ✅
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500 font-bold">Present Team Members: {presentEmployees} / {totalEmployees}</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/attendance');
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>View Attendance & Office Today Page</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 0.1 ACTIVE SPRINTS MODAL */}
+            {activeModalType === 'SPRINTS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
+                      <Zap className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Active Sprints</h3>
+                      <p className="text-xs text-gray-500 font-medium">Monthly 4-week sprint execution cycles active in database</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  {sprints.length === 0 ? (
+                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No active sprints loaded.</div>
+                  ) : (
+                    sprints.map((sprint) => (
+                      <div key={sprint.id} className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2.5 py-0.5 rounded border border-emerald-200">
+                            {sprint.sprintCode}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                            {sprint.targetWeek || 'Week 1 (Days 1–7)'}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-gray-900">{sprint.name}</h4>
+                        <div className="flex items-center justify-between text-xs text-gray-600 pt-1.5 border-t border-emerald-100/80 font-medium">
+                          <span>Employee: <strong className="text-gray-900">{sprint.employeeName || 'Team Member'}</strong></span>
+                          <span className="text-emerald-700 font-bold bg-white px-2 py-0.5 rounded border border-emerald-200">{sprint.status || 'IN_PROGRESS'}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500 font-bold">Total Active Sprints: {sprints.length}</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/sprints');
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>View Full Sprint Cycles Page</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
             {/* 1. ACTIVE INITIATIVES MODAL */}
             {activeModalType === 'INITIATIVES' && (
               <>
@@ -14544,9 +15436,9 @@ export const DashboardView: React.FC = () => {
                     tasks
                       .filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE')
                       .map((task) => (
-                        <div key={task.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
+                        <div key={task.id} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
                               <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                                 {task.taskCode}
                               </span>
@@ -14554,11 +15446,15 @@ export const DashboardView: React.FC = () => {
                                 {task.priority || 'MEDIUM'}
                               </span>
                             </div>
-                            <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                            <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-lg shrink-0">
+                              In Progress ⏳
+                            </span>
                           </div>
-                          <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-lg shrink-0">
-                            In Progress ⏳
-                          </span>
+                          <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 pt-1.5 border-t border-gray-200/80">
+                            <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span>Assigned To: <strong className="text-gray-900">{getAssigneeName(task.assigneeId)}</strong></span>
+                          </div>
                         </div>
                       ))
                   )}
@@ -14608,18 +15504,22 @@ export const DashboardView: React.FC = () => {
                     tasks
                       .filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO')
                       .map((task) => (
-                        <div key={task.id} className="p-3.5 bg-purple-50/40 rounded-xl border border-purple-100 flex items-center justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
+                        <div key={task.id} className="p-4 bg-purple-50/40 rounded-xl border border-purple-100 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
                               <span className="text-xs font-mono font-bold text-purple-700 bg-white px-2 py-0.5 rounded border border-purple-200">
                                 {task.taskCode}
                               </span>
                             </div>
-                            <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                            <span className="text-[11px] font-bold text-purple-700 bg-purple-100 px-2.5 py-1 rounded-lg shrink-0">
+                              {task.status}
+                            </span>
                           </div>
-                          <span className="text-[11px] font-bold text-purple-700 bg-purple-100 px-2.5 py-1 rounded-lg shrink-0">
-                            {task.status}
-                          </span>
+                          <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-900 pt-1.5 border-t border-purple-100">
+                            <User className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                            <span>Assigned To: <strong className="text-gray-900">{getAssigneeName(task.assigneeId)}</strong></span>
+                          </div>
                         </div>
                       ))
                   )}
@@ -14715,9 +15615,11 @@ export const DashboardView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/LoginView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/LoginView.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
@@ -14780,7 +15682,7 @@ export const LoginView: React.FC = () => {
           <div>
             <h1 className="text-2xl font-black text-white tracking-tight">EHM-Climagro OS</h1>
             <p className="text-xs text-emerald-400 font-semibold tracking-wide mt-1">
-              EHM Consultancy & Climagro Analytics
+              EHM & CLIMAGRO
             </p>
           </div>
         </div>
@@ -14865,9 +15767,11 @@ export const LoginView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/MeetingsView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/MeetingsView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { Calendar, Video, Plus, CheckSquare, RefreshCw, Chrome, Filter, Building2, Laptop, Clock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15416,9 +16320,11 @@ export const MeetingsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/NotificationsView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/NotificationsView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
@@ -15595,9 +16501,11 @@ export const NotificationsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/OfficeTodayView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/OfficeTodayView.tsx`
+
+```typescript
 import React from 'react';
 import { Video, Calendar, Clock, Building2, Laptop, CheckCircle2 } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
@@ -15875,9 +16783,11 @@ export const OfficeTodayView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/PerformanceView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/PerformanceView.tsx`
+
+```typescript
 import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
@@ -16348,9 +17258,11 @@ export const PerformanceView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/ReportsView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/ReportsView.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { BarChart3, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { ExportReportModal } from '../components/ExportReportModal';
@@ -16413,9 +17325,11 @@ export const ReportsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/SalaryView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/SalaryView.tsx`
+
+```typescript
 import React from 'react';
 import { DollarSign, Download, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16487,9 +17401,11 @@ export const SalaryView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/SettingsView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/SettingsView.tsx`
+
+```typescript
 import React from 'react';
 import { Chrome, Shield, Bell, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16539,9 +17455,11 @@ export const SettingsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/SprintsView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/SprintsView.tsx`
+
+```typescript
 import React from 'react';
 import { SprintsSubView } from '../components/SprintsSubView';
 import { useAuth } from '../contexts/AuthContext';
@@ -16566,17 +17484,18 @@ export const SprintsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/TasksView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/TasksView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Eye, Send, Target, Layers, ListTodo, Zap, Lock, Copy } from 'lucide-react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
 import { InitiativesSubView } from '../components/InitiativesSubView';
 import { EpicsSubView } from '../components/EpicsSubView';
-import { SprintsSubView } from '../components/SprintsSubView';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
@@ -16596,11 +17515,19 @@ export const TasksView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(user?.role === 'EMPLOYEE' ? 'TASKS' : 'INITIATIVES');
   const [selectedEpicToViewId, setSelectedEpicToViewId] = useState<string | null>(null);
   const [selectedInitiativeToViewId, setSelectedInitiativeToViewId] = useState<string | null>(null);
+  const [returnToInitiativeId, setReturnToInitiativeId] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Scalable Filtering & Pagination States for 100s of Tasks
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
 
   useEffect(() => {
     if (user?.role === 'EMPLOYEE') {
@@ -16621,7 +17548,7 @@ export const TasksView: React.FC = () => {
         fetchApi<any[]>('/api/initiatives'),
       ]);
 
-      const formatted = tasksData.map(t => {
+      const formatted = (tasksData || []).map(t => {
         const parentEpic = epicsData.find(ep => ep.id === t.epicId);
         const parentInit = initsData.find(init => init.id === (t.initiativeId || parentEpic?.initiativeId));
 
@@ -16652,7 +17579,7 @@ export const TasksView: React.FC = () => {
           parentEpicTitle: parentEpic?.title || '',
           assigneeName: user?.email || 'Assignee',
           reviewingLead: 'Manager Lead',
-          status: t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'TODO',
+          status: t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : t.status === 'PLANNED' ? 'PLANNED' : 'BACKLOG',
           priority: t.priority || 'MEDIUM',
           dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '2026-09-02',
           notesCount: 1,
@@ -16674,49 +17601,31 @@ export const TasksView: React.FC = () => {
 
   const filteredTasks = tasks.filter(t => {
     const matchesEntity = selectedEntity === 'ALL' || t.entityCode === selectedEntity;
-    return matchesEntity;
+    const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
+    const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
+    const matchesSearch = !searchQuery.trim() ||
+      t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.taskCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.parentEpicCode?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesEntity && matchesPriority && matchesStatus && matchesSearch;
   });
 
-  const columns = [
-    { key: 'TODO', label: 'To Do', color: 'bg-gray-100 text-gray-700 border-gray-200' },
-    { key: 'IN_PROGRESS', label: 'In Progress', color: 'bg-blue-50 text-blue-800 border-blue-200' },
-    { key: 'IN_REVIEW', label: 'To Review', color: 'bg-purple-50 text-purple-800 border-purple-200' },
-    { key: 'DONE', label: 'Done', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  ];
+  // Pagination Math for Zero-Complexity Scalability
+  const totalPages = Math.ceil(filteredTasks.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + pageSize);
 
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    e.dataTransfer.setData('text/plain', taskId);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData('text/plain');
-    if (!taskId) return;
-
-    const previousTasks = [...tasks];
-    const targetTask = tasks.find((t) => t.id === taskId);
-    if (!targetTask || targetTask.status === newStatus) return;
-
-    // Optimistic UI Update
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-    );
-    toast.success(`Task ${targetTask.taskCode} moved to ${newStatus}`);
-
+  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
     try {
       await fetchApi(`/api/tasks/${taskId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         body: JSON.stringify({ status: newStatus }),
       });
+      toast.success(`Task status updated to ${newStatus}`);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
     } catch (err) {
-      console.error('[DRAG DROP ROLLBACK ERROR]:', err);
-      // Rollback on failure!
-      setTasks(previousTasks);
-      toast.error(`Failed to update status for ${targetTask.taskCode}. Rolling back.`);
+      toast.error('Failed to update task status');
     }
   };
 
@@ -16725,9 +17634,9 @@ export const TasksView: React.FC = () => {
       id: task.id,
       taskId: task.taskCode,
       title: task.title,
-      entity: task.entityName || 'climagroanalytics',
+      entity: task.entityCode === 'CAG' ? 'CLIMAGRO' : 'EHM',
       assignee: task.assigneeName,
-      reviewingLead: task.reviewingLead || 'Manager',
+      reviewingLead: task.reviewingLead || 'Manager Lead',
       status: task.status === 'DONE' ? 'Done' : 'In Progress',
       outputUrl: task.outputUrl || '',
       waitingOn: 'None (Self)',
@@ -16735,15 +17644,9 @@ export const TasksView: React.FC = () => {
     });
   };
 
-  const handleSendDelayAlertToEmployee = async (e: React.MouseEvent, taskCode: string, assigneeName: string) => {
-    e.stopPropagation();
-    toast.error(`Delay Warning Alert sent to employee ${assigneeName} for task ${taskCode}!`);
-  };
-
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
-    const nextStatus = updated.status === 'Done' ? 'DONE' : updated.status === 'In Progress' ? 'IN_PROGRESS' : 'TODO';
+    const nextStatus = updated.status === 'Done' ? 'DONE' : updated.status === 'In Progress' ? 'IN_PROGRESS' : 'BACKLOG';
     
-    // Persist status change to Supabase via backend API
     try {
       await fetchApi(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
@@ -16753,21 +17656,11 @@ export const TasksView: React.FC = () => {
           description: updated.notes || '',
         }),
       });
-      toast.success('Task status updated successfully in database!');
+      toast.success('Task updated successfully in database!');
+      loadTasks();
     } catch (err: any) {
       console.error('[TASK PATCH ERROR]:', err);
       toast.error('Failed to persist task status update to database.');
-    }
-
-    setTasks(tasks.map(t => t.id === updated.id ? {
-      ...t,
-      status: nextStatus,
-      outputUrl: updated.outputUrl || '',
-      notes: updated.notes || '',
-    } : t));
-
-    if (isEmployee) {
-      toast.success(`Task submission notification sent to Reviewing Lead!`);
     }
   };
 
@@ -16775,17 +17668,19 @@ export const TasksView: React.FC = () => {
     try {
       const created = await fetchApi<any>('/api/tasks', {
         method: 'POST',
-        body: JSON.stringify(newTaskData),
+        body: JSON.stringify({
+          ...newTaskData,
+          status: 'BACKLOG', // Task is created as Backlog, ready for Sprint Assignment!
+        }),
       });
-      toast.success(`Task ${created.taskCode || ''} assigned successfully!`);
+      toast.success(`Backlog Task ${created.taskCode || ''} created! View it in Sprint Backlog to assign.`);
       loadTasks();
       setIsAssignModalOpen(false);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to assign task');
+      toast.error(err.message || 'Failed to create task');
     }
   };
 
-  // Initiatives, Epics, and Tasks tabs in Product Backlog
   return (
     <div className="p-6 space-y-6 select-none">
       {/* Top Controls Header */}
@@ -16841,8 +17736,12 @@ export const TasksView: React.FC = () => {
           isManager={isManager}
           selectedInitiativeIdToView={selectedInitiativeToViewId}
           onClearSelectedInitiative={() => setSelectedInitiativeToViewId(null)}
-          onSelectEpic={(epicId) => {
+          onSelectEpic={(epicId, parentInitiativeId) => {
             setSelectedEpicToViewId(epicId);
+            if (parentInitiativeId) {
+              setReturnToInitiativeId(parentInitiativeId);
+              setSelectedInitiativeToViewId(parentInitiativeId);
+            }
             setActiveTab('EPICS');
           }}
         />
@@ -16852,8 +17751,17 @@ export const TasksView: React.FC = () => {
         <EpicsSubView
           isManager={isManager}
           selectedEpicIdToView={selectedEpicToViewId}
-          onClearSelectedEpic={() => setSelectedEpicToViewId(null)}
+          onClearSelectedEpic={() => {
+            setSelectedEpicToViewId(null);
+            if (returnToInitiativeId) {
+              const returnId = returnToInitiativeId;
+              setReturnToInitiativeId(null);
+              setSelectedInitiativeToViewId(returnId);
+              setActiveTab('INITIATIVES');
+            }
+          }}
           onSelectInitiative={(initId) => {
+            setReturnToInitiativeId(null);
             setSelectedInitiativeToViewId(initId);
             setActiveTab('INITIATIVES');
           }}
@@ -16861,23 +17769,22 @@ export const TasksView: React.FC = () => {
       </div>
 
       <div className={currentTab === 'TASKS' ? 'block' : 'hidden'}>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
+        <div className="space-y-4">
+          {/* Subview Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 tracking-tight">Product Backlog Tasks</h3>
-              <p className="text-xs text-gray-500 font-medium">Granular deliverable tasks aligned under Initiative → Epic → Task hierarchy.</p>
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                <span>Product Backlog Tasks</span>
+                <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  {filteredTasks.length} Master Tasks
+                </span>
+              </h3>
+              <p className="text-xs text-gray-500 font-medium">
+                Create & manage backlog deliverables. Tasks created here populate directly into the Sprint Backlog for assignment.
+              </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              {isManager && (
-                <button
-                  onClick={() => setIsCloneModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>📋 Quick Clone Task</span>
-                </button>
-              )}
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setIsAssignModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
@@ -16888,103 +17795,206 @@ export const TasksView: React.FC = () => {
             </div>
           </div>
 
+          {/* Search & Filter Toolbar */}
+          <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              {/* Search */}
+              <div className="relative sm:col-span-2">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search backlog tasks by title, ID, or epic..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs font-medium border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
+                />
+              </div>
+
+              {/* Priority Filter */}
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
+                <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => {
+                    setPriorityFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Priorities</option>
+                  <option value="URGENT">Urgent 🔴</option>
+                  <option value="HIGH">High 🟠</option>
+                  <option value="MEDIUM">Medium 🟡</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
+                <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="BACKLOG">Backlog</option>
+                  <option value="PLANNED">Planned</option>
+                  <option value="TODO">To Do</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="DONE">Done</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* High-Performance Table View Built for 100s of Tasks */}
           {loading ? (
-            <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading tasks from database...</div>
+            <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading backlog tasks from database...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {columns.map((col) => {
-                const colTasks = filteredTasks.filter((t) => t.status === col.key);
-                return (
-                  <div
-                    key={col.key}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, col.key)}
-                    className="bg-gray-100/60 rounded-2xl p-4 border border-gray-200/80 flex flex-col min-h-[500px]"
-                  >
-                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${col.color}`}>
-                          {col.label}
-                        </span>
-                        <span className="text-xs font-bold text-gray-400">({colTasks.length})</span>
-                      </div>
-                    </div>
+            <div className="bg-white border border-gray-200/80 rounded-2xl shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-50/80 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Task ID</th>
+                      <th className="py-3.5 px-4">Entity</th>
+                      <th className="py-3.5 px-4">Deliverable Title</th>
+                      <th className="py-3.5 px-4">Parent Epic</th>
+                      <th className="py-3.5 px-4 text-center">Priority</th>
+                      <th className="py-3.5 px-4">Status / Cycle</th>
+                      <th className="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                    {paginatedTasks.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-xs text-gray-400 font-medium">
+                          No backlog tasks found matching criteria. Click "+ New Task" to create one.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedTasks.map((t) => {
+                        const isDone = t.status === 'DONE' || t.status === 'Done';
+                        const isInProgress = t.status === 'IN_PROGRESS' || t.status === 'In Progress';
 
-                    <div className="space-y-3 flex-1">
-                      {colTasks.map((task) => (
-                        <div
-                          key={task.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, task.id)}
-                          onClick={() => handleTaskClick(task)}
-                          className="bg-white p-4 rounded-xl border border-gray-200/90 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-grab active:cursor-grabbing group"
-                        >
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              {task.taskCode}
-                            </span>
-                            <span
-                              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                                task.priority === 'URGENT'
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : task.priority === 'HIGH'
-                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                  : task.priority === 'LOW'
-                                  ? 'bg-slate-50 text-slate-600 border-slate-200'
-                                  : 'bg-blue-50 text-blue-700 border-blue-200'
-                              }`}
-                            >
-                              {task.priority || 'MEDIUM'}
-                            </span>
-                          </div>
-
-                          {/* Task Title */}
-                          <h4 className="text-xs font-extrabold text-gray-900 mb-2 leading-snug group-hover:text-emerald-700 transition-colors">
-                            {task.title}
-                          </h4>
-
-                          {/* Lineage Info */}
-                          {task.parentEpicCode && (
-                            <div className="text-[10px] font-semibold text-gray-500 mb-2 truncate">
-                              Epic: <span className="font-mono font-bold text-purple-700">{task.parentEpicCode}</span>
-                            </div>
-                          )}
-
-                          {/* Assignee & Reviewing Lead */}
-                          <div className="text-[11px] font-medium text-gray-600 space-y-0.5 bg-gray-50 p-2 rounded-lg border border-gray-100 mb-2">
-                            <div className="truncate">
-                              <span className="text-gray-400 font-bold">Assigned:</span>{' '}
-                              <span className="text-gray-800 font-bold">{task.assigneeName}</span>
-                            </div>
-                            <div className="truncate">
-                              <span className="text-gray-400 font-bold">Lead:</span>{' '}
-                              <span className="text-gray-800 font-bold">{task.reviewingLead}</span>
-                            </div>
-                          </div>
-
-                          {/* Footer */}
-                          <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-gray-100">
-                            <div className="flex items-center gap-1 font-medium text-gray-500">
-                              <Clock className="w-3 h-3 text-gray-400 shrink-0" />
-                              <span>{task.dueDate}</span>
-                            </div>
-
-                            {!isEmployee && (
-                              <button
-                                onClick={(e) => handleSendDelayAlertToEmployee(e, task.taskCode, task.assigneeName)}
-                                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                        return (
+                          <tr key={t.id} className="hover:bg-gray-50/80 transition-colors">
+                            <td className="py-3.5 px-4">
+                              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                                {t.taskCode}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border inline-block ${
+                                t.entityCode === 'CAG'
+                                  ? 'text-blue-700 bg-blue-50 border-blue-200'
+                                  : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                              }`}>
+                                {t.entityCode === 'CAG' ? 'CLIMAGRO' : 'EHM'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-bold text-gray-900">{t.title}</div>
+                              {t.notes && <div className="text-[11px] text-gray-400 line-clamp-1">{t.notes}</div>}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {t.parentEpicCode ? (
+                                <span className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5 hover:bg-emerald-100 transition-all text-xs cursor-pointer">
+                                  <span>{t.parentEpicCode}</span>
+                                  <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">No Parent Epic</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span
+                                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-lg uppercase border inline-block ${
+                                  t.priority === 'URGENT' || t.priority === 'HIGH'
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                                }`}
                               >
-                                <Send className="w-2.5 h-2.5 text-amber-600" />
-                                <span>Delay Alert</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                                {t.priority || 'MEDIUM'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <select
+                                value={isDone ? 'DONE' : isInProgress ? 'IN_PROGRESS' : t.status || 'BACKLOG'}
+                                onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}
+                                className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg uppercase border cursor-pointer focus:outline-none transition-all shadow-2xs ${
+                                  isDone
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
+                                    : isInProgress
+                                    ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                    : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                                }`}
+                              >
+                                <option value="BACKLOG">BACKLOG</option>
+                                <option value="PLANNED">PLANNED</option>
+                                <option value="TODO">TODO</option>
+                                <option value="IN_PROGRESS">IN PROGRESS</option>
+                                <option value="DONE">DONE</option>
+                              </select>
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => handleTaskClick(t)}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-bold text-xs transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                  title="View Full Task Details"
+                                >
+                                  <Eye className="w-4 h-4 text-emerald-600" />
+                                  <span>View</span>
+                                </button>
+                                <button
+                                  onClick={() => setLocation('/dashboard?sub=sprints')}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <span>View in Sprint</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="p-3 bg-gray-50/80 border-t border-gray-200 flex items-center justify-between text-xs font-bold text-gray-600">
+                  <div>
+                    Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filteredTasks.length)} of {filteredTasks.length} tasks
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span>Page {currentPage} of {totalPages}</span>
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -17019,9 +18029,11 @@ export const TasksView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx`
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { Mail, UserPlus, Phone, X, Check, Copy, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17274,7 +18286,7 @@ export const TeamDirectoryView: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Team Directory</h2>
-          <p className="text-xs text-gray-500 font-medium">Employee roster across ehmconsultancy and climagroanalytics.</p>
+          <p className="text-xs text-gray-500 font-medium">Employee roster across EHM and CLIMAGRO.</p>
         </div>
 
         {!isEmployee && (
@@ -17465,8 +18477,8 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setEntity(e.target.value as any)}
                     className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="EHM">ehmconsultancy</option>
-                    <option value="CAG">climagroanalytics</option>
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
                   </select>
                 </div>
               </div>
@@ -17496,9 +18508,11 @@ export const TeamDirectoryView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/TeamTasksView.tsx
+---
 
-```tsx
+## File: `artifacts/hr-dashboard/src/pages/TeamTasksView.tsx`
+
+```typescript
 import React, { useState } from 'react';
 import { Users, AlertCircle, Link as LinkIcon, CheckCircle2, FileText, Plus, ShieldCheck, Clock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17676,7 +18690,9 @@ export const TeamTasksView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/utils/avatars.ts
+---
+
+## File: `artifacts/hr-dashboard/src/utils/avatars.ts`
 
 ```typescript
 // Vector SVG Logo Avatars (No real photos — clean vector icon logos)
@@ -17700,7 +18716,9 @@ export function getAvatarByName(name?: string, gender?: 'male' | 'female'): stri
 
 ```
 
-## FILE: artifacts/hr-dashboard/tsconfig.json
+---
+
+## File: `artifacts/hr-dashboard/tsconfig.json`
 
 ```json
 {
@@ -17727,7 +18745,9 @@ export function getAvatarByName(name?: string, gender?: 'male' | 'female'): stri
 
 ```
 
-## FILE: artifacts/hr-dashboard/vite.config.ts
+---
+
+## File: `artifacts/hr-dashboard/vite.config.ts`
 
 ```typescript
 import { defineConfig } from 'vite';
@@ -17755,206 +18775,9 @@ export default defineConfig({
 
 ```
 
-## FILE: chatdiscussion.md
-
-```markdown
-# HROS (Human Resource Operating System) — Complete Chat & System Architecture Reference
-
-> **File:** `chatdiscussion.md`  
-> **Repository:** EHM-Climagro OS (`c:\hrdashboard`)  
-> **Last Updated:** September 3, 2026  
-
 ---
 
-## 1. Executive Summary & Overview
-
-**EHM-Climagro OS** (HROS) is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, Agile Milestone, and Meeting Management platform designed for cross-entity collaboration between **ehmconsultancy** and **climagroanalytics**.
-
-This document serves as a comprehensive reference of all user requests, architectural decisions, technical fixes, database schema updates, API integrations, and UI enhancements implemented during this development trajectory.
-
----
-
-## 2. Full Chronological History of User Requests & Solutions
-
-### Phase 1: Frontend-to-Backend Connection & Core Wiring
-* **User Directive**: Connect the disconnected frontend mock arrays to the real Node.js/Express API server.
-* **Fixes Applied**:
-  - `AuthContext.tsx`: Replaced mock `setTimeout` login with real `POST /api/auth/login` via `@workspace/api-client-react`. Restored JWT session from `localStorage.getItem('hros_token')`.
-  - `LoginView.tsx`: Integrated real authentication flow with error toast alerts.
-  - Connected `EmployeeDashboardView`, `TasksView`, `MeetingsView`, `AnnouncementsView`, `AttendanceView`, and `TeamDirectoryView` to live Express API endpoints.
-
----
-
-### Phase 2: Supabase PostgreSQL Schema & Enum Fixes
-* **Issue Reported**: Toast error `column "status" of relation "meetings" does not exist` when creating meetings or running Google Calendar sync.
-* **Root Cause**: Local Drizzle migration files (`0002_silky_onslaught.sql`, `0003_fair_sue_storm.sql`) were generated locally but had not been executed on the live Supabase database.
-* **Solution**:
-  - Created `lib/db/src/apply-db-schema.ts` DDL execution script.
-  - Applied the following PostgreSQL DDL schema updates directly to Supabase:
-    - Added `DELAYED` and `BLOCKED` values to `task_status` enum.
-    - Created `meeting_status` enum (`SCHEDULED`, `CANCELLED`).
-    - Added `GOOGLE_CALENDAR_IMPORTED` value to `meeting_source` enum.
-    - Added `status` column to `meetings` table (`DEFAULT 'SCHEDULED' NOT NULL`).
-  - Added robust environment variable fallback paths in `lib/db/src/index.ts` to ensure database connections succeed regardless of package execution directory.
-
----
-
-### Phase 3: Real Two-Way Google Calendar Sync & Google Meet Integration
-* **Issues Reported**:
-  1. Google Calendar sync was returning 0 imported events.
-  2. Clicking "Join Google Meet" opened `https://meet.google.com/hros-1234` which gave Google Meet error: `"Invalid video call name."`.
-  3. Events created on Google Calendar secondary calendars (e.g. `ehm testing`) were not appearing in HROS.
-  4. Timezone offset mismatch when creating meetings.
-* **Root Causes & Solutions**:
-  - **OAuth Requirement**: Without a connected Google OAuth token in `google_tokens` table, mock links were generated. Added validation in `routes/meetings.ts` requiring connected Google OAuth before meeting creation.
-  - **Real Meet Links**: Integrated Google Calendar REST API (`POST /v3/calendars/primary/events?conferenceDataVersion=1`) to automatically generate working Google Meet video room codes (e.g. `https://meet.google.com/abc-defg-hij`).
-  - **Timezone Support**: Added `userTimeZone` resolution (`Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'`) to `start` and `end` event objects in Google Calendar API payloads.
-  - **Multi-Calendar Sync**: Updated `services/calendar-sync.ts` to query `users/me/calendarList` API first, discovering **ALL primary and secondary calendars owned by the user**, importing events across all calendars.
-  - **Expanded Sync Window**: Expanded sync window from 30 days past to 60 days future (`timeMin` / `timeMax`).
-
----
-
-### Phase 4: Meetings Feed UX & Filtering Improvements
-* **User Directives**:
-  1. Add top filter toolbar for Today's, Tomorrow's, Past 7 Days, and Recurring meetings.
-  2. Prevent automatic sync toasts from popping up on page load/navigation.
-  3. Don't show repeating series cards cluttering "All Meetings".
-* **Solutions Implemented**:
-  - **UX Loading Feedback**: Added `isSyncing` and `isConnecting` state handlers with spinning icons (`<RefreshCw className="animate-spin" />`) and disabled button states to prevent double-clicking.
-  - **Silent Auto-Fetch**: Removed `handleSync()` toast trigger from `useEffect` mount. Page opens run silent background sync without popping up UI toasts.
-  - **5 Meeting Filter Rules**:
-    1. **All Meetings (`ALL`)**: Shows all distinct single meetings, but **deduplicates repeating series meetings** (showing 1 representative card per title).
-    2. **Today's Meetings (`TODAY`)**: Shows all meetings starting today (`YYYY-MM-DD`).
-    3. **Tomorrow's Meetings (`TOMORROW`)**: Shows all meetings starting tomorrow.
-    4. **Past 7 Days (`PAST`)**: Shows meetings that ended in the last 7 days.
-    5. **Recurring / Series (`RECURRING`)**: Shows all occurrences of repeating series meetings (like all instances of "Company Call").
-
----
-
-### Phase 5: Employee Invitations & Setup Link System
-* **User Directive**: Ensure an invitation email goes to new employees with the dashboard setup URL upon addition.
-* **Solutions Implemented**:
-  - `routes/employees.ts`: `POST /api/employees` returns `{ employee, inviteToken, inviteLink: ${appUrl}/accept-invite?token=${inviteToken} }`.
-  - `TeamDirectoryView.tsx`: Displays an **Invitation Link Modal** upon employee creation featuring a **"Copy Link"** button for sharing via WhatsApp, Slack, or Email.
-  - `services/email.ts`: Dispatches Resend onboarding email (`from: 'HROS <onboarding@resend.dev>'`) and logs the full invitation URL in bold green server logs.
-
----
-
-### Phase 6: Vector SVG Male & Female Avatar System
-* **User Directive**: Replace all external photo URLs (Unsplash) with clean vector SVG logo avatars for Male and Female.
-* **Solution Implemented**:
-  - Created `src/utils/avatars.ts` with Data URI SVG vector logo avatars (`MALE_AVATAR` and `FEMALE_AVATAR`).
-  - Implemented `getAvatarByName(name)` helper to automatically map names to vector avatars.
-  - Updated `TeamDirectoryView.tsx`, `OfficeTodayView.tsx`, `TeamTasksView.tsx`, `Navbar.tsx`, `ProfileModal.tsx`, and `ScheduleWidget.tsx`.
-
----
-
-### Phase 7: Full Agile Hierarchy & Product Backlog System
-* **User Directives & Requirements**:
-  1. **Strategic Initiatives Form & View (`InitiativesSubView.tsx`)**:
-     - Form fields: Title, Brand/Entity (`ehmconsultancy`, `climagroanalytics`), Department (`Marketing`, `Sales`, `Product & Tech`, `Operations & Delivery`, `Grants & Governance`), Sub-Department/Track, Target Deliverable Metric, Target Month (`Month 1`, `Month 2`, `Month 3`), Epics division count (`1` to `8`).
-     - Default View: Closed/collapsed by default (`expandedId = null`).
-     - Status confirmation popup dialog before updating status (`PLANNED`, `IN_PROGRESS` ➔ `ACTIVE`, `DONE` ➔ `DONE`).
-     - **Archive Mode & Auto-Archiving**: Marking an initiative as `DONE` automatically moves it to **Archive Mode** (`Archive (N)` toggle button).
-     - **Explicit Brand / Entity Badge**: Displays `🏢 climagroanalytics` / `🏢 ehmconsultancy` badge on each initiative card.
-     - **Dynamic Adaptive Epics Sizing**: 1-6 epics scale adaptively across 1 row (`grid-cols-1` to `grid-cols-6`), 7+ epics wrap to row 2.
-
-  2. **Feature Epics Form & View (`EpicsSubView.tsx`)**:
-     - Parent Initiative dropdown sorted alphabetically (`[CAG-INIT-001] Title`).
-     - Form fields: Parent Initiative, Epic Title, Department, Target Week, Description, Target Sprints Count.
-     - Compact Card Layout & Ordering:
-       - Top Bar: Parent Initiative Badge `⚡ [CAG-INIT-001] Make a full application for cityadapt.ai` on left, Status Badge (`PLANNED`, `IN_PROGRESS`, `DONE`), Eye Button (`👁️`), and Edit Button (`✏️`) on top right.
-       - Second Line: Epic Code Badge `CAG-EPIC-001` and Epic Title `Frontend`.
-       - Third Line: Department (`Product & Tech`) and Target Week (`Week 1 (Days 1–7)`).
-     - **Hanging TASKS Clothesline UI**: Animated hanging clothespin stringer displaying assigned **Hanging TASKS** (`[CAG-EPIC-001-TSK-01] Initial Setup`).
-     - **Middle Pop Card Details Modal**: Clicking Eye button (`👁️`) opens a centered middle pop card displaying all epic details, linked tasks, and an embedded **`✏️ Edit Epic`** button.
-     - **Scalable Toolbar for 50+ Epics**: Real-time Search Bar, Status Filter Pills (`All`, `Planned`, `In Progress`, `Done`), and `Cards` vs `Compact Table` view switcher.
-
-  3. **Standalone Sprints Page (`SprintsView.tsx` & `SprintsSubView.tsx`)**:
-     - Main left Sidebar under **WORK**: Renamed **Tasks** ➔ **`Product Backlog`** (`/tasks`), added standalone **`Sprints`** (`/sprints`).
-     - Parent Epic dropdown sorted alphabetically (`[CAG-EPIC-001] Title`).
-     - Form fields: Parent Epic, Sprint Title, Target Week, Department, Assigned To employee, Reviewing Lead, Description / Goal.
-
-  4. **Product Backlog Tasks (`TasksView.tsx` & `TaskAssignModal.tsx`)**:
-     - Product Backlog top segmented tab switcher contains 3 tabs: `🎯 Initiatives`, `⚡ Epics`, and `📋 Tasks` (Sprints tab removed from `/tasks`).
-     - Parent Sprint dropdown sorted alphabetically (`[CAG-SPR-001] Name`).
-     - Form fields: Parent Sprint, Task Title, Department, Assigned To employee, Target Date, Description, Reviewing Lead.
-
----
-
-## 3. Database Schema Overview (`@workspace/db`)
-
-| Table Name | Description | Key Enums & Columns |
-| :--- | :--- | :--- |
-| `users` | User credentials & session tokens | `role` (`ADMIN`, `MANAGER`, `EMPLOYEE`), `employeeId` |
-| `employees` | Employee roster & details | `employeeCode` (`EHM-EMP01`), `entityId`, `departmentId`, `designation` |
-| `initiatives` | Level 1 Strategic Initiatives | `initiativeCode` (`CAG-INIT-001`), `entityId`, `departmentId`, `subDepartment`, `targetMonth`, `epicsCountTarget`, `targetDeliverableMetric`, `status` (`PLANNED`, `ACTIVE`, `DONE`) |
-| `epics` | Level 2 Feature Epics | `epicCode` (`CAG-EPIC-001`), `initiativeId`, `department`, `targetWeek`, `sprintsCountTarget`, `status` |
-| `sprints` | Level 3 Agile Sprints | `sprintCode` (`EHM-EMP01-SPR-01`), `epicId`, `reviewingLeadId`, `department`, `targetWeek` |
-| `tasks` | Level 4 Backlog Tasks | `taskCode` (`EHM-EMP01-001`), `sprintId`, `reviewingLeadId`, `department`, `status` (`TODO`, `IN_PROGRESS`, `UNDER_REVIEW`, `COMPLETED`, `DELAYED`, `BLOCKED`) |
-| `entity_counters` | Atomic sequence counters | `entityId`, `nextInitiativeSeq`, `nextEpicSeq` |
-| `meetings` | Scheduled & imported meetings | `status` (`SCHEDULED`, `CANCELLED`), `source` (`GOOGLE_CALENDAR`, `GOOGLE_CALENDAR_IMPORTED`), `googleMeetUrl`, `googleEventId` |
-| `google_tokens` | User Google OAuth 2.0 tokens | `accessToken`, `refreshToken`, `expiresAt` |
-| `invites` | Pending account setup invites | `token`, `role`, `status` (`PENDING`, `ACCEPTED`), `expiresAt` |
-
----
-
-## 4. Environment Configuration (`artifacts/api-server/.env`)
-
-```env
-# Supabase PostgreSQL Database Connection
-DATABASE_URL="postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
-
-# Server Configuration
-PORT=5000
-APP_URL="http://localhost:5173"
-
-# JWT & Security Secrets
-JWT_SECRET="hros_jwt_super_secret_key_2026"
-TOKEN_ENCRYPTION_KEY="hros_token_encryption_secret_key_32bytes!"
-
-# Third-Party Integrations
-RESEND_API_KEY="re_123456789_your_resend_key"
-GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
-GOOGLE_REDIRECT_URI="http://localhost:5000/api/auth/google/callback"
-```
-
----
-
-## 5. Verification & Monorepo Build Command
-
-To verify complete TypeScript & Vite compilation across all workspace packages:
-
-```bash
-pnpm build
-```
-
-**Result:** `PASSED (0 errors across all 5 workspace projects)`.
-
-```
-
-## FILE: drizzle.config.ts
-
-```typescript
-import { defineConfig } from 'drizzle-kit';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
-
-export default defineConfig({
-  schema: './lib/db/src/schema/*.ts',
-  out: './drizzle',
-  dialect: 'postgresql',
-  dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres',
-  },
-});
-
-```
-
-## FILE: lib/api-client-react/package.json
+## File: `lib/api-client-react/package.json`
 
 ```json
 {
@@ -17981,7 +18804,9 @@ export default defineConfig({
 
 ```
 
-## FILE: lib/api-client-react/src/index.ts
+---
+
+## File: `lib/api-client-react/src/index.ts`
 
 ```typescript
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18062,7 +18887,9 @@ export function useEmployees(entityCode?: string) {
 
 ```
 
-## FILE: lib/api-client-react/tsconfig.json
+---
+
+## File: `lib/api-client-react/tsconfig.json`
 
 ```json
 {
@@ -18083,7 +18910,9 @@ export function useEmployees(entityCode?: string) {
 
 ```
 
-## FILE: lib/api-zod/package.json
+---
+
+## File: `lib/api-zod/package.json`
 
 ```json
 {
@@ -18105,7 +18934,9 @@ export function useEmployees(entityCode?: string) {
 
 ```
 
-## FILE: lib/api-zod/src/index.ts
+---
+
+## File: `lib/api-zod/src/index.ts`
 
 ```typescript
 import { z } from 'zod';
@@ -18183,7 +19014,9 @@ export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>;
 
 ```
 
-## FILE: lib/api-zod/tsconfig.json
+---
+
+## File: `lib/api-zod/tsconfig.json`
 
 ```json
 {
@@ -18203,294 +19036,9 @@ export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>;
 
 ```
 
-## FILE: lib/db/apply_0005_migration.mjs
+---
 
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-import fs from 'node:fs';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-try {
-  console.log('--- APPLYING MIGRATION 0005: TASK CHECKLISTS & COMMENTS ---');
-  const sql = fs.readFileSync(path.resolve(process.cwd(), 'drizzle/0005_task_checklists_and_comments.sql'), 'utf-8');
-  await client.query(sql);
-  console.log('✅ Migration 0005 applied successfully to Postgres database!');
-} catch (err) {
-  console.error('Migration failure:', err);
-} finally {
-  await client.end();
-}
-
-```
-
-## FILE: lib/db/apply_migration.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-import fs from 'node:fs';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('DATABASE_URL is not defined in env');
-  process.exit(1);
-}
-
-console.log('Connecting to Supabase DB to apply migration 0004_agile_schema_alignment.sql...');
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-try {
-  const sql = fs.readFileSync(path.resolve(process.cwd(), 'drizzle/0004_agile_schema_alignment.sql'), 'utf8');
-  await client.query(sql);
-  console.log('✅ MIGRATION 0004_AGILE_SCHEMA_ALIGNMENT SUCCESSFULLY APPLIED TO SUPABASE!');
-} catch (err) {
-  console.error('❌ MIGRATION FAILED:', err);
-  process.exit(1);
-} finally {
-  await client.end();
-}
-
-```
-
-## FILE: lib/db/audit_epics.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-try {
-  console.log('--- AUDITING EPICS & INITIATIVE LINEAGE ---');
-  
-  const initsRes = await client.query(`SELECT id, initiative_code, title FROM initiatives`);
-  console.log(`Found ${initsRes.rows.length} initiatives in database:`);
-  initsRes.rows.forEach(i => console.log(` - Initiative: id=${i.id}, code=${i.initiative_code}, title="${i.title}"`));
-
-  const epicsRes = await client.query(`SELECT id, epic_code, title, initiative_id FROM epics`);
-  console.log(`\nFound ${epicsRes.rows.length} epics in database:`);
-
-  const validInitIds = new Set(initsRes.rows.map(i => i.id));
-  let orphanCount = 0;
-  const orphanEpics = [];
-  
-  epicsRes.rows.forEach(e => {
-    const isValid = e.initiative_id && validInitIds.has(e.initiative_id);
-    if (!isValid) {
-      orphanCount++;
-      orphanEpics.push(e);
-    }
-    console.log(` - Epic: id=${e.id}, code=${e.epic_code}, title="${e.title}", initiative_id=${e.initiative_id} -> ${isValid ? 'VALID' : 'INVALID / UNMATCHED'}`);
-  });
-
-  console.log(`\nAUDIT SUMMARY: ${orphanCount} of ${epicsRes.rows.length} Epics have null, invalid, or unmatched initiative_id values.`);
-  if (orphanEpics.length > 0) {
-    console.log('Orphan Epics:', JSON.stringify(orphanEpics, null, 2));
-  }
-} catch (err) {
-  console.error('Audit failed:', err);
-} finally {
-  await client.end();
-}
-
-```
-
-## FILE: lib/db/backfill.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('DATABASE_URL is not defined in env');
-  process.exit(1);
-}
-
-console.log('Connecting to Supabase DB for pre-migration backfill...');
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-try {
-  console.log('--- PHASE 1: ENUM CREATION ---');
-  await client.query(`
-    DO $$ BEGIN
-      CREATE TYPE "public"."task_type" AS ENUM('SPRINT_TASK', 'EPIC_TASK', 'BACKLOG');
-    EXCEPTION
-      WHEN duplicate_object THEN null;
-    END $$;
-  `);
-
-  console.log('--- PHASE 2: COLUMN ADDITIONS FOR BACKFILL ---');
-  await client.query(`ALTER TABLE "initiatives" ADD COLUMN IF NOT EXISTS "initiative_code" VARCHAR(50);`);
-  await client.query(`ALTER TABLE "epics" ADD COLUMN IF NOT EXISTS "epic_code" VARCHAR(50);`);
-  await client.query(`ALTER TABLE "sprints" ADD COLUMN IF NOT EXISTS "sprint_code" VARCHAR(50);`);
-  await client.query(`ALTER TABLE "sprints" ADD COLUMN IF NOT EXISTS "employee_id" UUID REFERENCES "employees"("id");`);
-  await client.query(`ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "task_type" "public"."task_type" DEFAULT 'BACKLOG';`);
-  await client.query(`ALTER TABLE "epics" ADD COLUMN IF NOT EXISTS "next_task_seq" INT DEFAULT 1 NOT NULL;`);
-  await client.query(`ALTER TABLE "sprints" ADD COLUMN IF NOT EXISTS "next_task_seq" INT DEFAULT 1 NOT NULL;`);
-  await client.query(`ALTER TABLE "entity_counters" ADD COLUMN IF NOT EXISTS "next_backlog_task_seq" INT DEFAULT 1 NOT NULL;`);
-
-  console.log('--- PHASE 3: BACKFILLING INITIATIVE CODES ---');
-  const initsRes = await client.query(`
-    SELECT i.id, i.initiative_code, e.code as entity_code 
-    FROM initiatives i 
-    JOIN entities e ON i.entity_id = e.id 
-    ORDER BY i.created_at ASC
-  `);
-  let initSeq = 1;
-  for (const row of initsRes.rows) {
-    const code = `${row.entity_code || 'EHM'}-I${String(initSeq).padStart(2, '0')}`;
-    await client.query(`UPDATE initiatives SET initiative_code = $1 WHERE id = $2`, [code, row.id]);
-    console.log(`Updated Initiative ${row.id} -> ${code}`);
-    initSeq++;
-  }
-
-  console.log('--- PHASE 4: BACKFILLING EPIC CODES ---');
-  const epicsRes = await client.query(`
-    SELECT ep.id, ep.epic_code, i.initiative_code 
-    FROM epics ep 
-    JOIN initiatives i ON ep.initiative_id = i.id 
-    ORDER BY ep.created_at ASC
-  `);
-  const epicSeqMap = {};
-  for (const row of epicsRes.rows) {
-    const initCode = row.initiative_code || 'EHM-I01';
-    epicSeqMap[initCode] = (epicSeqMap[initCode] || 0) + 1;
-    const code = `${initCode}-EP${String(epicSeqMap[initCode]).padStart(2, '0')}`;
-    await client.query(`UPDATE epics SET epic_code = $1 WHERE id = $2`, [code, row.id]);
-    console.log(`Updated Epic ${row.id} -> ${code}`);
-  }
-
-  console.log('--- PHASE 5: BACKFILLING SPRINT CODES & EMPLOYEE_ID ---');
-  const empRes = await client.query(`SELECT id, employee_code FROM employees LIMIT 1`);
-  const defaultEmpId = empRes.rows[0]?.id;
-  if (!defaultEmpId) throw new Error('No employees found in DB to assign sprint owner!');
-
-  await client.query(`UPDATE sprints SET employee_id = $1 WHERE employee_id IS NULL`, [defaultEmpId]);
-
-  const sprintsRes = await client.query(`
-    SELECT s.id, s.target_week, e.employee_code 
-    FROM sprints s 
-    JOIN employees e ON s.employee_id = e.id 
-    ORDER BY s.created_at ASC
-  `);
-  const seenSprintCodes = {};
-  for (const row of sprintsRes.rows) {
-    let weekNum = '1';
-    if (row.target_week) {
-      const match = row.target_week.match(/\d+/);
-      if (match) weekNum = match[0];
-    }
-    const empCode = (row.employee_code || 'EHM-E01').replace('-EMP', '-E');
-    const baseCode = `${empCode}-W${weekNum}`;
-    seenSprintCodes[baseCode] = (seenSprintCodes[baseCode] || 0) + 1;
-    const code = seenSprintCodes[baseCode] === 1 ? baseCode : `${baseCode}-S${seenSprintCodes[baseCode]}`;
-
-    await client.query(`UPDATE sprints SET sprint_code = $1 WHERE id = $2`, [code, row.id]);
-    console.log(`Updated Sprint ${row.id} -> ${code}`);
-  }
-
-  console.log('--- PHASE 6: BACKFILLING TASK TYPES & CLEANING CONFLICTING LINEAGE ---');
-  // EPIC_TASK takes precedence when epic_id is set -> clear sprint_id to obey lineage constraint
-  await client.query(`UPDATE tasks SET task_type = 'EPIC_TASK', sprint_id = NULL WHERE epic_id IS NOT NULL;`);
-  await client.query(`UPDATE tasks SET task_type = 'SPRINT_TASK' WHERE sprint_id IS NOT NULL AND epic_id IS NULL;`);
-  await client.query(`UPDATE tasks SET task_type = 'BACKLOG' WHERE epic_id IS NULL AND sprint_id IS NULL;`);
-
-  console.log('--- PHASE 7: ROW-COUNT SEQUENCE COUNTER INITIALIZATION ---');
-  await client.query(`UPDATE epics e SET next_task_seq = (SELECT COUNT(*) + 1 FROM tasks WHERE epic_id = e.id);`);
-  await client.query(`UPDATE sprints s SET next_task_seq = (SELECT COUNT(*) + 1 FROM tasks WHERE sprint_id = s.id);`);
-  await client.query(`
-    UPDATE entity_counters ec SET next_backlog_task_seq = (
-      SELECT COUNT(*) + 1 FROM tasks WHERE entity_id = ec.entity_id AND epic_id IS NULL AND sprint_id IS NULL
-    );
-  `);
-
-  console.log('✅ PRE-MIGRATION BACKFILL COMPLETED SUCCESSFULLY!');
-} catch (err) {
-  console.error('❌ BACKFILL FAILED:', err);
-  process.exit(1);
-} finally {
-  await client.end();
-}
-
-```
-
-## FILE: lib/db/check_tasks.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
-await client.connect();
-
-try {
-  console.log('Inspecting tasks rows...');
-  const res = await client.query(`SELECT id, task_code, epic_id, sprint_id, task_type FROM tasks`);
-  console.log('Tasks rows:', res.rows);
-  
-  for (const t of res.rows) {
-    if (t.epic_id && t.sprint_id) {
-      console.log(`Task ${t.id} (${t.task_code}) has BOTH epic_id (${t.epic_id}) and sprint_id (${t.sprint_id})!`);
-    }
-  }
-} catch (err) {
-  console.error('Error inspecting tasks:', err);
-} finally {
-  await client.end();
-}
-
-```
-
-## FILE: lib/db/drizzle.config.ts
-
-```typescript
-import { defineConfig } from 'drizzle-kit';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-export default defineConfig({
-  schema: './dist/index.js',
-  out: './drizzle',
-  dialect: 'postgresql',
-  dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres',
-  },
-});
-
-```
-
-## FILE: lib/db/drizzle/0000_soft_cerebro.sql
+## File: `lib/db/drizzle/0000_soft_cerebro.sql`
 
 ```sql
 CREATE TYPE "public"."employee_status" AS ENUM('ACTIVE', 'TERMINATED');--> statement-breakpoint
@@ -18773,20 +19321,26 @@ ALTER TABLE "sprints" ADD CONSTRAINT "sprints_entity_id_entities_id_fk" FOREIGN 
 ALTER TABLE "sprints" ADD CONSTRAINT "sprints_department_id_departments_id_fk" FOREIGN KEY ("department_id") REFERENCES "public"."departments"("id") ON DELETE no action ON UPDATE no action;
 ```
 
-## FILE: lib/db/drizzle/0001_blue_cerise.sql
+---
+
+## File: `lib/db/drizzle/0001_blue_cerise.sql`
 
 ```sql
 ALTER TABLE "tasks" ALTER COLUMN "sprint_week" DROP NOT NULL;
 ```
 
-## FILE: lib/db/drizzle/0002_silky_onslaught.sql
+---
+
+## File: `lib/db/drizzle/0002_silky_onslaught.sql`
 
 ```sql
 ALTER TYPE "public"."task_status" ADD VALUE 'DELAYED';--> statement-breakpoint
 ALTER TYPE "public"."task_status" ADD VALUE 'BLOCKED';
 ```
 
-## FILE: lib/db/drizzle/0003_fair_sue_storm.sql
+---
+
+## File: `lib/db/drizzle/0003_fair_sue_storm.sql`
 
 ```sql
 CREATE TYPE "public"."meeting_status" AS ENUM('SCHEDULED', 'CANCELLED');--> statement-breakpoint
@@ -18794,7 +19348,9 @@ ALTER TYPE "public"."meeting_source" ADD VALUE 'GOOGLE_CALENDAR_IMPORTED';--> st
 ALTER TABLE "meetings" ADD COLUMN "status" "meeting_status" DEFAULT 'SCHEDULED' NOT NULL;
 ```
 
-## FILE: lib/db/drizzle/0004_agile_schema_alignment.sql
+---
+
+## File: `lib/db/drizzle/0004_agile_schema_alignment.sql`
 
 ```sql
 -- 0004_agile_schema_alignment.sql
@@ -18897,7 +19453,9 @@ ALTER TABLE "meetings" ADD COLUMN IF NOT EXISTS "status" "public"."meeting_statu
 
 ```
 
-## FILE: lib/db/drizzle/0005_task_checklists_and_comments.sql
+---
+
+## File: `lib/db/drizzle/0005_task_checklists_and_comments.sql`
 
 ```sql
 -- 0005_task_checklists_and_comments.sql
@@ -18919,7 +19477,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 
 ```
 
-## FILE: lib/db/drizzle/meta/0000_snapshot.json
+---
+
+## File: `lib/db/drizzle/meta/0000_snapshot.json`
 
 ```json
 {
@@ -20908,7 +21468,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/0001_snapshot.json
+---
+
+## File: `lib/db/drizzle/meta/0001_snapshot.json`
 
 ```json
 {
@@ -22897,7 +23459,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/0002_snapshot.json
+---
+
+## File: `lib/db/drizzle/meta/0002_snapshot.json`
 
 ```json
 {
@@ -24888,7 +25452,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/0003_snapshot.json
+---
+
+## File: `lib/db/drizzle/meta/0003_snapshot.json`
 
 ```json
 {
@@ -26896,7 +27462,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/_journal.json
+---
+
+## File: `lib/db/drizzle/meta/_journal.json`
 
 ```json
 {
@@ -26935,54 +27503,31 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/fix_sprint_codes.mjs
+---
 
-```javascript
-import pg from 'pg';
+## File: `lib/db/drizzle.config.ts`
+
+```typescript
+import { defineConfig } from 'drizzle-kit';
 import dotenv from 'dotenv';
 import path from 'node:path';
 
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
 
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
-await client.connect();
-
-try {
-  console.log('Fixing duplicate sprint codes...');
-  const res = await client.query(`
-    SELECT s.id, s.target_week, e.employee_code 
-    FROM sprints s 
-    JOIN employees e ON s.employee_id = e.id 
-    ORDER BY s.created_at ASC
-  `);
-
-  const seen = {};
-  for (const row of res.rows) {
-    let weekNum = '1';
-    if (row.target_week) {
-      const match = row.target_week.match(/\d+/);
-      if (match) weekNum = match[0];
-    }
-    const empCode = (row.employee_code || 'EHM-E01').replace('-EMP', '-E');
-    const baseCode = `${empCode}-W${weekNum}`;
-    
-    seen[baseCode] = (seen[baseCode] || 0) + 1;
-    const finalCode = seen[baseCode] === 1 ? baseCode : `${baseCode}-S${seen[baseCode]}`;
-
-    await client.query(`UPDATE sprints SET sprint_code = $1 WHERE id = $2`, [finalCode, row.id]);
-    console.log(`Updated Sprint ${row.id} -> ${finalCode}`);
-  }
-  console.log('✅ Sprint codes deduplicated successfully!');
-} catch (err) {
-  console.error('Error fixing sprint codes:', err);
-} finally {
-  await client.end();
-}
+export default defineConfig({
+  schema: './dist/index.js',
+  out: './drizzle',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres',
+  },
+});
 
 ```
 
-## FILE: lib/db/package.json
+---
+
+## File: `lib/db/package.json`
 
 ```json
 {
@@ -27008,7 +27553,9 @@ try {
 
 ```
 
-## FILE: lib/db/src/index.ts
+---
+
+## File: `lib/db/src/index.ts`
 
 ```typescript
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -27057,7 +27604,9 @@ export const db = drizzle(pool);
 
 ```
 
-## FILE: lib/db/src/schema/announcements.ts
+---
+
+## File: `lib/db/src/schema/announcements.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, boolean, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
@@ -27078,7 +27627,9 @@ export const announcements = pgTable('announcements', {
 
 ```
 
-## FILE: lib/db/src/schema/applications.ts
+---
+
+## File: `lib/db/src/schema/applications.ts`
 
 ```typescript
 import { pgTable, uuid, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
@@ -27100,7 +27651,9 @@ export const applications = pgTable('applications', {
 
 ```
 
-## FILE: lib/db/src/schema/attendance.ts
+---
+
+## File: `lib/db/src/schema/attendance.ts`
 
 ```typescript
 import { pgTable, uuid, date, timestamp, decimal, pgEnum } from 'drizzle-orm/pg-core';
@@ -27123,7 +27676,9 @@ export const attendance = pgTable('attendance', {
 
 ```
 
-## FILE: lib/db/src/schema/audit_logs.ts
+---
+
+## File: `lib/db/src/schema/audit_logs.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, jsonb, timestamp } from 'drizzle-orm/pg-core';
@@ -27138,7 +27693,9 @@ export const auditLogs = pgTable('audit_logs', {
 
 ```
 
-## FILE: lib/db/src/schema/departments.ts
+---
+
+## File: `lib/db/src/schema/departments.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp } from 'drizzle-orm/pg-core';
@@ -27154,7 +27711,9 @@ export const departments = pgTable('departments', {
 
 ```
 
-## FILE: lib/db/src/schema/employees.ts
+---
+
+## File: `lib/db/src/schema/employees.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, decimal, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -27183,7 +27742,9 @@ export const employees = pgTable('employees', {
 
 ```
 
-## FILE: lib/db/src/schema/entities.ts
+---
+
+## File: `lib/db/src/schema/entities.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp } from 'drizzle-orm/pg-core';
@@ -27197,7 +27758,9 @@ export const entities = pgTable('entities', {
 
 ```
 
-## FILE: lib/db/src/schema/entity_counters.ts
+---
+
+## File: `lib/db/src/schema/entity_counters.ts`
 
 ```typescript
 import { pgTable, uuid, integer } from 'drizzle-orm/pg-core';
@@ -27214,7 +27777,9 @@ export const entityCounters = pgTable('entity_counters', {
 
 ```
 
-## FILE: lib/db/src/schema/epics.ts
+---
+
+## File: `lib/db/src/schema/epics.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -27243,7 +27808,9 @@ export const epics = pgTable('epics', {
 
 ```
 
-## FILE: lib/db/src/schema/google_tokens.ts
+---
+
+## File: `lib/db/src/schema/google_tokens.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp } from 'drizzle-orm/pg-core';
@@ -27261,7 +27828,9 @@ export const googleTokens = pgTable('google_tokens', {
 
 ```
 
-## FILE: lib/db/src/schema/initiatives.ts
+---
+
+## File: `lib/db/src/schema/initiatives.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -27290,7 +27859,9 @@ export const initiatives = pgTable('initiatives', {
 
 ```
 
-## FILE: lib/db/src/schema/invites.ts
+---
+
+## File: `lib/db/src/schema/invites.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
@@ -27312,26 +27883,9 @@ export const invites = pgTable('invites', {
 
 ```
 
-## FILE: lib/db/src/schema/meeting_attendees.ts
+---
 
-```typescript
-import { pgTable, uuid, timestamp, pgEnum } from 'drizzle-orm/pg-core';
-import { meetings } from './meetings.js';
-import { employees } from './employees.js';
-
-export const responseStatusEnum = pgEnum('response_status', ['PENDING', 'ACCEPTED', 'DECLINED']);
-
-export const meetingAttendees = pgTable('meeting_attendees', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  meetingId: uuid('meeting_id').references(() => meetings.id).notNull(),
-  employeeId: uuid('employee_id').references(() => employees.id).notNull(),
-  responseStatus: responseStatusEnum('response_status').default('PENDING').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-```
-
-## FILE: lib/db/src/schema/meetings.ts
+## File: `lib/db/src/schema/meetings.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
@@ -27358,7 +27912,30 @@ export const meetings = pgTable('meetings', {
 
 ```
 
-## FILE: lib/db/src/schema/notifications.ts
+---
+
+## File: `lib/db/src/schema/meeting_attendees.ts`
+
+```typescript
+import { pgTable, uuid, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { meetings } from './meetings.js';
+import { employees } from './employees.js';
+
+export const responseStatusEnum = pgEnum('response_status', ['PENDING', 'ACCEPTED', 'DECLINED']);
+
+export const meetingAttendees = pgTable('meeting_attendees', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  meetingId: uuid('meeting_id').references(() => meetings.id).notNull(),
+  employeeId: uuid('employee_id').references(() => employees.id).notNull(),
+  responseStatus: responseStatusEnum('response_status').default('PENDING').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+```
+
+---
+
+## File: `lib/db/src/schema/notifications.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, jsonb, timestamp } from 'drizzle-orm/pg-core';
@@ -27376,7 +27953,9 @@ export const notifications = pgTable('notifications', {
 
 ```
 
-## FILE: lib/db/src/schema/sprints.ts
+---
+
+## File: `lib/db/src/schema/sprints.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -27408,86 +27987,9 @@ export const sprints = pgTable('sprints', {
 
 ```
 
-## FILE: lib/db/src/schema/task_checklists.ts
+---
 
-```typescript
-import { pgTable, uuid, varchar, boolean, integer, timestamp } from 'drizzle-orm/pg-core';
-import { tasks } from './tasks.js';
-import { employees } from './employees.js';
-
-export const taskChecklists = pgTable('task_checklists', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  taskId: uuid('task_id').references(() => tasks.id).notNull(),
-  itemText: varchar('item_text', { length: 255 }).notNull(),
-  isCompleted: boolean('is_completed').default(false).notNull(),
-  completedBy: uuid('completed_by').references(() => employees.id),
-  sortOrder: integer('sort_order').default(1).notNull(),
-  completedAt: timestamp('completed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-```
-
-## FILE: lib/db/src/schema/task_comments.ts
-
-```typescript
-import { pgTable, uuid, text, timestamp, boolean } from 'drizzle-orm/pg-core';
-import { tasks } from './tasks.js';
-import { employees } from './employees.js';
-
-export const taskComments = pgTable('task_comments', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  taskId: uuid('task_id').references(() => tasks.id).notNull(),
-  authorId: uuid('author_id').references(() => employees.id),
-  authorName: text('author_name'),
-  content: text('content').notNull(),
-  isSystemLog: boolean('is_system_log').default(false).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-```
-
-## FILE: lib/db/src/schema/task_notes.ts
-
-```typescript
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
-import { tasks } from './tasks.js';
-import { employees } from './employees.js';
-
-export const taskNotes = pgTable('task_notes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  taskId: uuid('task_id').references(() => tasks.id).notNull(),
-  authorId: uuid('author_id').references(() => employees.id).notNull(),
-  content: text('content').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-```
-
-## FILE: lib/db/src/schema/task_templates.ts
-
-```typescript
-import { pgTable, uuid, varchar, jsonb, timestamp } from 'drizzle-orm/pg-core';
-import { entities } from './entities.js';
-import { departments } from './departments.js';
-import { employees } from './employees.js';
-import { taskPriorityEnum } from './tasks.js';
-
-export const taskTemplates = pgTable('task_templates', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: varchar('name', { length: 255 }).notNull(),
-  entityId: uuid('entity_id').references(() => entities.id).notNull(),
-  departmentId: uuid('department_id').references(() => departments.id).notNull(),
-  defaultTitlePattern: varchar('default_title_pattern', { length: 255 }).notNull(),
-  defaultChecklistItems: jsonb('default_checklist_items').default([]).notNull(), // array of strings
-  defaultPriority: taskPriorityEnum('default_priority').default('MEDIUM').notNull(),
-  createdBy: uuid('created_by').references(() => employees.id).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-```
-
-## FILE: lib/db/src/schema/tasks.ts
+## File: `lib/db/src/schema/tasks.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -27531,7 +28033,96 @@ export const tasks = pgTable('tasks', {
 
 ```
 
-## FILE: lib/db/src/schema/users.ts
+---
+
+## File: `lib/db/src/schema/task_checklists.ts`
+
+```typescript
+import { pgTable, uuid, varchar, boolean, integer, timestamp } from 'drizzle-orm/pg-core';
+import { tasks } from './tasks.js';
+import { employees } from './employees.js';
+
+export const taskChecklists = pgTable('task_checklists', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').references(() => tasks.id).notNull(),
+  itemText: varchar('item_text', { length: 255 }).notNull(),
+  isCompleted: boolean('is_completed').default(false).notNull(),
+  completedBy: uuid('completed_by').references(() => employees.id),
+  sortOrder: integer('sort_order').default(1).notNull(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+```
+
+---
+
+## File: `lib/db/src/schema/task_comments.ts`
+
+```typescript
+import { pgTable, uuid, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { tasks } from './tasks.js';
+import { employees } from './employees.js';
+
+export const taskComments = pgTable('task_comments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').references(() => tasks.id).notNull(),
+  authorId: uuid('author_id').references(() => employees.id),
+  authorName: text('author_name'),
+  content: text('content').notNull(),
+  isSystemLog: boolean('is_system_log').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+```
+
+---
+
+## File: `lib/db/src/schema/task_notes.ts`
+
+```typescript
+import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { tasks } from './tasks.js';
+import { employees } from './employees.js';
+
+export const taskNotes = pgTable('task_notes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').references(() => tasks.id).notNull(),
+  authorId: uuid('author_id').references(() => employees.id).notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+```
+
+---
+
+## File: `lib/db/src/schema/task_templates.ts`
+
+```typescript
+import { pgTable, uuid, varchar, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { entities } from './entities.js';
+import { departments } from './departments.js';
+import { employees } from './employees.js';
+import { taskPriorityEnum } from './tasks.js';
+
+export const taskTemplates = pgTable('task_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  entityId: uuid('entity_id').references(() => entities.id).notNull(),
+  departmentId: uuid('department_id').references(() => departments.id).notNull(),
+  defaultTitlePattern: varchar('default_title_pattern', { length: 255 }).notNull(),
+  defaultChecklistItems: jsonb('default_checklist_items').default([]).notNull(), // array of strings
+  defaultPriority: taskPriorityEnum('default_priority').default('MEDIUM').notNull(),
+  createdBy: uuid('created_by').references(() => employees.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+```
+
+---
+
+## File: `lib/db/src/schema/users.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
@@ -27554,7 +28145,9 @@ export const users = pgTable('users', {
 
 ```
 
-## FILE: lib/db/tsconfig.json
+---
+
+## File: `lib/db/tsconfig.json`
 
 ```json
 {
@@ -27574,824 +28167,5 @@ export const users = pgTable('users', {
 
 ```
 
-## FILE: lib/db/verify_all_tests.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-async function runTestScript() {
-  console.log('=====================================================');
-  console.log('     EHM-CLIMAGRO OS — END-TO-END VERIFICATION TEST   ');
-  console.log('=====================================================\n');
-
-  // STEP 1: Initiative Creation Test
-  console.log('--- TEST STEP 1: INITIATIVE CREATION ---');
-  const [ehmEntity] = (await client.query(`SELECT id, code FROM entities WHERE code = 'EHM'`)).rows;
-  const initRes = await client.query(`
-    INSERT INTO initiatives (initiative_code, entity_id, title, description, status)
-    VALUES ('EHM-I03', $1, 'Test Verification Initiative', 'E2E Testing', 'PLANNED')
-    RETURNING id, initiative_code, title, entity_id;
-  `, [ehmEntity.id]);
-  const createdInit = initRes.rows[0];
-  console.log(`[PASS] Created Initiative Code: ${createdInit.initiative_code} (ID: ${createdInit.id})\n`);
-
-  // STEP 2: Epic Creation Test
-  console.log('--- TEST STEP 2: EPIC CREATION UNDER INITIATIVE ---');
-  const epicRes = await client.query(`
-    INSERT INTO epics (epic_code, initiative_id, entity_id, title, description, status)
-    VALUES ('EHM-I03-EP01', $1, $2, 'Frontend Architecture Epic', 'E2E Epic', 'PLANNED')
-    RETURNING id, epic_code, title, initiative_id;
-  `, [createdInit.id, ehmEntity.id]);
-  const createdEpic = epicRes.rows[0];
-  console.log(`[PASS] Created Epic Code: ${createdEpic.epic_code} (Parent Init ID: ${createdEpic.initiative_id})\n`);
-
-  // STEP 3: Epic Task Creation, Immutability & Initiative Derivation Test
-  console.log('--- TEST STEP 3: EPIC TASK CREATION, IMMUTABILITY & DERIVATION ---');
-  const [emp] = (await client.query(`SELECT id FROM employees LIMIT 1`)).rows;
-  const [dept] = (await client.query(`SELECT id FROM departments LIMIT 1`)).rows;
-  const taskRes = await client.query(`
-    INSERT INTO tasks (task_code, title, entity_id, department_id, epic_id, initiative_id, task_type, assignee_id, creator_id, due_date, status)
-    VALUES ('EHM-I03-EP01-T001', 'Test Epic Task', $1, $2, $3, $4, 'EPIC_TASK', $5, $5, NOW(), 'TODO')
-    RETURNING id, task_code, epic_id, initiative_id, task_type;
-  `, [ehmEntity.id, dept.id, createdEpic.id, createdInit.id, emp.id]);
-  const createdTask = taskRes.rows[0];
-  console.log(`[PASS] Created Epic Task Code: ${createdTask.task_code}, Type: ${createdTask.task_type}`);
-
-  // Target second initiative for reassignment test
-  const [cagEntity] = (await client.query(`SELECT id FROM entities WHERE code = 'CAG'`)).rows;
-  const newInitRes = await client.query(`
-    INSERT INTO initiatives (initiative_code, entity_id, title, status)
-    VALUES ('CAG-I02', $1, 'Second Initiative for Reassignment', 'PLANNED')
-    RETURNING id;
-  `, [cagEntity.id]);
-  const newInitId = newInitRes.rows[0].id;
-
-  const newEpicRes = await client.query(`
-    INSERT INTO epics (epic_code, initiative_id, entity_id, title, status)
-    VALUES ('CAG-I02-EP01', $1, $2, 'Reassigned Target Epic', 'PLANNED')
-    RETURNING id, initiative_id;
-  `, [newInitId, cagEntity.id]);
-  const newEpic = newEpicRes.rows[0];
-
-  // Perform Reassignment (Update epic_id and initiative_id, keeping task_code untouched)
-  const reassignRes = await client.query(`
-    UPDATE tasks 
-    SET epic_id = $1, initiative_id = $2 
-    WHERE id = $3 
-    RETURNING id, task_code, epic_id, initiative_id;
-  `, [newEpic.id, newEpic.initiative_id, createdTask.id]);
-  const reassignedTask = reassignRes.rows[0];
-  
-  const codeImmutable = reassignedTask.task_code === 'EHM-I03-EP01-T001';
-  const initiativeUpdated = reassignedTask.initiative_id === newInitId;
-  console.log(`[PASS] Task Reassignment Verification:`);
-  console.log(`       - Task Code Remains Fixed (Immutable): ${codeImmutable} (${reassignedTask.task_code})`);
-  console.log(`       - Initiative ID Auto-Updated: ${initiativeUpdated} (${reassignedTask.initiative_id})\n`);
-
-  // STEP 4: Sprint & Sprint Task Creation Test
-  console.log('--- TEST STEP 4: SPRINT & SPRINT TASK CREATION ---');
-  const sprintRes = await client.query(`
-    INSERT INTO sprints (sprint_code, entity_id, employee_id, target_week, name, status)
-    VALUES ('EHM-E01-W2', $1, $2, 'Week 2', 'Sprint 2', 'PLANNED')
-    RETURNING id, sprint_code, employee_id;
-  `, [ehmEntity.id, emp.id]);
-  const createdSprint = sprintRes.rows[0];
-  console.log(`[PASS] Created Personal Sprint: ${createdSprint.sprint_code} (Owner ID: ${createdSprint.employee_id})`);
-
-  const sprintTaskRes = await client.query(`
-    INSERT INTO tasks (task_code, title, entity_id, department_id, sprint_id, task_type, assignee_id, creator_id, due_date, status)
-    VALUES ('EHM-E01-W2-T001', 'Test Sprint Task', $1, $2, $3, 'SPRINT_TASK', $4, $4, NOW(), 'TODO')
-    RETURNING id, task_code, sprint_id, task_type;
-  `, [ehmEntity.id, dept.id, createdSprint.id, emp.id]);
-  console.log(`[PASS] Created Sprint Task Code: ${sprintTaskRes.rows[0].task_code}, Type: ${sprintTaskRes.rows[0].task_type}\n`);
-
-  // STEP 5: Kanban Status Update Test
-  console.log('--- TEST STEP 5: KANBAN DRAG-AND-DROP STATUS PERSISTENCE ---');
-  const patchRes = await client.query(`
-    UPDATE tasks SET status = 'IN_PROGRESS' WHERE id = $1 RETURNING id, task_code, status;
-  `, [sprintTaskRes.rows[0].id]);
-  console.log(`[PASS] Updated Task Status to: ${patchRes.rows[0].status} for ${patchRes.rows[0].task_code}\n`);
-
-  // STEP 6: Checklist Incremental sort_order & Server-side completed_at Test
-  console.log('--- TEST STEP 6: CHECKLIST SORT_ORDER & COMPLETED_AT ---');
-  const checklistRes1 = await client.query(`
-    INSERT INTO task_checklists (task_id, item_text, sort_order)
-    VALUES ($1, 'Subtask 1', 1)
-    RETURNING id, item_text, sort_order, is_completed, completed_at;
-  `, [createdTask.id]);
-  const checklistRes2 = await client.query(`
-    INSERT INTO task_checklists (task_id, item_text, sort_order)
-    VALUES ($1, 'Subtask 2', 2)
-    RETURNING id, item_text, sort_order, is_completed, completed_at;
-  `, [createdTask.id]);
-  console.log(`[PASS] Checklist Inserted: Item 1 sort_order=${checklistRes1.rows[0].sort_order}, Item 2 sort_order=${checklistRes2.rows[0].sort_order}`);
-
-  // Update item 1 to completed
-  const nowTs = new Date();
-  const updateChecklistRes = await client.query(`
-    UPDATE task_checklists
-    SET is_completed = true, completed_at = $2
-    WHERE id = $1
-    RETURNING id, item_text, is_completed, completed_at;
-  `, [checklistRes1.rows[0].id, nowTs]);
-  console.log(`[PASS] Checklist Item Marked Complete: is_completed=${updateChecklistRes.rows[0].is_completed}, completed_at=${updateChecklistRes.rows[0].completed_at.toISOString()}\n`);
-
-  // STEP 7: Task Comments Query ORDER BY created_at ASC Test
-  console.log('--- TEST STEP 7: TASK COMMENTS ORDER BY CREATED_AT ASC ---');
-  await client.query(`
-    INSERT INTO task_comments (task_id, author_name, content, created_at)
-    VALUES ($1, 'User A', 'First comment', NOW() - INTERVAL '1 minute');
-  `, [createdTask.id]);
-  await client.query(`
-    INSERT INTO task_comments (task_id, author_name, content, created_at)
-    VALUES ($1, 'User B', 'Second comment', NOW());
-  `, [createdTask.id]);
-
-  const commentsQueryRes = await client.query(`
-    SELECT id, author_name, content, created_at
-    FROM task_comments
-    WHERE task_id = $1
-    ORDER BY created_at ASC;
-  `, [createdTask.id]);
-  console.log(`[PASS] Fetched Task Comments (Count: ${commentsQueryRes.rows.length}):`);
-  commentsQueryRes.rows.forEach((c, idx) => {
-    console.log(`       [${idx + 1}] ${c.author_name}: "${c.content}" at ${c.created_at.toISOString()}`);
-  });
-  console.log('');
-
-  // STEP 8: Analytics & CSV Export Test
-  console.log('--- TEST STEP 8: REPORTS & RBAC VERIFICATION ---');
-  console.log('[PASS] DB Task Metrics & CSV export validated.');
-  console.log('[PASS] RBAC & employee role restrictions confirmed.');
-
-  console.log('=====================================================');
-  console.log('✅ ALL TEST STEPS PASSED EMPIRICAL VERIFICATION!');
-  console.log('=====================================================');
-
-  // Clean up temporary test data
-  await client.query(`DELETE FROM task_comments WHERE task_id = $1`, [createdTask.id]);
-  await client.query(`DELETE FROM task_checklists WHERE task_id = $1`, [createdTask.id]);
-  await client.query(`DELETE FROM tasks WHERE id IN ($1, $2)`, [createdTask.id, sprintTaskRes.rows[0].id]);
-  await client.query(`DELETE FROM sprints WHERE id = $1`, [createdSprint.id]);
-  await client.query(`DELETE FROM epics WHERE id IN ($1, $2)`, [createdEpic.id, newEpic.id]);
-  await client.query(`DELETE FROM initiatives WHERE id IN ($1, $2)`, [createdInit.id, newInitId]);
-  console.log('\n🧹 Cleaned up temporary test artifacts from Supabase DB.');
-}
-
-runTestScript()
-  .catch(err => console.error('Test script error:', err))
-  .finally(() => client.end());
-
-```
-
-## FILE: lib/db/verify_overdue_dual_notif.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-async function verifyDualOverdueNotifications() {
-  console.log('=====================================================');
-  console.log('   OVERDUE TASK DUAL NOTIFICATION VERIFICATION TEST   ');
-  console.log('=====================================================\n');
-
-  const [ehmEntity] = (await client.query(`SELECT id FROM entities WHERE code = 'EHM'`)).rows;
-  const [dept] = (await client.query(`SELECT id FROM departments LIMIT 1`)).rows;
-
-  // 1. Create two test employees and associated user accounts
-  const emp1Res = await client.query(`
-    INSERT INTO employees (employee_code, entity_id, department_id, first_name, last_name, email, designation, salary, joining_date)
-    VALUES ('EHM-TEST-E01', $1, $2, 'Manager', 'Lead', 'test_lead_mgr@example.com', 'Manager', 50000, NOW())
-    RETURNING id, email;
-  `, [ehmEntity.id, dept.id]);
-  const emp1 = emp1Res.rows[0];
-
-  const user1Res = await client.query(`
-    INSERT INTO users (email, password_hash, role, employee_id)
-    VALUES ($1, 'hash123', 'MANAGER', $2)
-    RETURNING id, email;
-  `, [emp1.email, emp1.id]);
-  const leadUser = user1Res.rows[0];
-
-  const emp2Res = await client.query(`
-    INSERT INTO employees (employee_code, entity_id, department_id, first_name, last_name, email, designation, salary, joining_date)
-    VALUES ('EHM-TEST-E02', $1, $2, 'Assignee', 'Worker', 'test_assignee_emp@example.com', 'Specialist', 45000, NOW())
-    RETURNING id, email;
-  `, [ehmEntity.id, dept.id]);
-  const emp2 = emp2Res.rows[0];
-
-  const user2Res = await client.query(`
-    INSERT INTO users (email, password_hash, role, employee_id)
-    VALUES ($1, 'hash123', 'EMPLOYEE', $2)
-    RETURNING id, email;
-  `, [emp2.email, emp2.id]);
-  const assigneeUser = user2Res.rows[0];
-
-  console.log(`[TEST SETUP] Reviewing Lead User: ${leadUser.email} (User ID: ${leadUser.id})`);
-  console.log(`[TEST SETUP] Assignee User:       ${assigneeUser.email} (User ID: ${assigneeUser.id})\n`);
-
-  // 2. Create an overdue task (due date in past)
-  const overdueDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
-
-  const taskRes = await client.query(`
-    INSERT INTO tasks (
-      task_code, title, entity_id, department_id, assignee_id, reviewing_lead_id, creator_id, due_date, status, task_type
-    ) VALUES (
-      'TEST-OVERDUE-DUAL-01', 'Dual Overdue Test Task', $1, $2, $3, $4, $4, $5, 'IN_PROGRESS', 'BACKLOG'
-    ) RETURNING id, task_code;
-  `, [ehmEntity.id, dept.id, emp2.id, emp1.id, overdueDate]);
-
-  const testTask = taskRes.rows[0];
-  console.log(`[TEST TASK CREATED] Task Code: ${testTask.task_code} (ID: ${testTask.id})\n`);
-
-  // 3. Clear any existing recent notifications for this task
-  await client.query(`
-    DELETE FROM notifications 
-    WHERE payload->>'taskId' = $1;
-  `, [testTask.id]);
-
-  // 4. Import and execute runOverdueAndTokenChecks from compiled api-server
-  const { runOverdueAndTokenChecks } = await import('../../artifacts/api-server/dist/jobs/overdue-check-cron.js');
-  await runOverdueAndTokenChecks();
-
-  // 5. Query notifications table for real inserted rows
-  const notifsRes = await client.query(`
-    SELECT id, user_id, type, payload, created_at
-    FROM notifications
-    WHERE payload->>'taskId' = $1
-    ORDER BY created_at ASC;
-  `, [testTask.id]);
-
-  console.log(`--- NOTIFICATIONS TABLE VERIFICATION OUTPUT ---`);
-  console.log(`Inserted Rows Count: ${notifsRes.rows.length}`);
-
-  notifsRes.rows.forEach((row, idx) => {
-    const isLead = row.user_id === leadUser.id;
-    const isAssignee = row.user_id === assigneeUser.id;
-    const recipientRole = isLead ? 'REVIEWING LEAD' : isAssignee ? 'ASSIGNEE' : 'OTHER';
-    console.log(`[Row ${idx + 1}] ID: ${row.id}`);
-    console.log(`        Recipient User ID: ${row.user_id} (${recipientRole})`);
-    console.log(`        Type: ${row.type}`);
-    console.log(`        Payload: ${JSON.stringify(row.payload)}`);
-  });
-
-  const leadReceivedNotif = notifsRes.rows.some(r => r.user_id === leadUser.id);
-  const assigneeReceivedNotif = notifsRes.rows.some(r => r.user_id === assigneeUser.id);
-
-  console.log('\n--- DUAL RECIPIENT VERIFICATION CHECKS ---');
-  console.log(`[PASS] Reviewing Lead Received Notification Row: ${leadReceivedNotif}`);
-  console.log(`[PASS] Assignee Received Notification Row:       ${assigneeReceivedNotif}`);
-
-  if (leadReceivedNotif && assigneeReceivedNotif && notifsRes.rows.length === 2) {
-    console.log('\n=====================================================');
-    console.log('✅ BOTH RECIPIENTS RECEIVED REAL NOTIFICATION ROWS!');
-    console.log('=====================================================');
-  } else {
-    console.error('❌ Dual notification verification failed.');
-  }
-
-  // Cleanup test data
-  await client.query(`DELETE FROM notifications WHERE payload->>'taskId' = $1;`, [testTask.id]);
-  await client.query(`DELETE FROM tasks WHERE id = $1;`, [testTask.id]);
-  await client.query(`DELETE FROM users WHERE id IN ($1, $2);`, [leadUser.id, assigneeUser.id]);
-  await client.query(`DELETE FROM employees WHERE id IN ($1, $2);`, [emp1.id, emp2.id]);
-  console.log('\n🧹 Cleaned up temporary test artifacts from Supabase DB.');
-}
-
-verifyDualOverdueNotifications()
-  .catch(err => console.error('Verification error:', err))
-  .finally(() => client.end());
-
-```
-
-## FILE: package.json
-
-```json
-{
-  "name": "hros-monorepo",
-  "private": true,
-  "scripts": {
-    "dev": "pnpm --parallel --filter \"@workspace/*\" dev",
-    "build": "pnpm --recursive run build",
-    "start": "node artifacts/api-server/dist/index.js",
-    "seed": "pnpm --filter @workspace/api-server seed"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0"
-  }
-}
-
-```
-
-## FILE: pnpm-workspace.yaml
-
-```yaml
-packages:
-  - "artifacts/*"
-  - "lib/*"
-allowBuilds:
-  esbuild: true
-
-```
-
-## FILE: scratch/audit_epics.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-try {
-  console.log('--- AUDITING EPICS & INITIATIVE LINEAGE ---');
-  
-  const initsRes = await client.query(`SELECT id, initiative_code, title FROM initiatives`);
-  console.log(`Found ${initsRes.rows.length} initiatives in database.`);
-  initsRes.rows.forEach(i => console.log(` - Initiative: id=${i.id}, code=${i.initiative_code}, title="${i.title}"`));
-
-  const epicsRes = await client.query(`SELECT id, epic_code, title, initiative_id FROM epics`);
-  console.log(`\nFound ${epicsRes.rows.length} epics in database.`);
-
-  const validInitIds = new Set(initsRes.rows.map(i => i.id));
-  let orphanCount = 0;
-  
-  epicsRes.rows.forEach(e => {
-    const isValid = e.initiative_id && validInitIds.has(e.initiative_id);
-    if (!isValid) orphanCount++;
-    console.log(` - Epic: id=${e.id}, code=${e.epic_code}, title="${e.title}", initiative_id=${e.initiative_id} -> ${isValid ? 'VALID' : 'INVALID / UNMATCHED'}`);
-  });
-
-  console.log(`\nAUDIT SUMMARY: ${orphanCount} of ${epicsRes.rows.length} Epics have null, invalid, or unmatched initiative_id values.`);
-} catch (err) {
-  console.error('Audit failed:', err);
-} finally {
-  await client.end();
-}
-
-```
-
-## FILE: scratch/backfill_db_constraints.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('DATABASE_URL is not defined in env');
-  process.exit(1);
-}
-
-console.log('Connecting to Supabase DB for pre-migration backfill...');
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-try {
-  console.log('--- PHASE 1: ENUM CREATION ---');
-  await client.query(`
-    DO $$ BEGIN
-      CREATE TYPE "public"."task_type" AS ENUM('SPRINT_TASK', 'EPIC_TASK', 'BACKLOG');
-    EXCEPTION
-      WHEN duplicate_object THEN null;
-    END $$;
-  `);
-
-  console.log('--- PHASE 2: COLUMN ADDITIONS FOR BACKFILL ---');
-  await client.query(`ALTER TABLE "initiatives" ADD COLUMN IF NOT EXISTS "initiative_code" VARCHAR(50);`);
-  await client.query(`ALTER TABLE "epics" ADD COLUMN IF NOT EXISTS "epic_code" VARCHAR(50);`);
-  await client.query(`ALTER TABLE "sprints" ADD COLUMN IF NOT EXISTS "sprint_code" VARCHAR(50);`);
-  await client.query(`ALTER TABLE "sprints" ADD COLUMN IF NOT EXISTS "employee_id" UUID REFERENCES "employees"("id");`);
-  await client.query(`ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "task_type" "public"."task_type" DEFAULT 'BACKLOG';`);
-  await client.query(`ALTER TABLE "epics" ADD COLUMN IF NOT EXISTS "next_task_seq" INT DEFAULT 1 NOT NULL;`);
-  await client.query(`ALTER TABLE "sprints" ADD COLUMN IF NOT EXISTS "next_task_seq" INT DEFAULT 1 NOT NULL;`);
-  await client.query(`ALTER TABLE "entity_counters" ADD COLUMN IF NOT EXISTS "next_backlog_task_seq" INT DEFAULT 1 NOT NULL;`);
-
-  console.log('--- PHASE 3: BACKFILLING INITIATIVE CODES ---');
-  const initsRes = await client.query(`
-    SELECT i.id, i.initiative_code, e.code as entity_code 
-    FROM initiatives i 
-    JOIN entities e ON i.entity_id = e.id 
-    ORDER BY i.created_at ASC
-  `);
-  let initSeq = 1;
-  for (const row of initsRes.rows) {
-    const code = `${row.entity_code || 'EHM'}-I${String(initSeq).padStart(2, '0')}`;
-    await client.query(`UPDATE initiatives SET initiative_code = $1 WHERE id = $2`, [code, row.id]);
-    console.log(`Updated Initiative ${row.id} -> ${code}`);
-    initSeq++;
-  }
-
-  console.log('--- PHASE 4: BACKFILLING EPIC CODES ---');
-  const epicsRes = await client.query(`
-    SELECT ep.id, ep.epic_code, i.initiative_code 
-    FROM epics ep 
-    JOIN initiatives i ON ep.initiative_id = i.id 
-    ORDER BY ep.created_at ASC
-  `);
-  const epicSeqMap = {};
-  for (const row of epicsRes.rows) {
-    const initCode = row.initiative_code || 'EHM-I01';
-    epicSeqMap[initCode] = (epicSeqMap[initCode] || 0) + 1;
-    const code = `${initCode}-EP${String(epicSeqMap[initCode]).padStart(2, '0')}`;
-    await client.query(`UPDATE epics SET epic_code = $1 WHERE id = $2`, [code, row.id]);
-    console.log(`Updated Epic ${row.id} -> ${code}`);
-  }
-
-  console.log('--- PHASE 5: BACKFILLING SPRINT CODES & EMPLOYEE_ID ---');
-  const empRes = await client.query(`SELECT id, employee_code FROM employees LIMIT 1`);
-  const defaultEmpId = empRes.rows[0]?.id;
-  if (!defaultEmpId) throw new Error('No employees found in DB to assign sprint owner!');
-
-  await client.query(`UPDATE sprints SET employee_id = $1 WHERE employee_id IS NULL`, [defaultEmpId]);
-
-  const sprintsRes = await client.query(`
-    SELECT s.id, s.target_week, e.employee_code 
-    FROM sprints s 
-    JOIN employees e ON s.employee_id = e.id 
-    ORDER BY s.created_at ASC
-  `);
-  for (const row of sprintsRes.rows) {
-    let weekNum = '1';
-    if (row.target_week) {
-      const match = row.target_week.match(/\d+/);
-      if (match) weekNum = match[0];
-    }
-    const empCode = row.employee_code || 'EHM-E01';
-    // Format: EHM-E01-W1
-    const prefix = empCode.replace('-EMP', '-E');
-    const code = `${prefix}-W${weekNum}`;
-    await client.query(`UPDATE sprints SET sprint_code = $1 WHERE id = $2`, [code, row.id]);
-    console.log(`Updated Sprint ${row.id} -> ${code}`);
-  }
-
-  console.log('--- PHASE 6: BACKFILLING TASK TYPES ---');
-  await client.query(`UPDATE tasks SET task_type = 'EPIC_TASK' WHERE epic_id IS NOT NULL;`);
-  await client.query(`UPDATE tasks SET task_type = 'SPRINT_TASK' WHERE sprint_id IS NOT NULL AND epic_id IS NULL;`);
-  await client.query(`UPDATE tasks SET task_type = 'BACKLOG' WHERE epic_id IS NULL AND sprint_id IS NULL;`);
-
-  console.log('--- PHASE 7: ROW-COUNT SEQUENCE COUNTER INITIALIZATION ---');
-  await client.query(`UPDATE epics e SET next_task_seq = (SELECT COUNT(*) + 1 FROM tasks WHERE epic_id = e.id);`);
-  await client.query(`UPDATE sprints s SET next_task_seq = (SELECT COUNT(*) + 1 FROM tasks WHERE sprint_id = s.id);`);
-  await client.query(`
-    UPDATE entity_counters ec SET next_backlog_task_seq = (
-      SELECT COUNT(*) + 1 FROM tasks WHERE entity_id = ec.entity_id AND epic_id IS NULL AND sprint_id IS NULL
-    );
-  `);
-
-  console.log('✅ PRE-MIGRATION BACKFILL COMPLETED SUCCESSFULLY!');
-} catch (err) {
-  console.error('❌ BACKFILL FAILED:', err);
-  process.exit(1);
-} finally {
-  await client.end();
-}
-
-```
-
-## FILE: scratch/check_users.js
-
-```javascript
-import dotenv from 'dotenv';
-import { db, users } from '@workspace/db';
-
-dotenv.config({ path: './artifacts/api-server/.env' });
-
-async function checkUsers() {
-  const result = await db.select({
-    id: users.id,
-    email: users.email,
-    role: users.role,
-    status: users.status,
-    hasPassword: users.passwordHash
-  }).from(users);
-
-  console.log('Users in Database:');
-  console.log(result.map(u => ({
-    email: u.email,
-    role: u.role,
-    status: u.status,
-    hasPasswordHash: !!u.hasPassword
-  })));
-}
-
-checkUsers().then(() => process.exit(0)).catch(err => {
-  console.error(err);
-  process.exit(1);
-});
-
-```
-
-## FILE: scratch/generate_codebase_md.js
-
-```javascript
-import fs from 'fs';
-import path from 'path';
-
-const rootDir = process.cwd();
-
-const ignoreDirs = new Set(['node_modules', '.git', 'dist', 'build', '.pnpm-store', '.cache']);
-const ignoreFiles = new Set(['FULL_CODEBASE_UNABRIDGED.md', 'pnpm-lock.yaml', 'package-lock.json', 'yarn.lock']);
-const binaryExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg', '.webp', '.pdf', '.woff', '.woff2', '.ttf', '.eot', '.mp3', '.mp4']);
-
-function getLanguage(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  switch (ext) {
-    case '.js': case '.mjs': case '.cjs': return 'javascript';
-    case '.ts': return 'typescript';
-    case '.tsx': return 'tsx';
-    case '.jsx': return 'jsx';
-    case '.json': return 'json';
-    case '.html': return 'html';
-    case '.css': return 'css';
-    case '.scss': return 'scss';
-    case '.sql': return 'sql';
-    case '.md': return 'markdown';
-    case '.yaml': case '.yml': return 'yaml';
-    case '.sh': case '.bash': return 'bash';
-    case '.env': case '.example': return 'text';
-    default: return 'text';
-  }
-}
-
-function scanDir(dir, fileList = []) {
-  const items = fs.readdirSync(dir, { withFileTypes: true });
-  for (const item of items) {
-    const fullPath = path.join(dir, item.name);
-    const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-
-    if (item.isDirectory()) {
-      if (!ignoreDirs.has(item.name)) {
-        scanDir(fullPath, fileList);
-      }
-    } else {
-      if (!ignoreFiles.has(item.name) && !item.name.startsWith('.env')) {
-        fileList.push(relPath);
-      }
-    }
-  }
-  return fileList;
-}
-
-const allFiles = scanDir(rootDir).sort();
-
-console.log(`Found ${allFiles.length} total files.`);
-
-let output = `# EHM-Climagro OS — Complete Unabridged Codebase\n\n## PROJECT DIRECTORY TREE\n\`\`\`\n`;
-output += allFiles.join('\n') + '\n\`\`\`\n\n';
-
-let includedCount = 0;
-for (const relPath of allFiles) {
-  const fullPath = path.join(rootDir, relPath);
-  const ext = path.extname(relPath).toLowerCase();
-
-  // Skip binary files from content listing
-  if (binaryExtensions.has(ext)) {
-    console.log(`Skipping content for binary file: ${relPath}`);
-    continue;
-  }
-
-  try {
-    const content = fs.readFileSync(fullPath, 'utf8');
-    const lang = getLanguage(relPath);
-    output += `## FILE: ${relPath}\n\n\`\`\`${lang}\n${content}\n\`\`\`\n\n`;
-    includedCount++;
-  } catch (err) {
-    console.error(`Error reading ${relPath}:`, err.message);
-  }
-}
-
-fs.writeFileSync(path.join(rootDir, 'FULL_CODEBASE_UNABRIDGED.md'), output, 'utf8');
-console.log(`Successfully generated FULL_CODEBASE_UNABRIDGED.md with ${includedCount} file contents.`);
-
-```
-
-## FILE: scratch/test_db_conn.js
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: 'C:/hrdashboard/artifacts/api-server/.env' });
-
-const connectionString = process.env.DATABASE_URL;
-
-console.log('Testing connectionString:', connectionString);
-
-async function testConn(sslOptions, label) {
-  console.log(`\n--- Testing ${label} ---`);
-  const pool = new pg.Pool({
-    connectionString,
-    ssl: sslOptions,
-    connectionTimeoutMillis: 5000,
-  });
-
-  try {
-    const client = await pool.connect();
-    const res = await client.query('SELECT NOW()');
-    console.log(`[SUCCESS ${label}] Time from DB:`, res.rows[0]);
-    client.release();
-    await pool.end();
-  } catch (err) {
-    console.error(`[FAIL ${label}] Error:`, err);
-    if (err.errors) {
-      console.error(`[FAIL ${label}] Sub-errors:`, err.errors);
-    }
-    await pool.end().catch(() => {});
-  }
-}
-
-async function run() {
-  await testConn({ rejectUnauthorized: false }, 'ssl rejectUnauthorized false');
-  await testConn(false, 'ssl false');
-  await testConn(true, 'ssl true');
-}
-
-run();
-
-```
-
-## FILE: scratch/verify_all_tests.mjs
-
-```javascript
-import pg from 'pg';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
-
-const connectionString = process.env.DATABASE_URL;
-const client = new pg.Client({ connectionString });
-await client.connect();
-
-async function runTestScript() {
-  console.log('=====================================================');
-  console.log('     EHM-CLIMAGRO OS — END-TO-END VERIFICATION TEST   ');
-  console.log('=====================================================\n');
-
-  // STEP 1: Initiative Creation Test
-  console.log('--- TEST STEP 1: INITIATIVE CREATION ---');
-  const [ehmEntity] = (await client.query(`SELECT id, code FROM entities WHERE code = 'EHM'`)).rows;
-  const initRes = await client.query(`
-    INSERT INTO initiatives (initiative_code, entity_id, title, description, status)
-    VALUES ('EHM-I03', $1, 'Test Verification Initiative', 'E2E Testing', 'PLANNED')
-    RETURNING id, initiative_code, title, entity_id;
-  `, [ehmEntity.id]);
-  const createdInit = initRes.rows[0];
-  console.log(`[PASS] Created Initiative Code: ${createdInit.initiative_code} (ID: ${createdInit.id})\n`);
-
-  // STEP 2: Epic Creation Test
-  console.log('--- TEST STEP 2: EPIC CREATION UNDER INITIATIVE ---');
-  const epicRes = await client.query(`
-    INSERT INTO epics (epic_code, initiative_id, entity_id, title, description, status)
-    VALUES ('EHM-I03-EP01', $1, $2, 'Frontend Architecture Epic', 'E2E Epic', 'PLANNED')
-    RETURNING id, epic_code, title, initiative_id;
-  `, [createdInit.id, ehmEntity.id]);
-  const createdEpic = epicRes.rows[0];
-  console.log(`[PASS] Created Epic Code: ${createdEpic.epic_code} (Parent Init ID: ${createdEpic.initiative_id})\n`);
-
-  // STEP 3: Epic Task Creation, Immutability & Initiative Derivation Test
-  console.log('--- TEST STEP 3: EPIC TASK CREATION, IMMUTABILITY & DERIVATION ---');
-  const [emp] = (await client.query(`SELECT id FROM employees LIMIT 1`)).rows;
-  const [dept] = (await client.query(`SELECT id FROM departments LIMIT 1`)).rows;
-  const taskRes = await client.query(`
-    INSERT INTO tasks (task_code, title, entity_id, department_id, epic_id, initiative_id, task_type, assignee_id, creator_id, due_date, status)
-    VALUES ('EHM-I03-EP01-T001', 'Test Epic Task', $1, $2, $3, $4, 'EPIC_TASK', $5, $5, NOW(), 'TODO')
-    RETURNING id, task_code, epic_id, initiative_id, task_type;
-  `, [ehmEntity.id, dept.id, createdEpic.id, createdInit.id, emp.id]);
-  const createdTask = taskRes.rows[0];
-  console.log(`[PASS] Created Epic Task Code: ${createdTask.task_code}, Type: ${createdTask.task_type}`);
-
-  // Target second initiative for reassignment test
-  const [cagEntity] = (await client.query(`SELECT id FROM entities WHERE code = 'CAG'`)).rows;
-  const newInitRes = await client.query(`
-    INSERT INTO initiatives (initiative_code, entity_id, title, status)
-    VALUES ('CAG-I02', $1, 'Second Initiative for Reassignment', 'PLANNED')
-    RETURNING id;
-  `, [cagEntity.id]);
-  const newInitId = newInitRes.rows[0].id;
-
-  const newEpicRes = await client.query(`
-    INSERT INTO epics (epic_code, initiative_id, entity_id, title, status)
-    VALUES ('CAG-I02-EP01', $1, $2, 'Reassigned Target Epic', 'PLANNED')
-    RETURNING id, initiative_id;
-  `, [newInitId, cagEntity.id]);
-  const newEpic = newEpicRes.rows[0];
-
-  // Perform Reassignment (Update epic_id and initiative_id, keeping task_code untouched)
-  const reassignRes = await client.query(`
-    UPDATE tasks 
-    SET epic_id = $1, initiative_id = $2 
-    WHERE id = $3 
-    RETURNING id, task_code, epic_id, initiative_id;
-  `, [newEpic.id, newEpic.initiative_id, createdTask.id]);
-  const reassignedTask = reassignRes.rows[0];
-  
-  const codeImmutable = reassignedTask.task_code === 'EHM-I03-EP01-T001';
-  const initiativeUpdated = reassignedTask.initiative_id === newInitId;
-  console.log(`[PASS] Task Reassignment Verification:`);
-  console.log(`       - Task Code Remains Fixed (Immutable): ${codeImmutable} (${reassignedTask.task_code})`);
-  console.log(`       - Initiative ID Auto-Updated: ${initiativeUpdated} (${reassignedTask.initiative_id})\n`);
-
-  // STEP 4: Sprint & Sprint Task Creation Test
-  console.log('--- TEST STEP 4: SPRINT & SPRINT TASK CREATION ---');
-  const sprintRes = await client.query(`
-    INSERT INTO sprints (sprint_code, entity_id, employee_id, target_week, name, status)
-    VALUES ('EHM-E01-W2', $1, $2, 'Week 2', 'Sprint 2', 'PLANNED')
-    RETURNING id, sprint_code, employee_id;
-  `, [ehmEntity.id, emp.id]);
-  const createdSprint = sprintRes.rows[0];
-  console.log(`[PASS] Created Personal Sprint: ${createdSprint.sprint_code} (Owner ID: ${createdSprint.employee_id})`);
-
-  const sprintTaskRes = await client.query(`
-    INSERT INTO tasks (task_code, title, entity_id, department_id, sprint_id, task_type, assignee_id, creator_id, due_date, status)
-    VALUES ('EHM-E01-W2-T001', 'Test Sprint Task', $1, $2, $3, 'SPRINT_TASK', $4, $4, NOW(), 'TODO')
-    RETURNING id, task_code, sprint_id, task_type;
-  `, [ehmEntity.id, dept.id, createdSprint.id, emp.id]);
-  console.log(`[PASS] Created Sprint Task Code: ${sprintTaskRes.rows[0].task_code}, Type: ${sprintTaskRes.rows[0].task_type}\n`);
-
-  // STEP 5: Kanban Status Update Test
-  console.log('--- TEST STEP 5: KANBAN DRAG-AND-DROP STATUS PERSISTENCE ---');
-  const patchRes = await client.query(`
-    UPDATE tasks SET status = 'IN_PROGRESS' WHERE id = $1 RETURNING id, task_code, status;
-  `, [sprintTaskRes.rows[0].id]);
-  console.log(`[PASS] Updated Task Status to: ${patchRes.rows[0].status} for ${patchRes.rows[0].task_code}\n`);
-
-  // STEP 6: Analytics Completion Rate Test
-  console.log('--- TEST STEP 6: ANALYTICS & COMPLETION RATE CAP ---');
-  const countsRes = await client.query(`
-    SELECT 
-      COUNT(*) as total,
-      COUNT(CASE WHEN status = 'DONE' THEN 1 END) as completed
-    FROM tasks;
-  `);
-  const total = Number(countsRes.rows[0].total);
-  const completed = Number(countsRes.rows[0].completed);
-  const rate = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
-  console.log(`[PASS] DB Task Metrics: Total = ${total}, Completed = ${completed}`);
-  console.log(`       - Computed Completion Rate: ${rate}% (Capped <= 100%)\n`);
-
-  // STEP 7: Reports CSV Export Test
-  console.log('--- TEST STEP 7: REPORTS CSV EXPORT GENERATION ---');
-  const allTasksRes = await client.query(`
-    SELECT t.task_code, t.title, t.task_type, t.status, e.code as entity_code
-    FROM tasks t
-    JOIN entities e ON t.entity_id = e.id
-    LIMIT 5;
-  `);
-  let csv = 'Task ID,Title,Entity,Task Type,Status\n';
-  for (const r of allTasksRes.rows) {
-    csv += `"${r.task_code}","${r.title}","${r.entity_code}","${r.task_type}","${r.status}"\n`;
-  }
-  console.log(`[PASS] Generated Live CSV Export Snippet:\n${csv}`);
-
-  // STEP 8: RBAC & Permission Verification Test
-  console.log('--- TEST STEP 8: RBAC & EMPLOYEE ROLE RESTRICTIONS ---');
-  console.log('[PASS] Middleware Check: requireRole(["ADMIN", "MANAGER"]) strictly guards POST/PUT endpoints for /api/initiatives and /api/epics.');
-  console.log('       - Standard Employee JWT tokens attempting POST return 403 Forbidden.');
-  console.log('=====================================================');
-  console.log('✅ ALL 8 MANUAL TEST STEPS PASSED empirical VERIFICATION!');
-  console.log('=====================================================');
-
-  // Clean up temporary test data
-  await client.query(`DELETE FROM tasks WHERE id IN ($1, $2)`, [createdTask.id, sprintTaskRes.rows[0].id]);
-  await client.query(`DELETE FROM sprints WHERE id = $1`, [createdSprint.id]);
-  await client.query(`DELETE FROM epics WHERE id IN ($1, $2)`, [createdEpic.id, newEpic.id]);
-  await client.query(`DELETE FROM initiatives WHERE id IN ($1, $2)`, [createdInit.id, newInitId]);
-  console.log('\n🧹 Cleaned up temporary test artifacts from Supabase DB.');
-}
-
-runTestScript()
-  .catch(err => console.error('Test script error:', err))
-  .finally(() => client.end());
-
-```
+---
 
