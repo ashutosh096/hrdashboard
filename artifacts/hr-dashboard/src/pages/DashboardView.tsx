@@ -186,7 +186,7 @@ export const DashboardView: React.FC = () => {
       {/* Overview Stat Cards Grid (5 Tiles Sequence) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
-          title="Today Present (Clocked In)"
+          title="Active Team Members"
           value={presentEmployees}
           icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
           trend={`${presentEmployees} of ${totalEmployees} Team Members (85%)`}

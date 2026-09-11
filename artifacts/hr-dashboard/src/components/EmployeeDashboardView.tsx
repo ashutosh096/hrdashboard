@@ -222,6 +222,13 @@ export const EmployeeDashboardView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
 
+  // Tile & Analytics Customization Metric State
+  const [tile1Metric, setTile1Metric] = useState<string>('ASSIGNED_TASKS');
+  const [tile2Metric, setTile2Metric] = useState<string>('MEETINGS');
+  const [tile3Metric, setTile3Metric] = useState<string>('COMPLETION_RATE');
+  const [tile4Metric, setTile4Metric] = useState<string>('VELOCITY_SCORE');
+  const [analyticsMetric, setAnalyticsMetric] = useState<'VELOCITY_TREND' | 'PRIORITY_BREAKDOWN' | 'SPRINT_PACING'>('VELOCITY_TREND');
+
   // New Personal Task Creation State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -567,6 +574,7 @@ export const EmployeeDashboardView: React.FC = () => {
       {activeSubTab === 'OVERVIEW' && (
         <div className="space-y-6">
           {/* Employee Greeting Header Banner + Clock In Widget */}
+          {/* Employee Greeting Header Banner */}
           <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -576,73 +584,124 @@ export const EmployeeDashboardView: React.FC = () => {
                 <span className="text-xs text-emerald-100 font-medium">• {user?.email || 'ashutosh@ehmconsultancy.com'}</span>
               </div>
               <h2 className="text-2xl font-black tracking-tight">Welcome back, {user?.name || 'Ashutosh Mishra'}! 👋</h2>
-              <p className="text-xs text-emerald-100 mt-1">Here is your personal attendance analytics, task load distribution, and daily standup schedule.</p>
+              <p className="text-xs text-emerald-100 mt-1">Here is your personal task load distribution, sprint velocity analytics, and daily standup schedule.</p>
             </div>
 
-            {/* Live Clock-In Action Box */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 text-right flex items-center gap-3 shrink-0">
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 px-4 text-right flex items-center gap-3 shrink-0">
               <div className="text-left">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">Attendance Status</span>
-                <span className="text-xs font-bold text-white block">
-                  {clockedIn ? `Clocked In at ${clockTime}` : 'Clocked Out'}
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">Workspace Status</span>
+                <span className="text-xs font-extrabold text-white block">
+                  Sprint 35 Active
                 </span>
-                <span className="text-[11px] font-mono text-emerald-300 block">{formatElapsedTime(elapsedSeconds)}</span>
+                <span className="text-[10px] text-emerald-100 font-medium">{myTasks.length} Active Deliverables</span>
               </div>
-              <button
-                onClick={handleClockToggle}
-                className={`px-4 py-2 text-xs font-black rounded-xl shadow-sm transition-all flex items-center gap-1.5 ${
-                  clockedIn
-                    ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'
-                    : 'bg-emerald-400 hover:bg-emerald-300 text-emerald-950'
-                }`}
-              >
-                {clockedIn ? <Square className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                <span>{clockedIn ? 'Clock Out' : 'Clock In'}</span>
-              </button>
             </div>
           </div>
 
-          {/* Top 4 Employee Stat Summary Cards */}
+          {/* Top 4 Customizable Stat Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                <CheckSquare className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-medium block">My Assigned Tasks</span>
-                <span className="text-lg font-bold text-gray-900">{myTasks.length} Active Deliverables</span>
-              </div>
-            </div>
+            {[
+              { metric: tile1Metric, setMetric: setTile1Metric },
+              { metric: tile2Metric, setMetric: setTile2Metric },
+              { metric: tile3Metric, setMetric: setTile3Metric },
+              { metric: tile4Metric, setMetric: setTile4Metric },
+            ].map((tile, idx) => {
+              const getTileData = (m: string) => {
+                if (m === 'MEETINGS') {
+                  return {
+                    title: 'My Google Meetings',
+                    value: `${todaysMeetings.length} Scheduled`,
+                    sub: 'Synced calendar',
+                    icon: <Calendar className="w-5 h-5 text-blue-600" />,
+                    bg: 'bg-blue-50',
+                  };
+                }
+                if (m === 'COMPLETION_RATE') {
+                  const rate = Math.round((doneCount / (myTasks.length || 1)) * 100);
+                  return {
+                    title: 'Deliverable Completion Rate',
+                    value: `${rate}% Rate`,
+                    sub: `${doneCount} of ${myTasks.length} Completed`,
+                    icon: <TrendingUp className="w-5 h-5 text-emerald-600" />,
+                    bg: 'bg-emerald-50',
+                  };
+                }
+                if (m === 'VELOCITY_SCORE') {
+                  return {
+                    title: 'Personal Velocity Score',
+                    value: '95.0 (Top Tier)',
+                    sub: 'High delivery throughput',
+                    icon: <CheckCircle className="w-5 h-5 text-purple-600" />,
+                    bg: 'bg-purple-50',
+                  };
+                }
+                if (m === 'ACTIVE_SPRINTS') {
+                  return {
+                    title: 'Active Sprint Iteration',
+                    value: 'Sprint 35 Active',
+                    sub: `${activeSprintTasks.length} active items`,
+                    icon: <Flame className="w-5 h-5 text-amber-600" />,
+                    bg: 'bg-amber-50',
+                  };
+                }
+                if (m === 'OVERDUE_ALERTS') {
+                  return {
+                    title: 'Overdue / Delay Alerts',
+                    value: `${delayedCount} Delay Notice`,
+                    sub: 'Extension requested',
+                    icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
+                    bg: 'bg-red-50',
+                  };
+                }
+                if (m === 'REVIEWS_PENDING') {
+                  return {
+                    title: 'Pending Review Tasks',
+                    value: `${inProgressCount} In Review`,
+                    sub: 'Awaiting manager sign-off',
+                    icon: <Clock className="w-5 h-5 text-indigo-600" />,
+                    bg: 'bg-indigo-50',
+                  };
+                }
+                return {
+                  title: 'My Assigned Deliverables',
+                  value: `${myTasks.length} Deliverables`,
+                  sub: 'Active sprint tasks',
+                  icon: <CheckSquare className="w-5 h-5 text-emerald-600" />,
+                  bg: 'bg-emerald-50',
+                };
+              };
 
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-medium block">My Google Meetings</span>
-                <span className="text-lg font-bold text-gray-900">{todaysMeetings.length} Scheduled Today</span>
-              </div>
-            </div>
+              const data = getTileData(tile.metric);
 
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-medium block">Logged Work Hours</span>
-                <span className="text-lg font-bold text-gray-900">43.0 hrs this week</span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-medium block">Personal Velocity Score</span>
-                <span className="text-lg font-bold text-emerald-600">95.0 (Top Tier)</span>
-              </div>
-            </div>
+              return (
+                <div key={idx} className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2.5 relative group hover:border-emerald-300 transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className={`w-9 h-9 rounded-xl ${data.bg} flex items-center justify-center font-bold`}>
+                      {data.icon}
+                    </div>
+                    <select
+                      value={tile.metric}
+                      onChange={(e) => tile.setMetric(e.target.value)}
+                      className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-0.5 outline-none focus:border-emerald-500 cursor-pointer"
+                      title="Customize Tile Metric"
+                    >
+                      <option value="ASSIGNED_TASKS">Tasks</option>
+                      <option value="MEETINGS">Meetings</option>
+                      <option value="COMPLETION_RATE">Completion %</option>
+                      <option value="VELOCITY_SCORE">Velocity</option>
+                      <option value="ACTIVE_SPRINTS">Sprint</option>
+                      <option value="OVERDUE_ALERTS">Alerts</option>
+                      <option value="REVIEWS_PENDING">Pending</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-gray-400 font-semibold block">{data.title}</span>
+                    <span className="text-base font-extrabold text-gray-900 block leading-tight">{data.value}</span>
+                    <span className="text-[10px] text-emerald-600 font-bold block pt-0.5">{data.sub}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Visual Recharts Section for Employee Personal Analytics */}
@@ -689,25 +748,75 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* Chart 2: Weekly Logged Attendance Hours Bar Chart (65%) */}
+            {/* Chart 2: Customizable Visual Analytics View (65%) */}
             <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">My Attendance & Work Hours Trend</h3>
-                  <p className="text-[11px] text-gray-400 font-medium">Daily logged shift hours vs 8.0h expected baseline.</p>
+                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">Personal Analytics & Performance Trend</h3>
+                  <p className="text-[11px] text-gray-400 font-medium">Select metric breakdown view to switch analytics visualization.</p>
                 </div>
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
+
+                <select
+                  value={analyticsMetric}
+                  onChange={(e) => setAnalyticsMetric(e.target.value as any)}
+                  className="text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl px-3 py-1.5 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                >
+                  <option value="VELOCITY_TREND">📈 Sprint Velocity & Quality Trend</option>
+                  <option value="PRIORITY_BREAKDOWN">📊 Deliverable Priority Distribution</option>
+                  <option value="SPRINT_PACING">🚀 Daily Sprint Completion Pacing</option>
+                </select>
               </div>
-              <div className="h-56 w-full">
+
+              <div className="h-56 w-full pt-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={PERSONAL_ATTENDANCE_HOURS} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[0, 12]} />
-                    <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
-                    <Bar dataKey="hours" name="Logged Hours" fill="#10B981" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="expected" name="Expected Hours" fill="#E2E8F0" radius={[6, 6, 0, 0]} />
-                  </BarChart>
+                  {analyticsMetric === 'VELOCITY_TREND' ? (
+                    <AreaChart data={PERSONAL_VELOCITY_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorVelocity" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="sprint" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[70, 100]} />
+                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                      <Area type="monotone" dataKey="velocity" name="Velocity Score" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorVelocity)" />
+                      <Area type="monotone" dataKey="quality" name="Quality Score" stroke="#8B5CF6" strokeWidth={2} fillOpacity={0} />
+                    </AreaChart>
+                  ) : analyticsMetric === 'PRIORITY_BREAKDOWN' ? (
+                    <BarChart
+                      data={[
+                        { priority: 'Urgent', count: myTasks.filter(t => t.priority === 'URGENT').length || 1, color: '#EF4444' },
+                        { priority: 'High', count: myTasks.filter(t => t.priority === 'HIGH').length || 3, color: '#F59E0B' },
+                        { priority: 'Medium', count: myTasks.filter(t => t.priority === 'MEDIUM').length || 2, color: '#3B82F6' },
+                        { priority: 'Low', count: myTasks.filter(t => t.priority === 'LOW').length || 1, color: '#10B981' },
+                      ]}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="priority" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                      <Bar dataKey="count" name="Task Count" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  ) : (
+                    <BarChart data={[
+                      { day: 'Mon', completed: 2, target: 2 },
+                      { day: 'Tue', completed: 3, target: 3 },
+                      { day: 'Wed', completed: 1, target: 2 },
+                      { day: 'Thu', completed: 4, target: 3 },
+                      { day: 'Fri', completed: 2, target: 2 },
+                      { day: 'Sat', completed: 1, target: 1 },
+                    ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                      <Bar dataKey="completed" name="Completed Deliverables" fill="#10B981" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="target" name="Target Goal" fill="#E2E8F0" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </div>
             </div>
