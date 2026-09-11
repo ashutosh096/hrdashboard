@@ -26,6 +26,7 @@ import {
   Target,
   FileSpreadsheet,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -222,11 +223,8 @@ export const EmployeeDashboardView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
 
-  // Tile & Analytics Customization Metric State
-  const [tile1Metric, setTile1Metric] = useState<string>('ASSIGNED_TASKS');
-  const [tile2Metric, setTile2Metric] = useState<string>('MEETINGS');
-  const [tile3Metric, setTile3Metric] = useState<string>('COMPLETION_RATE');
-  const [tile4Metric, setTile4Metric] = useState<string>('VELOCITY_SCORE');
+  // Big Responsive Tile Detail Pop-up Modal State
+  const [activeModalType, setActiveModalType] = useState<'PENDING_TASKS' | 'ACTIVE_SPRINTS' | 'MEETINGS' | 'COMPLETION_RATE' | 'COMPLETED_TASKS' | null>(null);
   const [analyticsMetric, setAnalyticsMetric] = useState<'VELOCITY_TREND' | 'PRIORITY_BREAKDOWN' | 'SPRINT_PACING'>('VELOCITY_TREND');
 
   // New Personal Task Creation State
@@ -598,110 +596,117 @@ export const EmployeeDashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Top 4 Customizable Stat Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { metric: tile1Metric, setMetric: setTile1Metric },
-              { metric: tile2Metric, setMetric: setTile2Metric },
-              { metric: tile3Metric, setMetric: setTile3Metric },
-              { metric: tile4Metric, setMetric: setTile4Metric },
-            ].map((tile, idx) => {
-              const getTileData = (m: string) => {
-                if (m === 'MEETINGS') {
-                  return {
-                    title: 'My Google Meetings',
-                    value: `${todaysMeetings.length} Scheduled`,
-                    sub: 'Synced calendar',
-                    icon: <Calendar className="w-5 h-5 text-blue-600" />,
-                    bg: 'bg-blue-50',
-                  };
-                }
-                if (m === 'COMPLETION_RATE') {
-                  const rate = Math.round((doneCount / (myTasks.length || 1)) * 100);
-                  return {
-                    title: 'Deliverable Completion Rate',
-                    value: `${rate}% Rate`,
-                    sub: `${doneCount} of ${myTasks.length} Completed`,
-                    icon: <TrendingUp className="w-5 h-5 text-emerald-600" />,
-                    bg: 'bg-emerald-50',
-                  };
-                }
-                if (m === 'VELOCITY_SCORE') {
-                  return {
-                    title: 'Personal Velocity Score',
-                    value: '95.0 (Top Tier)',
-                    sub: 'High delivery throughput',
-                    icon: <CheckCircle className="w-5 h-5 text-purple-600" />,
-                    bg: 'bg-purple-50',
-                  };
-                }
-                if (m === 'ACTIVE_SPRINTS') {
-                  return {
-                    title: 'Active Sprint Iteration',
-                    value: 'Sprint 35 Active',
-                    sub: `${activeSprintTasks.length} active items`,
-                    icon: <Flame className="w-5 h-5 text-amber-600" />,
-                    bg: 'bg-amber-50',
-                  };
-                }
-                if (m === 'OVERDUE_ALERTS') {
-                  return {
-                    title: 'Overdue / Delay Alerts',
-                    value: `${delayedCount} Delay Notice`,
-                    sub: 'Extension requested',
-                    icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
-                    bg: 'bg-red-50',
-                  };
-                }
-                if (m === 'REVIEWS_PENDING') {
-                  return {
-                    title: 'Pending Review Tasks',
-                    value: `${inProgressCount} In Review`,
-                    sub: 'Awaiting manager sign-off',
-                    icon: <Clock className="w-5 h-5 text-indigo-600" />,
-                    bg: 'bg-indigo-50',
-                  };
-                }
-                return {
-                  title: 'My Assigned Deliverables',
-                  value: `${myTasks.length} Deliverables`,
-                  sub: 'Active sprint tasks',
-                  icon: <CheckSquare className="w-5 h-5 text-emerald-600" />,
-                  bg: 'bg-emerald-50',
-                };
-              };
-
-              const data = getTileData(tile.metric);
-
-              return (
-                <div key={idx} className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2.5 relative group hover:border-emerald-300 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className={`w-9 h-9 rounded-xl ${data.bg} flex items-center justify-center font-bold`}>
-                      {data.icon}
-                    </div>
-                    <select
-                      value={tile.metric}
-                      onChange={(e) => tile.setMetric(e.target.value)}
-                      className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-0.5 outline-none focus:border-emerald-500 cursor-pointer"
-                      title="Customize Tile Metric"
-                    >
-                      <option value="ASSIGNED_TASKS">Tasks</option>
-                      <option value="MEETINGS">Meetings</option>
-                      <option value="COMPLETION_RATE">Completion %</option>
-                      <option value="VELOCITY_SCORE">Velocity</option>
-                      <option value="ACTIVE_SPRINTS">Sprint</option>
-                      <option value="OVERDUE_ALERTS">Alerts</option>
-                      <option value="REVIEWS_PENDING">Pending</option>
-                    </select>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-gray-400 font-semibold block">{data.title}</span>
-                    <span className="text-base font-extrabold text-gray-900 block leading-tight">{data.value}</span>
-                    <span className="text-[10px] text-emerald-600 font-bold block pt-0.5">{data.sub}</span>
-                  </div>
+          {/* Top 5 Featured Responsive Stat Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Tile 1: Tasks Pending & Today's Tasks */}
+            <div
+              onClick={() => setActiveModalType('PENDING_TASKS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Clock className="w-5 h-5" />
                 </div>
-              );
-            })}
+                <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 font-semibold block">Today's Tasks & Pending</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {myTasks.filter(t => t.status !== 'Done').length} Pending Tasks
+                </span>
+                <span className="text-[10px] text-blue-600 font-bold block pt-1">Active deliverables in execution</span>
+              </div>
+            </div>
+
+            {/* Tile 2: Active Sprint Cycles */}
+            <div
+              onClick={() => setActiveModalType('ACTIVE_SPRINTS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-amber-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Flame className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 font-semibold block">Active Sprint</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">Sprint 35 Active</span>
+                <span className="text-[10px] text-amber-600 font-bold block pt-1">{activeSprintTasks.length} active sprint items</span>
+              </div>
+            </div>
+
+            {/* Tile 3: Google Meetings */}
+            <div
+              onClick={() => setActiveModalType('MEETINGS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 font-semibold block">Google Meetings</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {todaysMeetings.length} Scheduled
+                </span>
+                <span className="text-[10px] text-indigo-600 font-bold block pt-1">Synced live calendar</span>
+              </div>
+            </div>
+
+            {/* Tile 4: Deliverable Completion Rate */}
+            <div
+              onClick={() => setActiveModalType('COMPLETION_RATE')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 font-semibold block">Completion Rate</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {Math.round((doneCount / (myTasks.length || 1)) * 100)}% Rate
+                </span>
+                <span className="text-[10px] text-emerald-600 font-bold block pt-1">
+                  {doneCount} of {myTasks.length} Completed
+                </span>
+              </div>
+            </div>
+
+            {/* Tile 5: Completed Tasks */}
+            <div
+              onClick={() => setActiveModalType('COMPLETED_TASKS')}
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-purple-400 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                  Click for details
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 font-semibold block">Completed Tasks</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
+                  {doneCount} Completed
+                </span>
+                <span className="text-[10px] text-purple-600 font-bold block pt-1">Approved & signed-off</span>
+              </div>
+            </div>
           </div>
 
           {/* Visual Recharts Section for Employee Personal Analytics */}
@@ -1232,6 +1237,284 @@ export const EmployeeDashboardView: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 🚀 BIG RESPONSIVE TILE DETAIL POP-UP MODALS */}
+      {activeModalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
+          <div className="bg-white rounded-3xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
+            {/* 1. PENDING & TODAY'S TASKS MODAL */}
+            {activeModalType === 'PENDING_TASKS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-50 rounded-2xl border border-blue-200 text-blue-600">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Today's Tasks & Pending Deliverables</h3>
+                      <p className="text-xs text-gray-500 font-medium">
+                        Detailed breakdown of active sprint deliverables needing execution & review
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {myTasks.filter(t => t.status !== 'Done').map((task) => (
+                    <div
+                      key={task.id}
+                      onClick={() => {
+                        setActiveModalType(null);
+                        handleOpenTaskUpdate(task);
+                      }}
+                      className="p-4 bg-gray-50/80 rounded-2xl border border-gray-200/80 hover:border-blue-300 hover:bg-white transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {task.taskId}
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded uppercase border ${
+                            task.priority === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+                          }`}>
+                            {task.priority}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500">Lead: {task.lead}</span>
+                        </div>
+                        <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                        {task.notes && <p className="text-[11px] text-gray-500 line-clamp-1">{task.notes}</p>}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold text-gray-500">{task.dueDate}</span>
+                        <span className="px-3 py-1 rounded-xl text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                          {task.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* 2. ACTIVE SPRINTS MODAL */}
+            {activeModalType === 'ACTIVE_SPRINTS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-amber-600">
+                      <Flame className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Active Sprint Iterations</h3>
+                      <p className="text-xs text-gray-500 font-medium">Sprint 35 4-week iteration deliverables and progress tracking</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900">Sprint Cycle Name:</span>
+                    <span className="text-xs font-extrabold text-amber-950 font-mono">Sprint 35 (Current Month 1)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900">Total Sprint Tasks:</span>
+                    <span className="text-xs font-extrabold text-amber-950">{activeSprintTasks.length} Deliverables</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900">Reviewing Lead:</span>
+                    <span className="text-xs font-extrabold text-amber-950">Dr. Harshit Mishra (CTO)</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <h4 className="text-xs font-bold text-gray-900">Tasks in Active Sprint:</h4>
+                  {activeSprintTasks.map((t) => (
+                    <div key={t.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between text-xs font-bold text-gray-800">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-emerald-700">{t.taskId}</span>
+                        <span>{t.title}</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-extrabold bg-white border border-gray-200">
+                        {t.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* 3. GOOGLE MEETINGS MODAL */}
+            {activeModalType === 'MEETINGS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-indigo-50 rounded-2xl border border-indigo-200 text-indigo-600">
+                      <Calendar className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">My Scheduled Google Meetings</h3>
+                      <p className="text-xs text-gray-500 font-medium">Google Calendar synced video conference schedule for today</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {todaysMeetings.map((meet) => (
+                    <div key={meet.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-extrabold text-gray-900">{meet.title}</h4>
+                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                          {new Date(meet.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      {meet.description && <p className="text-xs text-gray-500 font-medium">{meet.description}</p>}
+                      <div className="pt-2 flex justify-end">
+                        <a
+                          href={meet.googleMeetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-2xs"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          <span>Join Google Meet</span>
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* 4. DELIVERABLE COMPLETION RATE MODAL */}
+            {activeModalType === 'COMPLETION_RATE' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-600">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Deliverable Completion Rate Analytics</h3>
+                      <p className="text-xs text-gray-500 font-medium">Sprint velocity score, completed ratio, and quality benchmarks</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
+                    <span className="text-xs font-bold text-emerald-800 block">Completion Rate</span>
+                    <span className="text-2xl font-black text-emerald-950 block">
+                      {Math.round((doneCount / (myTasks.length || 1)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-2xl border border-purple-200">
+                    <span className="text-xs font-bold text-purple-800 block">Velocity Score</span>
+                    <span className="text-2xl font-black text-purple-950 block">95.0 / 100</span>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 text-xs font-bold text-gray-700 space-y-1">
+                  <div>Completed Items: <span className="text-emerald-700 font-extrabold">{doneCount}</span></div>
+                  <div>In Progress / Pending: <span className="text-blue-700 font-extrabold">{inProgressCount}</span></div>
+                  <div>Delayed Items: <span className="text-amber-700 font-extrabold">{delayedCount}</span></div>
+                </div>
+              </>
+            )}
+
+            {/* 5. COMPLETED TASKS MODAL */}
+            {activeModalType === 'COMPLETED_TASKS' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-600">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-gray-900">Completed Deliverables & Sign-offs</h3>
+                      <p className="text-xs text-gray-500 font-medium">Finished tasks with attached output links and lead approvals</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {myTasks.filter(t => t.status === 'Done').map((task) => (
+                    <div key={task.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {task.taskId}
+                          </span>
+                          <h4 className="text-xs font-extrabold text-gray-900">{task.title}</h4>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                          DONE / Approved
+                        </span>
+                      </div>
+
+                      {task.notes && <p className="text-xs text-gray-500 font-medium">{task.notes}</p>}
+
+                      {task.outputUrl && (
+                        <div className="pt-2 flex justify-end">
+                          <a
+                            href={task.outputUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-1.5 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>View Deliverable Link</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setActiveModalType(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Close Details View
+              </button>
+            </div>
           </div>
         </div>
       )}
