@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, employees, entities, entityCounters, departments, invites, eq, sql } from '@workspace/db';
+import { db, employees, entities, entityCounters, departments, invites, tasks, attendance, users, eq, sql } from '@workspace/db';
 import { supabaseAdmin } from '../services/supabase-admin.js';
+import { sendInviteEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -105,14 +106,77 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
-      redirectTo: `${appUrl}/accept-invite?token=${inviteToken}`,
-    });
+    // 1. Send via Resend Email Service & Log to server console
+    await sendInviteEmail(targetEmail, inviteToken, firstName || 'Employee');
+
+    // 2. Attempt Supabase Auth admin invite
+    try {
+      const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
+        redirectTo: inviteLink,
+      });
+      if (error) {
+        console.warn('[SUPABASE AUTH INVITE NOTICE]:', error.message);
+      }
+    } catch (e: any) {
+      console.warn('[SUPABASE AUTH INVITE WARNING]:', e?.message || e);
+    }
 
     res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink });
   } catch (err: any) {
     console.error('[EMPLOYEE CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create employee' });
+  }
+});
+
+// Enforce ADMIN and MANAGER role for deleting employees and cascading associated data
+router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [emp] = await db.select().from(employees).where(eq(employees.id, id));
+    if (!emp) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      // 1. Delete invites
+      await tx.delete(invites).where(eq(invites.employeeId, id));
+      if (emp.email) {
+        await tx.delete(invites).where(eq(invites.email, emp.email));
+      }
+
+      // 2. Delete attendance records
+      await tx.delete(attendance).where(eq(attendance.employeeId, id));
+
+      // 3. Delete tasks assigned
+      await tx.delete(tasks).where(eq(tasks.assigneeId, id));
+
+      // 4. Delete user record
+      await tx.delete(users).where(eq(users.employeeId, id));
+      if (emp.email) {
+        await tx.delete(users).where(eq(users.email, emp.email));
+      }
+
+      // 5. Delete employee record
+      await tx.delete(employees).where(eq(employees.id, id));
+    });
+
+    // Try deleting from Supabase Auth admin user list if exists
+    if (emp.email) {
+      try {
+        const { data } = await supabaseAdmin.auth.admin.listUsers();
+        const authUser = data?.users?.find(u => u.email?.toLowerCase() === emp.email.toLowerCase());
+        if (authUser) {
+          await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+        }
+      } catch (e) {
+        console.warn('[SUPABASE AUTH DELETE NOTICE]:', e);
+      }
+    }
+
+    res.json({ message: `Employee ${emp.firstName} ${emp.lastName} deleted successfully.` });
+  } catch (err: any) {
+    console.error('[EMPLOYEE DELETE ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete employee' });
   }
 });
 

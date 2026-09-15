@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, UserPlus, Phone, X, Check, Copy, Link as LinkIcon, Sparkles } from 'lucide-react';
+import { Mail, UserPlus, Phone, X, Check, Copy, Link as LinkIcon, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -248,6 +248,22 @@ export const TeamDirectoryView: React.FC = () => {
     }
   };
 
+  const handleDeleteEmployee = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete employee "${name}"? This will clear all associated database records so the email address can be re-tested.`)) {
+      return;
+    }
+
+    try {
+      await fetchApi(`/api/employees/${id}`, {
+        method: 'DELETE',
+      });
+      toast.success(`Employee "${name}" deleted from database!`);
+      loadTeam();
+    } catch (err: any) {
+      toast.error(err.message || `Failed to delete ${name}`);
+    }
+  };
+
   const handleCopyLink = () => {
     if (!createdInviteLink) return;
     navigator.clipboard.writeText(createdInviteLink);
@@ -282,27 +298,42 @@ export const TeamDirectoryView: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map(member => (
-            <div key={member.id} className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs text-center space-y-4">
-              <div className="relative inline-block">
-                <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-emerald-500/20 shadow-xs" />
+            <div key={member.id} className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs text-center space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="relative inline-block">
+                  <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-emerald-500/20 shadow-xs" />
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">{member.name}</h3>
+                  <p className="text-xs font-semibold text-emerald-600 mt-0.5">{member.role}</p>
+                  <p className="text-[10px] text-gray-400 font-medium mt-0.5 tracking-wider font-mono">{member.id}</p>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 space-y-2 text-xs text-gray-500">
+                  <div className="flex items-center justify-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
+                    <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                    <span className="truncate">{member.email}</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-gray-400 text-[11px]">
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{member.phone}</span>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <h3 className="text-base font-bold text-gray-900">{member.name}</h3>
-                <p className="text-xs font-semibold text-emerald-600 mt-0.5">{member.role}</p>
-                <p className="text-[10px] text-gray-400 font-medium mt-0.5 tracking-wider font-mono">{member.id}</p>
-              </div>
-
-              <div className="pt-3 border-t border-gray-100 space-y-2 text-xs text-gray-500">
-                <div className="flex items-center justify-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
-                  <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  <span className="truncate">{member.email}</span>
+              {!isEmployee && (
+                <div className="pt-2 border-t border-gray-100 flex justify-end">
+                  <button
+                    onClick={() => handleDeleteEmployee(member.id, member.name)}
+                    className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    title="Delete employee and clear DB records"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Employee</span>
+                  </button>
                 </div>
-                <div className="flex items-center justify-center gap-2 text-gray-400 text-[11px]">
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>{member.phone}</span>
-                </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
