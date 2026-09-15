@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import {
   Users,
-  UserCheck,
   UserX,
   Calendar,
   LayoutDashboard,
@@ -45,7 +44,6 @@ import { EmployeeDashboardView } from '../components/EmployeeDashboardView';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
-import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
 interface EmployeeRecord {
   id: string;
@@ -93,7 +91,7 @@ export const DashboardView: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Responsive Modal Detail View State for Tiles
-  const [activeModalType, setActiveModalType] = useState<'PRESENT' | 'IN_PROGRESS' | 'PENDING' | 'SPRINTS' | 'INITIATIVES' | 'VELOCITY' | null>(null);
+  const [activeModalType, setActiveModalType] = useState<'IN_PROGRESS' | 'PENDING' | 'SPRINTS' | 'INITIATIVES' | 'VELOCITY' | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -122,15 +120,6 @@ export const DashboardView: React.FC = () => {
     return <EmployeeDashboardView />;
   }
 
-  const filteredEmployees = employees.filter((e) => {
-    const code = e.employeeCode || 'EHM';
-    const entity = code.startsWith('CAG') ? 'CAG' : 'EHM';
-    return selectedEntity === 'ALL' || entity === selectedEntity;
-  });
-
-  const totalEmployees = filteredEmployees.length || 12;
-  const presentEmployees = Math.round(totalEmployees * 0.85);
-
   const getAssigneeName = (assigneeId: string) => {
     const emp = employees.find((e) => e.id === assigneeId);
     return emp ? `${emp.firstName} ${emp.lastName}` : 'Ashutosh Mishra';
@@ -145,13 +134,15 @@ export const DashboardView: React.FC = () => {
   const activeSprintsList = sprints.filter((s) => s.status !== 'DONE' && s.status !== 'COMPLETED');
   const activeSprintsCount = activeSprintsList.length || (sprints.length > 0 ? sprints.length : 4);
 
-
-
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === 'DONE' || t.status === 'COMPLETED').length;
   const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length;
   const pendingTasks = tasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO').length;
   const completionRate = totalTasks > 0 ? Math.min(100, Math.round((completedTasks / totalTasks) * 100)) : 0;
+
+  const totalEmployeesCount = employees.length || 9;
+  const activeEmployeesCount = employees.filter((e) => (e as any).status !== 'INACTIVE').length || 8;
+  const activeEmployeesPercent = Math.round((activeEmployeesCount / totalEmployeesCount) * 100);
 
   return (
     <div className="p-6 space-y-6 select-none">
@@ -183,14 +174,14 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Overview Stat Cards Grid (5 Tiles Sequence) */}
+      {/* Overview Stat Cards Grid (5 Tiles Sequence for Manager Role) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Active Team Members"
-          value={presentEmployees}
-          icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
-          trend={`${presentEmployees} of ${totalEmployees} Team Members (85%)`}
-          onClick={() => setActiveModalType('PRESENT')}
+          value={activeEmployeesCount}
+          icon={<Users className="w-5 h-5 text-emerald-600" />}
+          trend={`${activeEmployeesCount} of ${totalEmployeesCount} Team Members (${activeEmployeesPercent}%)`}
+          onClick={() => setLocation('/team')}
         />
         <StatCard
           title="Today's Tasks (In Progress)"
@@ -216,19 +207,19 @@ export const DashboardView: React.FC = () => {
         <StatCard
           title="Completion Velocity Rate"
           value={`${completionRate}%`}
-          icon={<TrendingUp className="w-5 h-5 text-amber-600" />}
+          icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
           trend={`${completedTasks} of ${totalTasks} Tasks Completed`}
           onClick={() => setActiveModalType('VELOCITY')}
         />
       </div>
 
       {/* Task Progress & Sprint Analytics Graph + Schedule & Deliverables Widget Side-by-Side Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <TaskProgressSprintAnalytics />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="lg:col-span-2 flex flex-col">
+          <TaskProgressSprintAnalytics className="h-full" />
         </div>
-        <div className="lg:col-span-1">
-          <ScheduleWidget />
+        <div className="lg:col-span-1 flex flex-col">
+          <ScheduleWidget className="h-full" />
         </div>
       </div>
 
@@ -240,60 +231,6 @@ export const DashboardView: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
           <div className="bg-white rounded-2xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
             
-            {/* 0. TODAY PRESENT MODAL */}
-            {activeModalType === 'PRESENT' && (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
-                      <UserCheck className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Today Present (Clocked In)</h3>
-                      <p className="text-xs text-gray-500 font-medium">Team members actively clocked in today across office & remote locations</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveModalType(null)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {filteredEmployees.map((emp) => (
-                    <div key={emp.id} className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-100 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <img src={MALE_AVATAR} alt={emp.firstName} className="w-8 h-8 rounded-full border border-emerald-200" />
-                        <div>
-                          <h4 className="text-xs font-bold text-gray-900">{emp.firstName} {emp.lastName}</h4>
-                          <p className="text-[11px] text-gray-500 font-medium">{emp.designation || 'Team Member'}</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        Clocked In ✅
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500 font-bold">Present Team Members: {presentEmployees} / {totalEmployees}</span>
-                  <button
-                    onClick={() => {
-                      setActiveModalType(null);
-                      setLocation('/attendance');
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
-                  >
-                    <span>View Attendance & Office Today Page</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
             {/* 0.1 ACTIVE SPRINTS MODAL */}
             {activeModalType === 'SPRINTS' && (
               <>

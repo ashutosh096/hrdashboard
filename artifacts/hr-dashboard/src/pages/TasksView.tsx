@@ -395,7 +395,11 @@ export const TasksView: React.FC = () => {
                         return (
                           <tr key={t.id} className="hover:bg-gray-50/80 transition-colors">
                             <td className="py-3.5 px-4">
-                              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                              <span
+                                onClick={() => handleTaskClick(t)}
+                                className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
+                                title="Click to view task details"
+                              >
                                 {t.taskCode}
                               </span>
                             </td>
@@ -410,11 +414,17 @@ export const TasksView: React.FC = () => {
                             </td>
                             <td className="py-3.5 px-4">
                               <div className="font-bold text-gray-900">{t.title}</div>
-                              {t.notes && <div className="text-[11px] text-gray-400 line-clamp-1">{t.notes}</div>}
                             </td>
                             <td className="py-3.5 px-4">
                               {t.parentEpicCode ? (
-                                <span className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5 hover:bg-emerald-100 transition-all text-xs cursor-pointer">
+                                <span
+                                  onClick={() => {
+                                    setSelectedEpicToViewId(t.parentEpicCode);
+                                    setActiveTab('EPICS');
+                                  }}
+                                  className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5 hover:bg-emerald-100 hover:underline transition-all text-xs cursor-pointer"
+                                  title="Click to view Parent Epic"
+                                >
                                   <span>{t.parentEpicCode}</span>
                                   <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
                                 </span>

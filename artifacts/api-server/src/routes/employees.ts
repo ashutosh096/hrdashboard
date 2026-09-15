@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, employees, entities, entityCounters, departments, invites, eq, sql } from '@workspace/db';
-import { sendInviteEmail } from '../services/email.js';
+import { supabaseAdmin } from '../services/supabase-admin.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -20,7 +20,12 @@ router.get('/', async (req, res) => {
 
 // Enforce ADMIN and MANAGER role for creating employees
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const { firstName, lastName, email, entityId, departmentId, designation, salary, joiningDate, role } = req.body;
+  const { firstName, lastName, email, personalEmail, entityId, departmentId, designation, salary, joiningDate, role } = req.body;
+  const targetEmail = (email || personalEmail || '').toLowerCase().trim();
+
+  if (!targetEmail) {
+    return res.status(400).json({ message: 'At least one email (Work or Personal) is required.' });
+  }
 
   try {
     const inviteToken = crypto.randomBytes(32).toString('hex');
@@ -71,7 +76,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           employeeCode,
           firstName,
           lastName,
-          email: email.toLowerCase().trim(),
+          email: targetEmail,
           entityId: targetEntityId,
           departmentId: targetDeptId,
           designation: designation || 'Specialist',
@@ -86,7 +91,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       await tx
         .insert(invites)
         .values({
-          email: email.toLowerCase().trim(),
+          email: targetEmail,
           token: inviteToken,
           role: (role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
           employeeId: newEmployee.id,
@@ -100,7 +105,9 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    await sendInviteEmail(email, inviteToken, `${firstName} ${lastName}`);
+    await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
+      redirectTo: `${appUrl}/accept-invite?token=${inviteToken}`,
+    });
 
     res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink });
   } catch (err: any) {

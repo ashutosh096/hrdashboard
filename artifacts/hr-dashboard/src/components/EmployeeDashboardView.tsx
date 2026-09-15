@@ -197,14 +197,6 @@ const DEFAULT_EMPLOYEE_MEETINGS = [
 ];
 
 // Recharts Personal Employee Data Analytics
-const PERSONAL_ATTENDANCE_HOURS = [
-  { day: 'Mon', hours: 8.5, expected: 8.0 },
-  { day: 'Tue', hours: 9.0, expected: 8.0 },
-  { day: 'Wed', hours: 8.2, expected: 8.0 },
-  { day: 'Thu', hours: 8.8, expected: 8.0 },
-  { day: 'Fri', hours: 8.0, expected: 8.0 },
-  { day: 'Sat', hours: 4.5, expected: 0.0 },
-];
 
 const PERSONAL_VELOCITY_TREND = [
   { sprint: 'Sprint 32', velocity: 88, quality: 92 },
@@ -272,32 +264,10 @@ export const EmployeeDashboardView: React.FC = () => {
     setNewOutputUrl('');
   };
 
-  // Clock In / Attendance State
-  const [clockedIn, setClockedIn] = useState(true);
-  const [clockTime, setClockTime] = useState('09:00 AM');
-  const [elapsedSeconds, setElapsedSeconds] = useState(15300); // 4h 15m
-
   // Standup Log State
   const [completedToday, setCompletedToday] = useState('');
   const [plannedTomorrow, setPlannedTomorrow] = useState('');
   const [blockers, setBlockers] = useState('');
-
-  useEffect(() => {
-    let timer: any;
-    if (clockedIn) {
-      timer = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [clockedIn]);
-
-  const formatElapsedTime = (sec: number) => {
-    const hrs = Math.floor(sec / 3600);
-    const mins = Math.floor((sec % 3600) / 60);
-    const secs = sec % 60;
-    return `${hrs}h ${mins}m ${secs}s`;
-  };
 
   const loadData = async () => {
     try {
@@ -403,16 +373,7 @@ export const EmployeeDashboardView: React.FC = () => {
     }
   };
 
-  const handleClockToggle = () => {
-    if (clockedIn) {
-      setClockedIn(false);
-      toast.info('Clocked out of workspace. Work duration recorded.');
-    } else {
-      setClockedIn(true);
-      setClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      toast.success('Clocked in to active employee workspace!');
-    }
-  };
+
 
   const handleStandupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -850,7 +811,25 @@ export const EmployeeDashboardView: React.FC = () => {
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTask({
+                              id: t.id,
+                              taskId: t.taskId,
+                              title: t.title,
+                              entity: t.entity,
+                              assignee: t.assigneeName,
+                              reviewingLead: t.lead,
+                              status: t.status === 'Done' ? 'Done' : 'In Progress',
+                              outputUrl: t.outputUrl,
+                              waitingOn: t.waitingOn,
+                              notes: t.notes,
+                            });
+                          }}
+                          className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
+                          title="Click to view task details"
+                        >
                           {t.taskId}
                         </span>
                         <span

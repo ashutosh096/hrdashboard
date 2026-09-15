@@ -2,7 +2,7 @@
 
 > **File:** `chatdiscussion.md`  
 > **Repository:** EHM-Climagro OS (`c:\hrdashboard`)  
-> **Last Updated:** September 3, 2026  
+> **Last Updated:** September 11, 2026  
 
 ---
 
@@ -136,6 +136,17 @@ This document serves as a comprehensive reference of all user requests, architec
 | `meetings` | Scheduled & imported meetings | `status` (`SCHEDULED`, `CANCELLED`), `source` (`GOOGLE_CALENDAR`, `GOOGLE_CALENDAR_IMPORTED`), `googleMeetUrl`, `googleEventId` |
 | `google_tokens` | User Google OAuth 2.0 tokens | `accessToken`, `refreshToken`, `expiresAt` |
 | `invites` | Pending account setup invites | `token`, `role`, `status` (`PENDING`, `ACCEPTED`), `expiresAt` |
+
+### Phase 8: Add Employee Modal Enhancements & Supabase Admin Invite Integration
+* **User Directives**:
+  1. Add Personal Email field (`personalEmail`) and make Work Email (`email`) optional in the Add Employee modal.
+  2. Add Role dropdown (`EMPLOYEE` / `MANAGER`) to the Add Employee modal.
+  3. Replace native Resend email dispatcher with Supabase Admin SDK (`supabaseAdmin.auth.admin.inviteUserByEmail`).
+* **Solutions Implemented**:
+  - `TeamDirectoryView.tsx`: Added `personalEmail` state and `role` state (`EMPLOYEE` | `MANAGER`). Updated form inputs so Work Email is optional, validating that at least one email (Personal or Work) is provided.
+  - `routes/employees.ts`: Updated `POST /api/employees` to compute `targetEmail = (email || personalEmail).toLowerCase().trim()`, store target email in `employees` and `invites` tables, and assign the selected `role`.
+  - `services/supabase-admin.ts`: Created Supabase Admin client initialized with `@supabase/supabase-js` using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+  - Replaced `sendInviteEmail` call in `routes/employees.ts` with `supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, { redirectTo: `${appUrl}/accept-invite?token=${inviteToken}` })`.
 
 ---
 

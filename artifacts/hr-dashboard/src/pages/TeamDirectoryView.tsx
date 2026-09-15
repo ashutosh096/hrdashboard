@@ -158,6 +158,8 @@ export const TeamDirectoryView: React.FC = () => {
   // Form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [personalEmail, setPersonalEmail] = useState('');
+  const [role, setRole] = useState<'EMPLOYEE' | 'MANAGER'>('EMPLOYEE');
   const [position, setPosition] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [department, setDepartment] = useState('Marketing');
@@ -203,6 +205,11 @@ export const TeamDirectoryView: React.FC = () => {
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() && !personalEmail.trim()) {
+      toast.error('Please provide at least a Work Email or Personal Email.');
+      return;
+    }
+
     try {
       const parts = fullName.trim().split(' ');
       const firstName = parts[0] || fullName;
@@ -213,7 +220,9 @@ export const TeamDirectoryView: React.FC = () => {
         body: JSON.stringify({
           firstName,
           lastName,
-          email,
+          email: email.trim(),
+          personalEmail: personalEmail.trim(),
+          role,
           designation: position || 'Specialist',
           salary: 85000,
         }),
@@ -230,6 +239,8 @@ export const TeamDirectoryView: React.FC = () => {
 
       setFullName('');
       setEmail('');
+      setPersonalEmail('');
+      setRole('EMPLOYEE');
       setPosition('');
       setPhoneNumber('');
     } catch (err: any) {
@@ -383,11 +394,35 @@ export const TeamDirectoryView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Work Email *</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Role *</label>
+                  <select
+                    value={role}
+                    onChange={e => setRole(e.target.value as 'EMPLOYEE' | 'MANAGER')}
+                    className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="EMPLOYEE">Employee</option>
+                    <option value="MANAGER">Manager</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Personal Email</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. tarul.personal@gmail.com"
+                    value={personalEmail}
+                    onChange={e => setPersonalEmail(e.target.value)}
+                    className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Work Email (Optional)</label>
                   <input
                     type="email"
                     placeholder="e.g. rahul@climagroanalytics.com"
-                    required
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"

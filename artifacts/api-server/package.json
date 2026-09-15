@@ -10,6 +10,7 @@
     "seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "bcryptjs": "^2.4.3",

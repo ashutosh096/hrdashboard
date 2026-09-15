@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Sparkles, X, Layers, ListChecks, MessageSquare, Send } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
@@ -78,6 +78,9 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
   // Scalable View Controls & Filters
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
+  const [sprintCategory, setSprintCategory] = useState<'ACTIVE' | 'FUTURE' | 'DATE_RANGE'>('ACTIVE');
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [selectedWeek, setSelectedWeek] = useState<string>('ALL');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -119,6 +122,43 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal Checklist & Comments state
+  const [modalChecklists, setModalChecklists] = useState<{ id: string; itemText: string; isCompleted: boolean }[]>([]);
+  const [modalNewChecklistText, setModalNewChecklistText] = useState('');
+  const [modalComments, setModalComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
+  const [modalNewCommentText, setModalNewCommentText] = useState('');
+
+  const handleAddModalChecklist = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!modalNewChecklistText.trim()) return;
+    const newItem = {
+      id: `chk-${Date.now()}`,
+      itemText: modalNewChecklistText.trim(),
+      isCompleted: false,
+    };
+    setModalChecklists((prev) => [...prev, newItem]);
+    setModalNewChecklistText('');
+  };
+
+  const handleToggleModalChecklist = (id: string) => {
+    setModalChecklists((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, isCompleted: !c.isCompleted } : c))
+    );
+  };
+
+  const handleAddModalComment = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!modalNewCommentText.trim()) return;
+    const newComment = {
+      id: `cmt-${Date.now()}`,
+      authorName: 'Admin User',
+      content: modalNewCommentText.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    setModalComments((prev) => [...prev, newComment]);
+    setModalNewCommentText('');
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -296,7 +336,6 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     e.preventDefault();
     if (!sprintName.trim()) return toast.error('Please enter a sprint title');
     if (selectedEmpIds.length === 0) return toast.error('Please select at least one employee for this sprint');
-    if (!selectedEpicId) return toast.error('Please select a parent epic');
 
     setIsSubmitting(true);
     try {
@@ -305,7 +344,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         body: JSON.stringify({
           employeeId: selectedEmpIds[0],
           assigneeIds: selectedEmpIds,
-          epicId: selectedEpicId,
+          epicId: selectedEpicId || null,
           reviewingLeadId: selectedLeadId || null,
           name: sprintName,
           department,
@@ -313,12 +352,16 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           startDate,
           endDate,
           goal,
+          checklists: modalChecklists,
+          comments: modalComments,
         }),
       });
       toast.success(`Sprint task "${sprintName}" created successfully!`);
       setIsModalOpen(false);
       setSprintName('');
       setGoal('');
+      setModalChecklists([]);
+      setModalComments([]);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create sprint task');
@@ -366,8 +409,20 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     const matchesViewMode = viewMode === 'ARCHIVE' ? isDone : true;
 
     const taskCol = getTaskColumn(t);
-    // Backlog and Planned tasks stay visible across week selections so product backlog is never hidden
-    const matchesWeek = selectedWeek === 'ALL' || taskCol === 'BACKLOG' || taskCol === 'PLANNED' || t.sprintWeek === selectedWeek || t.targetWeek === selectedWeek;
+
+    let matchesSprintCategory = true;
+    if (sprintCategory === 'ACTIVE') {
+      matchesSprintCategory = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || taskCol === 'IN_PROGRESS' || taskCol === 'TODO' || taskCol === 'TO_REVIEW' || (t.sprintWeek || '').toLowerCase().includes('current') || (t.sprintWeek || '').includes('1');
+    } else if (sprintCategory === 'FUTURE') {
+      matchesSprintCategory = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || (t.sprintWeek || '').toLowerCase().includes('future') || (t.dueDate && new Date(t.dueDate) > new Date());
+    } else if (sprintCategory === 'DATE_RANGE') {
+      if (filterStartDate || filterEndDate) {
+        const taskDateStr = t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : (t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : '');
+        const afterStart = !filterStartDate || (taskDateStr >= filterStartDate);
+        const beforeEnd = !filterEndDate || (taskDateStr <= filterEndDate);
+        matchesSprintCategory = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || (afterStart && beforeEnd);
+      }
+    }
 
     const matchesEmp = selectedEmployeeId === 'ALL' || t.assigneeId === selectedEmployeeId || t.assigneeEmail === selectedEmployeeId;
 
@@ -379,7 +434,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
     const matchesRoleEmp = isManager || (t.assigneeName?.toLowerCase().includes('ashutosh') || t.assigneeEmail?.toLowerCase().includes('ashutosh') || t.assigneeId === 'emp-1' || !t.assigneeName || taskCol === 'BACKLOG' || taskCol === 'PLANNED');
 
-    return matchesViewMode && matchesWeek && matchesEmp && matchesRoleEmp && matchesStatus && matchesQuery;
+    return matchesViewMode && matchesSprintCategory && matchesEmp && matchesRoleEmp && matchesStatus && matchesQuery;
   });
 
   const activeTaskCount = allTasks.filter(t => t.status !== 'DONE' && t.status !== 'COMPLETED').length;
@@ -441,40 +496,80 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         </div>
       </div>
 
-      {/* 🔍 Scalable Toolbar: Week Pills, Employee Dropdown, Status Filter & Search */}
+      {/* 🔍 Scalable Toolbar: Active Sprint, Future Sprint, Date Selector & Filters */}
       <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
-        {/* Top Row: Week Selection Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {/* Top Row: Active Sprint, Future Sprint & Date Range Selector */}
+        <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <span className="text-xs font-bold text-gray-500 flex items-center gap-1 shrink-0 mr-1">
             <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Sprint Weeks:</span>
+            <span>Sprint Filter:</span>
           </span>
-          {WEEKS.map(w => {
-            const isLocked = !isManager && w.isFuture;
-            const isActive = selectedWeek === w.id;
-            return (
-              <button
-                key={w.id}
-                onClick={() => {
-                  if (isLocked) {
-                    toast.info(`Future sprint ${w.label} is locked for Employee mode until active sprint completes.`);
-                    return;
-                  }
-                  setSelectedWeek(w.id);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
-                  isLocked
-                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-75'
-                    : isActive
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs cursor-pointer'
-                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 cursor-pointer'
-                }`}
-              >
-                <span>{w.label}</span>
-                {isLocked && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-extrabold">🔒 LOCKED</span>}
-              </button>
-            );
-          })}
+
+          <button
+            onClick={() => setSprintCategory('ACTIVE')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+              sprintCategory === 'ACTIVE'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-extrabold'
+                : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
+            <span>Active Sprint</span>
+          </button>
+
+          <button
+            onClick={() => setSprintCategory('FUTURE')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+              sprintCategory === 'FUTURE'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-extrabold'
+                : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-blue-500" />
+            <span>Future Sprint</span>
+          </button>
+
+          <button
+            onClick={() => setSprintCategory('DATE_RANGE')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+              sprintCategory === 'DATE_RANGE'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-extrabold'
+                : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5 text-purple-500" />
+            <span>Date Range Selector</span>
+          </button>
+
+          {sprintCategory === 'DATE_RANGE' && (
+            <div className="flex items-center gap-2 bg-emerald-50/80 p-1.5 rounded-xl border border-emerald-200 animate-in fade-in zoom-in-95 duration-150">
+              <span className="text-[11px] font-bold text-emerald-800">From:</span>
+              <input
+                type="date"
+                value={filterStartDate}
+                onChange={e => setFilterStartDate(e.target.value)}
+                className="text-xs font-bold bg-white border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-[11px] font-bold text-emerald-800">To:</span>
+              <input
+                type="date"
+                value={filterEndDate}
+                onChange={e => setFilterEndDate(e.target.value)}
+                className="text-xs font-bold bg-white border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              {(filterStartDate || filterEndDate) && (
+                <button
+                  onClick={() => {
+                    setFilterStartDate('');
+                    setFilterEndDate('');
+                  }}
+                  className="text-[10px] font-bold text-gray-500 hover:text-gray-700 px-1.5 py-0.5 rounded hover:bg-gray-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Bottom Row: Filters & Instant Search */}
@@ -628,7 +723,14 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                         >
                           {/* Code & Priority Badges Header */}
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTaskClick(t);
+                              }}
+                              className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
+                              title="Click to view task details"
+                            >
                               {t.taskCode || t.id}
                             </span>
 
@@ -730,205 +832,389 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
       {/* New Sprint Task Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">Assign New Sprint Task</h3>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                4-Week Iteration
-              </span>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-gray-900 text-base tracking-tight">Assign New Sprint Task</h3>
+                <span className="px-2.5 py-0.5 border rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border-emerald-200">
+                  4-Week Iteration
+                </span>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateSprint} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Select Parent Epic *</label>
-                <select
-                  required
-                  value={selectedEpicId}
-                  onChange={(e) => setSelectedEpicId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900"
-                >
-                  {epics.map(epic => (
-                    <option key={epic.id} value={epic.id}>
-                      [{epic.epicCode}] {epic.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Sprint Task Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Implement OAuth 2.0 Auth Server Callback"
-                  value={sprintName}
-                  onChange={(e) => setSprintName(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Assign Team Members * (Multi-Select Enabled)
-                </label>
-                <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 space-y-1.5">
-                  {employees.map(emp => {
-                    const isChecked = selectedEmpIds.includes(emp.id);
-                    return (
-                      <label
-                        key={emp.id}
-                        className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                          isChecked ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-white hover:bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isChecked) {
-                                setSelectedEmpIds(selectedEmpIds.filter(id => id !== emp.id));
-                              } else {
-                                setSelectedEmpIds([...selectedEmpIds, emp.id]);
-                              }
-                            }}
-                            className="rounded text-emerald-600 focus:ring-emerald-500"
-                          />
-                          <span>{emp.firstName} {emp.lastName}</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-gray-400">{emp.employeeCode}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Reviewing Lead *</label>
-                <select
-                  value={selectedLeadId}
-                  onChange={(e) => setSelectedLeadId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900"
-                >
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName} ({emp.designation})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            {/* 2-Column Content Body */}
+            <form onSubmit={handleCreateSprint} className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0">
+              
+              {/* Left Column (Task Info & Subtask Checklist) */}
+              <div className="lg:col-span-7 space-y-4 text-left">
+                
+                {/* Select Parent Epic (Optional) */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Department</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Select Parent Epic (Optional)</span>
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                      Optional
+                    </span>
+                  </label>
                   <select
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
+                    value={selectedEpicId}
+                    onChange={(e) => setSelectedEpicId(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
                   >
-                    {DEPARTMENT_OPTIONS.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                    <option value="">Select Parent Epic (Optional)...</option>
+                    {epics.map(epic => (
+                      <option key={epic.id} value={epic.id}>
+                        [{epic.epicCode}] {epic.title}
+                      </option>
                     ))}
                   </select>
                 </div>
 
+                {/* Sprint Task Title */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Sprint Week</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Sprint Task Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Implement OAuth 2.0 Auth Server Callback"
+                    value={sprintName}
+                    onChange={(e) => setSprintName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                </div>
+
+                {/* Assign Team Members (Multi-Select Enabled) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
+                    Assign Team Members * (Multi-Select Enabled)
+                  </label>
+                  <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 space-y-1.5">
+                    {employees.map(emp => {
+                      const isChecked = selectedEmpIds.includes(emp.id);
+                      return (
+                        <label
+                          key={emp.id}
+                          className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                            isChecked ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-white hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedEmpIds(selectedEmpIds.filter(id => id !== emp.id));
+                                } else {
+                                  setSelectedEmpIds([...selectedEmpIds, emp.id]);
+                                }
+                              }}
+                              className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span>{emp.firstName} {emp.lastName}</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-gray-400">{emp.employeeCode}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Reviewing Lead */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Reviewing Lead *</label>
                   <select
-                    value={targetWeek}
-                    onChange={(e) => setTargetWeek(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
+                    required
+                    value={selectedLeadId}
+                    onChange={(e) => setSelectedLeadId(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
                   >
-                    <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
-                    <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
-                    <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
-                    <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName} ({emp.designation})
+                      </option>
+                    ))}
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Deliverable Goal / Objective</label>
-                <textarea
-                  rows={2}
-                  placeholder="Outline expected deliverable outcome for this sprint task..."
-                  value={goal}
-                  onChange={(e) => setGoal(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                />
-              </div>
-
-              {/* Clone / Duplicate Option Checkbox */}
-              <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isClone}
-                    onChange={(e) => {
-                      setIsClone(e.target.checked);
-                      if (!e.target.checked) setCloneSourceId('');
-                    }}
-                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
-                  />
+                {/* Department & Target Sprint Week */}
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
-                    <p className="text-[10px] text-purple-700 font-semibold leading-snug">
-                      Check this box to duplicate an existing sprint task or pre-fill parameters directly inside this form.
-                    </p>
-                  </div>
-                </label>
-
-                {isClone && (
-                  <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
-                    <label className="block text-[11px] font-bold text-purple-900 mb-1">
-                      Select Existing Task to Clone From (Optional):
-                    </label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Department</label>
                     <select
-                      value={cloneSourceId}
-                      onChange={(e) => {
-                        setCloneSourceId(e.target.value);
-                        const source = allTasks.find(t => t.id === e.target.value);
-                        if (source) {
-                          setSprintName(`${source.title} (Clone)`);
-                          if (source.epicId) setSelectedEpicId(source.epicId);
-                          if (source.reviewingLeadId) setSelectedLeadId(source.reviewingLeadId);
-                          if (source.assigneeId) setSelectedEmpIds([source.assigneeId]);
-                          if (source.targetWeek || source.sprintWeek) setTargetWeek(source.targetWeek || source.sprintWeek);
-                          if (source.description) setGoal(source.description);
-                          toast.success(`Form pre-filled with data from "${source.title}"!`);
-                        }
-                      }}
-                      className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
                     >
-                      <option value="">-- Choose Existing Sprint Task to Auto-Fill --</option>
-                      {allTasks.map(t => (
-                        <option key={t.id} value={t.id}>
-                          [{t.taskCode || t.id}] {t.title}
-                        </option>
+                      {DEPARTMENT_OPTIONS.map(d => (
+                        <option key={d} value={d}>{d}</option>
                       ))}
                     </select>
                   </div>
-                )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Sprint Week</label>
+                    <select
+                      value={targetWeek}
+                      onChange={(e) => setTargetWeek(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
+                    >
+                      <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
+                      <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
+                      <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
+                      <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Deliverable Goal / Objective */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable Goal / Objective</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Outline expected deliverable outcome for this sprint task..."
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium resize-none"
+                  />
+                </div>
+
+                {/* Subtask Checklist Section */}
+                <div className="pt-3 border-t border-gray-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <ListChecks className="w-4 h-4 text-emerald-600" />
+                      <span>Subtask Checklist</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      {modalChecklists.filter(c => c.isCompleted).length} of {modalChecklists.length} Completed
+                    </span>
+                  </div>
+
+                  {/* Subtask items list */}
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {modalChecklists.length === 0 ? (
+                      <div className="py-3 text-center text-xs text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        No subtasks added yet. Add one below!
+                      </div>
+                    ) : (
+                      modalChecklists.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${
+                            item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={item.isCompleted}
+                              onChange={() => handleToggleModalChecklist(item.id)}
+                              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span className={item.isCompleted ? 'line-through text-gray-400' : ''}>
+                              {item.itemText}
+                            </span>
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Add Subtask Form */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add new subtask checklist item..."
+                      value={modalNewChecklistText}
+                      onChange={(e) => setModalNewChecklistText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddModalChecklist(e);
+                        }
+                      }}
+                      className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAddModalChecklist()}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add</span>
+                    </button>
+                  </div>
+                </div>
+
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
-                >
-                  {isSubmitting ? 'Assigning...' : 'Assign Sprint Task'}
-                </button>
+              {/* Right Column (Template Cloning & Activity/Comments) */}
+              <div className="lg:col-span-5 flex flex-col justify-between bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-left space-y-4">
+                <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                  
+                  {/* Template Cloning Box */}
+                  <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5 shrink-0">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isClone}
+                        onChange={(e) => {
+                          setIsClone(e.target.checked);
+                          if (!e.target.checked) setCloneSourceId('');
+                        }}
+                        className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
+                        <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                          Check this box to duplicate an existing sprint task or pre-fill parameters directly inside this form.
+                        </p>
+                      </div>
+                    </label>
+
+                    {isClone && (
+                      <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                        <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                          Select Existing Task to Clone From (Optional):
+                        </label>
+                        <select
+                          value={cloneSourceId}
+                          onChange={(e) => {
+                            setCloneSourceId(e.target.value);
+                            const source = allTasks.find(t => t.id === e.target.value);
+                            if (source) {
+                              setSprintName(`${source.title} (Clone)`);
+                              if (source.epicId) setSelectedEpicId(source.epicId);
+                              if (source.reviewingLeadId) setSelectedLeadId(source.reviewingLeadId);
+                              if (source.assigneeId) setSelectedEmpIds([source.assigneeId]);
+                              if (source.targetWeek || source.sprintWeek) setTargetWeek(source.targetWeek || source.sprintWeek);
+                              if (source.description) setGoal(source.description);
+                              setModalChecklists([
+                                { id: 'c-1', itemText: 'Verify requirements & deliverable scope', isCompleted: false },
+                                { id: 'c-2', itemText: 'Setup environment and code branch', isCompleted: false },
+                              ]);
+                              setModalComments([
+                                { id: 'cm-1', authorName: 'System', content: `Cloned parameters from task "${source.title}"`, createdAt: new Date().toISOString(), isSystemLog: true },
+                              ]);
+                              toast.success(`Form pre-filled with data from "${source.title}"!`);
+                            }
+                          }}
+                          className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                        >
+                          <option value="">-- Choose Existing Sprint Task to Auto-Fill --</option>
+                          {allTasks.map(t => (
+                            <option key={t.id} value={t.id}>
+                              [{t.taskCode || t.id}] {t.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Activity & Comments Container */}
+                  <div className="p-3.5 bg-white rounded-2xl border border-gray-200 shadow-2xs flex-1 flex flex-col min-h-0 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0">
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <MessageSquare className="w-4 h-4 text-emerald-600" />
+                        <span>Activity & Comments</span>
+                      </span>
+                      <span className="text-[10px] font-bold bg-white text-gray-600 px-2 py-0.5 rounded-full border border-gray-200 shadow-2xs">
+                        {modalComments.length}
+                      </span>
+                    </div>
+
+                    {/* Comments Feed */}
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[140px] max-h-[240px]">
+                      {modalComments.length === 0 ? (
+                        <div className="h-full flex items-center justify-center py-8 text-center text-xs text-gray-400 font-medium bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                          No comments yet. Post the first comment!
+                        </div>
+                      ) : (
+                        modalComments.map((c) => (
+                          <div
+                            key={c.id}
+                            className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs ${
+                              c.isSystemLog
+                                ? 'bg-purple-50/70 border-purple-200 text-purple-900'
+                                : 'bg-white border-gray-200 text-gray-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                              <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
+                                {c.authorName || 'User'}
+                              </span>
+                              <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p className="font-medium text-gray-800 leading-relaxed">{c.content}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Comment Input & Post Button */}
+                    <div className="flex gap-2 pt-2 border-t border-gray-100 shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Write a comment or activity log..."
+                        value={modalNewCommentText}
+                        onChange={(e) => setModalNewCommentText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddModalComment(e);
+                          }
+                        }}
+                        className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddModalComment()}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Post</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{isSubmitting ? 'Assigning...' : 'Assign Sprint Task'}</span>
+                  </button>
+                </div>
               </div>
+
             </form>
+
           </div>
         </div>
       )}

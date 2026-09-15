@@ -11,6 +11,17 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
+    const userRole = req.user?.role;
+    const employeeId = req.user?.employeeId;
+
+    if (userRole === 'EMPLOYEE') {
+      if (!employeeId) {
+        return res.status(400).json({ message: 'Employee profile ID missing' });
+      }
+      const employeeTasks = await db.select().from(tasks).where(eq(tasks.assigneeId, employeeId));
+      return res.json(employeeTasks);
+    }
+
     const allTasks = await db.select().from(tasks);
     res.json(allTasks);
   } catch (err) {

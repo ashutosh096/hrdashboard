@@ -10,7 +10,7 @@
   }
 
   html {
-    font-size: 75%; /* Scales typography, paddings, gaps & layout elements to 75% size with 0 layout gaps */
+    font-size: 82.5%; /* Scaled so 100% browser zoom matches 110% display scale */
   }
 
   body {

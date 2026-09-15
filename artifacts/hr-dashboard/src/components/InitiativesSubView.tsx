@@ -4,6 +4,7 @@ import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
+import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 
 interface InitiativeItem {
   id: string;
@@ -95,6 +96,23 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTaskToView, setSelectedTaskToView] = useState<TaskItem | null>(null);
+
+  const handleOpenTaskModal = (taskItem: any) => {
+    const isCAG = taskItem.entityId === 'cag' || taskItem.taskCode?.startsWith('CAG');
+    setSelectedTaskToView({
+      id: taskItem.id || 'tsk-1',
+      taskId: taskItem.taskCode || taskItem.id || 'CAG-EMP01-001',
+      title: taskItem.title || 'Task Deliverable',
+      entity: isCAG ? 'climagroanalytics' : 'ehmconsultancy',
+      assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
+      reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
+      status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
+      outputUrl: taskItem.deliverableUrl || taskItem.outputUrl || '',
+      waitingOn: 'None (Self)',
+      notes: taskItem.description || taskItem.notes || '',
+    });
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -373,7 +391,14 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     {/* Main Screen badges in exact order: 1. Code -> 2. Entity -> 3. Due Date -> 4. Department */}
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       {/* 1. Code */}
-                      <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      <span
+                        onClick={() => {
+                          setViewingInitiative(item);
+                          setIsEditMode(false);
+                        }}
+                        className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
+                        title="Click to view initiative details"
+                      >
                         {item.initiativeCode}
                       </span>
 
@@ -1216,9 +1241,22 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
                       <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Parent Initiative Code:</span>
-                      <span className="font-mono text-emerald-800 font-extrabold bg-white px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs text-sm">
-                        {parentCode}
-                      </span>
+                      {parentInit ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewingEpicDetails(null);
+                            setViewingInitiative(parentInit);
+                          }}
+                          className="font-mono text-emerald-800 font-extrabold bg-white hover:bg-emerald-100 hover:text-emerald-900 px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer text-sm"
+                          title="Click to view Parent Initiative"
+                        >
+                          <span>{parentCode}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
+                        </button>
+                      ) : (
+                        <span className="font-mono text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200 text-sm">{parentCode}</span>
+                      )}
                     </div>
                     <div className="text-sm font-bold text-emerald-900 pl-6">
                       Parent Initiative Title: <span className="font-semibold text-gray-800">{parentTitle}</span>
@@ -1280,7 +1318,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                               <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
                               <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
 
-                              <div className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer">
+                              <div
+                                onClick={() => handleOpenTaskModal(taskItem)}
+                                className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer"
+                              >
                                 <div className="flex items-center justify-between mb-1.5">
                                   <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
                                     {displayTaskCode}
@@ -1335,6 +1376,13 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
           </div>
         </div>
       )}
+      {/* Task Details Pop-up Modal (In Front) */}
+      <TaskUpdateModal
+        isOpen={!!selectedTaskToView}
+        task={selectedTaskToView}
+        onClose={() => setSelectedTaskToView(null)}
+        isReadOnly={true}
+      />
     </div>
   );
 };

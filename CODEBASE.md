@@ -35,6 +35,8 @@
      - **Sprint Task**: `{ENTITY}-E{seq2}-W{weekNum}-T{seq3}` (e.g. `EHM-E01-W1-T001`). Multi-employee assignments clone tasks per assignee linked via `group_task_id`.
      - **Backlog Task**: `{ENTITY}-T{seq3}` (e.g. `EHM-T001`).
      - **Immutable Task Codes**: Reassigning a task's epic or sprint updates the foreign keys only, keeping `task_code` immutable.
+     - **Optional Parent Epic & Sprint Selection**: Parent Epic field is optional across task creation forms. Target Sprint dropdown presents clean `Active Sprint` vs `Future Sprint` options.
+     - **Subtask Checklist & Activity Comments**: Integrated 2-column task assignment modals (`TaskAssignModal.tsx` & `SprintsSubView.tsx`) with real-time subtask checklists (`X of Y Completed`) and Activity & Comments feed.
      - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside task creation form.
 
 2. **Dashboard & Performance Operations (`DashboardView.tsx` & `EmployeeDashboardView.tsx`)**:
@@ -60,6 +62,11 @@
 5. **Security & Middleware Protection**:
    - `requireAuth` applied across all protected backend routes.
    - `requireRole(['ADMIN', 'MANAGER'])` applied to POST/PUT on `/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`.
+
+6. **Employee Onboarding & Supabase Admin Email Integration**:
+   - **Add Employee Modal**: Support for Personal Email (`personalEmail`), optional Work Email (`email`), and explicit Role selector (`EMPLOYEE` / `MANAGER`) in `TeamDirectoryView.tsx`.
+   - **Supabase Admin Client (`supabase-admin.ts`)**: Initialized `@supabase/supabase-js` admin client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `src/services/supabase-admin.ts`.
+   - **Automated Invitations**: `POST /api/employees` triggers `supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, { redirectTo: `${appUrl}/accept-invite?token=${inviteToken}` })`.
 
 ---
 

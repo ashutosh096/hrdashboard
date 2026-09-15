@@ -5,6 +5,7 @@ import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
+import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 
 interface EpicItem {
   id: string;
@@ -87,6 +88,23 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [editTargetWeek, setEditTargetWeek] = useState('');
   const [editSprintsCountTarget, setEditSprintsCountTarget] = useState(2);
   const [editStatus, setEditStatus] = useState('PLANNED');
+  const [selectedTaskToView, setSelectedTaskToView] = useState<TaskItem | null>(null);
+
+  const handleOpenTaskModal = (taskItem: any) => {
+    const isCAG = taskItem.entityId === 'cag' || taskItem.taskCode?.startsWith('CAG');
+    setSelectedTaskToView({
+      id: taskItem.id || 'tsk-1',
+      taskId: taskItem.taskCode || taskItem.id || 'CAG-EMP01-001',
+      title: taskItem.title || 'Task Deliverable',
+      entity: isCAG ? 'climagroanalytics' : 'ehmconsultancy',
+      assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
+      reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
+      status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
+      outputUrl: taskItem.deliverableUrl || taskItem.outputUrl || '',
+      waitingOn: 'None (Self)',
+      notes: taskItem.description || taskItem.notes || '',
+    });
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -437,7 +455,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     <tr key={epic.id} className="hover:bg-gray-50/60 transition-colors group">
                       {/* Epic Code */}
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span
+                          onClick={() => setViewingEpic(epic)}
+                          className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
+                          title="Click to view epic details"
+                        >
                           {epic.epicCode}
                         </span>
                       </td>
@@ -760,7 +782,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                               <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
                               <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
 
-                              <div className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer">
+                              <div
+                                onClick={() => handleOpenTaskModal(taskItem)}
+                                className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer"
+                              >
                                 <div className="flex items-center justify-between mb-1.5">
                                   <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
                                     {displayTaskCode}
@@ -1109,6 +1134,13 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           </div>
         </div>
       )}
+      {/* Task Details Pop-up Modal (In Front) */}
+      <TaskUpdateModal
+        isOpen={!!selectedTaskToView}
+        task={selectedTaskToView}
+        onClose={() => setSelectedTaskToView(null)}
+        isReadOnly={true}
+      />
     </div>
   );
 };

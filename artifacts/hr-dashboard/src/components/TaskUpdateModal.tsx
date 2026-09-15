@@ -175,7 +175,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const completedChecklistCount = checklists.filter((c) => c.isCompleted).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
       <div className="bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
         
         {/* Header */}
