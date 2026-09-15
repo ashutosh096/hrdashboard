@@ -28,10 +28,24 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     return res.status(400).json({ message: 'At least one email (Work or Personal) is required.' });
   }
 
+  // Pre-validate if employee with targetEmail already exists in database
+  const [existingEmp] = await db
+    .select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName })
+    .from(employees)
+    .where(eq(employees.email, targetEmail));
+
+  if (existingEmp) {
+    return res.status(400).json({
+      message: `An employee with email "${targetEmail}" already exists (${existingEmp.firstName} ${existingEmp.lastName}). Please use a unique email or delete the existing record first.`,
+    });
+  }
+
   try {
     const inviteToken = crypto.randomBytes(32).toString('hex');
 
     const result = await db.transaction(async (tx) => {
+      // Delete any stale invites for this target email
+      await tx.delete(invites).where(eq(invites.email, targetEmail));
       // 1. Fetch entityCode dynamically from entities table by entityId
       let targetEntityId = entityId;
       if (!targetEntityId) {
