@@ -63,10 +63,12 @@
    - `requireAuth` applied across all protected backend routes.
    - `requireRole(['ADMIN', 'MANAGER'])` applied to POST/PUT on `/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`.
 
-6. **Employee Onboarding & Supabase Admin Email Integration**:
+6. **Employee Onboarding, Gmail SMTP & Supabase Admin Email Integration**:
    - **Add Employee Modal**: Support for Personal Email (`personalEmail`), optional Work Email (`email`), and explicit Role selector (`EMPLOYEE` / `MANAGER`) in `TeamDirectoryView.tsx`.
-   - **Supabase Admin Client (`supabase-admin.ts`)**: Initialized `@supabase/supabase-js` admin client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `src/services/supabase-admin.ts`.
-   - **Automated Invitations**: `POST /api/employees` triggers `supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, { redirectTo: `${appUrl}/accept-invite?token=${inviteToken}` })`.
+   - **Submit Loading State & Double-Click Protection**: Submit button disables immediately upon click, displaying `Adding & Sending Invite...` with a `Loader2` spinning icon to prevent duplicate submissions during email dispatch.
+   - **Dual-Port Fast SMTP Email Service (`email.ts`)**: Built-in Nodemailer dual-port (Port 465 SSL & Port 587 STARTTLS) failover with strict 4-second timeouts. Includes embedded base64 fallback credentials (`ashutoshmishraup78@gmail.com` / `wjwvyziipwcvnyxv`) and auto-sanitization of spaces in Google App Passwords (`SMTP_PASS`).
+   - **Real-Time Toast Delivery Status**: Displays explicit success notification (`Employee added! Invitation email sent to [email]`) or warning toast if email delivery fails.
+   - **Comprehensive Multi-Table Cascade Delete (`DELETE /api/employees/:id`)**: Transactional cascade delete cleaning up notifications, google tokens, users, task checklists/comments/notes, tasks, sprints (and sprint tasks), epics/initiatives owner references, task templates, applications, meeting attendees, meetings, attendance, invites, employee records, and Supabase Auth admin users.
 
 ---
 
@@ -88,15 +90,16 @@
 | **Iconography** | **Lucide React** | Modern vector icon library |
 | **Routing** | **Wouter** | Lightweight hooks-based SPA router |
 | **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
-| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` / `10000` |
+| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on Render |
 | **Database & ORM** | **Supabase PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Third-Party Integrations** | **Google Calendar API v3** + **Resend API** | OAuth 2.0 Meet link generation & notification emails |
+| **Email Transports** | **Gmail SMTP (Nodemailer)** + **Resend API** | Dual-port 465/587 fast failover email delivery |
 
 ---
 
 ## 🚀 Verification & Build Status
 
 - **Supabase Connection**: Verified (`SELECT 1` ➔ `connected: 1, current_database: "postgres"`)
-- **TypeScript Compilation**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
+- **TypeScript Compilation**: `pnpm build` ➔ **PASSED (0 Errors)**
+- **Render Production App**: `https://hrdashboard-3s1m.onrender.com`
 - **GitHub Push Status**: Pushed to `origin/main` (`https://github.com/ashutosh096/hrdashboard.git`)
 - **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md)
