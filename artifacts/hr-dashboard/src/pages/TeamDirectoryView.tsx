@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, UserPlus, Phone, X, Check, Copy, Link as LinkIcon, Sparkles, Trash2 } from 'lucide-react';
+import { Mail, UserPlus, Phone, X, Check, Copy, Link as LinkIcon, Sparkles, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -197,6 +197,8 @@ export const TeamDirectoryView: React.FC = () => {
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     loadTeam();
   }, []);
@@ -205,15 +207,21 @@ export const TeamDirectoryView: React.FC = () => {
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!email.trim() && !personalEmail.trim()) {
       toast.error('Please provide at least a Work Email or Personal Email.');
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       const parts = fullName.trim().split(' ');
       const firstName = parts[0] || fullName;
       const lastName = parts.slice(1).join(' ') || '';
+
+      const targetMail = (email.trim() || personalEmail.trim()).toLowerCase();
 
       const res = await fetchApi<any>('/api/employees', {
         method: 'POST',
@@ -228,7 +236,14 @@ export const TeamDirectoryView: React.FC = () => {
         }),
       });
 
-      toast.success(`Employee ${fullName} added with code ${res.employee?.employeeCode || ''}!`);
+      if (res.emailResult?.sent === true) {
+        toast.success(`Employee ${fullName} added! Invitation email sent to ${targetMail}.`);
+      } else if (res.emailResult?.error) {
+        toast.warning(`Employee added, but email delivery failed: ${res.emailResult.error}`);
+      } else {
+        toast.success(`Employee ${fullName} added with code ${res.employee?.employeeCode || ''}!`);
+      }
+
       loadTeam();
       setShowAddModal(false);
 
@@ -245,6 +260,8 @@ export const TeamDirectoryView: React.FC = () => {
       setPhoneNumber('');
     } catch (err: any) {
       toast.error(err.message || 'Failed to add employee');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -516,16 +533,19 @@ export const TeamDirectoryView: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
-                  Add & Send Invitation
+                  {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isSubmitting ? 'Adding & Sending Invite...' : 'Add & Send Invitation'}</span>
                 </button>
               </div>
             </form>

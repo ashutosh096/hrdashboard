@@ -1,17 +1,28 @@
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey && !resendApiKey.includes('your_resend_key') && !resendApiKey.includes('123456789') ? new Resend(resendApiKey) : null;
+function getResendClient() {
+  const currentResendKey = process.env.RESEND_API_KEY;
+  return currentResendKey && !currentResendKey.includes('your_resend_key') && !currentResendKey.includes('123456789')
+    ? new Resend(currentResendKey)
+    : null;
+}
 
-// SMTP / Gmail Transporter Fallback
-const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-const smtpPort = Number(process.env.SMTP_PORT || 465);
-const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
-const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+function getSmtpTransporter() {
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpPort = Number(process.env.SMTP_PORT || 465);
+  const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || '';
+  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '';
 
-const smtpTransporter = (smtpUser && smtpPass)
-  ? nodemailer.createTransport({
+  const smtpUser = rawUser.trim();
+  const smtpPass = rawPass.trim().replace(/\s+/g, ''); // strip any spaces from app password
+
+  if (!smtpUser || !smtpPass) {
+    return null;
+  }
+
+  return {
+    transporter: nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: smtpPort === 465,
@@ -19,8 +30,10 @@ const smtpTransporter = (smtpUser && smtpPass)
         user: smtpUser,
         pass: smtpPass,
       },
-    })
-  : null;
+    }),
+    senderEmail: smtpUser,
+  };
+}
 
 export async function sendInviteEmail(toEmail: string, inviteToken: string, name: string) {
   const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
@@ -50,10 +63,11 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   `;
 
   // Priority 1: SMTP Transporter (Gmail / Custom SMTP) if configured
-  if (smtpTransporter) {
+  const smtpObj = getSmtpTransporter();
+  if (smtpObj) {
     try {
-      const info = await smtpTransporter.sendMail({
-        from: `EHM-Climagro OS <${smtpUser}>`,
+      const info = await smtpObj.transporter.sendMail({
+        from: `EHM-Climagro OS <${smtpObj.senderEmail}>`,
         to: toEmail,
         subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
         html: htmlContent,
@@ -62,13 +76,19 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
       return { sent: true, provider: 'SMTP', messageId: info.messageId };
     } catch (err: any) {
       console.error('[SMTP EMAIL ERROR]:', err?.message || err);
+      return { sent: false, provider: 'SMTP', error: err?.message || String(err) };
     }
   }
 
   // Priority 2: Resend API if configured
-  if (resend) {
+  const currentResendKey = process.env.RESEND_API_KEY;
+  const resendClient = currentResendKey && !currentResendKey.includes('your_resend_key') && !currentResendKey.includes('123456789')
+    ? new Resend(currentResendKey)
+    : null;
+
+  if (resendClient) {
     try {
-      const emailResult = await resend.emails.send({
+      const emailResult = await resendClient.emails.send({
         from: 'EHM-Climagro OS <onboarding@resend.dev>',
         to: toEmail,
         subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
@@ -87,11 +107,12 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   }
 
   console.log('[EMAIL SERVICE NOTICE] Neither SMTP nor Resend API Key is configured. Invite link printed above.');
-  return { sent: false, provider: 'None', error: 'No email service provider configured' };
+  return { sent: false, provider: 'None', error: 'No email service credentials (SMTP_USER/SMTP_PASS or RESEND_API_KEY) found in server environment.' };
 }
 
 export async function sendDigestEmail(toEmail: string, name: string, dueTasksCount: number) {
   console.log(`[EMAIL SERVICE] Sending daily digest to ${toEmail}: ${dueTasksCount} tasks due.`);
+  const resend = getResendClient();
   if (resend && dueTasksCount > 0) {
     try {
       await resend.emails.send({
@@ -122,6 +143,7 @@ export async function sendTaskAssignedEmail(
   const appUrl = process.env.APP_URL || 'http://localhost:5173';
   console.log(`[EMAIL SERVICE] Sending task assignment email to ${toEmail} for task ${taskCode}`);
 
+  const resend = getResendClient();
   if (resend) {
     try {
       await resend.emails.send({
@@ -158,6 +180,7 @@ export async function sendDelayRequestEmail(
   const appUrl = process.env.APP_URL || 'http://localhost:5173';
   console.log(`[EMAIL SERVICE] Sending delay extension request email to ${toEmail} for task ${taskCode}`);
 
+  const resend = getResendClient();
   if (resend) {
     try {
       await resend.emails.send({
@@ -190,6 +213,7 @@ export async function sendOverdueTaskAlertEmail(
   const appUrl = process.env.APP_URL || 'http://localhost:5173';
   console.log(`[EMAIL SERVICE] Sending overdue task alert email to ${toEmail} for task ${taskCode}`);
 
+  const resend = getResendClient();
   if (resend) {
     try {
       await resend.emails.send({
@@ -215,6 +239,7 @@ export async function sendCalendarReconnectEmail(toEmail: string, userName: stri
   const appUrl = process.env.APP_URL || 'http://localhost:5173';
   console.log(`[EMAIL SERVICE] Sending Google Calendar token reconnect email to ${toEmail}`);
 
+  const resend = getResendClient();
   if (resend) {
     try {
       await resend.emails.send({
