@@ -108,8 +108,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       : 'https://hrdashboard-3s1m.onrender.com';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    // 1. Send via Resend Email Service & Log to server console
-    await sendInviteEmail(targetEmail, inviteToken, firstName || 'Employee');
+    // 1. Send via Email Service (SMTP / Resend) & Log to server console
+    const emailResult = await sendInviteEmail(targetEmail, inviteToken, firstName || 'Employee');
 
     // 2. Attempt Supabase Auth admin invite
     try {
@@ -123,7 +123,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       console.warn('[SUPABASE AUTH INVITE WARNING]:', e?.message || e);
     }
 
-    res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink });
+    res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink, emailResult });
   } catch (err: any) {
     console.error('[EMPLOYEE CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create employee' });

@@ -1,7 +1,26 @@
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey && !resendApiKey.includes('your_resend_key') && !resendApiKey.includes('123456789') ? new Resend(resendApiKey) : null;
+
+// SMTP / Gmail Transporter Fallback
+const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+const smtpPort = Number(process.env.SMTP_PORT || 465);
+const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+
+const smtpTransporter = (smtpUser && smtpPass)
+  ? nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    })
+  : null;
 
 export async function sendInviteEmail(toEmail: string, inviteToken: string, name: string) {
   const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
@@ -10,39 +29,65 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
   console.log(`\n======================================================`);
-  console.log(`[INVITATION EMAIL SENT] To: ${toEmail} (${name})`);
+  console.log(`[INVITATION EMAIL ATTEMPT] To: ${toEmail} (${name})`);
   console.log(`[INVITATION LINK]: ${inviteLink}`);
   console.log(`======================================================\n`);
 
+  const htmlContent = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 12px; background-color: #ffffff;">
+      <h2 style="color: #111827; margin-top: 0; font-size: 20px;">You have been invited to create a user account</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.5;">You have been invited to create a user account on <a href="${appUrl}" style="color: #10B981; text-decoration: underline; font-weight: bold;">${appUrl}</a>.</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.5;">Follow this link to accept the invite:</p>
+      <div style="margin: 24px 0;">
+        <a href="${inviteLink}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 15px;">Accept the invite</a>
+      </div>
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.4; border-top: 1px solid #F3F4F6; padding-top: 16px; margin-top: 24px;">
+        You're receiving this email because an invitation was sent to set up your account on EHM-Climagro OS.<br/>
+        Or copy and paste this direct link: <a href="${inviteLink}" style="color: #10B981;">${inviteLink}</a>
+      </p>
+    </div>
+  `;
+
+  // Priority 1: SMTP Transporter (Gmail / Custom SMTP) if configured
+  if (smtpTransporter) {
+    try {
+      const info = await smtpTransporter.sendMail({
+        from: `EHM-Climagro OS <${smtpUser}>`,
+        to: toEmail,
+        subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
+        html: htmlContent,
+      });
+      console.log(`[SMTP EMAIL DELIVERED]: Message ID ${info.messageId}`);
+      return { sent: true, provider: 'SMTP', messageId: info.messageId };
+    } catch (err: any) {
+      console.error('[SMTP EMAIL ERROR]:', err?.message || err);
+    }
+  }
+
+  // Priority 2: Resend API if configured
   if (resend) {
     try {
       const emailResult = await resend.emails.send({
         from: 'EHM-Climagro OS <onboarding@resend.dev>',
         to: toEmail,
         subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 12px; background-color: #ffffff;">
-            <h2 style="color: #111827; margin-top: 0; font-size: 20px;">You have been invited to create a user account</h2>
-            <p style="color: #374151; font-size: 15px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
-            <p style="color: #374151; font-size: 15px; line-height: 1.5;">You have been invited to create a user account on <a href="${appUrl}" style="color: #10B981; text-decoration: underline; font-weight: bold;">${appUrl}</a>.</p>
-            <p style="color: #374151; font-size: 15px; line-height: 1.5;">Follow this link to accept the invite:</p>
-            <div style="margin: 24px 0;">
-              <a href="${inviteLink}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 15px;">Accept the invite</a>
-            </div>
-            <p style="color: #6B7280; font-size: 13px; line-height: 1.4; border-top: 1px solid #F3F4F6; padding-top: 16px; margin-top: 24px;">
-              You're receiving this email because an invitation was sent to set up your account on EHM-Climagro OS.<br/>
-              Or copy and paste this direct link: <a href="${inviteLink}" style="color: #10B981;">${inviteLink}</a>
-            </p>
-          </div>
-        `,
+        html: htmlContent,
       });
+      if (emailResult.error) {
+        console.error('[RESEND EMAIL API ERROR]:', emailResult.error);
+        return { sent: false, provider: 'Resend', error: emailResult.error.message };
+      }
       console.log(`[RESEND DELIVERED]: Email ID ${emailResult.data?.id}`);
+      return { sent: true, provider: 'Resend', id: emailResult.data?.id };
     } catch (err: any) {
       console.error('[EMAIL SERVICE RESEND ERROR]:', err?.message || err);
+      return { sent: false, provider: 'Resend', error: err?.message || String(err) };
     }
-  } else {
-    console.log('[EMAIL SERVICE NOTICE] Resend API Key is missing or default. Invite link printed above.');
   }
+
+  console.log('[EMAIL SERVICE NOTICE] Neither SMTP nor Resend API Key is configured. Invite link printed above.');
+  return { sent: false, provider: 'None', error: 'No email service provider configured' };
 }
 
 export async function sendDigestEmail(toEmail: string, name: string, dueTasksCount: number) {
