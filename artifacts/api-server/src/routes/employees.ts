@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, employees, entities, entityCounters, departments, invites, tasks, attendance, users, eq, sql } from '@workspace/db';
+import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
 import { supabaseAdmin } from '../services/supabase-admin.js';
 import { sendInviteEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
@@ -140,25 +140,92 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
-      // 1. Delete invites
-      await tx.delete(invites).where(eq(invites.employeeId, id));
-      if (emp.email) {
-        await tx.delete(invites).where(eq(invites.email, emp.email));
+      // 1. Delete associated users and user child records (notifications, googleTokens)
+      const userRecords = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(emp.email ? or(eq(users.employeeId, id), eq(users.email, emp.email)) : eq(users.employeeId, id));
+      
+      const userIds = userRecords.map(u => u.id);
+      if (userIds.length > 0) {
+        await tx.delete(notifications).where(inArray(notifications.userId, userIds));
+        await tx.delete(googleTokens).where(inArray(googleTokens.userId, userIds));
       }
 
-      // 2. Delete attendance records
+      if (emp.email) {
+        await tx.delete(users).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+      } else {
+        await tx.delete(users).where(eq(users.employeeId, id));
+      }
+
+      // 2. Find all tasks assigned to, created by, or reviewed by this employee
+      const empTasks = await tx
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(
+          or(
+            eq(tasks.assigneeId, id),
+            eq(tasks.creatorId, id),
+            eq(tasks.reviewingLeadId, id)
+          )
+        );
+      
+      const taskIds = empTasks.map(t => t.id);
+
+      // Clean up checklists, comments, notes referencing these tasks or this employee
+      await tx.delete(taskChecklists).where(
+        taskIds.length > 0
+          ? or(eq(taskChecklists.completedBy, id), inArray(taskChecklists.taskId, taskIds))
+          : eq(taskChecklists.completedBy, id)
+      );
+
+      await tx.delete(taskComments).where(
+        taskIds.length > 0
+          ? or(eq(taskComments.authorId, id), inArray(taskComments.taskId, taskIds))
+          : eq(taskComments.authorId, id)
+      );
+
+      await tx.delete(taskNotes).where(
+        taskIds.length > 0
+          ? or(eq(taskNotes.authorId, id), inArray(taskNotes.taskId, taskIds))
+          : eq(taskNotes.authorId, id)
+      );
+
+      // Delete tasks
+      if (taskIds.length > 0) {
+        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+      }
+
+      // 3. Delete applications where employee is applicant or reviewer
+      await tx.delete(applications).where(
+        or(eq(applications.employeeId, id), eq(applications.reviewedBy, id))
+      );
+
+      // 4. Delete meeting attendees & meetings organized by employee
+      await tx.delete(meetingAttendees).where(eq(meetingAttendees.employeeId, id));
+      
+      const empMeetings = await tx
+        .select({ id: meetings.id })
+        .from(meetings)
+        .where(eq(meetings.organizerId, id));
+      
+      const meetingIds = empMeetings.map(m => m.id);
+      if (meetingIds.length > 0) {
+        await tx.delete(meetingAttendees).where(inArray(meetingAttendees.meetingId, meetingIds));
+        await tx.delete(meetings).where(inArray(meetings.id, meetingIds));
+      }
+
+      // 5. Delete attendance records
       await tx.delete(attendance).where(eq(attendance.employeeId, id));
 
-      // 3. Delete tasks assigned
-      await tx.delete(tasks).where(eq(tasks.assigneeId, id));
-
-      // 4. Delete user record
-      await tx.delete(users).where(eq(users.employeeId, id));
+      // 6. Delete invites
       if (emp.email) {
-        await tx.delete(users).where(eq(users.email, emp.email));
+        await tx.delete(invites).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
+      } else {
+        await tx.delete(invites).where(eq(invites.employeeId, id));
       }
 
-      // 5. Delete employee record
+      // 7. Delete employee record
       await tx.delete(employees).where(eq(employees.id, id));
     });
 

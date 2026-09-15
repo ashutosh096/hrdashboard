@@ -6,7 +6,7 @@ import path from 'node:path';
 dotenv.config({ path: path.resolve(process.cwd(), 'artifacts/api-server/.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-export { eq, ne, and, or, sql, lt, lte, gt, gte, asc, desc } from 'drizzle-orm';
+export { eq, ne, and, or, inArray, sql, lt, lte, gt, gte, asc, desc } from 'drizzle-orm';
 
 export * from './schema/entities.js';
 export * from './schema/departments.js';
