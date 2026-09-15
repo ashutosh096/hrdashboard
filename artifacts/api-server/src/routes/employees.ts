@@ -2,7 +2,6 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
 import { supabaseAdmin } from '../services/supabase-admin.js';
-import { sendInviteEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -122,22 +121,35 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       : 'https://hrdashboard-3s1m.onrender.com';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    // 1. Send via Email Service (SMTP / Resend) & Log to server console
-    const emailResult = await sendInviteEmail(targetEmail, inviteToken, firstName || 'Employee');
+    // Send invitation exclusively via Supabase Auth Admin API
+    let supabaseInviteSuccess = false;
+    let supabaseInviteError: string | null = null;
 
-    // 2. Attempt Supabase Auth admin invite
     try {
       const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
         redirectTo: inviteLink,
       });
       if (error) {
-        console.warn('[SUPABASE AUTH INVITE NOTICE]:', error.message);
+        console.warn('[SUPABASE AUTH INVITE ERROR]:', error.message);
+        supabaseInviteError = error.message;
+      } else {
+        console.log('[SUPABASE AUTH INVITE SUCCESS]: Sent invite to', targetEmail);
+        supabaseInviteSuccess = true;
       }
     } catch (e: any) {
-      console.warn('[SUPABASE AUTH INVITE WARNING]:', e?.message || e);
+      console.error('[SUPABASE AUTH INVITE EXCEPTION]:', e?.message || e);
+      supabaseInviteError = e?.message || String(e);
     }
 
-    res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink, emailResult });
+    res.status(201).json({
+      employee: result.newEmployee,
+      inviteToken,
+      inviteLink,
+      supabaseInviteResult: {
+        sent: supabaseInviteSuccess,
+        error: supabaseInviteError,
+      },
+    });
   } catch (err: any) {
     console.error('[EMPLOYEE CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create employee' });

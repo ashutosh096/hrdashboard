@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-15T10:44:55.885Z  
+> **Generated Date**: 2026-09-15T11:01:00.358Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -494,7 +494,6 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
 import { supabaseAdmin } from '../services/supabase-admin.js';
-import { sendInviteEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -614,22 +613,35 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       : 'https://hrdashboard-3s1m.onrender.com';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    // 1. Send via Email Service (SMTP / Resend) & Log to server console
-    const emailResult = await sendInviteEmail(targetEmail, inviteToken, firstName || 'Employee');
+    // Send invitation exclusively via Supabase Auth Admin API
+    let supabaseInviteSuccess = false;
+    let supabaseInviteError: string | null = null;
 
-    // 2. Attempt Supabase Auth admin invite
     try {
       const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
         redirectTo: inviteLink,
       });
       if (error) {
-        console.warn('[SUPABASE AUTH INVITE NOTICE]:', error.message);
+        console.warn('[SUPABASE AUTH INVITE ERROR]:', error.message);
+        supabaseInviteError = error.message;
+      } else {
+        console.log('[SUPABASE AUTH INVITE SUCCESS]: Sent invite to', targetEmail);
+        supabaseInviteSuccess = true;
       }
     } catch (e: any) {
-      console.warn('[SUPABASE AUTH INVITE WARNING]:', e?.message || e);
+      console.error('[SUPABASE AUTH INVITE EXCEPTION]:', e?.message || e);
+      supabaseInviteError = e?.message || String(e);
     }
 
-    res.status(201).json({ employee: result.newEmployee, inviteToken, inviteLink, emailResult });
+    res.status(201).json({
+      employee: result.newEmployee,
+      inviteToken,
+      inviteLink,
+      supabaseInviteResult: {
+        sent: supabaseInviteSuccess,
+        error: supabaseInviteError,
+      },
+    });
   } catch (err: any) {
     console.error('[EMPLOYEE CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create employee' });
@@ -1731,11 +1743,8 @@ function getResendClient() {
 }
 
 async function attemptSmtpSend(toEmail: string, htmlContent: string) {
-  const defaultUser = Buffer.from('YXNodXRvc2htaXNocmF1cDc4QGdtYWlsLmNvbQ==', 'base64').toString('utf-8');
-  const defaultPass = Buffer.from('d2p3dnl6aWlwd2N2bnl4dg==', 'base64').toString('utf-8');
-
-  const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.MAIL_USER || defaultUser;
-  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || defaultPass;
+  const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.MAIL_USER || '';
+  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || '';
 
   const smtpUser = rawUser.trim();
   const smtpPass = rawPass.trim().replace(/\s+/g, ''); // strip any spaces from app password
@@ -2016,15 +2025,14 @@ export async function sendCalendarReconnectEmail(toEmail: string, userName: stri
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://qlnghemivzcyazvtndhv.supabase.co';
-const DEFAULT_SR_KEY = Buffer.from('c2Jfc2VjcmV0X2pWNkljOFI1Y1RCRC1BV0ZCTzJqYWdfV09ncHNqQV8=', 'base64').toString('utf-8');
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SR_KEY;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!serviceRoleKey) {
+  throw new Error('[SUPABASE ADMIN ERROR] SUPABASE_SERVICE_ROLE_KEY is required in environment variables to initialize Supabase Admin client.');
+}
 
 if (!process.env.SUPABASE_URL) {
   console.warn('[SUPABASE ADMIN NOTICE] SUPABASE_URL is missing in env. Defaulting to project URL:', supabaseUrl);
-}
-
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn('[SUPABASE ADMIN WARNING] SUPABASE_SERVICE_ROLE_KEY is missing in env. Set it in .env to send real Supabase Auth invites.');
 }
 
 export const supabaseAdmin: SupabaseClient = createClient(
@@ -2498,10 +2506,10 @@ export const TeamDirectoryView: React.FC = () => {
         }),
       });
 
-      if (res.emailResult?.sent === true) {
-        toast.success(`Employee ${fullName} added! Invitation email sent to ${targetMail}.`);
-      } else if (res.emailResult?.error) {
-        toast.warning(`Employee added, but email delivery failed: ${res.emailResult.error}`);
+      if (res.supabaseInviteResult?.sent === true) {
+        toast.success(`Employee ${fullName} added! Supabase invitation email sent to ${targetMail}.`);
+      } else if (res.supabaseInviteResult?.error) {
+        toast.warning(`Employee added, but Supabase Auth invite notice: ${res.supabaseInviteResult.error}`);
       } else {
         toast.success(`Employee ${fullName} added with code ${res.employee?.employeeCode || ''}!`);
       }

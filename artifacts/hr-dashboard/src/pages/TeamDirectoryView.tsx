@@ -236,10 +236,10 @@ export const TeamDirectoryView: React.FC = () => {
         }),
       });
 
-      if (res.emailResult?.sent === true) {
-        toast.success(`Employee ${fullName} added! Invitation email sent to ${targetMail}.`);
-      } else if (res.emailResult?.error) {
-        toast.warning(`Employee added, but email delivery failed: ${res.emailResult.error}`);
+      if (res.supabaseInviteResult?.sent === true) {
+        toast.success(`Employee ${fullName} added! Supabase invitation email sent to ${targetMail}.`);
+      } else if (res.supabaseInviteResult?.error) {
+        toast.warning(`Employee added, but Supabase Auth invite notice: ${res.supabaseInviteResult.error}`);
       } else {
         toast.success(`Employee ${fullName} added with code ${res.employee?.employeeCode || ''}!`);
       }

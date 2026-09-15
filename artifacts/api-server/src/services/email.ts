@@ -9,11 +9,8 @@ function getResendClient() {
 }
 
 async function attemptSmtpSend(toEmail: string, htmlContent: string) {
-  const defaultUser = Buffer.from('YXNodXRvc2htaXNocmF1cDc4QGdtYWlsLmNvbQ==', 'base64').toString('utf-8');
-  const defaultPass = Buffer.from('d2p3dnl6aWlwd2N2bnl4dg==', 'base64').toString('utf-8');
-
-  const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.MAIL_USER || defaultUser;
-  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || defaultPass;
+  const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.MAIL_USER || '';
+  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || '';
 
   const smtpUser = rawUser.trim();
   const smtpPass = rawPass.trim().replace(/\s+/g, ''); // strip any spaces from app password
