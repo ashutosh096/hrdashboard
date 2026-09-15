@@ -8,9 +8,7 @@ function getResendClient() {
     : null;
 }
 
-function getSmtpTransporter() {
-  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const smtpPort = Number(process.env.SMTP_PORT || 465);
+async function attemptSmtpSend(toEmail: string, htmlContent: string) {
   const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || '';
   const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '';
 
@@ -21,18 +19,50 @@ function getSmtpTransporter() {
     return null;
   }
 
-  return {
-    transporter: nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    }),
-    senderEmail: smtpUser,
-  };
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const customPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : null;
+
+  const configs = customPort
+    ? [{ port: customPort, secure: customPort === 465 }]
+    : [
+        { port: 465, secure: true },
+        { port: 587, secure: false, requireTLS: true },
+      ];
+
+  let lastError = '';
+
+  for (const cfg of configs) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port: cfg.port,
+        secure: cfg.secure,
+        requireTLS: (cfg as any).requireTLS,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+        connectionTimeout: 4000, // 4 seconds max to connect
+        greetingTimeout: 4000,   // 4 seconds max for greeting
+        socketTimeout: 6000,     // 6 seconds max for socket
+      });
+
+      const info = await transporter.sendMail({
+        from: `EHM-Climagro OS <${smtpUser}>`,
+        to: toEmail,
+        subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
+        html: htmlContent,
+      });
+
+      console.log(`[SMTP EMAIL DELIVERED on port ${cfg.port}]: Message ID ${info.messageId}`);
+      return { sent: true, provider: 'SMTP', messageId: info.messageId, port: cfg.port };
+    } catch (err: any) {
+      console.warn(`[SMTP Port ${cfg.port} notice]:`, err?.message || err);
+      lastError = err?.message || String(err);
+    }
+  }
+
+  return { sent: false, provider: 'SMTP', error: lastError };
 }
 
 export async function sendInviteEmail(toEmail: string, inviteToken: string, name: string) {
@@ -62,22 +92,11 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
     </div>
   `;
 
-  // Priority 1: SMTP Transporter (Gmail / Custom SMTP) if configured
-  const smtpObj = getSmtpTransporter();
-  if (smtpObj) {
-    try {
-      const info = await smtpObj.transporter.sendMail({
-        from: `EHM-Climagro OS <${smtpObj.senderEmail}>`,
-        to: toEmail,
-        subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
-        html: htmlContent,
-      });
-      console.log(`[SMTP EMAIL DELIVERED]: Message ID ${info.messageId}`);
-      return { sent: true, provider: 'SMTP', messageId: info.messageId };
-    } catch (err: any) {
-      console.error('[SMTP EMAIL ERROR]:', err?.message || err);
-      return { sent: false, provider: 'SMTP', error: err?.message || String(err) };
-    }
+  // Priority 1: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
+  const smtpResult = await attemptSmtpSend(toEmail, htmlContent);
+  if (smtpResult) {
+    if (smtpResult.sent) return smtpResult;
+    console.warn('[SMTP DELIVERY FAILED, FALLING BACK TO RESEND/NOTICE]:', smtpResult.error);
   }
 
   // Priority 2: Resend API if configured
