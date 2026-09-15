@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
+import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
 import { supabaseAdmin } from '../services/supabase-admin.js';
 import { sendInviteEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
@@ -196,12 +196,42 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         await tx.delete(tasks).where(inArray(tasks.id, taskIds));
       }
 
-      // 3. Delete applications where employee is applicant or reviewer
+      // 3. Find and delete sprints owned by or reviewed by this employee
+      const empSprints = await tx
+        .select({ id: sprints.id })
+        .from(sprints)
+        .where(or(eq(sprints.employeeId, id), eq(sprints.reviewingLeadId, id)));
+      
+      const sprintIds = empSprints.map(s => s.id);
+      if (sprintIds.length > 0) {
+        // Delete tasks in these sprints
+        const sprintTasks = await tx
+          .select({ id: tasks.id })
+          .from(tasks)
+          .where(inArray(tasks.sprintId, sprintIds));
+        const sprintTaskIds = sprintTasks.map(t => t.id);
+        if (sprintTaskIds.length > 0) {
+          await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, sprintTaskIds));
+          await tx.delete(taskComments).where(inArray(taskComments.taskId, sprintTaskIds));
+          await tx.delete(taskNotes).where(inArray(taskNotes.taskId, sprintTaskIds));
+          await tx.delete(tasks).where(inArray(tasks.id, sprintTaskIds));
+        }
+        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
+      }
+
+      // 4. Unset ownerId for epics and initiatives owned by this employee
+      await tx.update(epics).set({ ownerId: null }).where(eq(epics.ownerId, id));
+      await tx.update(initiatives).set({ ownerId: null }).where(eq(initiatives.ownerId, id));
+
+      // 5. Delete task templates created by this employee
+      await tx.delete(taskTemplates).where(eq(taskTemplates.createdBy, id));
+
+      // 6. Delete applications where employee is applicant or reviewer
       await tx.delete(applications).where(
         or(eq(applications.employeeId, id), eq(applications.reviewedBy, id))
       );
 
-      // 4. Delete meeting attendees & meetings organized by employee
+      // 7. Delete meeting attendees & meetings organized by employee
       await tx.delete(meetingAttendees).where(eq(meetingAttendees.employeeId, id));
       
       const empMeetings = await tx
@@ -215,17 +245,17 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         await tx.delete(meetings).where(inArray(meetings.id, meetingIds));
       }
 
-      // 5. Delete attendance records
+      // 8. Delete attendance records
       await tx.delete(attendance).where(eq(attendance.employeeId, id));
 
-      // 6. Delete invites
+      // 9. Delete invites
       if (emp.email) {
         await tx.delete(invites).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
       } else {
         await tx.delete(invites).where(eq(invites.employeeId, id));
       }
 
-      // 7. Delete employee record
+      // 10. Delete employee record
       await tx.delete(employees).where(eq(employees.id, id));
     });
 
