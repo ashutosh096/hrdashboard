@@ -103,7 +103,9 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       return { newEmployee, entityCode };
     });
 
-    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
+      ? process.env.APP_URL
+      : 'https://hrdashboard-3s1m.onrender.com';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
     // 1. Send via Resend Email Service & Log to server console
@@ -130,7 +132,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 
 // Enforce ADMIN and MANAGER role for deleting employees and cascading associated data
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const { id } = req.params;
+  const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
   try {
     const [emp] = await db.select().from(employees).where(eq(employees.id, id));
     if (!emp) {

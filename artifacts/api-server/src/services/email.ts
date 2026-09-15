@@ -4,7 +4,9 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey && !resendApiKey.includes('your_resend_key') && !resendApiKey.includes('123456789') ? new Resend(resendApiKey) : null;
 
 export async function sendInviteEmail(toEmail: string, inviteToken: string, name: string) {
-  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
+    ? process.env.APP_URL
+    : 'https://hrdashboard-3s1m.onrender.com';
   const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
   console.log(`\n======================================================`);
@@ -15,17 +17,22 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   if (resend) {
     try {
       const emailResult = await resend.emails.send({
-        from: 'HROS <onboarding@resend.dev>',
+        from: 'EHM-Climagro OS <onboarding@resend.dev>',
         to: toEmail,
-        subject: 'Welcome to HROS — Complete Your Account Setup',
+        subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
         html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E7EB; border-radius: 8px;">
-            <h2 style="color: #10B981; margin-top: 0;">Welcome to HROS, ${name}!</h2>
-            <p>You have been invited to join the Human Resource Operating System.</p>
-            <p>Please click the button below to set your password and optionally link your Google Calendar:</p>
-            <a href="${inviteLink}" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 16px 0; font-weight: bold;">Accept Invite & Set Up Account</a>
-            <p style="color: #6B7280; font-size: 14px;">This invite link will expire in 7 days.</p>
-            <p style="color: #9CA3AF; font-size: 12px; margin-top: 20px;">Or copy and paste this link in your browser: ${inviteLink}</p>
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 12px; background-color: #ffffff;">
+            <h2 style="color: #111827; margin-top: 0; font-size: 20px;">You have been invited to create a user account</h2>
+            <p style="color: #374151; font-size: 15px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
+            <p style="color: #374151; font-size: 15px; line-height: 1.5;">You have been invited to create a user account on <a href="${appUrl}" style="color: #10B981; text-decoration: underline; font-weight: bold;">${appUrl}</a>.</p>
+            <p style="color: #374151; font-size: 15px; line-height: 1.5;">Follow this link to accept the invite:</p>
+            <div style="margin: 24px 0;">
+              <a href="${inviteLink}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 15px;">Accept the invite</a>
+            </div>
+            <p style="color: #6B7280; font-size: 13px; line-height: 1.4; border-top: 1px solid #F3F4F6; padding-top: 16px; margin-top: 24px;">
+              You're receiving this email because an invitation was sent to set up your account on EHM-Climagro OS.<br/>
+              Or copy and paste this direct link: <a href="${inviteLink}" style="color: #10B981;">${inviteLink}</a>
+            </p>
           </div>
         `,
       });
