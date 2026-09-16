@@ -179,35 +179,35 @@ export const DashboardView: React.FC = () => {
         <StatCard
           title="Active Team Members"
           value={activeEmployeesCount}
-          icon={<Users className="w-5 h-5 text-emerald-600" />}
+          icon={<Users className="w-5 h-5 text-emerald-700" />}
           trend={`${activeEmployeesCount} of ${totalEmployeesCount} Team Members (${activeEmployeesPercent}%)`}
           onClick={() => setLocation('/team')}
         />
         <StatCard
           title="Today's Tasks (In Progress)"
           value={inProgressTasks}
-          icon={<Clock className="w-5 h-5 text-blue-600" />}
+          icon={<Clock className="w-5 h-5 text-emerald-700" />}
           trend="Active sprint items being executed"
           onClick={() => setActiveModalType('IN_PROGRESS')}
         />
         <StatCard
           title="Pending & To Review"
           value={pendingTasks}
-          icon={<AlertCircle className="w-5 h-5 text-purple-600" />}
+          icon={<AlertCircle className="w-5 h-5 text-emerald-700" />}
           trend="Awaiting review or sprint assignment"
           onClick={() => setActiveModalType('PENDING')}
         />
         <StatCard
           title="Active Sprints"
           value={activeSprintsCount}
-          icon={<Zap className="w-5 h-5 text-emerald-600" />}
+          icon={<Zap className="w-5 h-5 text-emerald-700" />}
           trend={`${activeSprintsCount} Sprint Cycles Active`}
           onClick={() => setActiveModalType('SPRINTS')}
         />
         <StatCard
           title="Completion Velocity Rate"
           value={`${completionRate}%`}
-          icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+          icon={<TrendingUp className="w-5 h-5 text-emerald-700" />}
           trend={`${completedTasks} of ${totalTasks} Tasks Completed`}
           onClick={() => setActiveModalType('VELOCITY')}
         />

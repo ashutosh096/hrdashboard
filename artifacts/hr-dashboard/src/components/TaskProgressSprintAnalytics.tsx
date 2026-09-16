@@ -111,11 +111,11 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
           <span>Completed (Approved)</span>
         </div>
         <div className="flex items-center gap-1.5 text-gray-800">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-2xs"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block shadow-2xs"></span>
           <span>To Review</span>
         </div>
         <div className="flex items-center gap-1.5 text-gray-800">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shadow-2xs"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-teal-600 inline-block shadow-2xs"></span>
           <span>Pending / In Progress</span>
         </div>
       </div>
@@ -178,11 +178,11 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
               type="monotone"
               dataKey="toReview"
               name="To Review"
-              stroke="#F59E0B"
+              stroke="#64748B"
               strokeWidth={2.5}
               strokeDasharray="4 4"
               dot={false}
-              activeDot={{ r: 5, fill: '#F59E0B' }}
+              activeDot={{ r: 5, fill: '#64748B' }}
             />
 
             {/* Pending / In Progress Dashed Line */}
@@ -190,11 +190,11 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
               type="monotone"
               dataKey="pending"
               name="Pending / In Progress"
-              stroke="#3B82F6"
+              stroke="#0D9488"
               strokeWidth={2.5}
               strokeDasharray="4 4"
               dot={false}
-              activeDot={{ r: 5, fill: '#3B82F6' }}
+              activeDot={{ r: 5, fill: '#0D9488' }}
             />
           </ComposedChart>
         </ResponsiveContainer>

@@ -608,7 +608,7 @@ export const EmployeeDashboardView: React.FC = () => {
               className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
                   <Clock className="w-5 h-5" />
                 </div>
               </div>
@@ -617,34 +617,34 @@ export const EmployeeDashboardView: React.FC = () => {
                 <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
                   {myTasks.filter(t => t.status !== 'Done').length} Pending Tasks
                 </span>
-                <span className="text-[10px] text-blue-600 font-bold block pt-1">Active deliverables in execution</span>
+                <span className="text-[10px] text-emerald-700 font-bold block pt-1">Active deliverables in execution</span>
               </div>
             </div>
 
             {/* Tile 2: Active Sprint Cycles */}
             <div
               onClick={() => setActiveModalType('ACTIVE_SPRINTS')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-amber-400 hover:shadow-md transition-all group"
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
                   <Flame className="w-5 h-5" />
                 </div>
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Active Sprint</span>
                 <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">Sprint 35 Active</span>
-                <span className="text-[10px] text-amber-600 font-bold block pt-1">{activeSprintTasks.length} active sprint items</span>
+                <span className="text-[10px] text-emerald-700 font-bold block pt-1">{activeSprintTasks.length} active sprint items</span>
               </div>
             </div>
 
             {/* Tile 3: Google Meetings */}
             <div
               onClick={() => setActiveModalType('MEETINGS')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group"
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
                   <Calendar className="w-5 h-5" />
                 </div>
               </div>
@@ -653,7 +653,7 @@ export const EmployeeDashboardView: React.FC = () => {
                 <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
                   {todaysMeetings.length} Scheduled
                 </span>
-                <span className="text-[10px] text-indigo-600 font-bold block pt-1">Synced live calendar</span>
+                <span className="text-[10px] text-emerald-700 font-bold block pt-1">Synced live calendar</span>
               </div>
             </div>
 
@@ -663,7 +663,7 @@ export const EmployeeDashboardView: React.FC = () => {
               className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
                   <TrendingUp className="w-5 h-5" />
                 </div>
               </div>
@@ -672,7 +672,7 @@ export const EmployeeDashboardView: React.FC = () => {
                 <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
                   {Math.round((doneCount / (myTasks.length || 1)) * 100)}% Rate
                 </span>
-                <span className="text-[10px] text-emerald-600 font-bold block pt-1">
+                <span className="text-[10px] text-emerald-700 font-bold block pt-1">
                   {doneCount} of {myTasks.length} Completed
                 </span>
               </div>
@@ -681,10 +681,10 @@ export const EmployeeDashboardView: React.FC = () => {
             {/* Tile 5: Completed Tasks */}
             <div
               onClick={() => setActiveModalType('COMPLETED_TASKS')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-purple-400 hover:shadow-md transition-all group"
+              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
               </div>
@@ -693,7 +693,7 @@ export const EmployeeDashboardView: React.FC = () => {
                 <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
                   {doneCount} Completed
                 </span>
-                <span className="text-[10px] text-purple-600 font-bold block pt-1">Approved & signed-off</span>
+                <span className="text-[10px] text-emerald-700 font-bold block pt-1">Approved & signed-off</span>
               </div>
             </div>
           </div>
