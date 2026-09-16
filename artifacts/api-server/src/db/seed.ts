@@ -339,7 +339,7 @@ export async function runSeed() {
           targetMonth: initData.targetMonth,
           epicsCountTarget: initData.epicsCountTarget,
           targetDeliverableMetric: initData.targetDeliverableMetric,
-          status: initData.status,
+          status: initData.status as any,
         }).returning();
         console.log(`[SEED] Initiative inserted: ${initData.initiativeCode}`);
       } else {
@@ -347,7 +347,7 @@ export async function runSeed() {
           title: initData.title,
           description: initData.description,
           targetDeliverableMetric: initData.targetDeliverableMetric,
-          status: initData.status,
+          status: initData.status as any,
         }).where(eq(initiatives.id, existingInit.id));
       }
       seededInitiativesMap[initData.initiativeCode] = existingInit;
@@ -412,7 +412,7 @@ export async function runSeed() {
             department: epData.department,
             targetWeek: epData.targetWeek,
             sprintsCountTarget: 2,
-            status: epData.status,
+            status: epData.status as any,
           }).returning();
           console.log(`[SEED] Epic inserted: ${epData.epicCode}`);
         } catch (err) {
@@ -423,7 +423,7 @@ export async function runSeed() {
           title: epData.title,
           description: epData.description,
           initiativeId: parentInit?.id || existingEp.initiativeId,
-          status: epData.status,
+          status: epData.status as any,
         }).where(eq(epics.id, existingEp.id));
       }
       if (existingEp) {
