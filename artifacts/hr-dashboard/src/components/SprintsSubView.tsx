@@ -3,6 +3,8 @@ import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Cloc
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
+import { RichTextEditor } from './RichTextEditor';
+import { formatDateTime } from '../utils/dateUtils';
 
 interface SprintItem {
   id: string;
@@ -382,6 +384,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
       outputUrl: task.deliverableUrl || task.outputUrl || '',
       waitingOn: 'None (Self)',
       notes: task.description || task.notes || '',
+      createdAt: task.createdAt,
     });
   };
 
@@ -707,120 +710,133 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                       No tasks in {col.label}
                     </div>
                   ) : (
-                    columnTasks.map(t => {
-                      const entityName = (t.taskCode || '').startsWith('CAG') || (t.entityName || '').toLowerCase().includes('climagro') ? 'CLIMAGRO' : 'EHM';
-                      const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
+                    (() => {
+                      const sortedColumnTasks = [...columnTasks].sort((a, b) => {
+                        const now = new Date();
+                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-                      return (
-                        <div
-                          key={t.id}
-                          draggable={true}
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('text/plain', t.id);
-                            e.dataTransfer.effectAllowed = 'move';
-                          }}
-                          className="bg-white rounded-xl p-3.5 border border-gray-200 shadow-2xs space-y-2.5 hover:shadow-md hover:border-emerald-300 transition-all cursor-grab active:cursor-grabbing group"
-                        >
-                          {/* Code & Priority Badges Header */}
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleTaskClick(t);
-                              }}
-                              className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
-                              title="Click to view task details"
-                            >
-                              {t.taskCode || t.id}
-                            </span>
+                        const aDate = a.dueDate ? new Date(a.dueDate) : null;
+                        const bDate = b.dueDate ? new Date(b.dueDate) : null;
 
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200">
-                                {entityName}
-                              </span>
-                              <span
-                                className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border ${
-                                  t.priority === 'URGENT' || t.priority === 'HIGH'
-                                    ? 'bg-red-50 text-red-700 border-red-200'
-                                    : 'bg-blue-50 text-blue-700 border-blue-200'
-                                }`}
-                              >
-                                {t.priority || 'MEDIUM'}
-                              </span>
+                        const aOverdue = aDate && !['DONE', 'COMPLETED'].includes(a.status) && new Date(aDate.getFullYear(), aDate.getMonth(), aDate.getDate()) < today;
+                        const bOverdue = bDate && !['DONE', 'COMPLETED'].includes(b.status) && new Date(bDate.getFullYear(), bDate.getMonth(), bDate.getDate()) < today;
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleTaskClick(t);
-                                }}
-                                className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                title="View Task Details & Checklist Modal"
-                              >
-                                <Eye className="w-3 h-3 text-emerald-600" />
-                                <span>View</span>
-                              </button>
-                            </div>
-                          </div>
+                        if (aOverdue && !bOverdue) return -1;
+                        if (!aOverdue && bOverdue) return 1;
 
-                          {/* Deliverable Title */}
-                          <h5 className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
-                            {t.title}
-                          </h5>
+                        if (aDate && bDate) return aDate.getTime() - bDate.getTime();
+                        if (aDate && !bDate) return -1;
+                        if (!aDate && bDate) return 1;
 
-                          {/* Epic Subtitle */}
-                          <p className="text-[10px] font-bold text-purple-700 bg-purple-50/70 px-2 py-0.5 rounded border border-purple-100 inline-block">
-                            Epic: {t.epicCode || t.epicTitle || 'CAG-EPIC-001'}
-                          </p>
+                        return 0;
+                      });
 
-                          {/* Assigned & Reviewing Lead Box */}
-                          <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 text-[10px] space-y-0.5 text-gray-600 font-medium">
-                            <div className="line-clamp-1">
-                              <span className="font-bold text-gray-700">Assigned: </span>
-                              <span>{t.assigneeEmail || t.assigneeName || 'Unassigned'}</span>
-                            </div>
-                            <div className="line-clamp-1">
-                              <span className="font-bold text-gray-700">Lead: </span>
-                              <span>{t.reviewingLead || 'Manager Lead'}</span>
-                            </div>
-                          </div>
+                      return sortedColumnTasks.map(t => {
+                        const entityName = (t.taskCode || '').startsWith('CAG') || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
+                        const isUnassigned = !t.assigneeName || t.assigneeName === 'Unassigned' || t.assigneeName === 'Assignee' || !t.assigneeId;
 
-                          {/* Date & Alert & Column Move Controls */}
-                          <div className="flex items-center justify-between gap-1 pt-1 border-t border-gray-100 text-[10px]">
-                            <span className="text-gray-400 font-semibold flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-gray-400" />
-                              <span>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '9/10/2026'}</span>
-                            </span>
+                        let assigneeInitials = 'U';
+                        if (!isUnassigned && t.assigneeName) {
+                          const parts = t.assigneeName.trim().split(' ');
+                          assigneeInitials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0].slice(0, 2);
+                        }
 
-                            {isOverdue && (
-                              <span className="text-[9px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                                ⚡ Delay Alert
-                              </span>
-                            )}
-                          </div>
+                        const epicCode = t.epicCode || t.epicTitle || (entityName === 'Climagro' ? 'CAG-EPIC-001' : 'EHM-EPIC-001');
 
-                          {/* Status Transition Select Dropdown */}
+                        let dueDateInfo = null;
+                        if (t.dueDate) {
+                          const d = new Date(t.dueDate);
+                          if (!isNaN(d.getTime())) {
+                            const now = new Date();
+                            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                            const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                            const isCompleted = t.status === 'DONE' || t.status === 'COMPLETED';
+                            const isOverdue = !isCompleted && target < today;
+                            const day = d.getDate();
+                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                            const month = monthNames[d.getMonth()];
+                            dueDateInfo = {
+                              label: isOverdue ? 'Overdue' : `${day} ${month}`,
+                              isOverdue,
+                            };
+                          }
+                        }
+
+                        return (
                           <div
-                            onClick={(e) => e.stopPropagation()}
-                            className="pt-1 flex items-center justify-between gap-1 text-[10px]"
+                            key={t.id}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', t.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onClick={() => handleTaskClick(t)}
+                            className="relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2.5 hover:shadow-md hover:border-emerald-400 transition-all cursor-grab active:cursor-grabbing group overflow-hidden select-none"
                           >
-                            <span className="text-[9px] font-bold text-gray-400">Move to:</span>
-                            <select
-                              value={getTaskColumn(t)}
-                              onChange={(e) => handleTaskStatusTransition(t.id, e.target.value)}
-                              className="text-[10px] font-bold bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 outline-none focus:border-emerald-500 cursor-pointer"
-                            >
-                              <option value="BACKLOG">Backlog</option>
-                              <option value="PLANNED">Planned</option>
-                              <option value="TODO">To Do</option>
-                              <option value="IN_PROGRESS">In Progress</option>
-                              <option value="TO_REVIEW">To Review</option>
-                              <option value="DONE">Done</option>
-                            </select>
+                            {/* 1. Priority (Left Edge Color Bar) */}
+                            <div
+                              className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                                t.priority === 'URGENT'
+                                  ? 'bg-red-500'
+                                  : t.priority === 'HIGH'
+                                  ? 'bg-rose-500'
+                                  : t.priority === 'MEDIUM'
+                                  ? 'bg-amber-500'
+                                  : 'bg-slate-400'
+                              }`}
+                            />
+
+                            {/* 2. Deliverable Title */}
+                            <h5 className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+                              {t.title}
+                            </h5>
+
+                            {/* 3. Card Footer: Left = Avatar + Epic Code + Entity | Right = Due Date / Overdue Chip */}
+                            <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-gray-100 text-[11px]">
+                              {/* Left: Avatar Circle + Epic Code + Entity */}
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {/* Assignee Avatar Circle */}
+                                {isUnassigned ? (
+                                  <div
+                                    className="w-5 h-5 rounded-full bg-gray-200 text-gray-600 font-black text-[10px] flex items-center justify-center shrink-0 border border-gray-300"
+                                    title="Unassigned (Needs an owner)"
+                                  >
+                                    ?
+                                  </div>
+                                ) : (
+                                  <div
+                                    className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[9px] flex items-center justify-center shrink-0 border border-emerald-300 uppercase"
+                                    title={`Assigned to ${t.assigneeName}`}
+                                  >
+                                    {assigneeInitials}
+                                  </div>
+                                )}
+
+                                {/* Epic Code + Entity */}
+                                <span className="font-mono text-[10px] font-bold text-gray-500 truncate">
+                                  {epicCode}
+                                </span>
+                                <span className="text-[10px] font-semibold text-gray-400 shrink-0">
+                                  · {entityName}
+                                </span>
+                              </div>
+
+                              {/* Right: Target / Due Date Chip */}
+                              {dueDateInfo ? (
+                                <span className={`flex items-center gap-1 text-[10px] font-bold shrink-0 ${dueDateInfo.isOverdue ? 'text-red-600 font-extrabold' : 'text-gray-500 font-semibold'}`}>
+                                  <Calendar className={`w-3 h-3 ${dueDateInfo.isOverdue ? 'text-red-500' : 'text-gray-400'}`} />
+                                  <span>{dueDateInfo.label}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-extrabold text-gray-400 uppercase shrink-0 tracking-wider">
+                                  {entityName}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      });
+                    })()
                   )}
                 </div>
               </div>
@@ -982,12 +998,11 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                 {/* Deliverable Goal / Objective */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable Goal / Objective</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Outline expected deliverable outcome for this sprint task..."
+                  <RichTextEditor
                     value={goal}
-                    onChange={(e) => setGoal(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium resize-none"
+                    onChange={setGoal}
+                    placeholder="Outline expected deliverable outcome for this sprint task..."
+                    rows={3}
                   />
                 </div>
 
@@ -1334,10 +1349,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                     onChange={(e) => setAssignTaskModal({ ...assignTaskModal, priority: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
-                    <option value="URGENT">Urgent ⚡</option>
-                    <option value="HIGH">High Priority</option>
-                    <option value="MEDIUM">Medium Priority</option>
-                    <option value="LOW">Low Priority</option>
+                    <option value="URGENT">P1 (Top Priority) 🔴</option>
+                    <option value="HIGH">P2 (High Priority) 🟠</option>
+                    <option value="MEDIUM">P3 (Medium Priority) 🟡</option>
+                    <option value="LOW">P4 (Low Priority) ⚪</option>
                   </select>
                 </div>
               </div>

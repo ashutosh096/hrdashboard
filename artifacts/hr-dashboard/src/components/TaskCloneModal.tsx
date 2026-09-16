@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Copy, Calendar, Layers, CheckCircle2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { RichTextEditor } from './RichTextEditor';
 
 interface TaskCloneModalProps {
   isOpen: boolean;
@@ -161,10 +162,10 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
                 onChange={(e) => setPriority(e.target.value as any)}
                 className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-semibold text-gray-900"
               >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
+                <option value="LOW">P4 (Low Priority)</option>
+                <option value="MEDIUM">P3 (Medium Priority)</option>
+                <option value="HIGH">P2 (High Priority)</option>
+                <option value="URGENT">P1 (Top Priority)</option>
               </select>
             </div>
           </div>
@@ -172,11 +173,11 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
           {/* Description Preview */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Description (Cloned)</label>
-            <textarea
-              rows={2}
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-gray-600 bg-gray-50"
+              onChange={setDescription}
+              placeholder="Technical scope, sprint goals, and acceptance criteria..."
+              rows={2}
             />
           </div>
 

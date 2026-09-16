@@ -9,6 +9,7 @@ import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 interface MonthlyEmployeeAttendance {
   id: string;
   employeeName: string;
+  email?: string;
   role: string;
   dept: string;
   entity: 'EHM' | 'CAG';
@@ -42,7 +43,8 @@ export const AttendanceView: React.FC = () => {
     marked: false,
   });
 
-  const isEmployee = user?.role === 'EMPLOYEE';
+  const activeRole = localStorage.getItem('hros_active_role') || user?.role || 'EMPLOYEE';
+  const isEmployeeMode = activeRole === 'EMPLOYEE';
 
   useEffect(() => {
     async function loadAttendanceData() {
@@ -94,6 +96,7 @@ export const AttendanceView: React.FC = () => {
     return {
       id: emp.id,
       employeeName: `${emp.firstName} ${emp.lastName}`,
+      email: emp.email,
       role: emp.designation || 'Specialist',
       dept: 'Engineering & Operations',
       entity,
@@ -108,14 +111,32 @@ export const AttendanceView: React.FC = () => {
     };
   });
 
-  const filteredAttendance = liveAttendanceData.filter(
-    (att) =>
-      (selectedEntity === 'ALL' || att.entity === selectedEntity) &&
-      (!isEmployee || att.employeeName.toLowerCase().includes((user?.name || '').toLowerCase())) &&
-      (att.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        att.dept.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        att.role.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Find exact employee profile for the current user
+  const targetEmployee =
+    employees.find((e) => e.id === user?.employeeId) ||
+    employees.find((e) => e.email?.toLowerCase() === user?.email?.toLowerCase()) ||
+    employees[0];
+
+  const filteredAttendance = liveAttendanceData.filter((att) => {
+    const matchesEntity = selectedEntity === 'ALL' || att.entity === selectedEntity;
+    const matchesSearch =
+      att.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      att.dept.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      att.role.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (isEmployeeMode) {
+      // In Employee mode, ONLY show his/her own monthly attendance record!
+      const isSelf = targetEmployee
+        ? att.id === targetEmployee.id
+        : (user?.employeeId && att.id === user.employeeId) ||
+          (user?.email && att.email?.toLowerCase() === user.email.toLowerCase()) ||
+          (user?.name && att.employeeName.toLowerCase().includes(user.name.toLowerCase()));
+
+      return matchesEntity && matchesSearch && isSelf;
+    }
+
+    return matchesEntity && matchesSearch;
+  });
 
   if (loading) {
     return (

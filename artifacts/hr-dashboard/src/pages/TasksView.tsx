@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye } from 'lucide-react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, X, Zap, Calendar } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
 import { InitiativesSubView } from '../components/InitiativesSubView';
 import { EpicsSubView } from '../components/EpicsSubView';
+import { MarkdownViewer } from '../components/MarkdownViewer';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
+import { formatDateTime } from '../utils/dateUtils';
 
 type TabType = 'INITIATIVES' | 'EPICS' | 'TASKS';
 
@@ -28,6 +30,9 @@ export const TasksView: React.FC = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
+  const [viewingEpicInTasks, setViewingEpicInTasks] = useState<any | null>(null);
+  const [rawEpics, setRawEpics] = useState<any[]>([]);
+  const [initiatives, setInitiatives] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +61,8 @@ export const TasksView: React.FC = () => {
         fetchApi<any[]>('/api/epics'),
         fetchApi<any[]>('/api/initiatives'),
       ]);
+      setRawEpics(epicsData || []);
+      setInitiatives(initsData || []);
 
       const formatted = (tasksData || []).map(t => {
         const parentEpic = epicsData.find(ep => ep.id === t.epicId);
@@ -82,9 +89,11 @@ export const TasksView: React.FC = () => {
           title: t.title,
           entityCode,
           entityName,
-          parentInitiativeCode: parentInit?.initiativeCode || (isCAG ? 'CAG-INIT-001' : 'EHM-INIT-001'),
+          epicId: t.epicId || parentEpic?.id,
+          initiativeId: t.initiativeId || parentInit?.id || parentEpic?.initiativeId,
+          parentInitiativeCode: parentInit?.initiativeCode || (parentEpic ? (isCAG ? 'CAG-INIT-001' : 'EHM-INIT-001') : null),
           parentInitiativeTitle: parentInit?.title || '',
-          parentEpicCode: parentEpic?.epicCode || (isCAG ? 'CAG-EPIC-001' : 'EHM-EPIC-001'),
+          parentEpicCode: parentEpic?.epicCode || null,
           parentEpicTitle: parentEpic?.title || '',
           assigneeName: user?.email || 'Assignee',
           reviewingLead: 'Manager Lead',
@@ -150,6 +159,7 @@ export const TasksView: React.FC = () => {
       outputUrl: task.outputUrl || '',
       waitingOn: 'None (Self)',
       notes: task.notes || '',
+      createdAt: task.createdAt,
     });
   };
 
@@ -375,6 +385,7 @@ export const TasksView: React.FC = () => {
                       <th className="py-3.5 px-4">Entity</th>
                       <th className="py-3.5 px-4">Deliverable Title</th>
                       <th className="py-3.5 px-4">Parent Epic</th>
+                      <th className="py-3.5 px-4">Posted Date & Time</th>
                       <th className="py-3.5 px-4 text-center">Priority</th>
                       <th className="py-3.5 px-4">Status / Cycle</th>
                       <th className="py-3.5 px-4 text-right">Actions</th>
@@ -419,8 +430,8 @@ export const TasksView: React.FC = () => {
                               {t.parentEpicCode ? (
                                 <span
                                   onClick={() => {
-                                    setSelectedEpicToViewId(t.parentEpicCode);
-                                    setActiveTab('EPICS');
+                                    const foundEpic = rawEpics.find(e => e.epicCode === t.parentEpicCode || e.id === t.parentEpicCode || e.id === t.epicId);
+                                    setViewingEpicInTasks(foundEpic || { epicCode: t.parentEpicCode, title: t.parentEpicTitle || 'Parent Epic Details', description: '' });
                                   }}
                                   className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5 hover:bg-emerald-100 hover:underline transition-all text-xs cursor-pointer"
                                   title="Click to view Parent Epic"
@@ -432,17 +443,22 @@ export const TasksView: React.FC = () => {
                                 <span className="text-gray-400 text-xs italic">No Parent Epic</span>
                               )}
                             </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span
-                                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-lg uppercase border inline-block ${
-                                  t.priority === 'URGENT' || t.priority === 'HIGH'
-                                    ? 'bg-red-50 text-red-700 border-red-200'
-                                    : 'bg-amber-50 text-amber-800 border-amber-200'
-                                }`}
-                              >
-                                {t.priority || 'MEDIUM'}
+                            <td className="py-3.5 px-4 text-gray-500 font-bold text-xs">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                                {formatDateTime(t.createdAt)}
                               </span>
                             </td>
+                              {(() => {
+                                const p = (t.priority || '').toUpperCase();
+                                const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                                const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                                return (
+                                  <span className={`text-[10px] px-2.5 py-0.5 rounded-lg border inline-block ${color}`}>
+                                    {label}
+                                  </span>
+                                );
+                              })()}
                             <td className="py-3.5 px-4">
                               <select
                                 value={isDone ? 'DONE' : isInProgress ? 'IN_PROGRESS' : t.status || 'BACKLOG'}
@@ -471,13 +487,6 @@ export const TasksView: React.FC = () => {
                                 >
                                   <Eye className="w-4 h-4 text-emerald-600" />
                                   <span>View</span>
-                                </button>
-                                <button
-                                  onClick={() => setLocation('/dashboard?sub=sprints')}
-                                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
-                                >
-                                  <span>View in Sprint</span>
-                                  <ArrowRight className="w-3 h-3" />
                                 </button>
                               </div>
                             </td>
@@ -542,6 +551,200 @@ export const TasksView: React.FC = () => {
         onSave={handleSaveTaskUpdate}
         isReadOnly={!isEmployee}
       />
+
+      {/* Feature Epic Details Pop-up Modal (Exact Image 2 Layout) */}
+      {viewingEpicInTasks && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto select-none">
+          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-gray-900">
+                    Feature Epic Details
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-semibold">
+                    Full breakdown of goal, metadata, and linked tasks
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setViewingEpicInTasks(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-left">
+              {/* 1. Epic Title */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Title
+                </span>
+                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
+                  {viewingEpicInTasks.title}
+                </h2>
+              </div>
+
+              {/* 2. Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Epic Code
+                  </span>
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                    {viewingEpicInTasks.epicCode}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Entity / Brand
+                  </span>
+                  <span className="text-xs font-bold text-blue-700 font-mono">
+                    {(viewingEpicInTasks.epicCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Target Date / Week
+                  </span>
+                  <span className="text-xs font-bold text-purple-700">
+                    {viewingEpicInTasks.targetWeek || viewingEpicInTasks.targetDate || 'Week 1 (Days 1–7)'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                    Status
+                  </span>
+                  <span className="text-xs font-extrabold px-2.5 py-0.5 rounded uppercase border bg-blue-100 text-blue-800 border-blue-300 inline-block">
+                    {viewingEpicInTasks.status || 'IN_PROGRESS'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 3. Parent Initiative Link Box */}
+              {(() => {
+                const parentInit = (initiatives || []).find((i: any) => i.id === viewingEpicInTasks.initiativeId || i.initiativeCode === viewingEpicInTasks.initiativeId);
+                const parentCode = parentInit?.initiativeCode || (viewingEpicInTasks.epicCode?.startsWith('CAG') ? 'CAG-INIT-001' : 'EHM-INIT-001');
+                const parentTitle = parentInit?.title || 'Climagro Analytics Platform & Carbon Engine';
+
+                return (
+                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+                      <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Parent Initiative Code:</span>
+                      <span className="font-mono text-emerald-800 font-extrabold bg-white px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs text-sm">
+                        {parentCode}
+                      </span>
+                    </div>
+                    <div className="text-sm font-bold text-emerald-900 pl-6">
+                      Parent Initiative Title: <span className="font-semibold text-gray-800">{parentTitle}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Posting Date & Time */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Posting Creation Date & Time
+                </span>
+                <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{formatDateTime(viewingEpicInTasks.createdAt)}</span>
+                </span>
+              </div>
+
+              {/* 4. Description */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
+                  Epic Description
+                </span>
+                {viewingEpicInTasks.description ? (
+                  <MarkdownViewer content={viewingEpicInTasks.description} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-sm text-gray-800" />
+                ) : (
+                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs text-gray-400 italic">
+                    No epic description provided.
+                  </div>
+                )}
+              </div>
+
+              {/* 5. Hanging Tasks Linked Under Epic */}
+              {(() => {
+                const linkedTasks = tasks.filter((t: any) => t.epicId === viewingEpicInTasks.id || t.parentEpicCode === viewingEpicInTasks.epicCode);
+
+                return (
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <ListTodo className="w-4 h-4 text-emerald-600 animate-pulse" />
+                        <span>Hanging Tasks Linked Under Epic ({linkedTasks.length})</span>
+                      </span>
+                      {linkedTasks.length > 0 && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 animate-pulse">
+                          ● Live Connected
+                        </span>
+                      )}
+                    </h4>
+
+                    {linkedTasks.length > 0 ? (
+                      <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-emerald-400 before:via-purple-400 before:to-emerald-200">
+                        {linkedTasks.map((taskItem: any) => (
+                          <div
+                            key={taskItem.id}
+                            className="bg-white p-3.5 rounded-2xl border border-gray-200 hover:border-emerald-400 hover:shadow-md transition-all space-y-1.5 text-left"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                {taskItem.taskCode}
+                              </span>
+                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase border bg-blue-100 text-blue-800 border-blue-300">
+                                {taskItem.status}
+                              </span>
+                            </div>
+                            <h5 className="text-xs font-bold text-gray-900">{taskItem.title}</h5>
+                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                              <span>Assignee: {taskItem.assigneeName || 'admin@example.com'}</span>
+                              <span className="flex items-center gap-1 text-emerald-700 font-bold">
+                                <Calendar className="w-3 h-3 text-emerald-600" />
+                                {taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '9/18/2026'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-xs text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        No hanging tasks linked under this Epic yet.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setViewingEpicInTasks(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-6 py-2.5 text-xs font-bold transition-all shadow-sm cursor-pointer"
+              >
+                Close View Mode
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

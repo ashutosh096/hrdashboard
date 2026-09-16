@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
+import bcrypt from 'bcryptjs';
+import { sendInviteEmail } from '../services/email.js';
 import { supabaseAdmin } from '../services/supabase-admin.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -113,6 +115,28 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           expiresAt,
         });
 
+      // 6. Ensure user record exists in users table linked to new employee
+      const [existingUser] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.email, targetEmail));
+
+      if (!existingUser) {
+        const passwordHash = await bcrypt.hash('Employee@123', 10);
+        await tx.insert(users).values({
+          email: targetEmail,
+          passwordHash,
+          role: (role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
+          status: 'ACTIVE',
+          employeeId: newEmployee.id,
+        });
+      } else {
+        await tx
+          .update(users)
+          .set({ employeeId: newEmployee.id })
+          .where(eq(users.email, targetEmail));
+      }
+
       return { newEmployee, entityCode };
     });
 
@@ -121,7 +145,9 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       : 'https://hrdashboard-3s1m.onrender.com';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    // Send invitation exclusively via Supabase Auth Admin API
+    // Send invitation email via NodeMailer/Resend AND Supabase Auth Admin
+    const emailResult = await sendInviteEmail(targetEmail, inviteToken, `${firstName} ${lastName}`);
+
     let supabaseInviteSuccess = false;
     let supabaseInviteError: string | null = null;
 
@@ -145,6 +171,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       employee: result.newEmployee,
       inviteToken,
       inviteLink,
+      emailDelivery: emailResult,
       supabaseInviteResult: {
         sent: supabaseInviteSuccess,
         error: supabaseInviteError,

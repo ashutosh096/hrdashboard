@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { db, users, employees, entities, departments, entityCounters, initiatives, epics, tasks, attendance, meetings, meetingAttendees, and, eq } from '@workspace/db';
+import { db, users, employees, entities, departments, entityCounters, initiatives, epics, sprints, tasks, attendance, meetings, meetingAttendees, and, eq } from '@workspace/db';
 
 dotenv.config();
 
@@ -224,170 +224,414 @@ export async function runSeed() {
       console.log(`[SEED] Secondary Admin User updated: ${secondaryEmail}`);
     }
 
-    // 5. Seed / Upsert Default Strategic Initiatives (CAG-INIT-001 & EHM-INIT-001)
-    let [cagInit] = await db.select().from(initiatives).where(eq(initiatives.initiativeCode, 'CAG-INIT-001'));
-    if (!cagInit) {
-      [cagInit] = await db.insert(initiatives).values({
+    // 5. Seed / Upsert 8 Strategic Initiatives
+    const initiativesData = [
+      {
         initiativeCode: 'CAG-INIT-001',
-        title: 'CLIMAGRO Platform & Carbon Engine',
-        description: 'Core sustainability platform & AI carbon footprint analytics module',
-        entityId: seededEntities['CAG'],
-        departmentId: seededDepts['CAG_DEV'],
+        title: 'CLIMAGRO Analytics Platform & Carbon Engine',
+        description: 'Core sustainability platform & AI carbon footprint analytics module.',
+        entityCode: 'CAG',
+        deptCode: 'DEV',
         subDepartment: 'Product & Tech - Core Engine',
         targetMonth: 'Month 1 (Weeks 1–4)',
         epicsCountTarget: 3,
         targetDeliverableMetric: '100% OAuth & Carbon Reporting Pass',
         status: 'ACTIVE',
-      }).returning();
-      console.log('[SEED] Default Initiative inserted: CAG-INIT-001');
-    }
-
-    let [ehmInit] = await db.select().from(initiatives).where(eq(initiatives.initiativeCode, 'EHM-INIT-001'));
-    if (!ehmInit) {
-      [ehmInit] = await db.insert(initiatives).values({
+      },
+      {
         initiativeCode: 'EHM-INIT-001',
         title: 'EHM Operational ERP & Client Portal',
-        description: 'Environmental consultancy workflow & compliance tracking dashboard',
-        entityId: seededEntities['EHM'],
-        departmentId: seededDepts['EHM_DEV'],
+        description: 'Environmental consultancy workflow & compliance tracking dashboard.',
+        entityCode: 'EHM',
+        deptCode: 'DEV',
         subDepartment: 'Operations & Tech',
         targetMonth: 'Month 1 (Weeks 1–4)',
-        epicsCountTarget: 2,
+        epicsCountTarget: 3,
         targetDeliverableMetric: 'Automated Compliance Workflow',
         status: 'ACTIVE',
-      }).returning();
-      console.log('[SEED] Default Initiative inserted: EHM-INIT-001');
-    }
-
-    // 6. Seed / Upsert Default Epics (CAG-EPIC-001 & EHM-EPIC-001)
-    let [cagEpic] = await db.select().from(epics).where(eq(epics.epicCode, 'CAG-EPIC-001'));
-    if (!cagEpic) {
-      [cagEpic] = await db.insert(epics).values({
-        epicCode: 'CAG-EPIC-001',
-        title: 'Auth, RBAC & Core Analytics Engine',
-        description: 'Multi-tenant authentication and analytics calculation pipeline',
-        initiativeId: cagInit.id,
-        entityId: seededEntities['CAG'],
-        department: 'Product & Tech',
-        targetWeek: 'Week 1 (Days 1–7)',
-        sprintsCountTarget: 2,
-        status: 'IN_PROGRESS',
-      }).returning();
-      console.log('[SEED] Default Epic inserted: CAG-EPIC-001');
-    }
-
-    let [ehmEpic] = await db.select().from(epics).where(eq(epics.epicCode, 'EHM-EPIC-001'));
-    if (!ehmEpic) {
-      [ehmEpic] = await db.insert(epics).values({
-        epicCode: 'EHM-EPIC-001',
-        title: 'Client Onboarding & Project Management Module',
-        description: 'Client portal setup and project deliverable tracking',
-        initiativeId: ehmInit.id,
-        entityId: seededEntities['EHM'],
-        department: 'Operations & Delivery',
-        targetWeek: 'Week 2 (Days 8–14)',
-        sprintsCountTarget: 2,
-        status: 'IN_PROGRESS',
-      }).returning();
-      console.log('[SEED] Default Epic inserted: EHM-EPIC-001');
-    }
-
-    // 7. Seed / Upsert Default & Team Backlog Tasks
-    const defaultTasks = [
-      {
-        taskCode: 'EHM-EMP01-001',
-        title: 'Product Backlog & Tech Architecture Setup',
-        description: 'Establish initiative -> epic -> task 3-tier hierarchy structure.',
-        entityId: seededEntities['EHM'],
-        departmentId: seededDepts['EHM_DEV'],
-        assigneeId: adminEmployee.id,
-        creatorId: adminEmployee.id,
-        reviewingLeadId: adminEmployee.id,
-        initiativeId: ehmInit.id,
-        epicId: ehmEpic.id,
-        taskType: 'EPIC_TASK' as const,
-        status: 'DONE' as const,
-        priority: 'HIGH' as const,
-        dueDate: new Date(Date.now() - 2 * 86400000),
       },
       {
-        taskCode: 'CAG-EMP01-002',
-        title: 'Multi-tenant RBAC & Environment Compliance Module',
-        description: 'Configure entity switching for EHM Consultancy and Climagro Analytics.',
-        entityId: seededEntities['CAG'],
-        departmentId: seededDepts['CAG_DEV'],
-        assigneeId: seededEmployeesMap['CAG-EMP01']?.id || adminEmployee.id,
-        creatorId: adminEmployee.id,
-        reviewingLeadId: adminEmployee.id,
-        initiativeId: cagInit.id,
-        epicId: cagEpic.id,
-        taskType: 'EPIC_TASK' as const,
-        status: 'IN_PROGRESS' as const,
-        priority: 'MEDIUM' as const,
-        dueDate: new Date(Date.now() + 3 * 86400000),
+        initiativeCode: 'CAG-INIT-002',
+        title: 'AI Scope 3 Supply Chain Footprint & ESG Auditing',
+        description: 'Automated Scope 3 emissions tracing and vendor ESG scorecard system.',
+        entityCode: 'CAG',
+        deptCode: 'DEV',
+        subDepartment: 'Product & Tech - AI Lab',
+        targetMonth: 'Month 2 (Weeks 5–8)',
+        epicsCountTarget: 3,
+        targetDeliverableMetric: 'Real-time Supplier Audit Integration',
+        status: 'ACTIVE',
       },
       {
-        taskCode: 'CAG-EMP01-003',
-        title: 'Dashboard Performance & Analytics Specs',
-        description: 'Create technical design spec and flow diagram for dashboard backlog.',
-        entityId: seededEntities['CAG'],
-        departmentId: seededDepts['CAG_DEV'],
-        assigneeId: seededEmployeesMap['CAG-EMP02']?.id || adminEmployee.id,
-        creatorId: adminEmployee.id,
-        reviewingLeadId: adminEmployee.id,
-        initiativeId: cagInit.id,
-        epicId: cagEpic.id,
-        taskType: 'EPIC_TASK' as const,
-        status: 'TODO' as const,
-        priority: 'MEDIUM' as const,
-        dueDate: new Date(Date.now() + 5 * 86400000),
+        initiativeCode: 'EHM-INIT-002',
+        title: 'Environmental Impact Assessment (EIA) Automated Suite',
+        description: 'AI-assisted site inspection and automated regulatory PDF generation.',
+        entityCode: 'EHM',
+        deptCode: 'OPS',
+        subDepartment: 'Operations & Delivery',
+        targetMonth: 'Month 2 (Weeks 5–8)',
+        epicsCountTarget: 3,
+        targetDeliverableMetric: '95% Automated PDF Generation',
+        status: 'ACTIVE',
       },
       {
-        taskCode: 'EHM-EMP02-004',
-        title: 'Client Onboarding & Project Scope Sign-off',
-        description: 'Finalize client agreements and environmental compliance docs.',
-        entityId: seededEntities['EHM'],
-        departmentId: seededDepts['EHM_DEV'],
-        assigneeId: seededEmployeesMap['EHM-EMP02']?.id || adminEmployee.id,
-        creatorId: adminEmployee.id,
-        reviewingLeadId: adminEmployee.id,
-        initiativeId: ehmInit.id,
-        epicId: ehmEpic.id,
-        taskType: 'EPIC_TASK' as const,
-        status: 'DONE' as const,
-        priority: 'HIGH' as const,
-        dueDate: new Date(Date.now() - 1 * 86400000),
+        initiativeCode: 'CAG-INIT-003',
+        title: 'IoT Sensor Integration & Carbon Grid Live Feed',
+        description: 'Direct IoT telemetry stream for industrial facility carbon monitoring.',
+        entityCode: 'CAG',
+        deptCode: 'DEV',
+        subDepartment: 'Product & Tech - IoT Grid',
+        targetMonth: 'Month 3 (Weeks 9–12)',
+        epicsCountTarget: 3,
+        targetDeliverableMetric: 'Live Ingestion Stream < 50ms Latency',
+        status: 'ACTIVE',
       },
       {
-        taskCode: 'CAG-EMP03-005',
-        title: 'AI Carbon Emissions Footprint Algorithm',
-        description: 'Build calculation pipeline for Scope 1, 2, and 3 GHG emissions.',
-        entityId: seededEntities['CAG'],
-        departmentId: seededDepts['CAG_DEV'],
-        assigneeId: seededEmployeesMap['CAG-EMP03']?.id || adminEmployee.id,
-        creatorId: adminEmployee.id,
-        reviewingLeadId: adminEmployee.id,
-        initiativeId: cagInit.id,
-        epicId: cagEpic.id,
-        taskType: 'EPIC_TASK' as const,
-        status: 'IN_PROGRESS' as const,
-        priority: 'URGENT' as const,
-        dueDate: new Date(Date.now() + 2 * 86400000),
+        initiativeCode: 'EHM-INIT-003',
+        title: 'ISO 14001 Audit & Environmental Governance Suite',
+        description: 'Comprehensive audit readiness checklist, evidence locker, and CAPA engine.',
+        entityCode: 'EHM',
+        deptCode: 'MAR',
+        subDepartment: 'Grants & Governance',
+        targetMonth: 'Month 1 (Weeks 1–4)',
+        epicsCountTarget: 3,
+        targetDeliverableMetric: '100% ISO 14001 Audit Readiness',
+        status: 'ACTIVE',
+      },
+      {
+        initiativeCode: 'CAG-INIT-004',
+        title: 'Carbon Credit Trading & Offset Settlement API',
+        description: 'Blockchain-backed carbon credit verification and transaction engine.',
+        entityCode: 'CAG',
+        deptCode: 'DEV',
+        subDepartment: 'Product & Tech - Marketplace',
+        targetMonth: 'Month 3 (Weeks 9–12)',
+        epicsCountTarget: 2,
+        targetDeliverableMetric: 'Tokenized Offset Settlement API',
+        status: 'PLANNED',
+      },
+      {
+        initiativeCode: 'EHM-INIT-004',
+        title: 'Enterprise Client Onboarding & Contract Lifecycle',
+        description: 'Streamlined client intake, NDA execution, and SLA tracking portal.',
+        entityCode: 'EHM',
+        deptCode: 'MAR',
+        subDepartment: 'Sales & Client Experience',
+        targetMonth: 'Month 2 (Weeks 5–8)',
+        epicsCountTarget: 2,
+        targetDeliverableMetric: 'Zero-Touch Contract Execution',
+        status: 'PLANNED',
       },
     ];
 
-    for (const tsk of defaultTasks) {
-      const [existingTask] = await db.select().from(tasks).where(eq(tasks.taskCode, tsk.taskCode));
+    const seededInitiativesMap: Record<string, any> = {};
+
+    for (const initData of initiativesData) {
+      let [existingInit] = await db.select().from(initiatives).where(eq(initiatives.initiativeCode, initData.initiativeCode));
+      if (!existingInit) {
+        [existingInit] = await db.insert(initiatives).values({
+          initiativeCode: initData.initiativeCode,
+          title: initData.title,
+          description: initData.description,
+          entityId: seededEntities[initData.entityCode],
+          departmentId: seededDepts[`${initData.entityCode}_${initData.deptCode}`],
+          subDepartment: initData.subDepartment,
+          targetMonth: initData.targetMonth,
+          epicsCountTarget: initData.epicsCountTarget,
+          targetDeliverableMetric: initData.targetDeliverableMetric,
+          status: initData.status,
+        }).returning();
+        console.log(`[SEED] Initiative inserted: ${initData.initiativeCode}`);
+      } else {
+        await db.update(initiatives).set({
+          title: initData.title,
+          description: initData.description,
+          targetDeliverableMetric: initData.targetDeliverableMetric,
+          status: initData.status,
+        }).where(eq(initiatives.id, existingInit.id));
+      }
+      seededInitiativesMap[initData.initiativeCode] = existingInit;
+    }
+
+    // 6. Seed / Upsert 24 Feature Epics (3 Epics for EACH of the 8 Strategic Initiatives)
+    const epicsData = [
+      // CAG-INIT-001 (3 Epics)
+      { epicCode: 'CAG-EPIC-001', title: 'Auth, RBAC & Core Analytics Engine', description: 'Multi-tenant authentication and analytics calculation pipeline.', initiativeCode: 'CAG-INIT-001', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 1 (Days 1–7)', status: 'IN_PROGRESS' },
+      { epicCode: 'CAG-EPIC-002', title: 'Real-time Carbon Visualizer & Dashboard', description: 'Interactive charts and live emission widget grid.', initiativeCode: 'CAG-INIT-001', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 2 (Days 8–14)', status: 'IN_PROGRESS' },
+      { epicCode: 'CAG-EPIC-003', title: 'Automated CSV & PDF Export Engine', description: 'Scheduled export pipelines for monthly ESG reporting.', initiativeCode: 'CAG-INIT-001', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+
+      // EHM-INIT-001 (3 Epics)
+      { epicCode: 'EHM-EPIC-001', title: 'Client Onboarding & Project Management', description: 'Client portal setup and project deliverable tracking.', initiativeCode: 'EHM-INIT-001', entityCode: 'EHM', department: 'Operations & Delivery', targetWeek: 'Week 1 (Days 1–7)', status: 'COMPLETED' },
+      { epicCode: 'EHM-EPIC-002', title: 'Billing, Invoicing & Timesheet Sync', description: 'Consultant billable hours tracking & invoice generation.', initiativeCode: 'EHM-INIT-001', entityCode: 'EHM', department: 'Operations & Tech', targetWeek: 'Week 2 (Days 8–14)', status: 'IN_PROGRESS' },
+      { epicCode: 'EHM-EPIC-003', title: 'Compliance Milestone & SLA Tracker', description: 'Automated SLA breach notifications and client alert triggers.', initiativeCode: 'EHM-INIT-001', entityCode: 'EHM', department: 'Operations & Delivery', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+
+      // CAG-INIT-002 (3 Epics)
+      { epicCode: 'CAG-EPIC-004', title: 'Supplier Onboarding & ESG Survey Engine', description: 'Vendor intake forms, risk evaluation questionnaires, and document uploads.', initiativeCode: 'CAG-INIT-002', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 1 (Days 1–7)', status: 'IN_PROGRESS' },
+      { epicCode: 'CAG-EPIC-005', title: 'AI Scope 3 Emission Predictor', description: 'Machine learning model for estimating upstream vendor carbon intensity.', initiativeCode: 'CAG-INIT-002', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 2 (Days 8–14)', status: 'PLANNED' },
+      { epicCode: 'CAG-EPIC-006', title: 'ESG Risk Scorecard & Benchmark Analysis', description: 'Comparative ESG scorecards across global industry benchmarks.', initiativeCode: 'CAG-INIT-002', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+
+      // EHM-INIT-002 (3 Epics)
+      { epicCode: 'EHM-EPIC-004', title: 'EIA Site Inspection Mobile Web App', description: 'Offline-first field survey tool for environmental inspectors.', initiativeCode: 'EHM-INIT-002', entityCode: 'EHM', department: 'Operations & Delivery', targetWeek: 'Week 1 (Days 1–7)', status: 'COMPLETED' },
+      { epicCode: 'EHM-EPIC-005', title: 'Automated EIA Regulatory PDF Generator', description: 'One-click PDF generation formatted to ministry standards.', initiativeCode: 'EHM-INIT-002', entityCode: 'EHM', department: 'Operations & Delivery', targetWeek: 'Week 2 (Days 8–14)', status: 'IN_PROGRESS' },
+      { epicCode: 'EHM-EPIC-006', title: 'GIS Mapping & Hazard Zone Layer', description: 'Interactive map layer for protected flora, fauna, and water basins.', initiativeCode: 'EHM-INIT-002', entityCode: 'EHM', department: 'Operations & Tech', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+
+      // CAG-INIT-003 (3 Epics)
+      { epicCode: 'CAG-EPIC-007', title: 'IoT Telemetry MQTT Ingestion Pipeline', description: 'High-throughput MQTT broker integration for real-time sensor streams.', initiativeCode: 'CAG-INIT-003', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 1 (Days 1–7)', status: 'IN_PROGRESS' },
+      { epicCode: 'CAG-EPIC-008', title: 'Edge Gateway Device Management Suite', description: 'Remote device health monitoring and firmware update manager.', initiativeCode: 'CAG-INIT-003', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 2 (Days 8–14)', status: 'PLANNED' },
+      { epicCode: 'CAG-EPIC-009', title: 'Real-time Carbon Anomaly Alerts Engine', description: 'Threshold triggers and instant Slack/SMS incident alerts.', initiativeCode: 'CAG-INIT-003', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+
+      // EHM-INIT-003 (3 Epics)
+      { epicCode: 'EHM-EPIC-007', title: 'ISO 14001 Evidence Locker & Vault', description: 'Encrypted document vault for environmental policy records.', initiativeCode: 'EHM-INIT-003', entityCode: 'EHM', department: 'Grants & Governance', targetWeek: 'Week 1 (Days 1–7)', status: 'COMPLETED' },
+      { epicCode: 'EHM-EPIC-008', title: 'Non-Conformance Report (NCR) Workflow', description: 'Root cause analysis workflow and auditor sign-off forms.', initiativeCode: 'EHM-INIT-003', entityCode: 'EHM', department: 'Grants & Governance', targetWeek: 'Week 2 (Days 8–14)', status: 'IN_PROGRESS' },
+      { epicCode: 'EHM-EPIC-009', title: 'Corrective Action Plan (CAPA) Manager', description: 'CAPA item tracking with due date escalations and owner assignments.', initiativeCode: 'EHM-INIT-003', entityCode: 'EHM', department: 'Grants & Governance', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+
+      // CAG-INIT-004 (3 Epics)
+      { epicCode: 'CAG-EPIC-010', title: 'Carbon Credit Tokenization Ledger', description: 'Verra & Gold Standard certificate digital twin registry.', initiativeCode: 'CAG-INIT-004', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 1 (Days 1–7)', status: 'PLANNED' },
+      { epicCode: 'CAG-EPIC-011', title: 'Offset Trading Order Book & Clearing', description: 'Peer-to-peer offset purchase order matching and clearinghouse.', initiativeCode: 'CAG-INIT-004', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 2 (Days 8–14)', status: 'PLANNED' },
+      { epicCode: 'CAG-EPIC-012', title: 'Carbon Registry Reconciliation Suite', description: 'Automated double-counting audit service and retirement certificate lock.', initiativeCode: 'CAG-INIT-004', entityCode: 'CAG', department: 'Product & Tech', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+
+      // EHM-INIT-004 (3 Epics)
+      { epicCode: 'EHM-EPIC-010', title: 'DocuSign E-Signature Integration', description: 'Automated contract sending, signing webhook, and archival.', initiativeCode: 'EHM-INIT-004', entityCode: 'EHM', department: 'Sales & Marketing', targetWeek: 'Week 1 (Days 1–7)', status: 'PLANNED' },
+      { epicCode: 'EHM-EPIC-011', title: 'Client Portal SLA Health Dashboard', description: 'Real-time SLA status tracker for enterprise account managers.', initiativeCode: 'EHM-INIT-004', entityCode: 'EHM', department: 'Sales & Marketing', targetWeek: 'Week 2 (Days 8–14)', status: 'PLANNED' },
+      { epicCode: 'EHM-EPIC-012', title: 'Client Intake & Pre-Qualification Wizard', description: 'Environmental risk assessment questionnaire and automated proposal cost calculator.', initiativeCode: 'EHM-INIT-004', entityCode: 'EHM', department: 'Sales & Marketing', targetWeek: 'Week 3 (Days 15–21)', status: 'PLANNED' },
+    ];
+
+    const seededEpicsMap: Record<string, any> = {};
+
+    for (const epData of epicsData) {
+      const parentInit = seededInitiativesMap[epData.initiativeCode];
+      let [existingEp] = await db.select().from(epics).where(eq(epics.epicCode, epData.epicCode));
+      if (!existingEp) {
+        try {
+          [existingEp] = await db.insert(epics).values({
+            epicCode: epData.epicCode,
+            title: epData.title,
+            description: epData.description,
+            initiativeId: parentInit?.id || Object.values(seededInitiativesMap)[0]?.id,
+            entityId: seededEntities[epData.entityCode],
+            department: epData.department,
+            targetWeek: epData.targetWeek,
+            sprintsCountTarget: 2,
+            status: epData.status,
+          }).returning();
+          console.log(`[SEED] Epic inserted: ${epData.epicCode}`);
+        } catch (err) {
+          [existingEp] = await db.select().from(epics).where(eq(epics.epicCode, epData.epicCode));
+        }
+      } else {
+        await db.update(epics).set({
+          title: epData.title,
+          description: epData.description,
+          initiativeId: parentInit?.id || existingEp.initiativeId,
+          status: epData.status,
+        }).where(eq(epics.id, existingEp.id));
+      }
+      if (existingEp) {
+        seededEpicsMap[epData.epicCode] = existingEp;
+      }
+    }
+
+    // 6b. Seed / Upsert Active & Planned Sprints
+    const sprintsData = [
+      { sprintCode: 'CAG-SPR-01', name: 'Sprint 1 - Core Analytics & Auth', entityCode: 'CAG', epicCode: 'CAG-EPIC-001', targetWeek: 'Week 1 (Days 1–7)', goal: 'Deploy core JWT authentication, radial charts, and telemetry pipeline.', status: 'ACTIVE' },
+      { sprintCode: 'CAG-SPR-02', name: 'Sprint 2 - AI Scope 3 & ESG Auditing', entityCode: 'CAG', epicCode: 'CAG-EPIC-004', targetWeek: 'Week 2 (Days 8–14)', goal: 'Build supplier onboarding forms, Scope 3 ML predictor, and ESG scorecards.', status: 'ACTIVE' },
+      { sprintCode: 'EHM-SPR-01', name: 'Sprint 1 - Client ERP & Timesheets', entityCode: 'EHM', epicCode: 'EHM-EPIC-001', targetWeek: 'Week 1 (Days 1–7)', goal: 'Finalize client project portal, invoice PDF generator, and ISO 14001 evidence vault.', status: 'ACTIVE' },
+      { sprintCode: 'EHM-SPR-02', name: 'Sprint 2 - EIA Site Mobile Inspector', entityCode: 'EHM', epicCode: 'EHM-EPIC-004', targetWeek: 'Week 2 (Days 8–14)', goal: 'Complete offline field inspector PWA with GPS photo tagging and GIS layers.', status: 'PLANNED' },
+    ];
+
+    const seededSprintsMap: Record<string, any> = {};
+
+    for (const sprData of sprintsData) {
+      const parentEp = seededEpicsMap[sprData.epicCode];
+      let [existingSpr] = await db.select().from(sprints).where(eq(sprints.sprintCode, sprData.sprintCode));
+      if (!existingSpr) {
+        try {
+          [existingSpr] = await db.insert(sprints).values({
+            sprintCode: sprData.sprintCode,
+            name: sprData.name,
+            entityId: seededEntities[sprData.entityCode],
+            departmentId: seededDepts[`${sprData.entityCode}_DEV`] || seededDepts[`${sprData.entityCode}_OPS`],
+            employeeId: adminEmployee.id,
+            epicId: parentEp?.id,
+            reviewingLeadId: adminEmployee.id,
+            targetWeek: sprData.targetWeek,
+            status: sprData.status as any,
+            goal: sprData.goal,
+            startDate: new Date(Date.now() - 7 * 86400000),
+            endDate: new Date(Date.now() + 7 * 86400000),
+          }).returning();
+          console.log(`[SEED] Sprint inserted: ${sprData.sprintCode}`);
+        } catch (err) {
+          [existingSpr] = await db.select().from(sprints).where(eq(sprints.sprintCode, sprData.sprintCode));
+        }
+      } else {
+        await db.update(sprints).set({
+          name: sprData.name,
+          goal: sprData.goal,
+          status: sprData.status as any,
+        }).where(eq(sprints.id, existingSpr.id));
+      }
+      if (existingSpr) {
+        seededSprintsMap[sprData.sprintCode] = existingSpr;
+      }
+    }
+
+    // 7. Seed / Upsert 73 Tasks (3-4 Tasks per Epic + 40+ Tasks across Sprints & Product Backlog)
+    const empCAG1 = seededEmployeesMap['CAG-EMP01']?.id || adminEmployee.id;
+    const empCAG2 = seededEmployeesMap['CAG-EMP02']?.id || adminEmployee.id;
+    const empCAG3 = seededEmployeesMap['CAG-EMP03']?.id || adminEmployee.id;
+    const empEHM2 = seededEmployeesMap['EHM-EMP02']?.id || adminEmployee.id;
+    const empEHM3 = seededEmployeesMap['EHM-EMP03']?.id || adminEmployee.id;
+
+    const rawTasks = [
+      // CAG-INIT-001 (CAG-EPIC-001, 002, 003)
+      { code: 'CAG-EMP01-001', title: 'JWT Authentication & Refresh Token Pipeline', epicCode: 'CAG-EPIC-001', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG1, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-002', title: 'Multi-tenant RBAC & Environment Compliance Module', epicCode: 'CAG-EPIC-001', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG1, status: 'IN_PROGRESS', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-003', title: 'Dashboard Performance & Analytics Specs', epicCode: 'CAG-EPIC-001', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG2, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-032', title: 'Global Multi-Region Cloud Backup Sync', epicCode: 'CAG-EPIC-001', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG1, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+
+      { code: 'CAG-EMP01-004', title: 'Scope 1, 2, 3 Emissions Radial Chart Widget', epicCode: 'CAG-EPIC-002', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG3, status: 'IN_PROGRESS', priority: 'URGENT', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-005', title: 'Historical Trend Comparison Line Graph', epicCode: 'CAG-EPIC-002', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG2, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-038', title: 'Carbon Emission Threshold Heatmap Widget', epicCode: 'CAG-EPIC-002', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG3, status: 'IN_PROGRESS', priority: 'HIGH', type: 'SPRINT_TASK' },
+
+      { code: 'CAG-EMP01-006', title: 'Automated Monthly ESG Report Scheduler', epicCode: 'CAG-EPIC-003', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG1, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-007', title: 'High-volume CSV Ingestion & Validation Parser', epicCode: 'CAG-EPIC-003', initCode: 'CAG-INIT-001', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG3, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-039', title: 'Scheduled PDF Mailer with Attachment Service', epicCode: 'CAG-EPIC-003', initCode: 'CAG-INIT-001', ent: 'CAG', assignee: empCAG2, status: 'BACKLOG', priority: 'LOW', type: 'BACKLOG' },
+
+      // EHM-INIT-001 (EHM-EPIC-001, 002, 003)
+      { code: 'EHM-EMP01-001', title: 'Product Backlog & Tech Architecture Setup', epicCode: 'EHM-EPIC-001', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: adminEmployee.id, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-004', title: 'Client Onboarding & Project Scope Sign-off', epicCode: 'EHM-EPIC-001', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP01-034', title: 'Security Vulnerability Patching & Dependency Audit', epicCode: 'EHM-EPIC-001', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: adminEmployee.id, status: 'DONE', priority: 'URGENT', type: 'SPRINT_TASK' },
+
+      { code: 'EHM-EMP02-005', title: 'Consultant Timesheet Hourly Rate Calculator', epicCode: 'EHM-EPIC-002', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM3, status: 'IN_PROGRESS', priority: 'URGENT', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-006', title: 'Automated Invoice PDF Generation & Email Dispatch', epicCode: 'EHM-EPIC-002', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP03-035', title: 'Database Indexing Optimization for SLA Queries', epicCode: 'EHM-EPIC-002', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM3, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+
+      { code: 'EHM-EMP02-007', title: 'SLA Breach Webhook & Email Notification Engine', epicCode: 'EHM-EPIC-003', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM3, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-008', title: 'Client Project Status Portal Summary View', epicCode: 'EHM-EPIC-003', initCode: 'EHM-INIT-001', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-040', title: 'Automated SLA Penalty Alert Webhook Trigger', epicCode: 'EHM-EPIC-003', initCode: 'EHM-INIT-001', ent: 'EHM', assignee: empEHM3, status: 'BACKLOG', priority: 'MEDIUM', type: 'BACKLOG' },
+
+      // CAG-INIT-002 (CAG-EPIC-004, 005, 006)
+      { code: 'CAG-EMP02-009', title: 'Vendor Questionnaire Form Builder Interface', epicCode: 'CAG-EPIC-004', initCode: 'CAG-INIT-002', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG2, status: 'IN_PROGRESS', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP02-010', title: 'Supplier Encrypted Document Locker Uploads', epicCode: 'CAG-EPIC-004', initCode: 'CAG-INIT-002', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG1, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP02-041', title: 'Vendor Self-Service Invitation Token Link', epicCode: 'CAG-EPIC-004', initCode: 'CAG-INIT-002', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG2, status: 'IN_PROGRESS', priority: 'HIGH', type: 'SPRINT_TASK' },
+
+      { code: 'CAG-EMP03-005', title: 'AI Carbon Emissions Footprint Algorithm', epicCode: 'CAG-EPIC-005', initCode: 'CAG-INIT-002', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG3, status: 'IN_PROGRESS', priority: 'URGENT', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP03-011', title: 'Upstream Transport & Logistics Model Training', epicCode: 'CAG-EPIC-005', initCode: 'CAG-INIT-002', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG3, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP03-042', title: 'Scope 3 Data Normalization Pipeline Engine', epicCode: 'CAG-EPIC-005', initCode: 'CAG-INIT-002', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG3, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+
+      { code: 'CAG-EMP03-012', title: 'GRI & SASB Benchmark Data Ingestion API', epicCode: 'CAG-EPIC-006', initCode: 'CAG-INIT-002', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG2, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP03-043', title: 'Industry Peer Percentile Ranking Engine', epicCode: 'CAG-EPIC-006', initCode: 'CAG-INIT-002', ent: 'CAG', assignee: empCAG2, status: 'BACKLOG', priority: 'LOW', type: 'BACKLOG' },
+      { code: 'CAG-EMP03-044', title: 'Executive ESG Overview Dashboard Export', epicCode: 'CAG-EPIC-006', initCode: 'CAG-INIT-002', ent: 'CAG', assignee: empCAG1, status: 'BACKLOG', priority: 'MEDIUM', type: 'BACKLOG' },
+
+      // EHM-INIT-002 (EHM-EPIC-004, 005, 006)
+      { code: 'EHM-EMP03-013', title: 'Offline PWA Cache for Inspector Field Photos', epicCode: 'EHM-EPIC-004', initCode: 'EHM-INIT-002', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM3, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP03-014', title: 'GPS Location Tagging & Site Boundary Check', epicCode: 'EHM-EPIC-004', initCode: 'EHM-INIT-002', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM2, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP03-045', title: 'Offline IndexedDB Local Sync Manager', epicCode: 'EHM-EPIC-004', initCode: 'EHM-INIT-002', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM3, status: 'IN_PROGRESS', priority: 'HIGH', type: 'SPRINT_TASK' },
+
+      { code: 'EHM-EMP03-015', title: 'Ministry Standard PDF Layout Engine', epicCode: 'EHM-EPIC-005', initCode: 'EHM-INIT-002', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM3, status: 'IN_PROGRESS', priority: 'URGENT', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP03-016', title: 'Automated Inspector Digital Signature Placement', epicCode: 'EHM-EPIC-005', initCode: 'EHM-INIT-002', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM2, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP03-046', title: 'Environmental Appendix Photo Embedder Tool', epicCode: 'EHM-EPIC-005', initCode: 'EHM-INIT-002', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM3, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+
+      { code: 'EHM-EMP03-017', title: 'Mapbox Vector Tile Layer for Protected Forests', epicCode: 'EHM-EPIC-006', initCode: 'EHM-INIT-002', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM3, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP03-047', title: 'Watershed Boundary GeoJSON Renderer', epicCode: 'EHM-EPIC-006', initCode: 'EHM-INIT-002', ent: 'EHM', assignee: empEHM2, status: 'BACKLOG', priority: 'LOW', type: 'BACKLOG' },
+      { code: 'EHM-EMP03-048', title: 'Flood Risk Zone Overlay Calculation Module', epicCode: 'EHM-EPIC-006', initCode: 'EHM-INIT-002', ent: 'EHM', assignee: empEHM3, status: 'BACKLOG', priority: 'MEDIUM', type: 'BACKLOG' },
+
+      // CAG-INIT-003 (CAG-EPIC-007, 008, 009)
+      { code: 'CAG-EMP01-018', title: 'MQTT Cluster Load Balancer & TLS Handshake', epicCode: 'CAG-EPIC-007', initCode: 'CAG-INIT-003', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG1, status: 'IN_PROGRESS', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-019', title: 'Sensor Payload Deserializer & Time-Series DB Ingest', epicCode: 'CAG-EPIC-007', initCode: 'CAG-INIT-003', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG3, status: 'IN_PROGRESS', priority: 'URGENT', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP03-036', title: 'Automated Load Test Suite with K6 Engine', epicCode: 'CAG-EPIC-007', initCode: 'CAG-INIT-003', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG3, status: 'IN_PROGRESS', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+
+      { code: 'CAG-EMP01-020', title: 'Device Heartbeat Monitor & Ping Health-check', epicCode: 'CAG-EPIC-008', initCode: 'CAG-INIT-003', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG1, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-049', title: 'Over-The-Air (OTA) Firmware Upgrade Trigger', epicCode: 'CAG-EPIC-008', initCode: 'CAG-INIT-003', ent: 'CAG', assignee: empCAG1, status: 'BACKLOG', priority: 'HIGH', type: 'BACKLOG' },
+      { code: 'CAG-EMP01-050', title: 'Device Provisioning QR Code Generator Tool', epicCode: 'CAG-EPIC-008', initCode: 'CAG-INIT-003', ent: 'CAG', assignee: empCAG2, status: 'BACKLOG', priority: 'LOW', type: 'BACKLOG' },
+
+      { code: 'CAG-EMP01-021', title: 'Spike Anomaly Detection Engine via Rolling StdDev', epicCode: 'CAG-EPIC-009', initCode: 'CAG-INIT-003', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG3, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-051', title: 'PagerDuty & Slack Incident Webhook Connector', epicCode: 'CAG-EPIC-009', initCode: 'CAG-INIT-003', sprCode: 'CAG-SPR-01', ent: 'CAG', assignee: empCAG1, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-052', title: 'Threshold Escalation Rule Configurator Panel', epicCode: 'CAG-EPIC-009', initCode: 'CAG-INIT-003', ent: 'CAG', assignee: empCAG3, status: 'BACKLOG', priority: 'MEDIUM', type: 'BACKLOG' },
+
+      // EHM-INIT-003 (EHM-EPIC-007, 008, 009)
+      { code: 'EHM-EMP02-022', title: 'AES-256 Policy Document Encryption Service', epicCode: 'EHM-EPIC-007', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-023', title: 'Auditor Access Token & Temporary Portal Links', epicCode: 'EHM-EPIC-007', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM3, status: 'DONE', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-053', title: 'Audit Evidence Verification Checksum Logger', epicCode: 'EHM-EPIC-007', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'DONE', priority: 'HIGH', type: 'SPRINT_TASK' },
+
+      { code: 'EHM-EMP02-024', title: 'Root Cause 5-Why Interactive Diagram Component', epicCode: 'EHM-EPIC-008', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'IN_PROGRESS', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-025', title: 'NCR Audit Sign-off & PDF Summary Generation', epicCode: 'EHM-EPIC-008', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM3, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-054', title: 'NCR Severity Escalation Alert Trigger System', epicCode: 'EHM-EPIC-008', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'IN_PROGRESS', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+
+      { code: 'EHM-EMP02-026', title: 'CAPA Action Item Due Date Escalation Triggers', epicCode: 'EHM-EPIC-009', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM2, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-055', title: 'CAPA Re-inspection Scheduling Calendar Widget', epicCode: 'EHM-EPIC-009', initCode: 'EHM-INIT-003', sprCode: 'EHM-SPR-01', ent: 'EHM', assignee: empEHM3, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-056', title: 'Management Review Action Tracking Table', epicCode: 'EHM-EPIC-009', initCode: 'EHM-INIT-003', ent: 'EHM', assignee: empEHM2, status: 'BACKLOG', priority: 'LOW', type: 'BACKLOG' },
+
+      // CAG-INIT-004 (CAG-EPIC-010, 011, 012)
+      { code: 'CAG-EMP01-027', title: 'Verra Registry API Webhook for Credit Verification', epicCode: 'CAG-EPIC-010', initCode: 'CAG-INIT-004', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG1, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-028', title: 'Gold Standard Serial Number Hash Validation', epicCode: 'CAG-EPIC-010', initCode: 'CAG-INIT-004', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG3, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-057', title: 'Mint Digital Carbon Certificate Token Contract', epicCode: 'CAG-EPIC-010', initCode: 'CAG-INIT-004', ent: 'CAG', assignee: empCAG1, status: 'BACKLOG', priority: 'URGENT', type: 'BACKLOG' },
+
+      { code: 'CAG-EMP01-029', title: 'Offset Purchase Matching Engine & Order Ledger', epicCode: 'CAG-EPIC-011', initCode: 'CAG-INIT-004', sprCode: 'CAG-SPR-02', ent: 'CAG', assignee: empCAG1, status: 'TODO', priority: 'URGENT', type: 'SPRINT_TASK' },
+      { code: 'CAG-EMP01-058', title: 'Real-time Carbon Credit Bid-Ask Spread Feed', epicCode: 'CAG-EPIC-011', initCode: 'CAG-INIT-004', ent: 'CAG', assignee: empCAG2, status: 'BACKLOG', priority: 'HIGH', type: 'BACKLOG' },
+      { code: 'CAG-EMP01-059', title: 'Multi-Currency Settlement Gateway Integration', epicCode: 'CAG-EPIC-011', initCode: 'CAG-INIT-004', ent: 'CAG', assignee: empCAG1, status: 'BACKLOG', priority: 'MEDIUM', type: 'BACKLOG' },
+
+      { code: 'CAG-EMP01-060', title: 'Automated Double-Counting Audit Service', epicCode: 'CAG-EPIC-012', initCode: 'CAG-INIT-004', ent: 'CAG', assignee: empCAG3, status: 'BACKLOG', priority: 'URGENT', type: 'BACKLOG' },
+      { code: 'CAG-EMP01-061', title: 'Voluntary Market Retirement Certificate Lock', epicCode: 'CAG-EPIC-012', initCode: 'CAG-INIT-004', ent: 'CAG', assignee: empCAG1, status: 'BACKLOG', priority: 'HIGH', type: 'BACKLOG' },
+      { code: 'CAG-EMP01-062', title: 'Annual Carbon Neutrality Verification Report Generator', epicCode: 'CAG-EPIC-012', initCode: 'CAG-INIT-004', ent: 'CAG', assignee: empCAG2, status: 'BACKLOG', priority: 'MEDIUM', type: 'BACKLOG' },
+
+      // EHM-INIT-004 (EHM-EPIC-010, 011, 012)
+      { code: 'EHM-EMP02-030', title: 'DocuSign API Authentication & Template Mapping', epicCode: 'EHM-EPIC-010', initCode: 'EHM-INIT-004', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM2, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-037', title: 'Client Onboarding Email Template Redesign', epicCode: 'EHM-EPIC-010', initCode: 'EHM-INIT-004', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM2, status: 'TODO', priority: 'LOW', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-063', title: 'Executed NDA Vault Archival Webhook Service', epicCode: 'EHM-EPIC-010', initCode: 'EHM-INIT-004', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM3, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+
+      { code: 'EHM-EMP02-031', title: 'Enterprise Account SLA Real-time Health Matrix', epicCode: 'EHM-EPIC-011', initCode: 'EHM-INIT-004', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM3, status: 'TODO', priority: 'MEDIUM', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-064', title: 'Key Client Monthly Deliverable Progress Gauge', epicCode: 'EHM-EPIC-011', initCode: 'EHM-INIT-004', sprCode: 'EHM-SPR-02', ent: 'EHM', assignee: empEHM2, status: 'TODO', priority: 'HIGH', type: 'SPRINT_TASK' },
+      { code: 'EHM-EMP02-065', title: 'Executive Account Manager Escalation Button', epicCode: 'EHM-EPIC-011', initCode: 'EHM-INIT-004', ent: 'EHM', assignee: empEHM3, status: 'BACKLOG', priority: 'LOW', type: 'BACKLOG' },
+
+      { code: 'EHM-EMP02-066', title: 'Environmental Risk Assessment Intake Questionnaire', epicCode: 'EHM-EPIC-012', initCode: 'EHM-INIT-004', ent: 'EHM', assignee: empEHM2, status: 'BACKLOG', priority: 'HIGH', type: 'BACKLOG' },
+      { code: 'EHM-EMP02-067', title: 'Automated Proposal Cost Calculator Module', epicCode: 'EHM-EPIC-012', initCode: 'EHM-INIT-004', ent: 'EHM', assignee: empEHM3, status: 'BACKLOG', priority: 'HIGH', type: 'BACKLOG' },
+      { code: 'EHM-EMP02-068', title: 'Project Scope Sign-Off E-Approval Step', epicCode: 'EHM-EPIC-012', initCode: 'EHM-INIT-004', ent: 'EHM', assignee: empEHM2, status: 'BACKLOG', priority: 'MEDIUM', type: 'BACKLOG' },
+    ];
+
+    for (const tsk of rawTasks) {
+      const parentInit = seededInitiativesMap[tsk.initCode];
+      const parentEp = seededEpicsMap[tsk.epicCode];
+      const parentSpr = tsk.sprCode ? seededSprintsMap[tsk.sprCode] : null;
+
+      let [existingTask] = await db.select().from(tasks).where(eq(tasks.taskCode, tsk.code));
+      const epicIdVal = parentEp?.id || null;
+      const sprintIdVal = parentSpr?.id || null;
+      const resolvedType: 'SPRINT_TASK' | 'EPIC_TASK' | 'BACKLOG' = (tsk.type as any) || (parentSpr ? 'SPRINT_TASK' : parentEp ? 'EPIC_TASK' : 'BACKLOG');
+
       if (!existingTask) {
-        await db.insert(tasks).values(tsk);
-        console.log(`[SEED] Task inserted: ${tsk.taskCode}`);
+        try {
+          await db.insert(tasks).values({
+            taskCode: tsk.code,
+            title: tsk.title,
+            description: `Deliverable task for ${tsk.title} under epic ${tsk.epicCode}.`,
+            entityId: seededEntities[tsk.ent],
+            departmentId: seededDepts[`${tsk.ent}_DEV`] || seededDepts[`${tsk.ent}_OPS`],
+            assigneeId: tsk.assignee,
+            creatorId: adminEmployee.id,
+            reviewingLeadId: adminEmployee.id,
+            initiativeId: parentInit?.id || parentEp?.initiativeId || null,
+            epicId: epicIdVal,
+            sprintId: sprintIdVal,
+            taskType: resolvedType,
+            status: tsk.status as any,
+            priority: tsk.priority as any,
+            dueDate: new Date(Date.now() + Math.floor(Math.random() * 10 - 3) * 86400000),
+          });
+          console.log(`[SEED] Task inserted: ${tsk.code}`);
+        } catch (err: any) {
+          console.error(`[SEED TASK ERR] ${tsk.code}:`, err?.message || err);
+        }
       } else {
         await db.update(tasks).set({
-          entityId: tsk.entityId,
-          departmentId: tsk.departmentId,
-          initiativeId: tsk.initiativeId,
-          epicId: tsk.epicId,
-          status: tsk.status,
+          entityId: seededEntities[tsk.ent],
+          initiativeId: parentInit?.id || parentEp?.initiativeId || null,
+          epicId: epicIdVal,
+          sprintId: sprintIdVal,
+          taskType: resolvedType,
+          status: tsk.status as any,
+          priority: tsk.priority as any,
         }).where(eq(tasks.id, existingTask.id));
       }
     }
@@ -510,7 +754,16 @@ export async function runSeed() {
   }
 }
 
-// Allow direct execution
-if (import.meta.url === `file://${process.argv[1]}`) {
-  runSeed().catch(console.error);
+// Allow direct execution from CLI
+if (process.argv.some(a => a.includes('seed'))) {
+  runSeed()
+    .then(() => {
+      console.log('[SEED] Completed successfully.');
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('[SEED ERROR]:', err);
+      process.exit(1);
+    });
 }
+

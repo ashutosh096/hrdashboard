@@ -19,15 +19,37 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
 
         if (Array.isArray(tRes)) {
           setLiveTasks(
-            tRes.map((t) => ({
-              id: t.id,
-              title: `${t.taskCode}: ${t.title}`,
-              entity: t.taskCode.startsWith('CAG') ? 'CAG' : 'EHM',
-              badge: t.priority || t.status,
-              badgeColor: t.priority === 'URGENT' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-blue-100 text-blue-800 border-blue-200',
-              time: t.dueDate ? `Due ${new Date(t.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : 'Upcoming',
-              avatars: [MALE_AVATAR],
-            }))
+            tRes.map((t) => {
+              const priorityUpper = (t.priority || '').toUpperCase();
+              let rank = 4;
+              let badge = 'P4';
+              let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+
+              if (priorityUpper === 'URGENT' || priorityUpper === '1' || priorityUpper === 'P1') {
+                rank = 1;
+                badge = 'P1';
+                badgeColor = 'bg-red-100 text-red-800 border-red-200';
+              } else if (priorityUpper === 'HIGH' || priorityUpper === '2' || priorityUpper === 'P2') {
+                rank = 2;
+                badge = 'P2';
+                badgeColor = 'bg-rose-100 text-rose-800 border-rose-200';
+              } else if (priorityUpper === 'MEDIUM' || priorityUpper === '3' || priorityUpper === 'P3') {
+                rank = 3;
+                badge = 'P3';
+                badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+              }
+
+              return {
+                id: t.id,
+                title: `${t.taskCode}: ${t.title}`,
+                entity: t.taskCode.startsWith('CAG') ? 'CAG' : 'EHM',
+                rank,
+                badge,
+                badgeColor,
+                time: t.dueDate ? `Due ${new Date(t.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : 'Upcoming',
+                avatars: [MALE_AVATAR],
+              };
+            })
           );
         }
       } catch (err) {
@@ -37,7 +59,9 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
     loadWidgetData();
   }, []);
 
-  const filteredTasks = liveTasks.filter((t) => selectedEntity === 'ALL' || t.entity === selectedEntity);
+  const filteredTasks = liveTasks
+    .filter((t) => selectedEntity === 'ALL' || t.entity === selectedEntity)
+    .sort((a, b) => a.rank - b.rank);
 
   return (
     <div className={`bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 select-none ${className || ''}`}>
@@ -53,8 +77,8 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
           </span>
         </div>
 
-        {/* List Items */}
-        <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 min-h-[220px]">
+        {/* List Items with Sleek Custom Scrollbar / Slidebar */}
+        <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[390px] pr-2 custom-scrollbar">
           {filteredTasks.length === 0 ? (
             <div className="text-center py-6 text-xs text-gray-400 font-medium">No tasks due available</div>
           ) : (
@@ -63,9 +87,9 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
                 key={item.id}
                 className="p-3 bg-gray-50/70 border border-gray-200/60 rounded-xl space-y-2 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <h4 className="text-xs font-bold text-gray-900 line-clamp-1">{item.title}</h4>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${item.badgeColor}`}>
+                  <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${item.badgeColor}`}>
                     {item.badge}
                   </span>
                 </div>

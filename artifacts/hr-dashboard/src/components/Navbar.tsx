@@ -3,6 +3,7 @@ import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCh
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
+import { formatDateTime } from '../utils/dateUtils';
 import { ProfileModal } from './ProfileModal';
 import { SearchModal } from './SearchModal';
 import { getAvatarByName } from '../utils/avatars';
@@ -166,8 +167,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-gray-900">{n.title}</span>
-                          <span className="text-[10px] text-gray-400 font-medium">
-                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <span className="text-[10px] text-gray-400 font-bold">
+                            {formatDateTime(n.createdAt)}
                           </span>
                         </div>
                         <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{n.message}</p>

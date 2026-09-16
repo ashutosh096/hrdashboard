@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, Pin, Plus, X } from 'lucide-react';
+import { Megaphone, Pin, Plus, X, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
 
@@ -97,21 +98,23 @@ export const AnnouncementsView: React.FC = () => {
                   <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
                     All Companies
                   </span>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                      item.priority === 'URGENT'
-                        ? 'bg-red-100 text-red-800 border-red-200'
-                        : item.priority === 'IMPORTANT'
-                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                    }`}
-                  >
-                    {item.priority || 'NORMAL'}
-                  </span>
+                  {(() => {
+                    const p = (item.priority || '').toUpperCase();
+                    const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'IMPORTANT' || p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                    const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'IMPORTANT' || p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                    return (
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${color}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
               <p className="text-sm text-gray-600 font-medium leading-relaxed">{item.content}</p>
-              <span className="text-xs text-gray-400 font-medium block pt-2">{item.createdAt || 'Recent'}</span>
+              <div className="flex items-center gap-1.5 pt-2 text-xs text-gray-400 font-semibold">
+                <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Posted on {formatDateTime(item.createdAt)}</span>
+              </div>
             </div>
           ))}
         </div>

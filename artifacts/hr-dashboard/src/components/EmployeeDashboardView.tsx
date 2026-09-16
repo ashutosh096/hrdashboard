@@ -208,12 +208,16 @@ const PERSONAL_VELOCITY_TREND = [
 export const EmployeeDashboardView: React.FC = () => {
   const { user, setRole } = useAuth();
   const { selectedEntity } = useEntity();
-  const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'BACKLOG' | 'SPRINT' | 'TEAM'>('OVERVIEW');
+  const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'BACKLOG' | 'SPRINT'>('OVERVIEW');
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [myTasks, setMyTasks] = useState<EmployeeDeliverableTask[]>(DEFAULT_EMPLOYEE_TASKS);
   const [todaysMeetings, setTodaysMeetings] = useState<any[]>(DEFAULT_EMPLOYEE_MEETINGS);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+
+  // DB Employees & Active Employee Profile Resolution
+  const [dbEmployees, setDbEmployees] = useState<any[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
 
   // Big Responsive Tile Detail Pop-up Modal State
   const [activeModalType, setActiveModalType] = useState<'PENDING_TASKS' | 'ACTIVE_SPRINTS' | 'MEETINGS' | 'COMPLETION_RATE' | 'COMPLETED_TASKS' | null>(null);
@@ -230,6 +234,20 @@ export const EmployeeDashboardView: React.FC = () => {
   const [newOutputUrl, setNewOutputUrl] = useState('');
   const [newSprintWeek, setNewSprintWeek] = useState('Sprint 35 (Current)');
 
+  // Resolve currently selected active employee
+  const activeEmployee =
+    dbEmployees.find((e) => e.id === selectedEmployeeId) ||
+    dbEmployees.find((e) => e.id === user?.employeeId) ||
+    dbEmployees.find((e) => e.email?.toLowerCase() === user?.email?.toLowerCase()) ||
+    dbEmployees[0];
+
+  const activeEmpName = activeEmployee
+    ? `${activeEmployee.firstName} ${activeEmployee.lastName}`
+    : user?.name || 'Priyanka Sharma';
+  const activeEmpEmail = activeEmployee?.email || user?.email || 'priyanka.s@ehmconsultancy.com';
+  const activeEmpCode = activeEmployee?.employeeCode || 'EHM-E01';
+  const activeEmpDesignation = activeEmployee?.designation || 'Senior Team Member';
+
   const handleCreatePersonalTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
@@ -239,13 +257,13 @@ export const EmployeeDashboardView: React.FC = () => {
 
     const newTask: EmployeeDeliverableTask = {
       id: `emp-t-${Date.now()}`,
-      taskId: `EHM-EMP01-00${myTasks.length + 1}`,
+      taskId: `${activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM'}-EMP01-00${myTasks.length + 1}`,
       title: newTitle,
       dept: newDept,
-      entity: 'EHM',
+      entity: activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM',
       priority: newPriority,
       lead: newLead,
-      assigneeName: user?.name || 'Ashutosh Mishra',
+      assigneeName: activeEmpName,
       status: 'In Progress',
       dueDate: newDueDate,
       outputUrl: newOutputUrl,
@@ -257,7 +275,7 @@ export const EmployeeDashboardView: React.FC = () => {
     };
 
     setMyTasks([newTask, ...myTasks]);
-    toast.success(`Task "${newTitle}" created successfully!`);
+    toast.success(`Task "${newTitle}" created for ${activeEmpName}!`);
     setIsCreateModalOpen(false);
     setNewTitle('');
     setNewNotes('');
@@ -271,19 +289,43 @@ export const EmployeeDashboardView: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const tasksData = await fetchApi<any[]>('/api/tasks');
-      if (tasksData && tasksData.length > 0) {
+      const [empData, tasksData, meetingsData] = await Promise.all([
+        fetchApi<any[]>('/api/employees').catch(() => []),
+        fetchApi<any[]>('/api/tasks').catch(() => []),
+        fetchApi<any[]>('/api/meetings').catch(() => []),
+      ]);
+
+      if (Array.isArray(empData) && empData.length > 0) {
+        setDbEmployees(empData);
+      }
+
+      if (Array.isArray(tasksData) && tasksData.length > 0) {
+        const currentTargetEmp =
+          empData.find((e: any) => e.id === selectedEmployeeId) ||
+          empData.find((e: any) => e.id === user?.employeeId) ||
+          empData.find((e: any) => e.email?.toLowerCase() === user?.email?.toLowerCase()) ||
+          empData[0];
+
+        const targetId = currentTargetEmp?.id || user?.employeeId;
+        const targetEmail = (currentTargetEmp?.email || user?.email || '').toLowerCase();
+        const targetFirstName = (currentTargetEmp?.firstName || '').toLowerCase();
+
         const filteredTasks = tasksData
-          .filter((t) => !user?.employeeId || t.assigneeId === user.employeeId)
+          .filter((t) => {
+            if (targetId && t.assigneeId === targetId) return true;
+            if (targetEmail && t.assigneeEmail?.toLowerCase() === targetEmail) return true;
+            if (targetFirstName && t.assigneeName?.toLowerCase().includes(targetFirstName)) return true;
+            return !targetId && !targetEmail;
+          })
           .map((t) => ({
             id: t.id,
             taskId: t.taskCode || t.id,
             title: t.title,
-            dept: 'Product & Tech',
-            entity: t.entityId || 'ehmconsultancy',
+            dept: currentTargetEmp?.departmentName || 'Product & Tech',
+            entity: t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM',
             priority: t.priority || 'MEDIUM',
-            lead: 'Dr. Harshit Mishra',
-            assigneeName: user?.name || 'Ashutosh Mishra',
+            lead: t.reviewingLead || 'Dr. Harshit Mishra',
+            assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Ashutosh Mishra'),
             status: (t.status === 'DONE'
               ? 'Done'
               : t.status === 'BLOCKED'
@@ -291,27 +333,27 @@ export const EmployeeDashboardView: React.FC = () => {
               : t.status === 'DELAYED'
               ? 'Delayed'
               : 'In Progress') as any,
-            dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '2026-09-08',
+            dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-18',
             outputUrl: t.deliverableUrl || '',
             waitingOn: 'None (Self)',
             notes: t.description || '',
             delayRequested: false,
-            sprintWeek: 'Sprint 35 (Current)',
+            sprintWeek: t.sprintWeek || 'Sprint 35 (Current)',
             completionPct: t.status === 'DONE' ? 100 : 65,
           }));
+
         if (filteredTasks.length > 0) setMyTasks(filteredTasks);
       }
 
-      const meetingsData = await fetchApi<any[]>('/api/meetings');
-      if (meetingsData && meetingsData.length > 0) setTodaysMeetings(meetingsData);
-    } catch {
-      // Keep rich fallback default tasks for demonstration
+      if (Array.isArray(meetingsData) && meetingsData.length > 0) setTodaysMeetings(meetingsData);
+    } catch (err) {
+      console.error('[LOAD DATA EXCEPTION]:', err);
     }
   };
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [user, selectedEmployeeId]);
 
   const delayedTask = myTasks.find((t) => t.status === 'Delayed');
 
@@ -409,40 +451,7 @@ export const EmployeeDashboardView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none">
-      {/* Top Role Switcher Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white border border-gray-200/80 p-4 rounded-2xl shadow-2xs">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black shadow-xs">
-            <User className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 tracking-tight">Employee Workspace View</h3>
-            <p className="text-[11px] text-gray-500 font-medium">
-              Filtered for <strong className="text-emerald-700">{user?.name || 'Ashutosh Mishra'}</strong>. Actions here affect your personal workspace.
-            </p>
-          </div>
-        </div>
-
-        {/* Role Toggle Button */}
-        <div className="flex items-center gap-1.5 bg-emerald-50 p-1 rounded-xl border border-emerald-200/80 shrink-0">
-          <button
-            onClick={() => setRole('ADMIN')}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 transition-all cursor-pointer flex items-center gap-1"
-          >
-            <Shield className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Switch to Manager / Admin View</span>
-          </button>
-          <button
-            onClick={() => setRole('EMPLOYEE')}
-            className="px-3 py-1.5 text-xs font-extrabold rounded-lg bg-emerald-600 text-white shadow-2xs cursor-pointer flex items-center gap-1"
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Employee Mode (Active)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Sub-Navigation Tabs inside Employee View */}
+      {/* SUB-NAVIGATION TAB BAR */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
         <div className="flex items-center gap-2 bg-gray-100/80 p-1 rounded-xl border border-gray-200">
           <button
@@ -478,17 +487,6 @@ export const EmployeeDashboardView: React.FC = () => {
             <Flame className="w-3.5 h-3.5 text-amber-600" />
             <span>My Active Sprint Week ({activeSprintTasks.length})</span>
           </button>
-          <button
-            onClick={() => setActiveSubTab('TEAM')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'TEAM'
-                ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/60'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-purple-600" />
-            <span>Team Directory ({FULL_TEAM_MEMBERS.length})</span>
-          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -499,8 +497,78 @@ export const EmployeeDashboardView: React.FC = () => {
             <Plus className="w-4 h-4" />
             <span>+ Create Personal Task</span>
           </button>
-          <div className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-            Showing data for: <span className="text-emerald-700 font-extrabold">{user?.name || 'Ashutosh Mishra'}</span>
+        </div>
+      </div>
+
+      {/* SINGLE UNIFIED EMPLOYEE WORKSPACE HEADER BANNER */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-6 text-white shadow-md space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          {/* Left: User Profile & Welcome */}
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 bg-white/20 backdrop-blur-xs rounded-full text-[10px] font-extrabold uppercase tracking-wider text-white">
+                EMPLOYEE PERSONAL WORKSPACE • {activeEmpEmail}
+              </span>
+              <span className="text-xs font-mono font-bold text-emerald-200 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-400/30">
+                {activeEmpCode}
+              </span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              Welcome back, {activeEmpName}! 👋
+            </h2>
+            <p className="text-xs text-emerald-100 font-medium leading-relaxed">
+              Here is your personal task load distribution, sprint velocity analytics, and daily standup schedule.
+            </p>
+          </div>
+
+          {/* Right: Workspace Status Box & Controls */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            {/* Dark Status Card */}
+            <div className="bg-emerald-950/40 border border-emerald-400/30 backdrop-blur-sm rounded-xl p-3.5 space-y-0.5 min-w-[170px]">
+              <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-300 block">
+                WORKSPACE STATUS
+              </span>
+              <span className="text-xs font-black text-white block">Sprint 35 Active</span>
+              <span className="text-[11px] font-semibold text-emerald-200 block">
+                {myTasks.length} Active Deliverables
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {dbEmployees.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md border border-white/25 px-3 py-1.5 rounded-xl shadow-xs">
+                  <User className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                  <select
+                    value={activeEmployee?.id || ''}
+                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer max-w-[190px] truncate"
+                  >
+                    {dbEmployees.map((emp) => (
+                      <option key={emp.id} value={emp.id} className="text-gray-900 bg-white">
+                        [{emp.employeeCode}] {emp.firstName} {emp.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
+                <button
+                  onClick={() => setRole('ADMIN')}
+                  className="px-2.5 py-1 text-xs font-bold rounded-lg text-emerald-100 hover:text-white hover:bg-white/15 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Shield className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Manager View</span>
+                </button>
+                <button
+                  onClick={() => setRole('EMPLOYEE')}
+                  className="px-2.5 py-1 text-xs font-extrabold rounded-lg bg-white text-emerald-900 shadow-xs cursor-pointer flex items-center gap-1"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Employee Active</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -532,31 +600,6 @@ export const EmployeeDashboardView: React.FC = () => {
       {/* TAB 1: OVERVIEW & VISUAL ANALYTICS */}
       {activeSubTab === 'OVERVIEW' && (
         <div className="space-y-6">
-          {/* Employee Greeting Header Banner + Clock In Widget */}
-          {/* Employee Greeting Header Banner */}
-          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-xs rounded-full text-[10px] font-bold uppercase tracking-wider">
-                  Employee Personal Workspace
-                </span>
-                <span className="text-xs text-emerald-100 font-medium">• {user?.email || 'ashutosh@ehmconsultancy.com'}</span>
-              </div>
-              <h2 className="text-2xl font-black tracking-tight">Welcome back, {user?.name || 'Ashutosh Mishra'}! 👋</h2>
-              <p className="text-xs text-emerald-100 mt-1">Here is your personal task load distribution, sprint velocity analytics, and daily standup schedule.</p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 px-4 text-right flex items-center gap-3 shrink-0">
-              <div className="text-left">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">Workspace Status</span>
-                <span className="text-xs font-extrabold text-white block">
-                  Sprint 35 Active
-                </span>
-                <span className="text-[10px] text-emerald-100 font-medium">{myTasks.length} Active Deliverables</span>
-              </div>
-            </div>
-          </div>
-
           {/* Top 5 Featured Responsive Stat Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Tile 1: Tasks Pending & Today's Tasks */}
@@ -568,9 +611,6 @@ export const EmployeeDashboardView: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
                   <Clock className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                  Click for details
-                </span>
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Today's Tasks & Pending</span>
@@ -590,9 +630,6 @@ export const EmployeeDashboardView: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
                   <Flame className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                  Click for details
-                </span>
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Active Sprint</span>
@@ -610,9 +647,6 @@ export const EmployeeDashboardView: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
                   <Calendar className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                  Click for details
-                </span>
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Google Meetings</span>
@@ -632,9 +666,6 @@ export const EmployeeDashboardView: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
                   <TrendingUp className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                  Click for details
-                </span>
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Completion Rate</span>
@@ -656,9 +687,6 @@ export const EmployeeDashboardView: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                  Click for details
-                </span>
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Completed Tasks</span>
@@ -832,17 +860,16 @@ export const EmployeeDashboardView: React.FC = () => {
                         >
                           {t.taskId}
                         </span>
-                        <span
-                          className={`px-2 py-0.5 text-[10px] font-extrabold rounded ${
-                            t.priority === 'URGENT'
-                              ? 'bg-red-100 text-red-700'
-                              : t.priority === 'HIGH'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
-                        >
-                          {t.priority}
-                        </span>
+                        {(() => {
+                          const p = (t.priority || '').toUpperCase();
+                          const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                          const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                          return (
+                            <span className={`px-2 py-0.5 text-[10px] rounded border ${color}`}>
+                              {label}
+                            </span>
+                          );
+                        })()}
                         <span className="text-[11px] font-semibold text-gray-400">Lead: {t.lead}</span>
                       </div>
                       <h4 className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">{t.title}</h4>
@@ -972,7 +999,7 @@ export const EmployeeDashboardView: React.FC = () => {
             <div>
               <h3 className="text-lg font-bold text-gray-900 tracking-tight">My Product Backlog Tasks</h3>
               <p className="text-xs text-gray-500 font-medium">
-                Filtered view showing ONLY tasks assigned to <strong className="text-emerald-700">{user?.name || 'Ashutosh Mishra'}</strong>.
+                Filtered view showing ONLY tasks assigned to <strong className="text-emerald-700">{activeEmpName}</strong>.
               </p>
             </div>
 
@@ -992,12 +1019,13 @@ export const EmployeeDashboardView: React.FC = () => {
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="text-xs border border-gray-200 rounded-xl px-3 py-1.5 bg-gray-50 font-semibold outline-none"
+                className="px-3 py-1.5 text-xs font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
               >
                 <option value="ALL">All Priorities</option>
-                <option value="URGENT">Urgent</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
+                <option value="URGENT">P1 (Top Priority)</option>
+                <option value="HIGH">P2 (High Priority)</option>
+                <option value="MEDIUM">P3 (Medium Priority)</option>
+                <option value="LOW">P4 (Low Priority)</option>
               </select>
             </div>
           </div>
@@ -1029,17 +1057,16 @@ export const EmployeeDashboardView: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span
-                        className={`px-2 py-0.5 text-[10px] font-extrabold rounded ${
-                          t.priority === 'URGENT'
-                            ? 'bg-red-100 text-red-700'
-                            : t.priority === 'HIGH'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}
-                      >
-                        {t.priority}
-                      </span>
+                      {(() => {
+                        const p = (t.priority || '').toUpperCase();
+                        const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                        const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                        return (
+                          <span className={`px-2 py-0.5 text-[10px] rounded border ${color}`}>
+                            {label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3.5 px-4 font-semibold text-gray-800">{t.lead}</td>
                     <td className="py-3.5 px-4 font-medium text-gray-600">{t.dueDate}</td>
@@ -1086,7 +1113,7 @@ export const EmployeeDashboardView: React.FC = () => {
                 </span>
               </div>
               <h3 className="text-lg font-bold text-gray-900 tracking-tight">My Active Sprint Deliverables</h3>
-              <p className="text-xs text-gray-500 font-medium">Sprint execution matrix assigned to {user?.name || 'Ashutosh Mishra'}.</p>
+              <p className="text-xs text-gray-500 font-medium">Sprint execution matrix assigned to {activeEmpName}.</p>
             </div>
             <div className="text-right">
               <span className="text-xs font-bold text-gray-400 block">Overall Sprint Completion</span>
@@ -1105,17 +1132,16 @@ export const EmployeeDashboardView: React.FC = () => {
                   <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     {t.taskId}
                   </span>
-                  <span
-                    className={`px-2 py-0.5 text-[10px] font-extrabold rounded ${
-                      t.priority === 'URGENT'
-                        ? 'bg-red-100 text-red-700'
-                        : t.priority === 'HIGH'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
-                    {t.priority}
-                  </span>
+                  {(() => {
+                    const p = (t.priority || '').toUpperCase();
+                    const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                    const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                    return (
+                      <span className={`px-2 py-0.5 text-[10px] rounded border ${color}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div>
@@ -1149,73 +1175,6 @@ export const EmployeeDashboardView: React.FC = () => {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: TEAM DIRECTORY EXCEPTION (FULL 12 MEMBERS FOR EMPLOYEES TO VIEW THEIR TEAM) */}
-      {activeSubTab === 'TEAM' && (
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 tracking-tight">HROS Team Members Directory</h3>
-              <p className="text-xs text-gray-500 font-medium">
-                Full team list view allowing employees to view team member roles, departments, and active entities.
-              </p>
-            </div>
-
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search team members..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500 w-56"
-              />
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/80">
-                  <th className="py-3 px-4">Team Member</th>
-                  <th className="py-3 px-4">Department</th>
-                  <th className="py-3 px-4">Entity</th>
-                  <th className="py-3 px-4 text-center">Active Deliverables</th>
-                  <th className="py-3 px-4 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-                {filteredTeamMembers.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50/90 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <img src={m.avatar} alt={m.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-2xs" />
-                        <div>
-                          <span className="font-bold text-gray-900 block text-sm">{m.name}</span>
-                          <span className="text-[11px] text-gray-400 font-semibold">{m.role}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-gray-800">{m.dept}</td>
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${m.entity === 'EHM' ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-purple-800'}`}>
-                        {m.entity}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center font-extrabold text-gray-900">{m.tasks} Tasks</td>
-                    <td className="py-3.5 px-4 text-right">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>{m.status}</span>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
@@ -1262,11 +1221,16 @@ export const EmployeeDashboardView: React.FC = () => {
                           <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                             {task.taskId}
                           </span>
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded uppercase border ${
-                            task.priority === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'
-                          }`}>
-                            {task.priority}
-                          </span>
+                          {(() => {
+                            const p = (task.priority || '').toUpperCase();
+                            const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                            const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                            return (
+                              <span className={`px-2 py-0.5 text-[10px] rounded border ${color}`}>
+                                {label}
+                              </span>
+                            );
+                          })()}
                           <span className="text-[10px] font-bold text-gray-500">Lead: {task.lead}</span>
                         </div>
                         <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User } from 'lucide-react';
+import { formatDateTime } from '../utils/dateUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -160,8 +161,9 @@ export const NotificationsView: React.FC = () => {
                     <p className="text-[11px] font-medium text-gray-500">{item.desc}</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-semibold text-gray-400 shrink-0 ml-3">
-                  {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                <span className="text-[10px] font-bold text-gray-400 shrink-0 ml-3 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-emerald-600" />
+                  {formatDateTime(n.createdAt)}
                 </span>
               </div>
             );

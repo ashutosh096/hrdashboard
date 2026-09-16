@@ -99,15 +99,16 @@ export const TeamTasksView: React.FC = () => {
                   <span className="text-[10px] font-bold tracking-wider font-mono text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">
                     {task.taskCode}
                   </span>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                      task.priority === 'URGENT'
-                        ? 'bg-red-100 text-red-800 border-red-200'
-                        : 'bg-amber-100 text-amber-800 border-amber-200'
-                    }`}
-                  >
-                    {task.priority}
-                  </span>
+                  {(() => {
+                    const p = (task.priority || '').toUpperCase();
+                    const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                    const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                    return (
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${color}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <h3 className="text-base font-bold text-gray-900 leading-snug">{task.title}</h3>

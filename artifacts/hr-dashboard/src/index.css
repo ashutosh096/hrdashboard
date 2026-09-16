@@ -30,18 +30,20 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #E5E7EB;
+  background: #F1F5F9;
   border-radius: 9999px;
 }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #10B981;
+  border-radius: 9999px;
+  border: 1px solid #059669;
+}
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #D1D5DB;
+  background: #059669;
 }
 
 /* Clothesline Hanging Swing Micro-Animations */

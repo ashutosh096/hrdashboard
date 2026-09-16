@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Calendar, Layers, Clock, Copy, Plus, CheckCircle, ShieldCheck, Sparkles, ListChecks, MessageSquare, Send } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
+import { RichTextEditor } from './RichTextEditor';
+import { formatDateTime } from '../utils/dateUtils';
 
 interface TaskAssignModalProps {
   isOpen: boolean;
@@ -349,10 +351,10 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                   onChange={(e) => setPriority(e.target.value as any)}
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                 >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium 🟡</option>
-                  <option value="HIGH">High 🟠</option>
-                  <option value="URGENT">Urgent 🔴</option>
+                  <option value="URGENT">P1 (Top Priority) 🔴</option>
+                  <option value="HIGH">P2 (High Priority) 🟠</option>
+                  <option value="MEDIUM">P3 (Medium Priority) 🟡</option>
+                  <option value="LOW">P4 (Low Priority) ⚪</option>
                 </select>
               </div>
             </div>
@@ -409,12 +411,11 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
             {/* Description */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Description</label>
-              <textarea
-                rows={2}
-                placeholder="Task deliverable guidelines, technical specifications, and expected outputs..."
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium resize-none"
+                onChange={setDescription}
+                placeholder="Task deliverable guidelines, technical specifications, and expected outputs..."
+                rows={3}
               />
             </div>
 
@@ -565,7 +566,10 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                           <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
                             {c.authorName || 'User'}
                           </span>
-                          <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="flex items-center gap-1 font-semibold text-gray-400">
+                            <Clock className="w-3 h-3 text-emerald-600" />
+                            {formatDateTime(c.createdAt)}
+                          </span>
                         </div>
                         <p className="font-medium text-gray-800 leading-relaxed">{c.content}</p>
                       </div>

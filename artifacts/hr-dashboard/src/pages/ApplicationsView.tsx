@@ -558,17 +558,16 @@ export const ApplicationsView: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-4 px-3">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              app.priority === 'Urgent'
-                                ? 'bg-red-100 text-red-800 border-red-200'
-                                : app.priority === 'High'
-                                ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                : 'bg-gray-100 text-gray-700 border-gray-200'
-                            }`}
-                          >
-                            {app.priority}
-                          </span>
+                          {(() => {
+                            const p = (app.priority || '').toUpperCase();
+                            const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                            const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] ${color}`}>
+                                {label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="py-4 px-3 font-semibold text-gray-800">{app.reviewingLead}</td>
                         <td className="py-4 px-3 font-bold text-indigo-700">

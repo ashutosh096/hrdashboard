@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip } from 'lucide-react';
+import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
+import { RichTextEditor } from './RichTextEditor';
+import { MarkdownViewer } from './MarkdownViewer';
+import { formatDateTime } from '../utils/dateUtils';
 
 export interface TaskItem {
   id: string;
@@ -15,6 +18,7 @@ export interface TaskItem {
   outputUrl?: string;
   waitingOn?: string;
   notes?: string;
+  createdAt?: string;
 }
 
 interface ChecklistItem {
@@ -205,7 +209,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           <div className="lg:col-span-7 space-y-5 text-left">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Brand / Entity & Parent Task ID */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Brand / Entity</label>
                   <input
@@ -217,12 +221,22 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Parent Task ID</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Task Code</label>
                   <input
                     type="text"
                     disabled
                     value={parentTaskId}
                     className="w-full text-xs font-bold bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-emerald-800 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Posted Date & Time</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={formatDateTime(task.createdAt)}
+                    className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                   />
                 </div>
               </div>
@@ -349,18 +363,19 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
                   Progress Notes / Comments
                 </label>
-                <textarea
-                  rows={2}
-                  readOnly={readOnlyMode}
-                  placeholder={readOnlyMode ? "No progress notes filled by employee." : "Detail your daily progress..."}
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  className={`w-full text-xs border rounded-xl p-3 outline-none font-medium resize-none ${
-                    readOnlyMode
-                      ? 'bg-gray-50 border-gray-200 text-gray-800 cursor-default'
-                      : 'border-gray-300 focus:ring-2 focus:ring-emerald-500'
-                  }`}
-                ></textarea>
+                {readOnlyMode ? (
+                  <MarkdownViewer
+                    content={notes || 'No progress notes filled by employee.'}
+                    className="bg-gray-50 p-3 rounded-xl border border-gray-200"
+                  />
+                ) : (
+                  <RichTextEditor
+                    value={notes}
+                    onChange={setNotes}
+                    placeholder="Detail your daily progress..."
+                    rows={3}
+                  />
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -500,7 +515,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
                         {c.authorName || 'System'}
                       </span>
-                      <span>{new Date(c.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      <span className="flex items-center gap-1 font-semibold text-gray-400">
+                        <Clock className="w-3 h-3 text-emerald-600" />
+                        {formatDateTime(c.createdAt)}
+                      </span>
                     </div>
                     <p className="font-medium text-gray-800 leading-relaxed">{c.content}</p>
                   </div>
