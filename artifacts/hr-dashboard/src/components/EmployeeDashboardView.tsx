@@ -234,18 +234,19 @@ export const EmployeeDashboardView: React.FC = () => {
   const [newOutputUrl, setNewOutputUrl] = useState('');
   const [newSprintWeek, setNewSprintWeek] = useState('Sprint 35 (Current)');
 
-  // Resolve currently selected active employee
+  // Resolve currently selected active employee (For non-admin, strictly lock to logged-in user!)
+  const isAdmin = user?.role === 'ADMIN';
   const activeEmployee =
-    dbEmployees.find((e) => e.id === selectedEmployeeId) ||
+    (isAdmin && selectedEmployeeId ? dbEmployees.find((e) => e.id === selectedEmployeeId) : null) ||
     dbEmployees.find((e) => e.id === user?.employeeId) ||
     dbEmployees.find((e) => e.email?.toLowerCase() === user?.email?.toLowerCase()) ||
-    dbEmployees[0];
+    (isAdmin ? dbEmployees[0] : null);
 
   const activeEmpName = activeEmployee
     ? `${activeEmployee.firstName} ${activeEmployee.lastName}`
-    : user?.name || 'Priyanka Sharma';
-  const activeEmpEmail = activeEmployee?.email || user?.email || 'priyanka.s@ehmconsultancy.com';
-  const activeEmpCode = activeEmployee?.employeeCode || 'EHM-E01';
+    : user?.name || user?.email?.split('@')[0] || 'Employee Workspace';
+  const activeEmpEmail = activeEmployee?.email || user?.email || '';
+  const activeEmpCode = activeEmployee?.employeeCode || (user?.employeeId ? `EMP-${user.employeeId.slice(0, 4)}` : 'EHM-E01');
   const activeEmpDesignation = activeEmployee?.designation || 'Senior Team Member';
 
   const handleCreatePersonalTask = (e: React.FormEvent) => {
@@ -299,24 +300,23 @@ export const EmployeeDashboardView: React.FC = () => {
         setDbEmployees(empData);
       }
 
-      if (Array.isArray(tasksData) && tasksData.length > 0) {
+      if (Array.isArray(tasksData)) {
+        const isAdminUser = user?.role === 'ADMIN';
         const currentTargetEmp =
-          empData.find((e: any) => e.id === selectedEmployeeId) ||
+          (isAdminUser && selectedEmployeeId ? empData.find((e: any) => e.id === selectedEmployeeId) : null) ||
           empData.find((e: any) => e.id === user?.employeeId) ||
           empData.find((e: any) => e.email?.toLowerCase() === user?.email?.toLowerCase()) ||
-          empData[0];
+          (isAdminUser ? empData[0] : null);
 
-        const targetId = currentTargetEmp?.id || user?.employeeId;
+        const targetId = currentTargetEmp?.id || user?.employeeId || user?.id;
         const targetEmail = (currentTargetEmp?.email || user?.email || '').toLowerCase();
-        const targetFirstName = (currentTargetEmp?.firstName || '').toLowerCase();
 
         const filteredTasks = tasksData
           .filter((t) => {
             const matchesAssignment = (
               (targetId && (t.assigneeId === targetId || t.employeeId === targetId)) ||
               (targetId && Array.isArray(t.assigneeIds) && t.assigneeIds.includes(targetId)) ||
-              (targetEmail && t.assigneeEmail?.toLowerCase() === targetEmail) ||
-              (targetFirstName && t.assigneeName?.toLowerCase().includes(targetFirstName))
+              (targetEmail && t.assigneeEmail?.toLowerCase() === targetEmail)
             );
 
             return matchesAssignment;
@@ -329,7 +329,7 @@ export const EmployeeDashboardView: React.FC = () => {
             entity: t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM',
             priority: t.priority || 'MEDIUM',
             lead: t.reviewingLead || 'Dr. Harshit Mishra',
-            assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Ashutosh Mishra'),
+            assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Employee'),
             status: (t.status === 'DONE'
               ? 'Done'
               : t.status === 'BLOCKED'
@@ -346,7 +346,7 @@ export const EmployeeDashboardView: React.FC = () => {
             completionPct: t.status === 'DONE' ? 100 : 65,
           }));
 
-        if (filteredTasks.length > 0) setMyTasks(filteredTasks);
+        setMyTasks(filteredTasks);
       }
 
       if (Array.isArray(meetingsData)) {
@@ -565,41 +565,43 @@ export const EmployeeDashboardView: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex flex-col gap-2">
-              {dbEmployees.length > 0 && (
-                <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md border border-white/25 px-3 py-1.5 rounded-xl shadow-xs">
-                  <User className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                  <select
-                    value={activeEmployee?.id || ''}
-                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer max-w-[190px] truncate"
-                  >
-                    {dbEmployees.map((emp) => (
-                      <option key={emp.id} value={emp.id} className="text-gray-900 bg-white">
-                        [{emp.employeeCode}] {emp.firstName} {emp.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            {user?.role === 'ADMIN' && (
+              <div className="flex flex-col gap-2">
+                {dbEmployees.length > 0 && (
+                  <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md border border-white/25 px-3 py-1.5 rounded-xl shadow-xs">
+                    <User className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                    <select
+                      value={activeEmployee?.id || ''}
+                      onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer max-w-[190px] truncate"
+                    >
+                      {dbEmployees.map((emp) => (
+                        <option key={emp.id} value={emp.id} className="text-gray-900 bg-white">
+                          [{emp.employeeCode}] {emp.firstName} {emp.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
-                <button
-                  onClick={() => setRole('ADMIN')}
-                  className="px-2.5 py-1 text-xs font-bold rounded-lg text-emerald-100 hover:text-white hover:bg-white/15 transition-all cursor-pointer flex items-center gap-1"
-                >
-                  <Shield className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Manager View</span>
-                </button>
-                <button
-                  onClick={() => setRole('EMPLOYEE')}
-                  className="px-2.5 py-1 text-xs font-extrabold rounded-lg bg-white text-emerald-900 shadow-xs cursor-pointer flex items-center gap-1"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Employee Active</span>
-                </button>
+                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
+                  <button
+                    onClick={() => setRole('ADMIN')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-lg text-emerald-100 hover:text-white hover:bg-white/15 transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Manager View</span>
+                  </button>
+                  <button
+                    onClick={() => setRole('EMPLOYEE')}
+                    className="px-2.5 py-1 text-xs font-extrabold rounded-lg bg-white text-emerald-900 shadow-xs cursor-pointer flex items-center gap-1"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Employee Active</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

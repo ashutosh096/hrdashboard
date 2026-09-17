@@ -777,24 +777,18 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         );
       }
     } else {
-      const activeEmpId = user?.employeeId || user?.id || 'emp-1';
+      const activeEmpId = user?.employeeId || user?.id;
       const activeEmpEmail = (user?.email || '').toLowerCase();
       const activeEmpName = (user?.name || '').toLowerCase();
-      const activeEmpFirstName = activeEmpName.split(' ')[0] || '';
 
       const isAssignedToEmp = (
-        (t.assigneeId && (t.assigneeId === activeEmpId || t.assigneeId === selectedEmployeeId)) ||
-        (t.employeeId && (t.employeeId === activeEmpId || t.employeeId === selectedEmployeeId)) ||
-        (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(activeEmpId)) ||
-        (t.assigneeEmail && (t.assigneeEmail.toLowerCase() === activeEmpEmail)) ||
-        (t.assigneeName && (
-          t.assigneeName.toLowerCase().includes(activeEmpName) ||
-          (activeEmpFirstName && t.assigneeName.toLowerCase().includes(activeEmpFirstName))
-        ))
+        (activeEmpId && (t.assigneeId === activeEmpId || t.employeeId === activeEmpId)) ||
+        (activeEmpId && Array.isArray(t.assigneeIds) && t.assigneeIds.includes(activeEmpId)) ||
+        (activeEmpEmail && t.assigneeEmail && t.assigneeEmail.toLowerCase() === activeEmpEmail) ||
+        (activeEmpName && t.assigneeName && t.assigneeName.toLowerCase().includes(activeEmpName))
       );
 
-      // All assigned tasks across Backlog, Planned, To Do, In Progress, To Review, Done are ALWAYS VISIBLE to assigned employees!
-      matchesEmp = isAssignedToEmp || selectedEmployeeId === 'ALL';
+      matchesEmp = Boolean(isAssignedToEmp);
     }
 
     const matchesStatus = selectedStatus === 'ALL' || taskCol === selectedStatus;
@@ -959,21 +953,30 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         {/* Bottom Row: Filters & Instant Search */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Employee Filter */}
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
-            <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <select
-              value={selectedEmployeeId}
-              onChange={e => setSelectedEmployeeId(e.target.value)}
-              className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
-            >
-              <option value="ALL">All Employees (~10 Team Members)</option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  [{emp.employeeCode}] {emp.firstName} {emp.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
+          {isManager ? (
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
+              <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              <select
+                value={selectedEmployeeId}
+                onChange={e => setSelectedEmployeeId(e.target.value)}
+                className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
+              >
+                <option value="ALL">All Employees (~10 Team Members)</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    [{emp.employeeCode}] {emp.firstName} {emp.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5">
+              <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span className="text-xs font-bold text-emerald-900 truncate">
+                My Workspace: {user?.name || user?.email || 'Assigned Tasks'}
+              </span>
+            </div>
+          )}
 
           {/* Status Filter */}
           <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">

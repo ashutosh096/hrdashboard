@@ -323,15 +323,26 @@ export const ApplicationsView: React.FC = () => {
   );
 
   // Scoped Projects & Active vs Archived Filtering
-  const currentUserName = (user?.name || 'Ashutosh Mishra').toLowerCase();
+  const currentUserName = (user?.name || '').toLowerCase();
+  const userFirstName = (user?.name?.split(' ')[0] || '').toLowerCase();
+  const userEmail = (user?.email || '').toLowerCase();
+
   const scopedProjects = projects.filter(p => {
     const matchesEntity = selectedEntity === 'ALL' || p.entity === selectedEntity;
     if (!isEmployee) return matchesEntity;
 
-    const isLead = p.lead?.toLowerCase().includes(currentUserName) || p.lead?.toLowerCase().includes('ashutosh') || p.lead?.toLowerCase().includes('alex') || p.lead?.toLowerCase().includes('priyanka');
-    const isTeamMember = p.team?.some(member => {
+    const isLead = (
+      (currentUserName && p.lead?.toLowerCase().includes(currentUserName)) ||
+      (userFirstName && p.lead?.toLowerCase().includes(userFirstName)) ||
+      (userEmail && p.lead?.toLowerCase().includes(userEmail))
+    );
+    const isTeamMember = Array.isArray(p.team) && p.team.some(member => {
       const mLower = member.toLowerCase();
-      return mLower.includes(currentUserName) || mLower.includes('ashutosh') || mLower.includes('alex') || mLower.includes('priyanka');
+      return (
+        (currentUserName && mLower.includes(currentUserName)) ||
+        (userFirstName && mLower.includes(userFirstName)) ||
+        (userEmail && mLower.includes(userEmail))
+      );
     });
 
     return matchesEntity && (isLead || isTeamMember);
