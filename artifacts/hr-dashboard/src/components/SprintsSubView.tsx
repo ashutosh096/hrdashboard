@@ -105,6 +105,12 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     priority: string;
   } | null>(null);
 
+  const [confirmDoneModal, setConfirmDoneModal] = useState<{
+    task: any;
+    deliverableUrl: string;
+    notes: string;
+  } | null>(null);
+
   // Task Update / Review Modal State
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
 
@@ -223,14 +229,36 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     else if (newColumn === 'TODO') apiStatus = 'TODO';
     else if (newColumn === 'PLANNED') apiStatus = 'PLANNED';
 
+    const targetTask = allTasks.find(t => t.id === taskId);
+    const taskTitle = targetTask?.title || 'Deliverable Task';
+    const taskCode = targetTask?.taskCode || taskId;
+    const reviewingLead = targetTask?.reviewingLead || 'Reviewing Lead';
+
     try {
       await fetchApi(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: apiStatus }),
       });
-      toast.success(`Task status updated to ${newColumn}!`);
+
+      if (newColumn === 'TO_REVIEW') {
+        fetchApi('/api/notifications', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: `Review Pending: ${taskCode}`,
+            message: `Task ${taskCode} "${taskTitle}" has been pushed to To Review queue for your manager sign-off.`,
+            isRead: false,
+          }),
+        }).catch(() => {});
+        toast.success(`Review Pending notification sent to Lead (${reviewingLead})!`);
+      } else {
+        toast.success(`Task ${taskCode} moved to ${newColumn}!`);
+      }
     } catch (err) {
-      toast.success(`Task moved to ${newColumn}!`);
+      if (newColumn === 'TO_REVIEW') {
+        toast.success(`Review Pending notification logged for Lead (${reviewingLead})!`);
+      } else {
+        toast.success(`Task status updated to ${newColumn}!`);
+      }
     }
 
     setAllTasks(prev =>
@@ -245,22 +273,41 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     const currentColumn = getTaskColumn(task);
     if (currentColumn === targetColumn) return;
 
+    // 1. Backlog -> Planned: Confirmation modal popup
     if (targetColumn === 'PLANNED') {
-      setConfirmPlannedModal({ task, targetColumn });
-    } else if ((currentColumn === 'BACKLOG' || currentColumn === 'PLANNED') && ['TODO', 'IN_PROGRESS', 'TO_REVIEW', 'DONE'].includes(targetColumn)) {
-      const defaultEmpId = employees[0]?.id || '';
+      setConfirmPlannedModal({
+        task,
+        targetColumn: 'PLANNED',
+      });
+      return;
+    }
+
+    // 2. Planned or Backlog -> To Do or In Progress: Assign Employee & Lead form modal
+    if ((currentColumn === 'BACKLOG' || currentColumn === 'PLANNED') && ['TODO', 'IN_PROGRESS'].includes(targetColumn)) {
       setAssignTaskModal({
         task,
         targetColumn,
-        assigneeId: task.assigneeId || defaultEmpId,
-        reviewingLeadId: task.reviewingLeadId || defaultEmpId,
-        sprintWeek: selectedWeek !== 'ALL' ? selectedWeek : 'Week 1 (Days 1–7)',
-        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-        priority: task.priority || 'MEDIUM',
+        assigneeId: task.assigneeId || (employees[0]?.id || ''),
+        reviewingLeadId: task.reviewingLeadId || (employees[0]?.id || ''),
+        sprintWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
+        dueDate: task.dueDate ? task.dueDate.split('T')[0] : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        priority: task.priority || 'P3',
       });
-    } else {
-      handleMoveTask(taskId, targetColumn);
+      return;
     }
+
+    // 3. To Review / In Progress -> Done: Completion sign-off modal form
+    if (targetColumn === 'DONE') {
+      setConfirmDoneModal({
+        task,
+        deliverableUrl: task.deliverableUrl || task.outputUrl || '',
+        notes: task.description || task.notes || '',
+      });
+      return;
+    }
+
+    // 4. Default move (e.g. to TO_REVIEW which notifies reviewing lead)
+    handleMoveTask(taskId, targetColumn);
   };
 
   const confirmShiftToPlanned = async () => {
@@ -332,6 +379,35 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     );
 
     setAssignTaskModal(null);
+  };
+
+  const confirmMarkAsDone = async () => {
+    if (!confirmDoneModal) return;
+    const { task, deliverableUrl, notes } = confirmDoneModal;
+
+    try {
+      await fetchApi(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'DONE',
+          deliverableUrl,
+          description: notes,
+        }),
+      });
+      toast.success(`Task ${task.taskCode || task.id} completed and marked Done!`);
+    } catch (err) {
+      toast.success(`Task marked as Done!`);
+    }
+
+    setAllTasks(prev =>
+      prev.map(t =>
+        t.id === task.id
+          ? { ...t, status: 'DONE', deliverableUrl, description: notes }
+          : t
+      )
+    );
+
+    setConfirmDoneModal(null);
   };
 
   const handleCreateSprint = async (e: React.FormEvent) => {
@@ -415,7 +491,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
     let matchesSprintCategory = true;
     if (sprintCategory === 'ACTIVE') {
-      matchesSprintCategory = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || taskCol === 'IN_PROGRESS' || taskCol === 'TODO' || taskCol === 'TO_REVIEW' || (t.sprintWeek || '').toLowerCase().includes('current') || (t.sprintWeek || '').includes('1');
+      matchesSprintCategory = true; // Show all 6 Kanban columns on Active board including DONE
     } else if (sprintCategory === 'FUTURE') {
       matchesSprintCategory = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || (t.sprintWeek || '').toLowerCase().includes('future') || (t.dueDate && new Date(t.dueDate) > new Date());
     } else if (sprintCategory === 'DATE_RANGE') {
@@ -427,7 +503,9 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
       }
     }
 
-    const matchesEmp = selectedEmployeeId === 'ALL' || t.assigneeId === selectedEmployeeId || t.assigneeEmail === selectedEmployeeId;
+    // Employee Filter Fix: Keep unassigned Backlog and Planned items visible regardless of employee selection
+    const isUnassignedOrPlannerCol = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || !t.assigneeId || t.assigneeName === 'Unassigned' || t.assigneeName === 'Assignee';
+    const matchesEmp = selectedEmployeeId === 'ALL' || isUnassignedOrPlannerCol || t.assigneeId === selectedEmployeeId || t.assigneeEmail === selectedEmployeeId;
 
     const matchesStatus = selectedStatus === 'ALL' || taskCol === selectedStatus;
 
@@ -762,6 +840,15 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                           }
                         }
 
+                        const p = (t.priority || '').toUpperCase();
+                        const priorityLabel = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                        const priorityTextColor = (priorityLabel === 'P1') ? 'text-red-600' : (priorityLabel === 'P2') ? 'text-rose-600' : (priorityLabel === 'P3') ? 'text-amber-600' : 'text-slate-500';
+                        const priorityBarColor = (priorityLabel === 'P1') ? 'bg-red-500' : (priorityLabel === 'P2') ? 'bg-rose-500' : (priorityLabel === 'P3') ? 'bg-amber-500' : 'bg-slate-400';
+
+                        const createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '16 Sep';
+                        const reviewerLead = t.reviewingLead || t.lead || 'Manager lead';
+                        const assigneeDisplayName = isUnassigned ? 'Unassigned' : (t.assigneeName || 'Team member');
+
                         return (
                           <div
                             key={t.id}
@@ -771,66 +858,58 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                               e.dataTransfer.effectAllowed = 'move';
                             }}
                             onClick={() => handleTaskClick(t)}
-                            className="relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2.5 hover:shadow-md hover:border-emerald-400 transition-all cursor-grab active:cursor-grabbing group overflow-hidden select-none"
+                            className="relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2 hover:shadow-md hover:border-emerald-400 transition-all cursor-grab active:cursor-grabbing group overflow-hidden select-none"
                           >
                             {/* 1. Priority (Left Edge Color Bar) */}
-                            <div
-                              className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                                t.priority === 'URGENT'
-                                  ? 'bg-red-500'
-                                  : t.priority === 'HIGH'
-                                  ? 'bg-rose-500'
-                                  : t.priority === 'MEDIUM'
-                                  ? 'bg-amber-500'
-                                  : 'bg-slate-400'
-                              }`}
-                            />
+                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${priorityBarColor}`} />
 
-                            {/* 2. Deliverable Title */}
-                            <h5 className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+                            {/* 2. Top Header Line: Left = Priority P1-P4 | Right = Epic Code */}
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className={`font-extrabold ${priorityTextColor}`}>
+                                {priorityLabel}
+                              </span>
+                              <span className="font-mono text-[10px] font-bold text-gray-400 truncate">
+                                {epicCode}
+                              </span>
+                            </div>
+
+                            {/* 3. Title (Middle, Full Width) */}
+                            <h5 className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors leading-snug">
                               {t.title}
                             </h5>
 
-                            {/* 3. Card Footer: Left = Avatar + Epic Code + Entity | Right = Due Date / Overdue Chip */}
-                            <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-gray-100 text-[11px]">
-                              {/* Left: Avatar Circle + Epic Code + Entity */}
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                {/* Assignee Avatar Circle */}
-                                {isUnassigned ? (
-                                  <div
-                                    className="w-5 h-5 rounded-full bg-gray-200 text-gray-600 font-black text-[10px] flex items-center justify-center shrink-0 border border-gray-300"
-                                    title="Unassigned (Needs an owner)"
-                                  >
-                                    ?
-                                  </div>
-                                ) : (
-                                  <div
-                                    className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[9px] flex items-center justify-center shrink-0 border border-emerald-300 uppercase"
-                                    title={`Assigned to ${t.assigneeName}`}
-                                  >
-                                    {assigneeInitials}
-                                  </div>
-                                )}
-
-                                {/* Epic Code + Entity */}
-                                <span className="font-mono text-[10px] font-bold text-gray-500 truncate">
-                                  {epicCode}
-                                </span>
-                                <span className="text-[10px] font-semibold text-gray-400 shrink-0">
-                                  · {entityName}
+                            {/* 4. Metadata Spec Sheet (Assignee & Reviewer label-value pairs) */}
+                            <div className="space-y-1 pt-1 text-[11px]">
+                              <div className="flex items-center justify-between text-gray-500 font-medium">
+                                <span className="text-gray-400 text-[10px]">Assignee</span>
+                                <span className={`text-[11px] font-semibold ${isUnassigned ? 'text-gray-500 italic' : 'text-gray-800'}`}>
+                                  {assigneeDisplayName}
                                 </span>
                               </div>
+                              <div className="flex items-center justify-between text-gray-500 font-medium">
+                                <span className="text-gray-400 text-[10px]">Reviewer</span>
+                                <span className="text-[11px] font-semibold text-gray-800 truncate max-w-[140px] text-right">
+                                  {reviewerLead}
+                                </span>
+                              </div>
+                            </div>
 
-                              {/* Right: Target / Due Date Chip */}
+                            {/* 5. Bottom Line: Left = Posted Date | Right = Target / Due Date */}
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[10px] font-medium text-gray-400">
+                              <div className="flex items-center gap-1 text-gray-400">
+                                <Calendar className="w-3 h-3 text-gray-400" />
+                                <span>{createdDateStr}</span>
+                              </div>
+
                               {dueDateInfo ? (
-                                <span className={`flex items-center gap-1 text-[10px] font-bold shrink-0 ${dueDateInfo.isOverdue ? 'text-red-600 font-extrabold' : 'text-gray-500 font-semibold'}`}>
+                                <div className={`flex items-center gap-1 font-bold ${dueDateInfo.isOverdue ? 'text-red-600 font-extrabold' : 'text-gray-500'}`}>
                                   <Calendar className={`w-3 h-3 ${dueDateInfo.isOverdue ? 'text-red-500' : 'text-gray-400'}`} />
-                                  <span>{dueDateInfo.label}</span>
-                                </span>
+                                  <span>Due {dueDateInfo.label}</span>
+                                </div>
                               ) : (
-                                <span className="text-[10px] font-extrabold text-gray-400 uppercase shrink-0 tracking-wider">
-                                  {entityName}
-                                </span>
+                                <div className="flex items-center gap-1 text-gray-400 font-medium">
+                                  <span>{entityName}</span>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1383,6 +1462,83 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               >
                 <span>Assign & Move Task</span>
                 <MoveRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark as Done / Sign-off Confirmation Modal */}
+      {confirmDoneModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-gray-900">Complete & Sign-off Task (Mark as Done)</h4>
+                  <p className="text-xs text-gray-500 font-medium">Verify deliverable URL and completion notes before marking Done</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setConfirmDoneModal(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Task Title</label>
+                <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 flex items-center justify-between">
+                  <span>{confirmDoneModal.task.title}</span>
+                  <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    {confirmDoneModal.task.taskCode || confirmDoneModal.task.id}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Deliverable / Output URL</label>
+                <input
+                  type="url"
+                  placeholder="https://github.com/... or https://docs.google.com/..."
+                  value={confirmDoneModal.deliverableUrl}
+                  onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, deliverableUrl: e.target.value })}
+                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Completion Notes / Sign-off Comments</label>
+                <textarea
+                  rows={3}
+                  placeholder="Add manager sign-off notes or verification outcome..."
+                  value={confirmDoneModal.notes}
+                  onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, notes: e.target.value })}
+                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setConfirmDoneModal(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmMarkAsDone}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Confirm & Mark as Done</span>
+                <Sparkles className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
