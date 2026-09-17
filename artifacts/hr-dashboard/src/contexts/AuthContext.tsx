@@ -101,6 +101,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  // Multi-tab session synchronization listener across open browser tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'hros_token' || e.key === 'hros_active_role') {
+        const storedToken = localStorage.getItem('hros_token');
+        const storedRole = localStorage.getItem('hros_active_role') as 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | null;
+
+        if (storedToken) {
+          const decodedUser = decodeJwtPayload(storedToken);
+          if (decodedUser) {
+            if (storedRole) decodedUser.role = storedRole;
+            setUser(decodedUser);
+            setToken(storedToken);
+          } else {
+            setUser(null);
+            setToken(null);
+          }
+        } else {
+          setUser(null);
+          setToken(null);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const login = async (email: string, pass: string) => {
     setIsLoading(true);
     try {

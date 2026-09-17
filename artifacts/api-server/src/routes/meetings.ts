@@ -9,9 +9,43 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
+    const isEmployee = req.user?.role === 'EMPLOYEE';
+    const userId = req.user?.id;
+    const empId = req.user?.employeeId;
+    const userEmail = (req.user?.email || '').toLowerCase();
+
     const allMeetings = await db.select().from(meetings).where(ne(meetings.status, 'CANCELLED'));
-    res.json(allMeetings);
+
+    if (!isEmployee) {
+      return res.json(allMeetings);
+    }
+
+    // Also query meetingAttendees for this employee/user
+    const userAttendeeRecords = await db
+      .select({ meetingId: meetingAttendees.meetingId })
+      .from(meetingAttendees)
+      .where(
+        empId ? eq(meetingAttendees.employeeId, empId) : eq(meetingAttendees.employeeId, userId!)
+      );
+    const attendedMeetingIds = new Set(userAttendeeRecords.map(a => a.meetingId));
+
+    const scopedMeetings = allMeetings.filter(m => {
+      const isOrganizer = (userId && m.organizerId === userId) || (empId && m.organizerId === empId);
+      const isAttendeeInTable = attendedMeetingIds.has(m.id);
+      
+      const inviteesArr = Array.isArray(m.invitees) ? (m.invitees as string[]) : [];
+      const isInvited = (
+        (userId && inviteesArr.includes(userId)) ||
+        (empId && inviteesArr.includes(empId)) ||
+        (userEmail && inviteesArr.some(inv => typeof inv === 'string' && inv.toLowerCase() === userEmail))
+      );
+
+      return isOrganizer || isAttendeeInTable || isInvited;
+    });
+
+    res.json(scopedMeetings);
   } catch (err) {
+    console.error('[MEETINGS GET ROUTE ERROR]:', err);
     res.status(500).json({ message: 'Failed to fetch meetings' });
   }
 });

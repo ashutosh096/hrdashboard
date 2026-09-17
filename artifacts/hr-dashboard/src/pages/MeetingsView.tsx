@@ -176,7 +176,8 @@ export const MeetingsView: React.FC = () => {
   const handleConnectGoogle = () => {
     if (isConnecting) return;
     setIsConnecting(true);
-    window.location.href = `/api/auth/google?userId=${user?.id || ''}`;
+    const returnPath = encodeURIComponent(window.location.pathname || '/meetings');
+    window.location.href = `/api/auth/google?userId=${user?.id || ''}&returnPath=${returnPath}`;
   };
 
   const handleConvertToTask = (m: any) => {

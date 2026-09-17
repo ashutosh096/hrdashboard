@@ -188,6 +188,7 @@ router.post('/set-password', async (req, res) => {
 router.get('/google', async (req, res) => {
   let userId = (req.query.userId as string) || '';
   const inviteToken = (req.query.inviteToken as string) || '';
+  const returnPath = (req.query.returnPath as string) || '/meetings';
 
   if (!userId && inviteToken) {
     try {
@@ -222,16 +223,21 @@ router.get('/google', async (req, res) => {
         if (userRow) {
           userId = userRow.id;
         }
-        // NOTE: Invite is marked ACCEPTED inside callback ONLY after token exchange succeeds!
       }
     } catch (err) {
       console.error('[GOOGLE OAUTH INVITE LOOKUP ERROR]:', err);
     }
   }
 
-  const state = Buffer.from(JSON.stringify({ userId, inviteToken })).toString('base64');
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
-  
+  const reqHost = req.get('host') || 'localhost:5000';
+  const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'http';
+  const apiServerUrl = `${proto}://${reqHost}`;
+
+  const clientOrigin = (req.headers.referer ? new URL(req.headers.referer).origin : null) || process.env.APP_URL || (proto === 'https' ? `https://${reqHost}` : 'http://localhost:5173');
+
+  const state = Buffer.from(JSON.stringify({ userId, inviteToken, returnPath, appUrl: clientOrigin, apiServerUrl })).toString('base64');
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${apiServerUrl}/api/auth/google/callback`;
+
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `response_type=code` +
     `&client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}` +
@@ -253,7 +259,30 @@ router.get('/google/callback', async (req, res) => {
   }
 
   try {
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
+    let userId: string | null = null;
+    let inviteToken: string | null = null;
+    let returnPath = '/meetings';
+    let appUrl = process.env.APP_URL || 'http://localhost:5173';
+    let apiServerUrl = '';
+
+    if (state && typeof state === 'string') {
+      try {
+        const parsedState = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+        userId = parsedState.userId || null;
+        inviteToken = parsedState.inviteToken || null;
+        if (parsedState.returnPath) returnPath = parsedState.returnPath;
+        if (parsedState.appUrl) appUrl = parsedState.appUrl;
+        if (parsedState.apiServerUrl) apiServerUrl = parsedState.apiServerUrl;
+      } catch {
+        userId = state;
+      }
+    }
+
+    const reqHost = req.get('host') || 'localhost:5000';
+    const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'http';
+    const currentApiUrl = apiServerUrl || `${proto}://${reqHost}`;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${currentApiUrl}/api/auth/google/callback`;
+
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -274,19 +303,6 @@ router.get('/google/callback', async (req, res) => {
     }
 
     const { access_token, refresh_token, expires_in } = tokenData;
-
-    let userId: string | null = null;
-    let inviteToken: string | null = null;
-
-    if (state && typeof state === 'string') {
-      try {
-        const parsedState = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
-        userId = parsedState.userId || null;
-        inviteToken = parsedState.inviteToken || null;
-      } catch {
-        userId = state;
-      }
-    }
 
     const isUuid = (str: string | null) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
     if (!userId || !isUuid(userId)) {
@@ -329,7 +345,6 @@ router.get('/google/callback', async (req, res) => {
         });
       }
 
-      // ITEM 2 FIX: Mark invite as ACCEPTED ONLY AFTER OAuth token exchange has succeeded!
       if (inviteToken) {
         await db
           .update(invites)
@@ -338,10 +353,10 @@ router.get('/google/callback', async (req, res) => {
       }
     }
 
-    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const targetUrl = returnPath.startsWith('/') ? returnPath : `/${returnPath}`;
     const redirectUrl = authTokenToSend
-      ? `${appUrl}/dashboard?token=${authTokenToSend}&calendarConnected=true`
-      : `${appUrl}/dashboard?calendarConnected=true`;
+      ? `${appUrl}${targetUrl}?token=${authTokenToSend}&calendarConnected=true`
+      : `${appUrl}${targetUrl}?calendarConnected=true`;
 
     res.redirect(redirectUrl);
   } catch (err) {

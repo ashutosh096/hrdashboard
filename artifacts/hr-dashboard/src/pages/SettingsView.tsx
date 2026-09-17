@@ -7,10 +7,11 @@ export const SettingsView: React.FC = () => {
   const { user } = useAuth();
 
   const handleConnectGoogle = () => {
+    const returnPath = encodeURIComponent(window.location.pathname || '/settings');
     if (user?.id) {
-      window.location.href = `/api/auth/google?userId=${user.id}`;
+      window.location.href = `/api/auth/google?userId=${user.id}&returnPath=${returnPath}`;
     } else {
-      window.location.href = '/api/auth/google';
+      window.location.href = `/api/auth/google?returnPath=${returnPath}`;
     }
   };
 
