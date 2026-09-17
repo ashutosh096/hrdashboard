@@ -56,17 +56,18 @@ export const TasksView: React.FC = () => {
   const loadTasks = async () => {
     setLoading(true);
     try {
-      const [tasksData, epicsData, initsData] = await Promise.all([
-        fetchApi<any[]>('/api/tasks'),
-        fetchApi<any[]>('/api/epics'),
-        fetchApi<any[]>('/api/initiatives'),
+      const [tasksData, epicsData, initsData, employeesData] = await Promise.all([
+        fetchApi<any[]>('/api/tasks').catch(() => []),
+        fetchApi<any[]>('/api/epics').catch(() => []),
+        fetchApi<any[]>('/api/initiatives').catch(() => []),
+        fetchApi<any[]>('/api/employees').catch(() => []),
       ]);
       setRawEpics(epicsData || []);
       setInitiatives(initsData || []);
 
       const formatted = (tasksData || []).map(t => {
-        const parentEpic = epicsData.find(ep => ep.id === t.epicId);
-        const parentInit = initsData.find(init => init.id === (t.initiativeId || parentEpic?.initiativeId));
+        const parentEpic = (epicsData || []).find(ep => ep.id === t.epicId);
+        const parentInit = (initsData || []).find(init => init.id === (t.initiativeId || parentEpic?.initiativeId));
 
         const isCAG = (
           t.entityId === 'cag' ||
@@ -83,6 +84,16 @@ export const TasksView: React.FC = () => {
           taskCode = taskCode.replace(/^EHM-/, 'CAG-');
         }
 
+        const matchedAssignee = (employeesData || []).find((e: any) =>
+          e.id === t.assigneeId ||
+          e.employeeId === t.assigneeId ||
+          (t.assigneeEmail && e.email?.toLowerCase() === t.assigneeEmail?.toLowerCase())
+        );
+
+        const realAssigneeName = matchedAssignee
+          ? `${matchedAssignee.firstName || ''} ${matchedAssignee.lastName || ''}`.trim()
+          : t.assigneeName || t.assigneeEmail || 'Assignee';
+
         return {
           id: t.id,
           taskCode,
@@ -95,7 +106,10 @@ export const TasksView: React.FC = () => {
           parentInitiativeTitle: parentInit?.title || '',
           parentEpicCode: parentEpic?.epicCode || null,
           parentEpicTitle: parentEpic?.title || '',
-          assigneeName: user?.email || 'Assignee',
+          assigneeId: t.assigneeId || t.employeeId,
+          assigneeEmail: t.assigneeEmail,
+          assigneeIds: t.assigneeIds,
+          assigneeName: realAssigneeName,
           reviewingLead: 'Manager Lead',
           status: t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : t.status === 'PLANNED' ? 'PLANNED' : 'BACKLOG',
           priority: t.priority || 'MEDIUM',
@@ -103,6 +117,7 @@ export const TasksView: React.FC = () => {
           notesCount: 1,
           outputUrl: t.deliverableUrl || '',
           notes: t.description || '',
+          createdAt: t.createdAt,
         };
       });
       setTasks(formatted);
@@ -126,7 +141,18 @@ export const TasksView: React.FC = () => {
       t.taskCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.parentEpicCode?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesEntity && matchesPriority && matchesStatus && matchesSearch;
+    let matchesAssignee = true;
+    if (user?.role === 'EMPLOYEE') {
+      const targetId = user.employeeId || user.id;
+      const targetEmail = (user.email || '').toLowerCase();
+      matchesAssignee = (
+        (targetId && (t.assigneeId === targetId || t.employeeId === targetId)) ||
+        (targetId && Array.isArray(t.assigneeIds) && t.assigneeIds.includes(targetId)) ||
+        (targetEmail && t.assigneeEmail?.toLowerCase() === targetEmail)
+      );
+    }
+
+    return matchesEntity && matchesPriority && matchesStatus && matchesSearch && matchesAssignee;
   });
 
   // Pagination Math for Zero-Complexity Scalability

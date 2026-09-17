@@ -8,22 +8,44 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
-    const userNotifs = await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, req.user!.id))
-      .orderBy(desc(notifications.createdAt));
+    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
 
-    const formatted = userNotifs.map(n => ({
-      id: n.id,
-      type: n.type,
-      payload: n.payload || {},
-      title: (n.payload as any)?.title || 'Notification Alert',
-      message: (n.payload as any)?.message || (n.payload as any)?.title || 'System Notification',
-      isRead: !!n.readAt,
-      readAt: n.readAt,
-      createdAt: n.createdAt,
-    }));
+    let rawNotifs;
+    if (isManagerOrAdmin) {
+      rawNotifs = await db
+        .select()
+        .from(notifications)
+        .orderBy(desc(notifications.createdAt));
+    } else {
+      rawNotifs = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user!.id))
+        .orderBy(desc(notifications.createdAt));
+    }
+
+    const formatted = rawNotifs.map(n => {
+      const payload = (n.payload as any) || {};
+      const isDirectUser = n.userId === req.user!.id;
+      const isTaggedUser = Array.isArray(payload.taggedUserIds) && payload.taggedUserIds.includes(req.user!.id);
+      const isAssigneeUser = payload.assigneeId === req.user!.id || (req.user!.employeeId && payload.assigneeId === req.user!.employeeId);
+      const tagged = isDirectUser || isTaggedUser || isAssigneeUser || payload.tagged === true;
+
+      return {
+        id: n.id,
+        type: n.type,
+        userId: n.userId,
+        payload: {
+          ...payload,
+          tagged,
+        },
+        title: payload.title || 'Notification Alert',
+        message: payload.message || payload.title || 'System Notification',
+        isRead: !!n.readAt,
+        readAt: n.readAt,
+        createdAt: n.createdAt,
+      };
+    });
 
     res.json(formatted);
   } catch (err) {

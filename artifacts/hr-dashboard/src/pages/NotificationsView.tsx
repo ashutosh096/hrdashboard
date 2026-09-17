@@ -56,14 +56,18 @@ export const NotificationsView: React.FC = () => {
   const filteredNotifications = notifications.filter((n) => {
     if (!isEmployee) return true;
     const payload = n.payload || {};
-    const userName = (user?.name || 'Ashutosh Mishra').toLowerCase();
+    const userId = user?.id;
+    const empId = user?.employeeId;
 
-    const isTagged = payload.tagged === true || n.type === 'TAGGED_MENTION';
-    const isAssignee = (payload.assigneeName?.toLowerCase() || '').includes(userName) || (payload.assigneeName?.toLowerCase() || '').includes('ashutosh') || (payload.assigneeName?.toLowerCase() || '').includes('alex');
-    const isRequester = (payload.requesterName?.toLowerCase() || '').includes(userName) || (payload.requesterName?.toLowerCase() || '').includes('ashutosh') || (payload.requesterName?.toLowerCase() || '').includes('alex');
-    const msgContainsUser = (n.message?.toLowerCase() || '').includes(userName) || (n.title?.toLowerCase() || '').includes(userName) || (n.message?.toLowerCase() || '').includes('ashutosh') || (n.message?.toLowerCase() || '').includes('alex');
+    const isTaggedExplicit = payload.tagged === true || n.type === 'TAGGED_MENTION';
+    const isDirectUser = n.userId === userId;
+    const isTaggedUser = Array.isArray(payload.taggedUserIds) && (
+      (userId && payload.taggedUserIds.includes(userId)) ||
+      (empId && payload.taggedUserIds.includes(empId))
+    );
+    const isAssigneeId = payload.assigneeId === userId || (empId && payload.assigneeId === empId);
 
-    return isTagged || isAssignee || isRequester || msgContainsUser;
+    return isTaggedExplicit || isDirectUser || isTaggedUser || isAssigneeId;
   });
 
   const renderNotifItem = (notif: any) => {
@@ -159,7 +163,7 @@ export const NotificationsView: React.FC = () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-bold text-gray-900">{item.title}</h4>
-                      {isEmployee && (
+                      {(n.payload?.tagged || isEmployee) && (
                         <span className="text-[9px] bg-purple-100 text-purple-800 font-extrabold px-1.5 py-0.5 rounded">
                           @Tagged
                         </span>

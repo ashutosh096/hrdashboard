@@ -109,6 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password: pass }),
       });
 
+      localStorage.removeItem('hros_active_role');
       localStorage.setItem('hros_token', res.token);
       setToken(res.token);
       setUser(res.user);
@@ -118,13 +119,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setUserSession = (userData: User, authToken: string) => {
+    localStorage.removeItem('hros_active_role');
     localStorage.setItem('hros_token', authToken);
     setUser(userData);
     setToken(authToken);
   };
 
   const setRole = (newRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
-    if (!user) return;
+    if (!user || user.role !== 'ADMIN') return;
     localStorage.setItem('hros_active_role', newRole);
     setUser((prev) => {
       if (!prev) return null;

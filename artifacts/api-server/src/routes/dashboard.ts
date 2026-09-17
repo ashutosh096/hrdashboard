@@ -81,13 +81,39 @@ router.get('/', (req, res) => {
 
 router.get('/notifications', async (req, res) => {
   try {
-    const list = await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, req.user!.id))
-      .orderBy(desc(notifications.createdAt));
+    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
 
-    res.json(list);
+    let list;
+    if (isManagerOrAdmin) {
+      list = await db
+        .select()
+        .from(notifications)
+        .orderBy(desc(notifications.createdAt));
+    } else {
+      list = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user!.id))
+        .orderBy(desc(notifications.createdAt));
+    }
+
+    const formatted = list.map(n => {
+      const payload = (n.payload as any) || {};
+      const isDirectUser = n.userId === req.user!.id;
+      const isTaggedUser = Array.isArray(payload.taggedUserIds) && payload.taggedUserIds.includes(req.user!.id);
+      const isAssigneeUser = payload.assigneeId === req.user!.id || (req.user!.employeeId && payload.assigneeId === req.user!.employeeId);
+      const tagged = isDirectUser || isTaggedUser || isAssigneeUser || payload.tagged === true;
+
+      return {
+        ...n,
+        payload: {
+          ...payload,
+          tagged,
+        },
+      };
+    });
+
+    res.json(formatted);
   } catch (err) {
     res.json([
       {
