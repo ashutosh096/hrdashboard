@@ -150,7 +150,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     let inviteEmailError: string | null = null;
 
     try {
-      const emailResult = await sendInviteEmail(targetEmail, inviteToken, `${firstName} ${lastName}`);
+      const emailResult: any = await sendInviteEmail(targetEmail, inviteToken, `${firstName} ${lastName}`);
       inviteEmailSuccess = emailResult.sent;
       if (!emailResult.sent) {
         console.warn('[INVITE EMAIL NOT SENT]:', emailResult.error);

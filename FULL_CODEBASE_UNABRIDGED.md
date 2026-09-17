@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-17T16:02:38.624Z  
+> **Generated Date**: 2026-09-17T16:19:15.344Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -2111,7 +2111,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     let inviteEmailError: string | null = null;
 
     try {
-      const emailResult = await sendInviteEmail(targetEmail, inviteToken, `${firstName} ${lastName}`);
+      const emailResult: any = await sendInviteEmail(targetEmail, inviteToken, `${firstName} ${lastName}`);
       inviteEmailSuccess = emailResult.sent;
       if (!emailResult.sent) {
         console.warn('[INVITE EMAIL NOT SENT]:', emailResult.error);
@@ -3804,12 +3804,31 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
 ```typescript
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
+import { supabaseAdmin } from './supabase-admin.js';
 
 function getResendClient() {
   const currentResendKey = process.env.RESEND_API_KEY;
   return currentResendKey && !currentResendKey.includes('your_resend_key') && !currentResendKey.includes('123456789')
     ? new Resend(currentResendKey)
     : null;
+}
+
+async function attemptSupabaseInviteSend(toEmail: string, name: string, inviteLink: string) {
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(toEmail, {
+      redirectTo: inviteLink,
+      data: { name },
+    });
+    if (error) {
+      console.warn('[SUPABASE INVITE FAILED]:', error.message);
+      return { sent: false, provider: 'SUPABASE', error: error.message };
+    }
+    console.log('[SUPABASE INVITE SENT] to', toEmail);
+    return { sent: true, provider: 'SUPABASE', data };
+  } catch (err: any) {
+    console.error('[SUPABASE INVITE FAILED]:', err?.message || err);
+    return { sent: false, provider: 'SUPABASE', error: err?.message || String(err) };
+  }
 }
 
 async function attemptSmtpSend(toEmail: string, htmlContent: string) {
@@ -3881,6 +3900,13 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   console.log(`[INVITATION LINK]: ${inviteLink}`);
   console.log(`======================================================\n`);
 
+  // Priority 1: Supabase Auth Admin Invite Email
+  const supabaseResult = await attemptSupabaseInviteSend(toEmail, name, inviteLink);
+  if (supabaseResult && supabaseResult.sent) {
+    return supabaseResult;
+  }
+  console.warn('[SUPABASE INVITE FAILED, FALLING BACK TO SMTP/RESEND]:', supabaseResult?.error);
+
   const htmlContent = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 12px; background-color: #ffffff;">
       <h2 style="color: #111827; margin-top: 0; font-size: 20px;">You have been invited to create a user account</h2>
@@ -3897,7 +3923,7 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
     </div>
   `;
 
-  // Priority 1: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
+  // Priority 2: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
   const smtpResult = await attemptSmtpSend(toEmail, htmlContent);
   if (smtpResult) {
     if (smtpResult.sent) return smtpResult;
