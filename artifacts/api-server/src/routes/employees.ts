@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
+import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../services/supabase-admin.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';

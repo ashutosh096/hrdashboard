@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-17T07:50:02.009Z  
+> **Generated Date**: 2026-09-17T15:20:56.404Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -1961,6 +1961,7 @@ export default router;
 ```typescript
 import { Router } from 'express';
 import crypto from 'node:crypto';
+import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '../services/supabase-admin.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
