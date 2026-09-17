@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
 import bcrypt from 'bcryptjs';
+import { sendInviteEmail } from '../services/email.js';
 import { supabaseAdmin } from '../services/supabase-admin.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -144,33 +145,31 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       : 'https://hrdashboard-3s1m.onrender.com';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    // Send invitation email via Supabase Auth Admin
-    let supabaseInviteSuccess = false;
-    let supabaseInviteError: string | null = null;
+    // Send invitation email via our own branded SMTP/Resend service
+    let inviteEmailSuccess = false;
+    let inviteEmailError: string | null = null;
 
     try {
-      const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
-        redirectTo: inviteLink,
-      });
-      if (error) {
-        console.warn('[SUPABASE AUTH INVITE ERROR]:', error.message);
-        supabaseInviteError = error.message;
+      const emailResult = await sendInviteEmail(targetEmail, inviteToken, `${firstName} ${lastName}`);
+      inviteEmailSuccess = emailResult.sent;
+      if (!emailResult.sent) {
+        console.warn('[INVITE EMAIL NOT SENT]:', emailResult.error);
+        inviteEmailError = emailResult.error || 'Unknown error';
       } else {
-        console.log('[SUPABASE AUTH INVITE SUCCESS]: Sent invite to', targetEmail);
-        supabaseInviteSuccess = true;
+        console.log(`[INVITE EMAIL SENT via ${emailResult.provider}] to`, targetEmail);
       }
     } catch (e: any) {
-      console.error('[SUPABASE AUTH INVITE EXCEPTION]:', e?.message || e);
-      supabaseInviteError = e?.message || String(e);
+      console.error('[INVITE EMAIL EXCEPTION]:', e?.message || e);
+      inviteEmailError = e?.message || String(e);
     }
 
     res.status(201).json({
       employee: result.newEmployee,
       inviteToken,
       inviteLink,
-      supabaseInviteResult: {
-        sent: supabaseInviteSuccess,
-        error: supabaseInviteError,
+      inviteEmailResult: {
+        sent: inviteEmailSuccess,
+        error: inviteEmailError,
       },
     });
   } catch (err: any) {
