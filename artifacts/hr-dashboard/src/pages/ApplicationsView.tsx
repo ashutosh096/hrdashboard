@@ -18,10 +18,14 @@ import {
   CheckSquare,
   ListChecks,
   Trash2,
+  MessageSquare,
+  Send,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
+import { RichTextEditor } from '../components/RichTextEditor';
 
 export interface ApplicationItem {
   id: string;
@@ -115,6 +119,42 @@ export const ApplicationsView: React.FC = () => {
   // Checkpoints Checklist Form State
   const [projectChecklists, setProjectChecklists] = useState<ProjectCheckpoint[]>([]);
   const [newCheckpointText, setNewCheckpointText] = useState('');
+
+  // Multi-select Team Members State
+  const [selectedTeamMemberNames, setSelectedTeamMemberNames] = useState<string[]>([
+    'Ashutosh Mishra',
+    'Priyanka Sharma',
+  ]);
+
+  // Project Clone & Comments Modal State
+  const [isProjectClone, setIsProjectClone] = useState(false);
+  const [cloneSourceProjectId, setCloneSourceProjectId] = useState('');
+  const [projectComments, setProjectComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
+  const [newProjectCommentText, setNewProjectCommentText] = useState('');
+
+  const TEAM_MEMBERS_LIST = [
+    { id: 'tm-1', name: 'Ashutosh Mishra', code: 'EHM-EMP01' },
+    { id: 'tm-2', name: 'Priyanka Sharma', code: 'EHM-EMP02' },
+    { id: 'tm-3', name: 'Prerna Shukla', code: 'EHM-EMP03' },
+    { id: 'tm-4', name: 'Himanshu Tiwari', code: 'CAG-EMP01' },
+    { id: 'tm-5', name: 'Utkarsh Mishra', code: 'EHM-EMP04' },
+    { id: 'tm-6', name: 'Shreyansh Siladar', code: 'CAG-EMP02' },
+    { id: 'tm-7', name: 'Dr. Utsav Mishra', code: 'CAG-EMP03' },
+    { id: 'tm-8', name: "Tarul Ma'am", code: 'EHM-EMP06' },
+  ];
+
+  const handleAddProjectComment = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newProjectCommentText.trim()) return;
+    const newCmt = {
+      id: `pcmt-${Date.now()}`,
+      authorName: user?.name || 'Admin User',
+      content: newProjectCommentText.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    setProjectComments(prev => [...prev, newCmt]);
+    setNewProjectCommentText('');
+  };
 
   const handleAddProjectCheckpoint = (textToAdd?: string) => {
     const text = (textToAdd || newCheckpointText).trim();
@@ -855,251 +895,431 @@ export const ApplicationsView: React.FC = () => {
         </div>
       )}
 
-      {/* Add New Project Modal */}
+      {/* Add New Project Modal (Rich 2-Column Specification Form Layout) */}
       {showAddProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Add New Project (Basic Information)</h3>
-                <p className="text-xs text-gray-500">Configure key project specs, timeline dates, lead, and team setup.</p>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-gray-900 text-base tracking-tight">Configure New Project Specifications</h3>
+                <span className="px-2.5 py-0.5 border rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border-emerald-200">
+                  Project Spec Iteration
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddProjectModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddProjectSubmit} className="space-y-4 text-left">
-              <div className="grid grid-cols-2 gap-3">
+            {/* 2-Column Content Body */}
+            <form onSubmit={handleAddProjectSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0">
+              
+              {/* Left Column (Project Specifications, Team, Deliverables & Checkpoints) */}
+              <div className="lg:col-span-7 space-y-4 text-left">
+                
+                {/* Project Title */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Project Name <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Project Title *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Solar Energy Audit"
+                    placeholder="e.g. Solar Farm Carbon & Environmental Audit"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                 </div>
 
+                {/* Assign Team Members (Multi-Select Enabled) */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Project Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. EHM-PRJ-2026-04"
-                    value={projectCode}
-                    onChange={(e) => setProjectCode(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                  />
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
+                    Assign Team Members * (Multi-Select Enabled)
+                  </label>
+                  <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 space-y-1.5">
+                    {TEAM_MEMBERS_LIST.map((emp) => {
+                      const isChecked = selectedTeamMemberNames.includes(emp.name);
+                      return (
+                        <label
+                          key={emp.id}
+                          className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                            isChecked ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-white hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedTeamMemberNames(selectedTeamMemberNames.filter(n => n !== emp.name));
+                                } else {
+                                  setSelectedTeamMemberNames([...selectedTeamMemberNames, emp.name]);
+                                }
+                              }}
+                              className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span>{emp.name}</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-gray-400">{emp.code}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
+                {/* Reviewing Lead / Manager */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Company / Entity</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Project Lead / Manager *</label>
                   <select
-                    value={projectEntity}
-                    onChange={(e) => setProjectEntity(e.target.value as any)}
-                    className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                    value={projectLead}
+                    onChange={(e) => setProjectLead(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
                   >
-                    <option value="EHM">EHM</option>
-                    <option value="CAG">CLIMAGRO</option>
+                    <option value="Dr. Harshit Mishra">Dr. Harshit Mishra (VP Tech & Lead)</option>
+                    <option value="Neha Shukla">Neha Shukla (HR & Delivery Manager)</option>
+                    <option value="Dr. Utsav Mishra">Dr. Utsav Mishra (AI & Research Lead)</option>
+                    <option value="Tarul Ma'am">Tarul Ma'am (Operations Lead)</option>
+                    <option value="Jitendra Sir">Jitendra Sir (Governance & Grants)</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Category / Domain</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Environmental Compliance"
-                    value={projectCategory}
-                    onChange={(e) => setProjectCategory(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Project Lead</label>
-                <select
-                  value={projectLead}
-                  onChange={(e) => setProjectLead(e.target.value)}
-                  className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="Dr. Harshit Mishra">Dr. Harshit Mishra</option>
-                  <option value="Neha Shukla">Neha Shukla</option>
-                  <option value="Utsav Mishra">Utsav Mishra</option>
-                  <option value="Jitendra Sir">Jitendra Sir</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={projectStartDate}
-                    onChange={(e) => setProjectStartDate(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-gray-50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Completion Date</label>
-                  <input
-                    type="date"
-                    value={projectTargetDate}
-                    onChange={(e) => setProjectTargetDate(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-gray-50"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Tech Stack & Key Tools</label>
-                <input
-                  type="text"
-                  placeholder="e.g. React, Node.js, Python, GIS, PostgreSQL"
-                  value={projectTechStack}
-                  onChange={(e) => setProjectTechStack(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Project Overview & Deliverables</label>
-                <textarea
-                  rows={2}
-                  placeholder="Enter project summary, scope, and key deliverables..."
-                  value={projectDescription}
-                  onChange={(e) => setProjectDescription(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                ></textarea>
-              </div>
-
-              {/* Project Checkpoint Checklist / Milestones Section */}
-              <div className="pt-2 border-t border-gray-100 space-y-2 text-left">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <ListChecks className="w-4 h-4 text-emerald-600" />
-                    <span>Project Checkpoint Checklist ({projectChecklists.length})</span>
-                  </label>
-                  <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
-                    Milestones & Checkpoints
-                  </span>
-                </div>
-
-                {/* Quick Presets */}
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  <span className="text-[10px] font-bold text-gray-400 self-center">Quick Add:</span>
-                  {[
-                    'Requirement Spec Approval',
-                    'System Architecture Setup',
-                    'Environment & DB Setup',
-                    'QA & Testing Delivery',
-                    'Final Client Sign-off',
-                  ].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => handleAddProjectCheckpoint(preset)}
-                      className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                {/* Company Entity & Category */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Company / Entity</label>
+                    <select
+                      value={projectEntity}
+                      onChange={(e) => setProjectEntity(e.target.value as any)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
                     >
-                      + {preset}
-                    </button>
-                  ))}
+                      <option value="EHM">EHM (EHM Consultancy)</option>
+                      <option value="CAG">CLIMAGRO (CliAgro Systems)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Category / Domain</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Environmental Compliance"
+                      value={projectCategory}
+                      onChange={(e) => setProjectCategory(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
+                    />
+                  </div>
                 </div>
 
-                {/* Added Checkpoints List */}
-                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                  {projectChecklists.length === 0 ? (
-                    <div className="py-2.5 px-3 text-center text-[11px] text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                      No custom checkpoints added yet. Click quick presets above or add custom ones below!
-                    </div>
-                  ) : (
-                    projectChecklists.map((chk) => (
-                      <div
-                        key={chk.id}
-                        className="flex items-center justify-between p-2 rounded-xl border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-800"
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={chk.isCompleted}
-                            onChange={() => {
-                              setProjectChecklists(
-                                projectChecklists.map((c) =>
-                                  c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
-                                )
-                              );
-                            }}
-                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
-                          />
-                          <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
-                            {chk.title}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProjectCheckpoint(chk.id)}
-                          className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
+                {/* Timeline Dates */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Start Date</label>
+                    <input
+                      type="date"
+                      value={projectStartDate}
+                      onChange={(e) => setProjectStartDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Completion Date</label>
+                    <input
+                      type="date"
+                      value={projectTargetDate}
+                      onChange={(e) => setProjectTargetDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
+                    />
+                  </div>
                 </div>
 
-                {/* Custom Checkpoint Input */}
-                <div className="flex gap-2 pt-1">
+                {/* Tech Stack & Key Tools */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Tech Stack & Key Tools</label>
                   <input
                     type="text"
-                    placeholder="Enter milestone checkpoint (e.g. Security Audit)..."
-                    value={newCheckpointText}
-                    onChange={(e) => setNewCheckpointText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddProjectCheckpoint();
-                      }
-                    }}
-                    className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                    placeholder="e.g. React, Node.js, Python, GIS, PostgreSQL"
+                    value={projectTechStack}
+                    onChange={(e) => setProjectTechStack(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
+                </div>
+
+                {/* Deliverable Goal / Scope Overview (Rich Text Editor) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable Goal / Objective</label>
+                  <RichTextEditor
+                    value={projectDescription}
+                    onChange={setProjectDescription}
+                    placeholder="Outline expected project scope and key deliverables outcome..."
+                    rows={3}
+                  />
+                </div>
+
+                {/* Subtask Checklist / Checkpoint Section */}
+                <div className="pt-3 border-t border-gray-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <ListChecks className="w-4 h-4 text-emerald-600" />
+                      <span>Subtask Checklist</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      {projectChecklists.filter(c => c.isCompleted).length} of {projectChecklists.length} Completed
+                    </span>
+                  </div>
+
+                  {/* Quick Presets */}
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-bold text-gray-400 self-center">Quick Add:</span>
+                    {[
+                      'Requirement Spec Approval',
+                      'System Architecture Setup',
+                      'Environment & DB Setup',
+                      'QA & Testing Delivery',
+                      'Final Client Sign-off',
+                    ].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => handleAddProjectCheckpoint(preset)}
+                        className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Checkpoints items list */}
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {projectChecklists.length === 0 ? (
+                      <div className="py-3 text-center text-xs text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        No subtasks added yet. Add one below!
+                      </div>
+                    ) : (
+                      projectChecklists.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${
+                            item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={item.isCompleted}
+                              onChange={() => {
+                                setProjectChecklists(
+                                  projectChecklists.map((c) =>
+                                    c.id === item.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                  )
+                                );
+                              }}
+                              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span className={item.isCompleted ? 'line-through text-gray-400' : ''}>
+                              {item.title}
+                            </span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProjectCheckpoint(item.id)}
+                            className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-gray-200 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Add Subtask Form */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add new subtask checklist item..."
+                      value={newCheckpointText}
+                      onChange={(e) => setNewCheckpointText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddProjectCheckpoint();
+                        }
+                      }}
+                      className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAddProjectCheckpoint()}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column (Template Cloning & Activity/Comments) */}
+              <div className="lg:col-span-5 flex flex-col justify-between bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-left space-y-4">
+                <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                  
+                  {/* Template Cloning Box */}
+                  <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5 shrink-0">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isProjectClone}
+                        onChange={(e) => {
+                          setIsProjectClone(e.target.checked);
+                          if (!e.target.checked) setCloneSourceProjectId('');
+                        }}
+                        className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
+                        <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                          Check this box to duplicate an existing project or pre-fill parameters directly inside this form.
+                        </p>
+                      </div>
+                    </label>
+
+                    {isProjectClone && (
+                      <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
+                        <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                          Select Existing Project to Clone From:
+                        </label>
+                        <select
+                          value={cloneSourceProjectId}
+                          onChange={(e) => {
+                            setCloneSourceProjectId(e.target.value);
+                            const source = projects.find(p => p.id === e.target.value);
+                            if (source) {
+                              setProjectName(`${source.name} (Clone)`);
+                              setProjectCode(`${source.code}-CLONE`);
+                              setProjectEntity(source.entity);
+                              setProjectCategory(source.category);
+                              setProjectLead(source.lead);
+                              setSelectedTeamMemberNames(source.team);
+                              setProjectTechStack(source.techStack);
+                              setProjectDescription(source.description);
+                              if (source.checkpoints) {
+                                setProjectChecklists(source.checkpoints.map(c => ({ ...c, isCompleted: false })));
+                              }
+                              setProjectComments([
+                                { id: 'pcm-1', authorName: 'System Log', content: `Cloned project parameters from "${source.name}"`, createdAt: new Date().toISOString(), isSystemLog: true },
+                              ]);
+                              toast.success(`Form pre-filled with project data from "${source.name}"!`);
+                            }
+                          }}
+                          className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                        >
+                          <option value="">-- Choose Existing Project to Auto-Fill --</option>
+                          {projects.map(p => (
+                            <option key={p.id} value={p.id}>
+                              [{p.code}] {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Activity & Comments Container */}
+                  <div className="p-3.5 bg-white rounded-2xl border border-gray-200 shadow-2xs flex-1 flex flex-col min-h-0 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0">
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <MessageSquare className="w-4 h-4 text-emerald-600" />
+                        <span>Activity & Comments</span>
+                      </span>
+                      <span className="text-[10px] font-bold bg-white text-gray-600 px-2 py-0.5 rounded-full border border-gray-200 shadow-2xs">
+                        {projectComments.length}
+                      </span>
+                    </div>
+
+                    {/* Comments Feed */}
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[140px] max-h-[240px]">
+                      {projectComments.length === 0 ? (
+                        <div className="h-full flex items-center justify-center py-8 text-center text-xs text-gray-400 font-medium bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                          No comments yet. Post the first comment!
+                        </div>
+                      ) : (
+                        projectComments.map((c) => (
+                          <div
+                            key={c.id}
+                            className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs ${
+                              c.isSystemLog
+                                ? 'bg-purple-50/70 border-purple-200 text-purple-900'
+                                : 'bg-white border-gray-200 text-gray-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
+                              <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
+                                {c.authorName || 'User'}
+                              </span>
+                              <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p className="font-medium text-gray-800 leading-relaxed">{c.content}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Comment Input & Post Button */}
+                    <div className="flex gap-2 pt-2 border-t border-gray-100 shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Write a comment or activity log..."
+                        value={newProjectCommentText}
+                        onChange={(e) => setNewProjectCommentText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddProjectComment(e);
+                          }
+                        }}
+                        className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddProjectComment()}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Post</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Modal Footer Action Buttons */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200 shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleAddProjectCheckpoint()}
-                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                    onClick={() => setShowAddProjectModal(false)}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Save New Project</span>
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddProjectModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
-                >
-                  Save New Project
-                </button>
-              </div>
             </form>
+
           </div>
         </div>
       )}
