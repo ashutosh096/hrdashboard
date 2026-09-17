@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight } from 'lucide-react';
+import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
@@ -62,6 +62,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
   // View Mode: Active vs Archive Mode
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
+  const [collapsedInitiativeIds, setCollapsedInitiativeIds] = useState<Record<string, boolean>>({});
 
   // Modal Edit Mode State
   const [isEditMode, setIsEditMode] = useState(false);
@@ -367,7 +368,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Active / Archived Initiatives List */}
           {displayedInitiatives.map((item) => {
             const targetMonthStr = item.targetMonth || 'Month 1 (Weeks 1–4)';
@@ -375,6 +376,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
             const isDone = item.status === 'DONE' || item.status === 'COMPLETED';
             const isInProgress = item.status === 'ACTIVE' || item.status === 'IN_PROGRESS';
             const isSelected = selectedInitiativeIdToView === item.id || selectedInitiativeIdToView === item.initiativeCode;
+            const isCollapsed = collapsedInitiativeIds[item.id] !== false;
 
             return (
               <div
@@ -386,33 +388,60 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     : 'border-gray-200/80 hover:border-emerald-200'
                 }`}
               >
-                <div className="p-5 md:p-6 space-y-4">
-                  {/* Top Header Row: Code & Entity on Left, Status Dropdown on Right */}
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <span
-                        onClick={() => {
-                          setViewingInitiative(item);
-                          setIsEditMode(false);
-                        }}
-                        className="text-xs font-mono font-bold text-gray-500 hover:text-emerald-600 cursor-pointer transition-colors"
-                        title="Click to view initiative details"
-                      >
-                        {item.initiativeCode}
-                      </span>
-                      <span className="text-gray-300 font-bold">•</span>
-                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
-                        {(item.entityName || item.initiativeCode || '').toLowerCase().includes('cag') || (item.entityName || '').toLowerCase().includes('climagro')
-                          ? 'Climagro'
-                          : 'EHM'}
-                      </span>
-                    </div>
+                {/* Collapsible Initiative Header Bar */}
+                <div className="p-4 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between gap-3 select-none">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => setCollapsedInitiativeIds(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                      className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 rounded-lg transition-colors shrink-0 cursor-pointer"
+                      title={isCollapsed ? 'Expand Initiative Details' : 'Collapse Initiative Details'}
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight className="w-4 h-4 text-emerald-600" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-emerald-600" />
+                      )}
+                    </button>
+
+                    <span
+                      onClick={() => {
+                        setViewingInitiative(item);
+                        setIsEditMode(false);
+                      }}
+                      className="text-[11px] font-mono font-bold text-gray-500 hover:text-emerald-600 cursor-pointer transition-colors shrink-0"
+                      title="Click to view initiative details"
+                    >
+                      {item.initiativeCode}
+                    </span>
+
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide shrink-0">
+                      {(item.entityName || item.initiativeCode || '').toLowerCase().includes('cag') || (item.entityName || '').toLowerCase().includes('climagro')
+                        ? 'Climagro'
+                        : 'EHM'}
+                    </span>
+
+                    <h4 
+                      onClick={() => {
+                        setViewingInitiative(item);
+                        setIsEditMode(false);
+                      }}
+                      className="text-xs sm:text-sm font-bold text-gray-900 truncate hover:text-emerald-700 cursor-pointer transition-colors"
+                    >
+                      {item.title}
+                    </h4>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-bold text-gray-500 hidden sm:inline-block">
+                      {item.epicsCount || 0} epic{item.epicsCount !== 1 ? 's' : ''}
+                    </span>
 
                     {/* Status Dropdown */}
                     <select
                       value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
                       onChange={(e) => openStatusConfirmModal(item, e.target.value)}
-                      className={`text-xs font-bold px-3 py-1 rounded-lg border cursor-pointer outline-none transition-all ${
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border cursor-pointer outline-none transition-all ${
                         isDone
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : isInProgress
@@ -424,74 +453,94 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       <option value="ACTIVE">In progress</option>
                       <option value="DONE">Done</option>
                     </select>
-                  </div>
 
-                  {/* Title & Description Section */}
-                  <div className="space-y-1">
-                    <h4 
+                    <button
+                      type="button"
                       onClick={() => {
                         setViewingInitiative(item);
                         setIsEditMode(false);
                       }}
-                      className="text-lg font-bold text-gray-900 leading-snug hover:text-emerald-700 cursor-pointer transition-colors"
+                      className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg transition-all cursor-pointer shadow-2xs"
+                      title="View Full Initiative Details"
                     >
-                      {item.title}
-                    </h4>
+                      <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded Details Body */}
+                {!isCollapsed && (
+                  <div className="p-4 space-y-3 bg-white">
                     {item.description && (
-                      <p className="text-sm text-gray-500 font-medium line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-gray-600 font-medium leading-relaxed">
                         {item.description}
                       </p>
                     )}
-                  </div>
 
-                  {/* Bottom Row: Metadata Icons on Left, Progress & Action on Right */}
-                  <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-4">
-                    {/* Metadata Items */}
-                    <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-500">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{targetMonthStr}</span>
-                      </div>
-
-                      {item.subDepartment && (
-                        <div className="flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                          <span>{item.subDepartment}</span>
+                    {/* Metadata Items & Progress */}
+                    <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500">
+                      <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-gray-400" />
+                          <span>{targetMonthStr}</span>
                         </div>
-                      )}
 
-                      <div className="flex items-center gap-1.5" title={formatDateTime(item.createdAt)}>
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently'}</span>
+                        {item.subDepartment && (
+                          <div className="flex items-center gap-1">
+                            <Building2 className="w-3 h-3 text-gray-400" />
+                            <span>{item.subDepartment}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1" title={formatDateTime(item.createdAt)}>
+                          <Clock className="w-3 h-3 text-gray-400" />
+                          <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently'}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Progress Bar & View Button */}
-                    <div className="flex items-center gap-4">
+                      {/* Progress Bar */}
                       <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full rounded-full transition-all duration-500 bg-emerald-500"
                             style={{ width: `${Math.min(100, Math.max(5, Math.round((item.epicsCount / epicsDivision) * 100)))}%` }}
                           />
                         </div>
-                        <span className="text-xs font-bold text-gray-700 whitespace-nowrap">
+                        <span className="text-[10px] font-bold text-gray-600 whitespace-nowrap">
                           {item.epicsCount} of {epicsDivision} epics
                         </span>
                       </div>
-
-                      <button
-                        onClick={() => {
-                          setViewingInitiative(item);
-                          setIsEditMode(false);
-                        }}
-                        className="px-4 py-1.5 bg-gray-900 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-all shadow-xs"
-                      >
-                        View
-                      </button>
                     </div>
+
+                    {/* Epics Sub-List if available */}
+                    {Array.isArray(item.epics) && item.epics.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block">
+                          Associated Epics ({item.epics.length})
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {item.epics.map((ep) => (
+                            <div
+                              key={ep.id}
+                              onClick={() => onSelectEpic(ep.id, item.id)}
+                              className="p-2 bg-gray-50 hover:bg-emerald-50/60 border border-gray-200/70 hover:border-emerald-300 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all"
+                            >
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-mono font-bold text-emerald-700 block">
+                                  {ep.epicCode}
+                                </span>
+                                <span className="text-xs font-bold text-gray-800 truncate block">
+                                  {ep.title}
+                                </span>
+                              </div>
+                              <ArrowRight className="w-3.5 h-3.5 text-gray-400 hover:text-emerald-600 shrink-0" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
               </div>
             );
           })}

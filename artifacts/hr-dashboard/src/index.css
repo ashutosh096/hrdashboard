@@ -9,8 +9,12 @@
     --card-bg: #FFFFFF;
   }
 
+  html, body {
+    min-height: 100%;
+  }
+
   html {
-    font-size: 106.25%; /* ~110% font scaling for enhanced dashboard readability */
+    font-size: 92.5%; /* Compact dashboard font scaling matching 90% display fit */
   }
 
   body {
@@ -18,7 +22,8 @@
     color: #111827;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
+    min-height: 109vh;
+    zoom: 0.92;
   }
 }
 

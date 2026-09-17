@@ -37,7 +37,7 @@ export const LoginView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 select-none relative overflow-hidden font-sans">
+    <div className="min-h-[110vh] w-full bg-slate-950 flex items-center justify-center p-4 select-none relative overflow-hidden font-sans">
       {/* Background Wallpaper Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 mix-blend-luminosity scale-105 transition-transform duration-1000"

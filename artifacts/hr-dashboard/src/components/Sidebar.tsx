@@ -71,25 +71,20 @@ export const Sidebar: React.FC = () => {
       {/* Entity / Team Selector Dropdown */}
       <div className="px-4 py-3 border-b border-gray-100">
         <div className="relative">
-          <button
-            onClick={() => {
-              const next = selectedEntity === 'ALL' ? 'EHM' : selectedEntity === 'EHM' ? 'CAG' : 'ALL';
-              setSelectedEntity(next);
-            }}
-            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium transition-colors"
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          </div>
+          <select
+            value={selectedEntity}
+            onChange={(e) => setSelectedEntity(e.target.value as 'ALL' | 'EHM' | 'CAG')}
+            className="w-full pl-7 pr-8 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 outline-none cursor-pointer appearance-none transition-colors shadow-2xs"
+            title="Filter Workspace by Entity"
           >
-            <div className="flex items-center gap-2 truncate">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span className="truncate">
-                {selectedEntity === 'ALL'
-                  ? 'EHM & CLIMAGRO'
-                  : selectedEntity === 'EHM'
-                  ? 'EHM'
-                  : 'CLIMAGRO'}
-              </span>
-            </div>
-            <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-          </button>
+            <option value="ALL">● EHM & CLIMAGRO (ALL)</option>
+            <option value="EHM">● EHM</option>
+            <option value="CAG">● CLIMAGRO</option>
+          </select>
+          <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       </div>
 
