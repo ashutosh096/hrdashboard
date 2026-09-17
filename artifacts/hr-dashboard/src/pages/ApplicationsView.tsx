@@ -16,6 +16,8 @@ import {
   Archive,
   Clock,
   CheckSquare,
+  ListChecks,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,6 +37,12 @@ export interface ApplicationItem {
   createdAt: string;
 }
 
+export interface ProjectCheckpoint {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+}
+
 export interface ProjectItem {
   id: string;
   code: string;
@@ -52,6 +60,7 @@ export interface ProjectItem {
   techStack: string;
   milestonesCount: number;
   description: string;
+  checkpoints?: ProjectCheckpoint[];
 }
 
 export const ApplicationsView: React.FC = () => {
@@ -89,7 +98,7 @@ export const ApplicationsView: React.FC = () => {
   // Status Update Modal State for Projects
   const [updateProjectStatus, setUpdateProjectStatus] = useState<'Planning' | 'Active' | 'In Review' | 'Completed'>('Active');
 
-  // Add Project Form State (Basic Information)
+  // Add Project Form State (Basic Information & Checkpoints)
   const [projectName, setProjectName] = useState('');
   const [projectCode, setProjectCode] = useState('');
   const [projectEntity, setProjectEntity] = useState<'EHM' | 'CAG'>('EHM');
@@ -102,6 +111,42 @@ export const ApplicationsView: React.FC = () => {
   const [projectPriority, setProjectPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('High');
   const [projectTechStack, setProjectTechStack] = useState('React, Node.js, Python, GIS');
   const [projectDescription, setProjectDescription] = useState('');
+
+  // Checkpoints Checklist Form State
+  const [projectChecklists, setProjectChecklists] = useState<ProjectCheckpoint[]>([]);
+  const [newCheckpointText, setNewCheckpointText] = useState('');
+
+  const handleAddProjectCheckpoint = (textToAdd?: string) => {
+    const text = (textToAdd || newCheckpointText).trim();
+    if (!text) return;
+    const newItem: ProjectCheckpoint = {
+      id: `chk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      title: text,
+      isCompleted: false,
+    };
+    setProjectChecklists(prev => [...prev, newItem]);
+    if (!textToAdd) setNewCheckpointText('');
+  };
+
+  const handleRemoveProjectCheckpoint = (id: string) => {
+    setProjectChecklists(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleToggleProjectCardCheckpoint = (projectId: string, checkpointId: string) => {
+    setProjects(prev =>
+      prev.map(p => {
+        if (p.id !== projectId) return p;
+        const updated = (p.checkpoints || []).map(c =>
+          c.id === checkpointId ? { ...c, isCompleted: !c.isCompleted } : c
+        );
+        return {
+          ...p,
+          checkpoints: updated,
+          milestonesCount: updated.length,
+        };
+      })
+    );
+  };
 
   // Applications List Data
   const [applications, setApplications] = useState<ApplicationItem[]>([
@@ -161,8 +206,14 @@ export const ApplicationsView: React.FC = () => {
       status: 'Active',
       priority: 'High',
       techStack: 'Python, GIS Satellites, Carbon Metrics DB',
-      milestonesCount: 5,
+      milestonesCount: 4,
       description: 'Comprehensive carbon footprint audit and sustainability reporting for Gujarat solar installations.',
+      checkpoints: [
+        { id: 'c1', title: 'Carbon Audit Framework Approval', isCompleted: true },
+        { id: 'c2', title: 'Gujarat Field Telemetry & Solar Data Collection', isCompleted: true },
+        { id: 'c3', title: 'Satellite GIS Metrics Calibration', isCompleted: false },
+        { id: 'c4', title: 'Final Environmental Compliance Delivery', isCompleted: false },
+      ],
     },
     {
       id: 'prj-2',
@@ -179,8 +230,14 @@ export const ApplicationsView: React.FC = () => {
       status: 'Active',
       priority: 'Urgent',
       techStack: 'Rust, MQTT, React, TimeSeries DB',
-      milestonesCount: 8,
+      milestonesCount: 4,
       description: 'Real-time soil sensor telemetry ingestion engine for precision agricultural climate dashboards.',
+      checkpoints: [
+        { id: 'c5', title: 'Hardware Sensor Procurement & Calibration', isCompleted: true },
+        { id: 'c6', title: 'MQTT Telemetry Data Stream Ingestion', isCompleted: true },
+        { id: 'c7', title: 'Micro-Climate Dashboard Analytics UI', isCompleted: true },
+        { id: 'c8', title: 'Field Stress Testing & Regional Rollout', isCompleted: false },
+      ],
     },
     {
       id: 'prj-3',
@@ -197,8 +254,13 @@ export const ApplicationsView: React.FC = () => {
       status: 'Planning',
       priority: 'Medium',
       techStack: 'PyTorch, FastApi, PostgreSQL, Docker',
-      milestonesCount: 4,
+      milestonesCount: 3,
       description: 'Predictive machine learning algorithm estimating crop yield based on micro-humidity data.',
+      checkpoints: [
+        { id: 'c9', title: 'Dataset Curation & Preprocessing', isCompleted: true },
+        { id: 'c10', title: 'PyTorch Predictive Model Training', isCompleted: false },
+        { id: 'c11', title: 'FastAPI Microservice Docker Containerization', isCompleted: false },
+      ],
     },
   ]);
 
@@ -290,6 +352,16 @@ export const ApplicationsView: React.FC = () => {
   const handleAddProjectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
+
+    const defaultCheckpoints: ProjectCheckpoint[] = [
+      { id: `c-${Date.now()}-1`, title: 'Requirement Spec Approval', isCompleted: false },
+      { id: `c-${Date.now()}-2`, title: 'Environment & Tech Stack Setup', isCompleted: false },
+      { id: `c-${Date.now()}-3`, title: 'Core Deliverables Implementation', isCompleted: false },
+      { id: `c-${Date.now()}-4`, title: 'QA & Final Project Delivery', isCompleted: false },
+    ];
+
+    const finalCheckpoints = projectChecklists.length > 0 ? projectChecklists : defaultCheckpoints;
+
     const newProject: ProjectItem = {
       id: `prj-${Date.now()}`,
       code: generatedCode,
@@ -305,16 +377,19 @@ export const ApplicationsView: React.FC = () => {
       status: 'Planning',
       priority: projectPriority,
       techStack: projectTechStack,
-      milestonesCount: 4,
+      milestonesCount: finalCheckpoints.length,
       description: projectDescription,
+      checkpoints: finalCheckpoints,
     };
 
     setProjects([newProject, ...projects]);
-    toast.success(`New project "${projectName}" (${generatedCode}) created!`);
+    toast.success(`New project "${projectName}" (${generatedCode}) created with ${finalCheckpoints.length} checkpoints!`);
     setShowAddProjectModal(false);
     setProjectName('');
     setProjectCode('');
     setProjectDescription('');
+    setProjectChecklists([]);
+    setNewCheckpointText('');
   };
 
   const handleSaveAppStatusUpdate = (e: React.FormEvent) => {
@@ -567,6 +642,64 @@ export const ApplicationsView: React.FC = () => {
                         <span className="font-semibold">{prj.team.join(', ')}</span>
                       </div>
                     </div>
+
+                    {/* Checkpoints & Milestones Checklist Section */}
+                    {prj.checkpoints && prj.checkpoints.length > 0 && (() => {
+                      const completedCount = prj.checkpoints.filter(c => c.isCompleted).length;
+                      const totalCount = prj.checkpoints.length;
+                      const percent = Math.round((completedCount / totalCount) * 100);
+
+                      return (
+                        <div className="bg-emerald-50/40 p-3 rounded-xl border border-emerald-100/80 space-y-2 text-xs">
+                          <div className="flex items-center justify-between text-[11px] font-bold">
+                            <span className="text-gray-700 flex items-center gap-1.5">
+                              <ListChecks className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Project Checkpoint Checklist</span>
+                            </span>
+                            <span className="text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-full font-extrabold text-[10px]">
+                              {completedCount} of {totalCount} Done ({percent}%)
+                            </span>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+
+                          {/* Interactive Checkpoints */}
+                          <div className="space-y-1 pt-1 max-h-36 overflow-y-auto pr-0.5">
+                            {prj.checkpoints.map(chk => (
+                              <label
+                                key={chk.id}
+                                className={`flex items-center justify-between p-1.5 rounded-lg border text-[11px] font-semibold transition-colors cursor-pointer ${
+                                  chk.isCompleted
+                                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={chk.isCompleted}
+                                    onChange={() => handleToggleProjectCardCheckpoint(prj.id, chk.id)}
+                                    className="w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                                  />
+                                  <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
+                                    {chk.title}
+                                  </span>
+                                </div>
+                                {chk.isCompleted && (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                )}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
@@ -725,7 +858,7 @@ export const ApplicationsView: React.FC = () => {
       {/* Add New Project Modal */}
       {showAddProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Add New Project (Basic Information)</h3>
@@ -843,12 +976,112 @@ export const ApplicationsView: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Project Overview & Deliverables</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="Enter project summary, scope, and key deliverables..."
                   value={projectDescription}
                   onChange={(e) => setProjectDescription(e.target.value)}
                   className="w-full text-xs border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 ></textarea>
+              </div>
+
+              {/* Project Checkpoint Checklist / Milestones Section */}
+              <div className="pt-2 border-t border-gray-100 space-y-2 text-left">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <ListChecks className="w-4 h-4 text-emerald-600" />
+                    <span>Project Checkpoint Checklist ({projectChecklists.length})</span>
+                  </label>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+                    Milestones & Checkpoints
+                  </span>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  <span className="text-[10px] font-bold text-gray-400 self-center">Quick Add:</span>
+                  {[
+                    'Requirement Spec Approval',
+                    'System Architecture Setup',
+                    'Environment & DB Setup',
+                    'QA & Testing Delivery',
+                    'Final Client Sign-off',
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleAddProjectCheckpoint(preset)}
+                      className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Added Checkpoints List */}
+                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                  {projectChecklists.length === 0 ? (
+                    <div className="py-2.5 px-3 text-center text-[11px] text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                      No custom checkpoints added yet. Click quick presets above or add custom ones below!
+                    </div>
+                  ) : (
+                    projectChecklists.map((chk) => (
+                      <div
+                        key={chk.id}
+                        className="flex items-center justify-between p-2 rounded-xl border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-800"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={chk.isCompleted}
+                            onChange={() => {
+                              setProjectChecklists(
+                                projectChecklists.map((c) =>
+                                  c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                )
+                              );
+                            }}
+                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
+                            {chk.title}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProjectCheckpoint(chk.id)}
+                          className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Custom Checkpoint Input */}
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="Enter milestone checkpoint (e.g. Security Audit)..."
+                    value={newCheckpointText}
+                    onChange={(e) => setNewCheckpointText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddProjectCheckpoint();
+                      }
+                    }}
+                    className="flex-1 text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddProjectCheckpoint()}
+                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
