@@ -150,30 +150,45 @@ export const DashboardView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none">
-      {/* Top Header & Mode Switcher Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard & Performance Operations</h2>
-          <p className="text-xs text-gray-500 font-medium mt-0.5">
-            Unified workspace for company attendance, meeting schedules, sprint deliverables, task execution, and team performance analytics (Live Database).
-          </p>
-        </div>
+      {/* SINGLE UNIFIED MANAGER WORKSPACE HEADER BANNER */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-6 text-white shadow-md space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          {/* Left: Manager User Profile & Welcome */}
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 bg-white/20 backdrop-blur-xs rounded-full text-[10px] font-extrabold uppercase tracking-wider text-white">
+                MANAGER WORKSPACE • {user?.email || 'manager@ehmclimagro.os'}
+              </span>
+              <span className="text-xs font-mono font-bold text-emerald-200 bg-emerald-950/40 px-2.5 py-0.5 rounded border border-emerald-400/30">
+                ROLE: {user?.role === 'ADMIN' ? 'ADMIN' : 'MANAGER'}
+              </span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              Welcome back, {user?.name || user?.email?.split('@')[0] || 'Manager'}! 👋
+            </h2>
+            <p className="text-xs text-emerald-100 font-medium leading-relaxed">
+              Unified workspace for company attendance, meeting schedules, sprint deliverables, task execution, and team performance analytics (Live Database).
+            </p>
+          </div>
 
-        <div className="flex items-center gap-3">
-          {/* Active Mode Switcher Pill */}
-          <div className="flex items-center gap-1 bg-emerald-50 p-1 rounded-xl border border-emerald-200/80 shadow-2xs">
-            <button
-              onClick={() => setRole('ADMIN')}
-              className="px-3 py-1.5 text-xs font-extrabold rounded-lg bg-emerald-600 text-white shadow-2xs cursor-pointer"
-            >
-              ⚙️ Admin / Manager View
-            </button>
-            <button
-              onClick={() => setRole('EMPLOYEE')}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-600 hover:text-gray-900 transition-all cursor-pointer"
-            >
-              👤 Employee View
-            </button>
+          {/* Right: Workspace Status Box & Manager Mode Badge */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            <div className="bg-emerald-950/40 border border-emerald-400/30 backdrop-blur-sm rounded-xl p-3.5 space-y-0.5 min-w-[170px]">
+              <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-300 block">
+                WORKSPACE STATUS
+              </span>
+              <span className="text-xs font-black text-white block">Manager View Active</span>
+              <span className="text-[11px] font-semibold text-emerald-200 block">
+                {activeEmployeesCount} Present • {totalTasks} Tasks
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-2xs">
+              <div className="px-3.5 py-2 text-xs font-extrabold rounded-lg bg-emerald-500 text-white shadow-xs flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-200 animate-pulse"></span>
+                <span>⚙️ Manager Mode</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
