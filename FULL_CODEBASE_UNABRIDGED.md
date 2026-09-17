@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-17T15:48:14.824Z  
+> **Generated Date**: 2026-09-17T16:02:38.624Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -3842,14 +3842,15 @@ async function attemptSmtpSend(toEmail: string, htmlContent: string) {
         port: cfg.port,
         secure: cfg.secure,
         requireTLS: (cfg as any).requireTLS,
+        family: 4,
         auth: {
           user: smtpUser,
           pass: smtpPass,
         },
-        connectionTimeout: 4000, // 4 seconds max to connect
-        greetingTimeout: 4000,   // 4 seconds max for greeting
-        socketTimeout: 6000,     // 6 seconds max for socket
-      });
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
+      } as any);
 
       const info = await transporter.sendMail({
         from: `EHM-Climagro OS <${smtpUser}>`,
