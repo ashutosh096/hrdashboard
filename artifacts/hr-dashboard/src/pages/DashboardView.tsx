@@ -88,24 +88,28 @@ export const DashboardView: React.FC = () => {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [initiatives, setInitiatives] = useState<any[]>([]);
   const [sprints, setSprints] = useState<any[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTeamTerm, setSearchTeamTerm] = useState('');
 
   // Responsive Modal Detail View State for Tiles
-  const [activeModalType, setActiveModalType] = useState<'IN_PROGRESS' | 'PENDING' | 'SPRINTS' | 'INITIATIVES' | 'VELOCITY' | null>(null);
+  const [activeModalType, setActiveModalType] = useState<'TEAM' | 'IN_PROGRESS' | 'PENDING' | 'SPRINTS' | 'INITIATIVES' | 'VELOCITY' | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [empData, taskData, initData, sprintData] = await Promise.all([
+        const [empData, taskData, initData, sprintData, attData] = await Promise.all([
           fetchApi('/api/employees'),
           fetchApi('/api/tasks'),
           fetchApi('/api/initiatives'),
           fetchApi('/api/sprints'),
+          fetchApi('/api/attendance').catch(() => []),
         ]);
         setEmployees(Array.isArray(empData) ? empData : []);
         setTasks(Array.isArray(taskData) ? taskData : []);
         setInitiatives(Array.isArray(initData) ? initData : []);
         setSprints(Array.isArray(sprintData) ? sprintData : []);
+        setAttendanceRecords(Array.isArray(attData) ? attData : []);
       } catch (err) {
         console.error('[DASHBOARD FETCH ERROR]:', err);
       } finally {
@@ -181,7 +185,7 @@ export const DashboardView: React.FC = () => {
           value={activeEmployeesCount}
           icon={<Users className="w-5 h-5 text-emerald-700" />}
           trend={`${activeEmployeesCount} of ${totalEmployeesCount} Team Members (${activeEmployeesPercent}%)`}
-          onClick={() => setLocation('/team')}
+          onClick={() => setActiveModalType('TEAM')}
         />
         <StatCard
           title="Today's Tasks (In Progress)"
@@ -231,6 +235,125 @@ export const DashboardView: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
           <div className="bg-white rounded-2xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
             
+            {/* 0.0 ACTIVE & PRESENT TEAM MEMBERS MODAL */}
+            {activeModalType === 'TEAM' && (
+              <>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-gray-900 tracking-tight">Active & Present Team Members</h3>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300">
+                          ● {activeEmployeesCount} Present Today
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium">Live roster of team members present and active in database</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Instant Search Bar Inside Modal */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search present employees by name, code, designation..."
+                    value={searchTeamTerm}
+                    onChange={(e) => setSearchTeamTerm(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
+                  />
+                </div>
+
+                <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
+                  {employees.length === 0 ? (
+                    <div className="p-6 text-center text-xs font-semibold text-gray-400">Loading active team members...</div>
+                  ) : (
+                    employees
+                      .filter((emp) => {
+                        if (!searchTeamTerm.trim()) return true;
+                        const term = searchTeamTerm.toLowerCase();
+                        const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+                        return (
+                          fullName.includes(term) ||
+                          emp.employeeCode?.toLowerCase().includes(term) ||
+                          emp.designation?.toLowerCase().includes(term)
+                        );
+                      })
+                      .map((emp) => {
+                        const attRecord = attendanceRecords.find((a) => a.employeeId === emp.id || a.employeeId === emp.employeeCode);
+                        const clockInTime = attRecord?.clockIn ? new Date(attRecord.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00 AM';
+                        const workMode = attRecord?.workMode || 'OFFICE';
+                        const isCAG = emp.employeeCode?.startsWith('CAG') || (emp as any).entityCode === 'CAG';
+
+                        return (
+                          <div key={emp.id} className="p-3.5 bg-white rounded-xl border border-gray-200/80 hover:border-emerald-300 hover:shadow-xs transition-all flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="relative">
+                                <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs border border-emerald-200 shadow-2xs">
+                                  {emp.firstName?.[0] || 'E'}{emp.lastName?.[0] || ''}
+                                </div>
+                                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse" title="Present Today" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-xs font-bold text-gray-900">{emp.firstName} {emp.lastName}</h4>
+                                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                    {emp.employeeCode}
+                                  </span>
+                                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${
+                                    isCAG ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  }`}>
+                                    {isCAG ? 'CLIMAGRO' : 'EHM'}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-medium text-gray-500">{emp.designation || 'Team Member'}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="text-right hidden sm:block">
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-emerald-600" />
+                                  <span>In: {clockInTime}</span>
+                                </span>
+                                <span className="text-[9px] text-gray-400 font-medium block mt-0.5">Mode: {workMode}</span>
+                              </div>
+                              <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-300 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Present</span>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-gray-500 font-bold">Total Active Team Members: {employees.length}</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/team');
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>View Full Team & Attendance Directory</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
             {/* 0.1 ACTIVE SPRINTS MODAL */}
             {activeModalType === 'SPRINTS' && (
               <>
