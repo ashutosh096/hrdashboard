@@ -14,7 +14,6 @@ import { LoginView } from './pages/LoginView';
 import { DashboardView } from './pages/DashboardView';
 import { TasksView } from './pages/TasksView';
 import { SprintsView } from './pages/SprintsView';
-import { TeamTasksView } from './pages/TeamTasksView';
 import { MeetingsView } from './pages/MeetingsView';
 import { AttendanceView } from './pages/AttendanceView';
 import { OfficeTodayView } from './pages/OfficeTodayView';
@@ -97,7 +96,6 @@ export const MainContent: React.FC = () => {
         <Route path="/announcements" component={AnnouncementsView} />
         <Route path="/tasks" component={TasksView} />
         <Route path="/sprints" component={SprintsView} />
-        <Route path="/team-tasks" component={TeamTasksView} />
         <Route path="/applications" component={ApplicationsView} />
         <Route path="/projects" component={ApplicationsView} />
         <Route path="/performance" component={DashboardView} />

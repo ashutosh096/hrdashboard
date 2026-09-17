@@ -45,25 +45,57 @@ export const MeetingsView: React.FC = () => {
   const livePresenceList = employees.map((emp, idx) => {
     const entity = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
     const entityName = entity === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy';
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+
     const empMeetings = meetings.filter((m) => {
+      const isCalendarSynced =
+        m.source === 'GOOGLE_CALENDAR' ||
+        m.source === 'GOOGLE_CALENDAR_IMPORTED' ||
+        Boolean(m.googleEventId) ||
+        Boolean(m.googleMeetUrl) ||
+        Boolean(m.isGoogleCalendar);
+      if (!isCalendarSynced) return false;
+
+      const start = m.startTime ? new Date(m.startTime) : new Date();
+      const end = m.endTime ? new Date(m.endTime) : start;
+      if (end < sevenDaysAgo && start < sevenDaysAgo) return false;
+
       const isOrganizer = m.organizerId === emp.id;
       const isInvitee = Array.isArray(m.invitees) && m.invitees.includes(emp.id);
       return isOrganizer || isInvitee;
     });
 
     const now = new Date();
-    const todayMeetings = empMeetings.map((m) => {
-      const start = m.startTime ? new Date(m.startTime) : new Date();
-      const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
-      const active = now >= start && now <= end;
-      return {
-        title: m.title,
-        time: `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        active,
-      };
+    const todayStr = now.toISOString().split('T')[0];
+
+    // Filter empMeetings strictly for TODAY'S date
+    const todaysEmpMeetings = empMeetings.filter((m) => {
+      if (!m.startTime) return false;
+      const mDate = new Date(m.startTime);
+      return !isNaN(mDate.getTime()) && mDate.toISOString().split('T')[0] === todayStr;
     });
 
-    const isMeeting = empMeetings.some((m) => {
+    // Deduplicate repetitive meeting titles occurring on the same day
+    const seenTitles = new Set<string>();
+    const todayMeetings = todaysEmpMeetings
+      .filter((m) => {
+        const key = `${(m.title || '').toLowerCase().trim()}_${new Date(m.startTime).getTime()}`;
+        if (seenTitles.has(key)) return false;
+        seenTitles.add(key);
+        return true;
+      })
+      .map((m) => {
+        const start = m.startTime ? new Date(m.startTime) : new Date();
+        const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
+        const active = now >= start && now <= end;
+        return {
+          title: m.title,
+          time: `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          active,
+        };
+      });
+
+    const isMeeting = todaysEmpMeetings.some((m) => {
       const start = m.startTime ? new Date(m.startTime) : new Date();
       const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
       return now >= start && now <= end;
@@ -171,24 +203,42 @@ export const MeetingsView: React.FC = () => {
     }
   };
 
-  // Date & Time Filtering Logic (User Specified Rules)
+  // Date & Time Filtering Logic (User Specified Rules: Only Calendar-synced meetings, Keep max 7 days back)
   const getFilteredMeetings = () => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
 
+    // Keep only Google Calendar synced meetings and exclude meetings older than 7 days back
+    const validMeetings = meetings.filter(m => {
+      const isCalendarSynced =
+        m.source === 'GOOGLE_CALENDAR' ||
+        m.source === 'GOOGLE_CALENDAR_IMPORTED' ||
+        Boolean(m.googleEventId) ||
+        Boolean(m.googleMeetUrl) ||
+        Boolean(m.isGoogleCalendar);
+
+      if (!isCalendarSynced) return false;
+
+      const start = m.startTime ? new Date(m.startTime) : new Date();
+      const end = m.endTime ? new Date(m.endTime) : start;
+      if (end < sevenDaysAgo && start < sevenDaysAgo) return false;
+
+      return true;
+    });
+
     if (dateFilter === 'TODAY') {
-      return meetings.filter(m => m.startTime && new Date(m.startTime).toISOString().split('T')[0] === todayStr);
+      return validMeetings.filter(m => m.startTime && new Date(m.startTime).toISOString().split('T')[0] === todayStr);
     }
 
     if (dateFilter === 'TOMORROW') {
-      return meetings.filter(m => m.startTime && new Date(m.startTime).toISOString().split('T')[0] === tomorrowStr);
+      return validMeetings.filter(m => m.startTime && new Date(m.startTime).toISOString().split('T')[0] === tomorrowStr);
     }
 
     if (dateFilter === 'PAST') {
       // Last 7 days that ended
-      return meetings.filter(m => {
+      return validMeetings.filter(m => {
         const end = m.endTime ? new Date(m.endTime) : new Date(m.startTime);
         return end < now && end >= sevenDaysAgo;
       });
@@ -197,22 +247,22 @@ export const MeetingsView: React.FC = () => {
     if (dateFilter === 'RECURRING') {
       // Show all occurrences of repeating/series meetings (multiple meetings sharing same title)
       const titleCounts: Record<string, number> = {};
-      meetings.forEach(m => {
+      validMeetings.forEach(m => {
         const key = m.title.toLowerCase().trim();
         titleCounts[key] = (titleCounts[key] || 0) + 1;
       });
-      return meetings.filter(m => titleCounts[m.title.toLowerCase().trim()] > 1);
+      return validMeetings.filter(m => titleCounts[m.title.toLowerCase().trim()] > 1);
     }
 
-    // Default 'ALL': Show all distinct meetings, but deduplicate repeating series (keep 1 instance per title so repeating cards don't clutter)
+    // Default 'ALL': Show all distinct meetings, but deduplicate repeating series
     const seenTitles = new Set<string>();
     const titleCounts: Record<string, number> = {};
-    meetings.forEach(m => {
+    validMeetings.forEach(m => {
       const key = m.title.toLowerCase().trim();
       titleCounts[key] = (titleCounts[key] || 0) + 1;
     });
 
-    return meetings.filter(m => {
+    return validMeetings.filter(m => {
       const key = m.title.toLowerCase().trim();
       const isRepeatingSeries = titleCounts[key] > 1;
       if (isRepeatingSeries) {
@@ -488,10 +538,10 @@ export const MeetingsView: React.FC = () => {
                       <span>({(item.todayMeetings || []).length})</span>
                     </div>
 
-                    <div className="space-y-1.5">
-                      {(item.todayMeetings || []).map((m: any) => (
+                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 custom-scrollbar">
+                      {(item.todayMeetings || []).map((m: any, mIdx: number) => (
                         <div
-                          key={m.title}
+                          key={m.title + mIdx}
                           className={`p-2.5 rounded-xl border text-xs space-y-1 transition-all ${
                             m.active
                               ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-400/20'

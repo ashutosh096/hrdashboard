@@ -155,10 +155,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
 
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {notifications.length === 0 ? (
-                    <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>
-                  ) : (
-                    notifications.map(n => (
+                  {(() => {
+                    const displayNotifications = isEmployee
+                      ? notifications.filter((n: any) => {
+                          const userName = (user?.name || 'Ashutosh Mishra').toLowerCase();
+                          const msgLower = (n.message || '').toLowerCase();
+                          const titleLower = (n.title || '').toLowerCase();
+                          return n.tagged || msgLower.includes(userName) || titleLower.includes(userName) || msgLower.includes('ashutosh') || msgLower.includes('alex') || msgLower.includes('priyanka');
+                        })
+                      : notifications;
+
+                    if (displayNotifications.length === 0) {
+                      return <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>;
+                    }
+
+                    return displayNotifications.map(n => (
                       <div
                         key={n.id}
                         className={`p-2.5 rounded-xl border text-xs space-y-1 transition-colors ${
@@ -173,8 +184,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{n.message}</p>
                       </div>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
               </div>
             )}

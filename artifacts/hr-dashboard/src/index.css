@@ -10,7 +10,7 @@
   }
 
   html {
-    font-size: 82.5%; /* Scaled so 100% browser zoom matches 110% display scale */
+    font-size: 106.25%; /* ~110% font scaling for enhanced dashboard readability */
   }
 
   body {

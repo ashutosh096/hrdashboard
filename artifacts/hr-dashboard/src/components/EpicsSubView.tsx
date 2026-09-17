@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight } from 'lucide-react';
+import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
@@ -67,6 +67,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   // Scalable Filter & Search Toolbar State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PLANNED' | 'IN_PROGRESS' | 'DONE'>('ALL');
+  const [collapsedInitiativeIds, setCollapsedInitiativeIds] = useState<Record<string, boolean>>({});
 
   // New Epic Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -426,23 +427,41 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
             );
             if (epicsUnderInit.length === 0) return null;
 
+            const isCollapsed = collapsedInitiativeIds[init.id] !== false;
+
             return (
               <div key={init.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xs">
                 {/* Initiative Header Bar */}
                 <div 
-                  onClick={() => setViewingInitiativeInEpics(init)}
-                  className="bg-gray-50/90 border-b border-gray-200 px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-100/80 transition-colors"
+                  className="bg-gray-50/90 border-b border-gray-200 px-5 py-3 flex items-center justify-between transition-colors select-none"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div 
+                    onClick={() => setViewingInitiativeInEpics(init)}
+                    className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:text-emerald-700"
+                  >
                     <Target className="w-4 h-4 text-gray-500 shrink-0" />
                     <h4 className="font-bold text-gray-900 text-sm truncate">{init.title}</h4>
                     <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
                       {init.initiativeCode} • {epicsUnderInit.length} epic{epicsUnderInit.length > 1 ? 's' : ''}
                     </span>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCollapsedInitiativeIds(prev => ({ ...prev, [init.id]: !isCollapsed }));
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-gray-200/80 text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
+                    title={isCollapsed ? "Expand Epics Section" : "Collapse Epics Section"}
+                  >
+                    <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
+                    {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
                 </div>
 
                 {/* Child Epics List */}
+                {!isCollapsed && (
                 <div className="divide-y divide-gray-100">
                   {epicsUnderInit.map((epic) => {
                     const rawStatus = epic.status || 'PLANNED';
@@ -498,6 +517,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}

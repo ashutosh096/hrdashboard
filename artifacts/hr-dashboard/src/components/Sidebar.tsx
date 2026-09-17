@@ -32,7 +32,6 @@ export const Sidebar: React.FC = () => {
         { label: 'Product Backlog', path: '/tasks', icon: CheckSquare },
         { label: 'Sprints', path: '/sprints', icon: Zap },
         { label: 'Projects', path: '/projects', icon: FolderKanban },
-        { label: 'Team Tasks', path: '/team-tasks', icon: Users },
         { label: 'Meetings', path: '/meetings', icon: Calendar },
       ],
     },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock } from 'lucide-react';
+import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
@@ -42,6 +42,7 @@ interface TaskUpdateModalProps {
   task: TaskItem | null;
   onClose: () => void;
   onSave?: (updatedTask: TaskItem) => void;
+  onClone?: (sourceTask: TaskItem, importChecklistAndLinks: boolean) => void;
   isReadOnly?: boolean;
 }
 
@@ -50,12 +51,16 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   task,
   onClose,
   onSave,
+  onClone,
   isReadOnly,
 }) => {
   const { user } = useAuth();
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
   
   const readOnlyMode = isReadOnly !== undefined ? isReadOnly : isManagerOrAdmin;
+
+  const [showCloneConfirmModal, setShowCloneConfirmModal] = useState(false);
+  const [importChecklistAndLinks, setImportChecklistAndLinks] = useState(true);
 
   const [entity, setEntity] = useState('climagroanalytics');
   const [parentTaskId, setParentTaskId] = useState('');
@@ -194,13 +199,77 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
               {readOnlyMode ? 'Read-Only View 👁️' : 'Auto-Generated ID'}
             </span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCloneConfirmModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Duplicate / Clone Task"
+            >
+              <Copy className="w-3.5 h-3.5 text-purple-600" />
+              <span>Clone Task</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Clone Confirmation Modal Popup */}
+        {showCloneConfirmModal && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+            <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-200 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 text-purple-700">
+                <div className="p-2 bg-purple-100 rounded-xl">
+                  <Copy className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-gray-900">Duplicate Task Confirmation</h4>
+                  <p className="text-xs text-gray-500 font-medium">Create a duplicate copy of this task</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 space-y-2">
+                <div>Are you sure you want to clone task <span className="font-mono text-purple-700 font-bold">[{parentTaskId}]</span> "{taskName}"?</div>
+                
+                <label className="flex items-center gap-2.5 pt-2 border-t border-gray-200 cursor-pointer font-bold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={importChecklistAndLinks}
+                    onChange={(e) => setImportChecklistAndLinks(e.target.checked)}
+                    className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                  />
+                  <span>Import checklist items and deliverable links also</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowCloneConfirmModal(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCloneConfirmModal(false);
+                    if (onClone) {
+                      onClone(task, importChecklistAndLinks);
+                    }
+                  }}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>Confirm & Clone</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 2-Column Content Body */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0">

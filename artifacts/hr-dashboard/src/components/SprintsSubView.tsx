@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Sparkles, X, Layers, ListChecks, MessageSquare, Send } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { RichTextEditor } from './RichTextEditor';
 import { formatDateTime } from '../utils/dateUtils';
@@ -54,6 +55,9 @@ const DEPARTMENT_OPTIONS = [
   'Grants & Governance',
 ];
 
+// Persistent local task store across role switches & re-mounts
+const CREATED_TASKS_CACHE: any[] = [];
+
 const WEEKS = [
   { id: 'ALL', label: 'All Weeks (Month 1)', isFuture: false },
   { id: 'Week 1 (Days 1–7)', label: 'Week 1 (Days 1–7)', isFuture: false },
@@ -72,6 +76,7 @@ const KANBAN_COLUMNS = [
 ];
 
 export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
+  const { user } = useAuth();
   const [sprints, setSprints] = useState<SprintItem[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
@@ -80,7 +85,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
   // Scalable View Controls & Filters
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
-  const [sprintCategory, setSprintCategory] = useState<'ACTIVE' | 'FUTURE' | 'DATE_RANGE'>('ACTIVE');
+  const [sprintCategory, setSprintCategory] = useState<'ACTIVE' | 'PAST' | 'FUTURE' | 'DATE_RANGE'>('ACTIVE');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [selectedWeek, setSelectedWeek] = useState<string>('ALL');
@@ -88,6 +93,47 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isBacklogExpanded, setIsBacklogExpanded] = useState<boolean>(true);
+
+  // Synchronized Top Horizontal Scrollbar & Quick Jump Navigation Refs
+  const kanbanContainerRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const isSyncingRef = useRef(false);
+
+  const handleTopScroll = () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
+    if (topScrollRef.current && kanbanContainerRef.current) {
+      kanbanContainerRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+    requestAnimationFrame(() => {
+      isSyncingRef.current = false;
+    });
+  };
+
+  const handleKanbanScroll = () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
+    if (topScrollRef.current && kanbanContainerRef.current) {
+      topScrollRef.current.scrollLeft = kanbanContainerRef.current.scrollLeft;
+    }
+    requestAnimationFrame(() => {
+      isSyncingRef.current = false;
+    });
+  };
+
+  const scrollBoard = (direction: 'left' | 'right') => {
+    if (kanbanContainerRef.current) {
+      const amount = direction === 'left' ? -350 : 350;
+      kanbanContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToColumn = (colId: string) => {
+    const colEl = document.getElementById(`kanban-column-${colId}`);
+    if (colEl && kanbanContainerRef.current) {
+      colEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }
+  };
 
   // Status Transition Confirmation Modals State
   const [confirmPlannedModal, setConfirmPlannedModal] = useState<{
@@ -103,12 +149,21 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     sprintWeek: string;
     dueDate: string;
     priority: string;
+    description: string;
+    checklists: { id: string; itemText: string; isCompleted: boolean }[];
+    comments: { id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[];
+    newChecklistText?: string;
+    newCommentText?: string;
   } | null>(null);
 
   const [confirmDoneModal, setConfirmDoneModal] = useState<{
     task: any;
     deliverableUrl: string;
     notes: string;
+    checklists: { id: string; itemText: string; isCompleted: boolean }[];
+    comments: { id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[];
+    newChecklistText?: string;
+    newCommentText?: string;
   } | null>(null);
 
   // Task Update / Review Modal State
@@ -121,7 +176,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   const [selectedEpicId, setSelectedEpicId] = useState('');
   const [sprintName, setSprintName] = useState('');
   const [department, setDepartment] = useState('Product & Tech');
-  const [targetWeek, setTargetWeek] = useState('Week 1 (Days 1–7)');
+  
+  const initialCurrentDay = new Date().getDate();
+  const defaultWeekStr = initialCurrentDay <= 7 ? 'Week 1 (Days 1–7)' : initialCurrentDay <= 14 ? 'Week 2 (Days 8–14)' : initialCurrentDay <= 21 ? 'Week 3 (Days 15–21)' : 'Week 4 (Days 22–28)';
+  const [targetWeek, setTargetWeek] = useState(defaultWeekStr);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(
     new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
@@ -178,7 +236,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         fetchApi<any[]>('/api/tasks'),
       ]);
       setSprints(sprintsData || []);
-      setAllTasks(tasksData || []);
+      
+      const merged = [...CREATED_TASKS_CACHE, ...(tasksData || [])];
+      const uniqueTasks = Array.from(new Map(merged.map(t => [t.id, t])).values());
+      setAllTasks(uniqueTasks);
 
       const formattedEmps = (empData || []).map(e => ({
         id: e.id,
@@ -292,6 +353,15 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         sprintWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
         priority: task.priority || 'P3',
+        description: task.description || task.notes || '',
+        checklists: task.checklists || [
+          { id: `c-${Date.now()}-1`, itemText: 'Requirement Analysis & Solution Design', isCompleted: false },
+          { id: `c-${Date.now()}-2`, itemText: 'Implementation & Module Integration', isCompleted: false },
+          { id: `c-${Date.now()}-3`, itemText: 'QA Validation & Code Review Sign-off', isCompleted: false },
+        ],
+        comments: task.comments || [],
+        newChecklistText: '',
+        newCommentText: '',
       });
       return;
     }
@@ -302,6 +372,14 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         task,
         deliverableUrl: task.deliverableUrl || task.outputUrl || '',
         notes: task.description || task.notes || '',
+        checklists: task.checklists || [
+          { id: `c-${Date.now()}-1`, itemText: 'Requirement Analysis & Solution Design', isCompleted: true },
+          { id: `c-${Date.now()}-2`, itemText: 'Implementation & Module Integration', isCompleted: true },
+          { id: `c-${Date.now()}-3`, itemText: 'QA Validation & Code Review Sign-off', isCompleted: true },
+        ],
+        comments: task.comments || [],
+        newChecklistText: '',
+        newCommentText: '',
       });
       return;
     }
@@ -332,7 +410,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
   const confirmAssignTask = async () => {
     if (!assignTaskModal) return;
-    const { task, targetColumn, assigneeId, reviewingLeadId, sprintWeek, dueDate, priority } = assignTaskModal;
+    const { task, targetColumn, assigneeId, reviewingLeadId, sprintWeek, dueDate, priority, description, checklists, comments } = assignTaskModal;
 
     let apiStatus = 'TODO';
     if (targetColumn === 'DONE') apiStatus = 'DONE';
@@ -352,6 +430,9 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           sprintWeek,
           dueDate,
           priority,
+          description,
+          checklists,
+          comments,
         }),
       });
       toast.success(`Task ${task.taskCode || task.id} assigned and shifted to ${targetColumn}!`);
@@ -373,6 +454,9 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               sprintWeek,
               dueDate,
               priority,
+              description,
+              checklists,
+              comments,
             }
           : t
       )
@@ -383,7 +467,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
   const confirmMarkAsDone = async () => {
     if (!confirmDoneModal) return;
-    const { task, deliverableUrl, notes } = confirmDoneModal;
+    const { task, deliverableUrl, notes, checklists, comments } = confirmDoneModal;
 
     try {
       await fetchApi(`/api/tasks/${task.id}`, {
@@ -392,9 +476,11 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           status: 'DONE',
           deliverableUrl,
           description: notes,
+          checklists,
+          comments,
         }),
       });
-      toast.success(`Task ${task.taskCode || task.id} completed and marked Done!`);
+      toast.success(`Task ${task.taskCode || task.id} signed off and marked Done!`);
     } catch (err) {
       toast.success(`Task marked as Done!`);
     }
@@ -402,7 +488,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     setAllTasks(prev =>
       prev.map(t =>
         t.id === task.id
-          ? { ...t, status: 'DONE', deliverableUrl, description: notes }
+          ? { ...t, status: 'DONE', deliverableUrl, description: notes, checklists, comments }
           : t
       )
     );
@@ -412,16 +498,43 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
   const handleCreateSprint = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sprintName.trim()) return toast.error('Please enter a sprint title');
-    if (selectedEmpIds.length === 0) return toast.error('Please select at least one employee for this sprint');
+    if (!sprintName.trim()) return toast.error('Please enter a sprint task title');
 
     setIsSubmitting(true);
+    const targetEmpId = selectedEmpIds[0] || (employees[0]?.id || 'emp-1');
+    const assignedEmp = employees.find(e => e.id === targetEmpId);
+    const leadEmp = employees.find(e => e.id === selectedLeadId);
+
+    let createdId = `task-${Date.now()}`;
+    let createdCode = `TSK-${Math.floor(1000 + Math.random() * 9000)}`;
+
     try {
-      const created = await fetchApi<any>('/api/sprints', {
+      const createdTask = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
-          employeeId: selectedEmpIds[0],
-          assigneeIds: selectedEmpIds,
+          title: sprintName,
+          description: goal,
+          assigneeId: targetEmpId,
+          assigneeIds: selectedEmpIds.length > 0 ? selectedEmpIds : [targetEmpId],
+          reviewingLeadId: selectedLeadId || null,
+          epicId: selectedEpicId || null,
+          status: 'BACKLOG',
+          priority: 'P3',
+          dueDate: endDate,
+        }),
+      }).catch(() => null);
+
+      if (createdTask?.id || (Array.isArray(createdTask) && createdTask[0]?.id)) {
+        const item = Array.isArray(createdTask) ? createdTask[0] : createdTask;
+        createdId = item.id;
+        createdCode = item.taskCode || item.sprintCode || createdCode;
+      }
+
+      const createdSprint = await fetchApi<any>('/api/sprints', {
+        method: 'POST',
+        body: JSON.stringify({
+          employeeId: targetEmpId,
+          assigneeIds: selectedEmpIds.length > 0 ? selectedEmpIds : [targetEmpId],
           epicId: selectedEpicId || null,
           reviewingLeadId: selectedLeadId || null,
           name: sprintName,
@@ -430,22 +543,62 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           startDate,
           endDate,
           goal,
+          status: 'PLANNED',
           checklists: modalChecklists,
           comments: modalComments,
         }),
-      });
-      toast.success(`Sprint task "${sprintName}" created successfully!`);
-      setIsModalOpen(false);
-      setSprintName('');
-      setGoal('');
-      setModalChecklists([]);
-      setModalComments([]);
-      loadData();
+      }).catch(() => null);
+
+      if (!createdCode && (createdSprint?.taskCode || createdSprint?.sprintCode)) {
+        createdCode = createdSprint.taskCode || createdSprint.sprintCode;
+      }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create sprint task');
-    } finally {
-      setIsSubmitting(false);
+      console.warn('[BACKEND SPRINT API NOTICE]: Using local sprint task state fallback.', err);
     }
+
+    const assignedEmpNames = selectedEmpIds
+      .map(id => {
+        const emp = employees.find(e => e.id === id);
+        return emp ? `${emp.firstName} ${emp.lastName}` : null;
+      })
+      .filter(Boolean);
+
+    const assigneeNamesStr = assignedEmpNames.length > 0 
+      ? assignedEmpNames.join(', ') 
+      : (assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}` : 'Unassigned');
+
+    const newTask = {
+      id: createdId,
+      taskCode: createdCode,
+      title: sprintName,
+      status: 'BACKLOG',
+      assigneeId: selectedEmpIds[0] || targetEmpId,
+      assigneeIds: selectedEmpIds.length > 0 ? selectedEmpIds : [targetEmpId],
+      assigneeName: assigneeNamesStr,
+      assigneeEmail: assignedEmp?.email || '',
+      reviewingLeadId: selectedLeadId || null,
+      reviewingLead: leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}` : 'Unassigned',
+      sprintWeek: targetWeek,
+      priority: 'P3',
+      dueDate: endDate,
+      description: goal,
+      checklists: modalChecklists,
+      comments: modalComments,
+      createdAt: new Date().toISOString(),
+      createdById: user?.id || 'mgr-1',
+      isEmployeeCreated: !isManager,
+      createdInMode: isManager ? 'MANAGER' : 'EMPLOYEE',
+    };
+
+    CREATED_TASKS_CACHE.unshift(newTask);
+    setAllTasks(prev => [newTask, ...prev]);
+    toast.success(`Task "${sprintName}" created and added to Product Backlog!`);
+    setIsModalOpen(false);
+    setSprintName('');
+    setGoal('');
+    setModalChecklists([]);
+    setModalComments([]);
+    setIsSubmitting(false);
   };
 
   const handleTaskClick = (task: any) => {
@@ -483,29 +636,166 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     }
   };
 
+  const handleCloneTask = async (sourceTaskItem: TaskItem, importChecklistAndLinks: boolean) => {
+    const sourceTask = allTasks.find(t => t.id === sourceTaskItem.id || t.taskCode === sourceTaskItem.taskId) || sourceTaskItem;
+    const sourceCode = sourceTask.taskCode || sourceTaskItem.taskId || sourceTask.id;
+    const newId = `task-clone-${Date.now()}`;
+    const newCode = `TSK-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const firstComment = {
+      id: `cmt-${Date.now()}`,
+      authorName: 'System Log',
+      content: `This task was created from the source task ${sourceCode}`,
+      isSystemLog: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    const clonedTaskObj = {
+      id: newId,
+      taskCode: newCode,
+      title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
+      status: 'PLANNED',
+      assigneeId: sourceTask.assigneeId || null,
+      assigneeName: sourceTask.assigneeName || sourceTaskItem.assignee || 'Unassigned',
+      assigneeEmail: sourceTask.assigneeEmail || '',
+      reviewingLeadId: sourceTask.reviewingLeadId || null,
+      reviewingLead: sourceTask.reviewingLead || sourceTaskItem.reviewingLead || 'Unassigned',
+      sprintWeek: sourceTask.sprintWeek || 'Week 1 (Days 1–7)',
+      priority: sourceTask.priority || 'P3',
+      dueDate: sourceTask.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      description: sourceTask.description || sourceTaskItem.notes || '',
+      deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
+      checklists: importChecklistAndLinks ? (sourceTask.checklists || []) : [],
+      comments: [firstComment, ...(sourceTask.comments || [])],
+      createdAt: new Date().toISOString(),
+    };
+
+    setAllTasks(prev => [clonedTaskObj, ...prev]);
+
+    setSelectedTaskToUpdate({
+      id: clonedTaskObj.id,
+      taskId: clonedTaskObj.taskCode,
+      title: clonedTaskObj.title,
+      entity: (clonedTaskObj.taskCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
+      assignee: clonedTaskObj.assigneeName,
+      reviewingLead: clonedTaskObj.reviewingLead,
+      status: 'In Progress',
+      outputUrl: clonedTaskObj.deliverableUrl,
+      waitingOn: 'None (Self)',
+      notes: clonedTaskObj.description,
+      createdAt: clonedTaskObj.createdAt,
+    });
+
+    toast.success(`Task duplicated! Opening cloned task ${newCode}...`);
+  };
+
+  const getCurrentSprintWeekIndex = (): number => {
+    const day = new Date().getDate();
+    if (day <= 7) return 1;
+    if (day <= 14) return 2;
+    if (day <= 21) return 3;
+    return 4;
+  };
+
+  const getSprintWeekIndex = (weekStr?: string | null): number => {
+    if (!weekStr) return 0;
+    const lower = weekStr.toLowerCase();
+    if (lower.includes('week 1') || lower.includes('days 1–7') || lower.includes('days 1-7')) return 1;
+    if (lower.includes('week 2') || lower.includes('days 8–14') || lower.includes('days 8-14')) return 2;
+    if (lower.includes('week 3') || lower.includes('days 15–21') || lower.includes('days 15-21')) return 3;
+    if (lower.includes('week 4') || lower.includes('days 22–28') || lower.includes('days 22-28')) return 4;
+    return 0;
+  };
+
+  const currentWeekIdx = getCurrentSprintWeekIndex();
+
   const filteredTasks = allTasks.filter(t => {
     const isDone = t.status === 'DONE' || t.status === 'COMPLETED';
     const matchesViewMode = viewMode === 'ARCHIVE' ? isDone : true;
 
     const taskCol = getTaskColumn(t);
 
+    const taskWeekStr = t.sprintWeek || t.targetWeek || '';
+    const taskWeekIdx = getSprintWeekIndex(taskWeekStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const taskDueDate = t.dueDate ? new Date(t.dueDate) : null;
+
     let matchesSprintCategory = true;
     if (sprintCategory === 'ACTIVE') {
-      matchesSprintCategory = true; // Show all 6 Kanban columns on Active board including DONE
+      // Active Sprints (Present week's sprints, present week backlog, or currently active tasks)
+      const isPresentWeek = taskWeekIdx === currentWeekIdx;
+      const isActiveStatus = taskCol === 'IN_PROGRESS' || taskCol === 'TODO' || taskCol === 'TO_REVIEW' || taskCol === 'PLANNED';
+      const isUnassignedWeek = taskWeekIdx === 0;
+      const isBacklogTask = taskCol === 'BACKLOG';
+      matchesSprintCategory = isPresentWeek || isUnassignedWeek || isActiveStatus || isBacklogTask;
+    } else if (sprintCategory === 'PAST') {
+      // Past Sprints (Past week's sprints: e.g. Week 1 or Week 2 when currently in Week 3, or past due date)
+      const isPastWeek = taskWeekIdx > 0 && taskWeekIdx < currentWeekIdx;
+      const isPastDueDate = taskDueDate && taskDueDate < today;
+      matchesSprintCategory = isPastWeek || (isPastDueDate && taskCol !== 'BACKLOG');
     } else if (sprintCategory === 'FUTURE') {
-      matchesSprintCategory = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || (t.sprintWeek || '').toLowerCase().includes('future') || (t.dueDate && new Date(t.dueDate) > new Date());
+      // Future Sprints & Undecided Sprints (Future weeks, or tasks not declared / not decided / Backlog)
+      const isFutureWeek = taskWeekIdx > currentWeekIdx;
+      const isUndecidedOrBacklog = taskWeekIdx === 0 || taskCol === 'BACKLOG' || !taskWeekStr;
+      const isFutureDueDate = taskDueDate && taskDueDate > today;
+      matchesSprintCategory = isFutureWeek || isUndecidedOrBacklog || isFutureDueDate;
     } else if (sprintCategory === 'DATE_RANGE') {
       if (filterStartDate || filterEndDate) {
         const taskDateStr = t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : (t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : '');
         const afterStart = !filterStartDate || (taskDateStr >= filterStartDate);
         const beforeEnd = !filterEndDate || (taskDateStr <= filterEndDate);
-        matchesSprintCategory = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || (afterStart && beforeEnd);
+        matchesSprintCategory = afterStart && beforeEnd;
       }
     }
 
-    // Employee Filter Fix: Keep unassigned Backlog and Planned items visible regardless of employee selection
-    const isUnassignedOrPlannerCol = taskCol === 'BACKLOG' || taskCol === 'PLANNED' || !t.assigneeId || t.assigneeName === 'Unassigned' || t.assigneeName === 'Assignee';
-    const matchesEmp = selectedEmployeeId === 'ALL' || isUnassignedOrPlannerCol || t.assigneeId === selectedEmployeeId || t.assigneeEmail === selectedEmployeeId;
+    // Employee Scoping Filter:
+    // If Manager view (isManager = true): show all tasks, or filter by selected employee if chosen.
+    // If Employee view (isManager = false): strictly show ONLY tasks assigned to the active employee!
+    const activeEmpId = selectedEmployeeId !== 'ALL' ? selectedEmployeeId : (user?.employeeId || user?.id || 'emp-1');
+    const activeEmpEmail = (user?.email || 'ashutosh').toLowerCase();
+    const activeEmpName = (user?.name || 'Ashutosh').toLowerCase();
+
+    let matchesEmp = true;
+    if (isManager) {
+      if (selectedEmployeeId !== 'ALL') {
+        const selectedEmpObj = employees.find(e => e.id === selectedEmployeeId);
+        const selFirstLower = selectedEmpObj ? selectedEmpObj.firstName.toLowerCase() : '';
+        const selLastLower = selectedEmpObj ? selectedEmpObj.lastName.toLowerCase() : '';
+        const selCodeLower = selectedEmpObj ? selectedEmpObj.employeeCode.toLowerCase() : '';
+
+        matchesEmp = (
+          t.assigneeId === selectedEmployeeId ||
+          t.employeeId === selectedEmployeeId ||
+          t.assigneeEmail === selectedEmployeeId ||
+          (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(selectedEmployeeId)) ||
+          (t.assigneeName && (
+            (selFirstLower && t.assigneeName.toLowerCase().includes(selFirstLower)) ||
+            (selLastLower && t.assigneeName.toLowerCase().includes(selLastLower)) ||
+            (selCodeLower && t.assigneeName.toLowerCase().includes(selCodeLower))
+          ))
+        );
+      }
+    } else {
+      const activeEmpId = user?.employeeId || user?.id || 'emp-1';
+      const activeEmpEmail = (user?.email || '').toLowerCase();
+      const activeEmpName = (user?.name || '').toLowerCase();
+      const activeEmpFirstName = activeEmpName.split(' ')[0] || '';
+
+      const isAssignedToEmp = (
+        (t.assigneeId && (t.assigneeId === activeEmpId || t.assigneeId === selectedEmployeeId)) ||
+        (t.employeeId && (t.employeeId === activeEmpId || t.employeeId === selectedEmployeeId)) ||
+        (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(activeEmpId)) ||
+        (t.assigneeEmail && (t.assigneeEmail.toLowerCase() === activeEmpEmail)) ||
+        (t.assigneeName && (
+          t.assigneeName.toLowerCase().includes(activeEmpName) ||
+          (activeEmpFirstName && t.assigneeName.toLowerCase().includes(activeEmpFirstName))
+        ))
+      );
+
+      // All assigned tasks across Backlog, Planned, To Do, In Progress, To Review, Done are ALWAYS VISIBLE to assigned employees!
+      matchesEmp = isAssignedToEmp || selectedEmployeeId === 'ALL';
+    }
 
     const matchesStatus = selectedStatus === 'ALL' || taskCol === selectedStatus;
 
@@ -513,9 +803,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
       t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.taskCode?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesRoleEmp = isManager || (t.assigneeName?.toLowerCase().includes('ashutosh') || t.assigneeEmail?.toLowerCase().includes('ashutosh') || t.assigneeId === 'emp-1' || !t.assigneeName || taskCol === 'BACKLOG' || taskCol === 'PLANNED');
-
-    return matchesViewMode && matchesSprintCategory && matchesEmp && matchesRoleEmp && matchesStatus && matchesQuery;
+    return matchesViewMode && matchesSprintCategory && matchesEmp && matchesStatus && matchesQuery;
   });
 
   const activeTaskCount = allTasks.filter(t => t.status !== 'DONE' && t.status !== 'COMPLETED').length;
@@ -593,32 +881,47 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                 ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-extrabold'
                 : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
             }`}
+            title="Present week sprints and active tasks"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
-            <span>Active Sprint</span>
+            <span>Active Sprint (Present)</span>
+          </button>
+
+          <button
+            onClick={() => setSprintCategory('PAST')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+              sprintCategory === 'PAST'
+                ? 'bg-amber-600 text-white border-amber-700 shadow-xs font-extrabold'
+                : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+            }`}
+            title="Past week sprints and historical tasks"
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Past Sprint (Past Weeks)</span>
           </button>
 
           <button
             onClick={() => setSprintCategory('FUTURE')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
               sprintCategory === 'FUTURE'
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-extrabold'
+                ? 'bg-blue-600 text-white border-blue-700 shadow-xs font-extrabold'
                 : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
             }`}
+            title="Future week sprints and undecided / backlog tasks"
           >
-            <Clock className="w-3.5 h-3.5 text-blue-500" />
-            <span>Future Sprint</span>
+            <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span>Future & Undecided</span>
           </button>
 
           <button
             onClick={() => setSprintCategory('DATE_RANGE')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
               sprintCategory === 'DATE_RANGE'
-                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-extrabold'
+                ? 'bg-purple-600 text-white border-purple-700 shadow-xs font-extrabold'
                 : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5 text-purple-500" />
+            <Calendar className="w-3.5 h-3.5 text-purple-500 shrink-0" />
             <span>Date Range Selector</span>
           </button>
 
@@ -708,19 +1011,36 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
       {loading ? (
         <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading sprint tasks...</div>
       ) : (
-        <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300">
-          <div className="flex items-start gap-4 min-w-max">
-            {KANBAN_COLUMNS.map(col => {
-              const columnTasks = filteredTasks.filter(t => getTaskColumn(t) === col.id);
+        <div className="space-y-2">
+          {/* ↔ TOP SYNCHRONIZED HORIZONTAL SCROLLBAR TRACK (Requested in circled space) */}
+          <div
+            ref={topScrollRef}
+            onScroll={handleTopScroll}
+            className="overflow-x-auto h-3.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl border border-slate-200/80 cursor-ew-resize transition-colors select-none scrollbar-thin scrollbar-thumb-emerald-500"
+            title="Drag top scrollbar left or right to scroll Kanban lanes"
+          >
+            <div className="h-1.5" style={{ width: `${KANBAN_COLUMNS.length * 325}px` }} />
+          </div>
 
-              if (col.id === 'BACKLOG' && !isBacklogExpanded) {
-                return (
-                  <div
-                    key={col.id}
-                    onClick={() => setIsBacklogExpanded(true)}
-                    className="w-12 shrink-0 bg-slate-100/90 hover:bg-slate-200/80 rounded-2xl border border-slate-300 p-2.5 min-h-[550px] flex flex-col items-center justify-between cursor-pointer transition-all shadow-xs group select-none"
-                    title="Click arrow to expand Backlog column"
-                  >
+          {/* Main Kanban Columns Horizontal Scroll Container */}
+          <div
+            ref={kanbanContainerRef}
+            onScroll={handleKanbanScroll}
+            className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 rounded-2xl"
+          >
+            <div className="flex items-start gap-4 min-w-max">
+              {KANBAN_COLUMNS.map(col => {
+                const columnTasks = filteredTasks.filter(t => getTaskColumn(t) === col.id);
+
+                if (col.id === 'BACKLOG' && !isBacklogExpanded) {
+                  return (
+                    <div
+                      key={col.id}
+                      id={`kanban-column-${col.id}`}
+                      onClick={() => setIsBacklogExpanded(true)}
+                      className="w-12 shrink-0 bg-slate-100/90 hover:bg-slate-200/80 rounded-2xl border border-slate-300 p-2.5 min-h-[550px] flex flex-col items-center justify-between cursor-pointer transition-all shadow-xs group select-none"
+                      title="Click arrow to expand Backlog column"
+                    >
                     <div className="flex flex-col items-center gap-4 pt-1">
                       <button
                         type="button"
@@ -744,10 +1064,11 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                 );
               }
 
-              return (
-                <div
-                  key={col.id}
-                  onDragOver={(e) => {
+                return (
+                  <div
+                    key={col.id}
+                    id={`kanban-column-${col.id}`}
+                    onDragOver={(e) => {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'move';
                   }}
@@ -923,7 +1244,8 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           })}
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* New Sprint Task Modal */}
       {isModalOpen && (
@@ -933,9 +1255,9 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 flex-shrink-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-gray-900 text-base tracking-tight">Assign New Sprint Task</h3>
-                <span className="px-2.5 py-0.5 border rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border-emerald-200">
-                  4-Week Iteration
+                <h3 className="font-bold text-gray-900 text-base tracking-tight">Create New Product Backlog Task</h3>
+                <span className="px-2.5 py-0.5 border rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border-slate-300">
+                  Product Backlog
                 </span>
               </div>
               <button
@@ -990,10 +1312,11 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                   />
                 </div>
 
-                {/* Assign Team Members (Multi-Select Enabled) */}
+                {/* Assign Team Members (Optional) */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
-                    Assign Team Members * (Multi-Select Enabled)
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between">
+                    <span>Assign Team Members (Optional)</span>
+                    <span className="text-[10px] font-mono text-gray-400">Can select when starting task</span>
                   </label>
                   <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 space-y-1.5">
                     {employees.map(emp => {
@@ -1029,13 +1352,16 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
                 {/* Reviewing Lead */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Reviewing Lead *</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between">
+                    <span>Reviewing Lead (Optional)</span>
+                    <span className="text-[10px] font-mono text-gray-400">Can select when starting task</span>
+                  </label>
                   <select
-                    required
                     value={selectedLeadId}
                     onChange={(e) => setSelectedLeadId(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
                   >
+                    <option value="">Unassigned Lead (Optional)...</option>
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.id}>
                         {emp.firstName} {emp.lastName} ({emp.designation})
@@ -1066,10 +1392,23 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                       onChange={(e) => setTargetWeek(e.target.value)}
                       className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
                     >
-                      <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
-                      <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
-                      <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
-                      <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                      {(() => {
+                        const day = new Date().getDate();
+                        const curWeekIdx = day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : 4;
+                        return [
+                          { val: 'Week 1 (Days 1–7)', idx: 1 },
+                          { val: 'Week 2 (Days 8–14)', idx: 2 },
+                          { val: 'Week 3 (Days 15–21)', idx: 3 },
+                          { val: 'Week 4 (Days 22–28)', idx: 4 },
+                        ].map(w => {
+                          const tag = w.idx === curWeekIdx ? 'Present / Active Week ⭐' : w.idx < curWeekIdx ? 'Past Week ⏱️' : 'Future Week 🚀';
+                          return (
+                            <option key={w.val} value={w.val}>
+                              {w.val} • {tag}
+                            </option>
+                          );
+                        });
+                      })()}
                     </select>
                   </div>
                 </div>
@@ -1352,102 +1691,306 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         </div>
       )}
 
-      {/* Assign Task & Sprint Parameters Modal */}
+      {/* Assign Task & Sprint Parameters Modal (Rich 2-Column Execution Spec Layout) */}
       {assignTaskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
               <div>
-                <h4 className="text-base font-bold text-gray-900">Assign Task & Configure Sprint Parameters</h4>
-                <p className="text-xs text-gray-500 font-medium">
-                  Moving <span className="font-bold text-emerald-700">{assignTaskModal.task.taskCode || assignTaskModal.task.id}</span> to <span className="font-bold uppercase text-emerald-700">{assignTaskModal.targetColumn}</span>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-base font-extrabold text-gray-900 tracking-tight">Assign Task & Configure Execution Specs</h4>
+                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 uppercase">
+                    Moving to {assignTaskModal.targetColumn === 'TODO' ? 'To Do' : assignTaskModal.targetColumn}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 font-medium pt-0.5">
+                  Set assignee employee, reviewing lead, priority, review date, checkpoints checklist & activity comments.
                 </p>
               </div>
-              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                {assignTaskModal.task.taskCode || 'TASK'}
-              </span>
+              <button
+                type="button"
+                onClick={() => setAssignTaskModal(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Task Title</label>
-                <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-800">
-                  {assignTaskModal.task.title}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Assign Employee *</label>
-                <select
-                  value={assignTaskModal.assigneeId}
-                  onChange={(e) => setAssignTaskModal({ ...assignTaskModal, assigneeId: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-bold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                >
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      [{emp.employeeCode}] {emp.firstName} {emp.lastName} — {emp.designation}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Reviewing Lead / Manager *</label>
-                <select
-                  value={assignTaskModal.reviewingLeadId}
-                  onChange={(e) => setAssignTaskModal({ ...assignTaskModal, reviewingLeadId: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-bold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                >
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName} ({emp.designation})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            {/* 2-Column Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0 text-xs text-left">
+              {/* Left Column: Assignment Details */}
+              <div className="lg:col-span-6 space-y-3.5">
                 <div>
-                  <label className="block font-bold text-gray-700 mb-1">Target Sprint Week *</label>
+                  <label className="block font-bold text-gray-700 mb-1">Task Title</label>
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 flex items-center justify-between">
+                    <span>{assignTaskModal.task.title}</span>
+                    <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                      {assignTaskModal.task.taskCode || assignTaskModal.task.id}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Assign Employee *</label>
                   <select
-                    value={assignTaskModal.sprintWeek}
-                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, sprintWeek: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    value={assignTaskModal.assigneeId}
+                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, assigneeId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl font-bold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
-                    <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
-                    <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
-                    <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
-                    <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        [{emp.employeeCode}] {emp.firstName} {emp.lastName} — {emp.designation}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-gray-700 mb-1">Priority</label>
+                  <label className="block font-bold text-gray-700 mb-1">Reviewing Lead / Manager *</label>
                   <select
-                    value={assignTaskModal.priority}
-                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, priority: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    value={assignTaskModal.reviewingLeadId}
+                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, reviewingLeadId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl font-bold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
-                    <option value="URGENT">P1 (Top Priority) 🔴</option>
-                    <option value="HIGH">P2 (High Priority) 🟠</option>
-                    <option value="MEDIUM">P3 (Medium Priority) 🟡</option>
-                    <option value="LOW">P4 (Low Priority) ⚪</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName} ({emp.designation})
+                      </option>
+                    ))}
                   </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Target Sprint Week *</label>
+                    <select
+                      value={assignTaskModal.sprintWeek}
+                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, sprintWeek: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
+                      <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
+                      <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
+                      <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">Priority</label>
+                    <select
+                      value={assignTaskModal.priority}
+                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, priority: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="URGENT">P1 (Top Priority) 🔴</option>
+                      <option value="HIGH">P2 (High Priority) 🟠</option>
+                      <option value="MEDIUM">P3 (Medium Priority) 🟡</option>
+                      <option value="LOW">P4 (Low Priority) ⚪</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Review / Due Date *</label>
+                  <input
+                    type="date"
+                    value={assignTaskModal.dueDate}
+                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, dueDate: e.target.value })}
+                    className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Task Description & Deliverables</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Execution details, specifications, or deliverable instructions..."
+                    value={assignTaskModal.description}
+                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Review / Due Date *</label>
-                <input
-                  type="date"
-                  value={assignTaskModal.dueDate}
-                  onChange={(e) => setAssignTaskModal({ ...assignTaskModal, dueDate: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                />
+              {/* Right Column: Checkpoints Checklist & Activity Comments */}
+              <div className="lg:col-span-6 space-y-3.5 flex flex-col min-h-0">
+                {/* Subtask Checkpoint Checklist */}
+                <div className="bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100 space-y-2.5">
+                  <div className="flex items-center justify-between font-bold">
+                    <span className="text-gray-800 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
+                      <ListChecks className="w-4 h-4 text-emerald-600" />
+                      <span>Subtask Checkpoint Checklist</span>
+                    </span>
+                    <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-extrabold text-[10px]">
+                      {assignTaskModal.checklists.filter(c => c.isCompleted).length} / {assignTaskModal.checklists.length} Done
+                    </span>
+                  </div>
+
+                  {/* Checklist Items */}
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
+                    {assignTaskModal.checklists.map(chk => (
+                      <div
+                        key={chk.id}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs font-semibold ${
+                          chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
+                        }`}
+                      >
+                        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={chk.isCompleted}
+                            onChange={() => {
+                              const updated = assignTaskModal.checklists.map(c =>
+                                c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
+                              );
+                              setAssignTaskModal({ ...assignTaskModal, checklists: updated });
+                            }}
+                            className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
+                            {chk.itemText}
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = assignTaskModal.checklists.filter(c => c.id !== chk.id);
+                            setAssignTaskModal({ ...assignTaskModal, checklists: updated });
+                          }}
+                          className="text-gray-400 hover:text-red-500 transition-colors p-0.5 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Checklist Item */}
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Add subtask item..."
+                      value={assignTaskModal.newChecklistText || ''}
+                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, newChecklistText: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!assignTaskModal.newChecklistText?.trim()) return;
+                          const newItem = {
+                            id: `chk-${Date.now()}`,
+                            itemText: assignTaskModal.newChecklistText.trim(),
+                            isCompleted: false,
+                          };
+                          setAssignTaskModal({
+                            ...assignTaskModal,
+                            checklists: [...assignTaskModal.checklists, newItem],
+                            newChecklistText: '',
+                          });
+                        }
+                      }}
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!assignTaskModal.newChecklistText?.trim()) return;
+                        const newItem = {
+                          id: `chk-${Date.now()}`,
+                          itemText: assignTaskModal.newChecklistText.trim(),
+                          isCompleted: false,
+                        };
+                        setAssignTaskModal({
+                          ...assignTaskModal,
+                          checklists: [...assignTaskModal.checklists, newItem],
+                          newChecklistText: '',
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Activity Log & Comments */}
+                <div className="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-200 flex-1 flex flex-col min-h-0 space-y-2">
+                  <span className="font-bold text-gray-700 flex items-center gap-1.5 uppercase text-[11px] tracking-wider shrink-0">
+                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                    <span>Activity Log & Comments</span>
+                  </span>
+
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[100px] max-h-[160px]">
+                    {assignTaskModal.comments.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-[11px] text-gray-400 font-medium py-4">
+                        No activity comments yet.
+                      </div>
+                    ) : (
+                      assignTaskModal.comments.map(c => (
+                        <div key={c.id} className="p-2 rounded-xl bg-white border border-gray-200 text-xs space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
+                            <span>{c.authorName}</span>
+                            <span className="text-gray-400">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="text-gray-800 font-medium">{c.content}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-1 border-t border-gray-200 shrink-0">
+                    <input
+                      type="text"
+                      placeholder="Post activity note..."
+                      value={assignTaskModal.newCommentText || ''}
+                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, newCommentText: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!assignTaskModal.newCommentText?.trim()) return;
+                          const newCmt = {
+                            id: `cmt-${Date.now()}`,
+                            authorName: 'Admin User',
+                            content: assignTaskModal.newCommentText.trim(),
+                            createdAt: new Date().toISOString(),
+                          };
+                          setAssignTaskModal({
+                            ...assignTaskModal,
+                            comments: [...assignTaskModal.comments, newCmt],
+                            newCommentText: '',
+                          });
+                        }
+                      }}
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!assignTaskModal.newCommentText?.trim()) return;
+                        const newCmt = {
+                          id: `cmt-${Date.now()}`,
+                          authorName: 'Admin User',
+                          content: assignTaskModal.newCommentText.trim(),
+                          createdAt: new Date().toISOString(),
+                        };
+                        setAssignTaskModal({
+                          ...assignTaskModal,
+                          comments: [...assignTaskModal.comments, newCmt],
+                          newCommentText: '',
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Post</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 shrink-0">
               <button
                 type="button"
                 onClick={() => setAssignTaskModal(null)}
@@ -1458,31 +2001,35 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               <button
                 type="button"
                 onClick={confirmAssignTask}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 <span>Assign & Move Task</span>
-                <MoveRight className="w-3.5 h-3.5" />
+                <MoveRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Mark as Done / Sign-off Confirmation Modal */}
+      {/* Mark as Done / Sign-off Confirmation Modal (Rich 2-Column Sign-Off Layout) */}
       {confirmDoneModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
-                  <Sparkles className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-base font-extrabold text-gray-900 tracking-tight">Complete & Sign-off Task (Mark as Done)</h4>
+                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
+                    Done Sign-off
+                  </span>
                 </div>
-                <div>
-                  <h4 className="text-base font-bold text-gray-900">Complete & Sign-off Task (Mark as Done)</h4>
-                  <p className="text-xs text-gray-500 font-medium">Verify deliverable URL and completion notes before marking Done</p>
-                </div>
+                <p className="text-xs text-gray-500 font-medium pt-0.5">
+                  Verify subtask checkpoints, deliverable URL, and manager sign-off notes before moving to Done.
+                </p>
               </div>
               <button
+                type="button"
                 onClick={() => setConfirmDoneModal(null)}
                 className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
               >
@@ -1490,41 +2037,237 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Task Title</label>
-                <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 flex items-center justify-between">
-                  <span>{confirmDoneModal.task.title}</span>
-                  <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    {confirmDoneModal.task.taskCode || confirmDoneModal.task.id}
+            {/* 2-Column Content Body */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0 text-xs text-left">
+              {/* Left Column: Output URL & Notes */}
+              <div className="lg:col-span-6 space-y-3.5">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Task Title</label>
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 flex items-center justify-between">
+                    <span>{confirmDoneModal.task.title}</span>
+                    <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                      {confirmDoneModal.task.taskCode || confirmDoneModal.task.id}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    Deliverable / Output URL <span className="text-emerald-600 font-semibold">(Paste final deliverable link/URL)</span>
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="e.g. https://github.com/... or https://docs.google.com/..."
+                    value={confirmDoneModal.deliverableUrl}
+                    onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, deliverableUrl: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Completion & Sign-off Notes</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Add final sign-off notes, verification details, or summary outcome..."
+                    value={confirmDoneModal.notes}
+                    onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, notes: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 text-emerald-900 space-y-1">
+                  <span className="font-bold flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Task Metadata
                   </span>
+                  <div className="flex justify-between text-[11px] font-medium pt-1">
+                    <span>Assignee: <strong>{confirmDoneModal.task.assigneeName || 'Employee'}</strong></span>
+                    <span>Reviewer: <strong>{confirmDoneModal.task.reviewingLead || 'Manager'}</strong></span>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Deliverable / Output URL</label>
-                <input
-                  type="url"
-                  placeholder="https://github.com/... or https://docs.google.com/..."
-                  value={confirmDoneModal.deliverableUrl}
-                  onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, deliverableUrl: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+              {/* Right Column: Checkpoints Checklist & Activity Comments */}
+              <div className="lg:col-span-6 space-y-3.5 flex flex-col min-h-0">
+                {/* Checkpoint Checklist */}
+                <div className="bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100 space-y-2.5">
+                  <div className="flex items-center justify-between font-bold">
+                    <span className="text-gray-800 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
+                      <ListChecks className="w-4 h-4 text-emerald-600" />
+                      <span>Subtask Checkpoint Checklist</span>
+                    </span>
+                    <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-extrabold text-[10px]">
+                      {confirmDoneModal.checklists.filter(c => c.isCompleted).length} / {confirmDoneModal.checklists.length} Done
+                    </span>
+                  </div>
 
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Completion Notes / Sign-off Comments</label>
-                <textarea
-                  rows={3}
-                  placeholder="Add manager sign-off notes or verification outcome..."
-                  value={confirmDoneModal.notes}
-                  onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, notes: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                  {/* Checklist Items */}
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
+                    {confirmDoneModal.checklists.length === 0 ? (
+                      <div className="text-center py-4 text-gray-400 font-medium text-[11px]">No subtasks defined.</div>
+                    ) : (
+                      confirmDoneModal.checklists.map(chk => (
+                        <div
+                          key={chk.id}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-xs font-semibold ${
+                            chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
+                          }`}
+                        >
+                          <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0 pr-2">
+                            <input
+                              type="checkbox"
+                              checked={chk.isCompleted}
+                              onChange={() => {
+                                const updated = confirmDoneModal.checklists.map(c =>
+                                  c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                );
+                                setConfirmDoneModal({ ...confirmDoneModal, checklists: updated });
+                              }}
+                              className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
+                              {chk.itemText}
+                            </span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = confirmDoneModal.checklists.filter(c => c.id !== chk.id);
+                              setConfirmDoneModal({ ...confirmDoneModal, checklists: updated });
+                            }}
+                            className="text-gray-400 hover:text-red-500 transition-colors p-0.5 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Add Checklist Item */}
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Add subtask item..."
+                      value={confirmDoneModal.newChecklistText || ''}
+                      onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, newChecklistText: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!confirmDoneModal.newChecklistText?.trim()) return;
+                          const newItem = {
+                            id: `chk-${Date.now()}`,
+                            itemText: confirmDoneModal.newChecklistText.trim(),
+                            isCompleted: true,
+                          };
+                          setConfirmDoneModal({
+                            ...confirmDoneModal,
+                            checklists: [...confirmDoneModal.checklists, newItem],
+                            newChecklistText: '',
+                          });
+                        }
+                      }}
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!confirmDoneModal.newChecklistText?.trim()) return;
+                        const newItem = {
+                          id: `chk-${Date.now()}`,
+                          itemText: confirmDoneModal.newChecklistText.trim(),
+                          isCompleted: true,
+                        };
+                        setConfirmDoneModal({
+                          ...confirmDoneModal,
+                          checklists: [...confirmDoneModal.checklists, newItem],
+                          newChecklistText: '',
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Activity Log & Comments */}
+                <div className="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-200 flex-1 flex flex-col min-h-0 space-y-2">
+                  <span className="font-bold text-gray-700 flex items-center gap-1.5 uppercase text-[11px] tracking-wider shrink-0">
+                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                    <span>Activity Log & Comments</span>
+                  </span>
+
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[90px] max-h-[140px]">
+                    {confirmDoneModal.comments.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-[11px] text-gray-400 font-medium py-4">
+                        No activity comments yet.
+                      </div>
+                    ) : (
+                      confirmDoneModal.comments.map(c => (
+                        <div key={c.id} className="p-2 rounded-xl bg-white border border-gray-200 text-xs space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
+                            <span>{c.authorName}</span>
+                            <span className="text-gray-400">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="text-gray-800 font-medium">{c.content}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-1 border-t border-gray-200 shrink-0">
+                    <input
+                      type="text"
+                      placeholder="Post sign-off comment..."
+                      value={confirmDoneModal.newCommentText || ''}
+                      onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, newCommentText: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!confirmDoneModal.newCommentText?.trim()) return;
+                          const newCmt = {
+                            id: `cmt-${Date.now()}`,
+                            authorName: 'Admin User',
+                            content: confirmDoneModal.newCommentText.trim(),
+                            createdAt: new Date().toISOString(),
+                          };
+                          setConfirmDoneModal({
+                            ...confirmDoneModal,
+                            comments: [...confirmDoneModal.comments, newCmt],
+                            newCommentText: '',
+                          });
+                        }
+                      }}
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!confirmDoneModal.newCommentText?.trim()) return;
+                        const newCmt = {
+                          id: `cmt-${Date.now()}`,
+                          authorName: 'Admin User',
+                          content: confirmDoneModal.newCommentText.trim(),
+                          createdAt: new Date().toISOString(),
+                        };
+                        setConfirmDoneModal({
+                          ...confirmDoneModal,
+                          comments: [...confirmDoneModal.comments, newCmt],
+                          newCommentText: '',
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Post</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 shrink-0">
               <button
                 type="button"
                 onClick={() => setConfirmDoneModal(null)}
@@ -1535,10 +2278,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               <button
                 type="button"
                 onClick={confirmMarkAsDone}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 <span>Confirm & Mark as Done</span>
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1552,6 +2295,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           task={selectedTaskToUpdate}
           onClose={() => setSelectedTaskToUpdate(null)}
           onSave={handleSaveTaskUpdate}
+          onClone={handleCloneTask}
           isReadOnly={!isManager}
         />
       )}

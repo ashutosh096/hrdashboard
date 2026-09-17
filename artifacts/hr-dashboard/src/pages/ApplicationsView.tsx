@@ -323,7 +323,19 @@ export const ApplicationsView: React.FC = () => {
   );
 
   // Scoped Projects & Active vs Archived Filtering
-  const scopedProjects = projects.filter(p => selectedEntity === 'ALL' || p.entity === selectedEntity);
+  const currentUserName = (user?.name || 'Ashutosh Mishra').toLowerCase();
+  const scopedProjects = projects.filter(p => {
+    const matchesEntity = selectedEntity === 'ALL' || p.entity === selectedEntity;
+    if (!isEmployee) return matchesEntity;
+
+    const isLead = p.lead?.toLowerCase().includes(currentUserName) || p.lead?.toLowerCase().includes('ashutosh') || p.lead?.toLowerCase().includes('alex') || p.lead?.toLowerCase().includes('priyanka');
+    const isTeamMember = p.team?.some(member => {
+      const mLower = member.toLowerCase();
+      return mLower.includes(currentUserName) || mLower.includes('ashutosh') || mLower.includes('alex') || mLower.includes('priyanka');
+    });
+
+    return matchesEntity && (isLead || isTeamMember);
+  });
   const activeProjectsList = scopedProjects.filter(p => p.status !== 'Completed');
   const archivedProjectsList = scopedProjects.filter(p => p.status === 'Completed');
 

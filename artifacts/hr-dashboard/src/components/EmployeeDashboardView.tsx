@@ -210,8 +210,7 @@ export const EmployeeDashboardView: React.FC = () => {
   const { selectedEntity } = useEntity();
   const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'BACKLOG' | 'SPRINT'>('OVERVIEW');
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
-  const [myTasks, setMyTasks] = useState<EmployeeDeliverableTask[]>(DEFAULT_EMPLOYEE_TASKS);
-  const [todaysMeetings, setTodaysMeetings] = useState<any[]>(DEFAULT_EMPLOYEE_MEETINGS);
+  const [todaysMeetings, setTodaysMeetings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
 
@@ -312,10 +311,14 @@ export const EmployeeDashboardView: React.FC = () => {
 
         const filteredTasks = tasksData
           .filter((t) => {
-            if (targetId && t.assigneeId === targetId) return true;
-            if (targetEmail && t.assigneeEmail?.toLowerCase() === targetEmail) return true;
-            if (targetFirstName && t.assigneeName?.toLowerCase().includes(targetFirstName)) return true;
-            return !targetId && !targetEmail;
+            const matchesAssignment = (
+              (targetId && (t.assigneeId === targetId || t.employeeId === targetId)) ||
+              (targetId && Array.isArray(t.assigneeIds) && t.assigneeIds.includes(targetId)) ||
+              (targetEmail && t.assigneeEmail?.toLowerCase() === targetEmail) ||
+              (targetFirstName && t.assigneeName?.toLowerCase().includes(targetFirstName))
+            );
+
+            return matchesAssignment;
           })
           .map((t) => ({
             id: t.id,
@@ -345,7 +348,34 @@ export const EmployeeDashboardView: React.FC = () => {
         if (filteredTasks.length > 0) setMyTasks(filteredTasks);
       }
 
-      if (Array.isArray(meetingsData) && meetingsData.length > 0) setTodaysMeetings(meetingsData);
+      if (Array.isArray(meetingsData)) {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
+        const validTodayMeetings = meetingsData.filter((m) => {
+          const isCalendarSynced =
+            m.source === 'GOOGLE_CALENDAR' ||
+            m.source === 'GOOGLE_CALENDAR_IMPORTED' ||
+            Boolean(m.googleEventId) ||
+            Boolean(m.googleMeetUrl) ||
+            Boolean(m.isGoogleCalendar);
+          if (!isCalendarSynced) return false;
+
+          if (!m.startTime) return false;
+          const mDateStr = new Date(m.startTime).toISOString().split('T')[0];
+          return mDateStr === todayStr;
+        });
+
+        const seenKeys = new Set<string>();
+        const dedupedTodayMeetings = validTodayMeetings.filter((m) => {
+          const key = `${(m.title || '').toLowerCase().trim()}_${m.startTime}`;
+          if (seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
+
+        setTodaysMeetings(dedupedTodayMeetings);
+      }
     } catch (err) {
       console.error('[LOAD DATA EXCEPTION]:', err);
     }
@@ -600,8 +630,8 @@ export const EmployeeDashboardView: React.FC = () => {
       {/* TAB 1: OVERVIEW & VISUAL ANALYTICS */}
       {activeSubTab === 'OVERVIEW' && (
         <div className="space-y-6">
-          {/* Top 5 Featured Responsive Stat Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Top 4 Featured Responsive Stat Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Tile 1: Tasks Pending & Today's Tasks */}
             <div
               onClick={() => setActiveModalType('PENDING_TASKS')}
@@ -657,28 +687,7 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* Tile 4: Deliverable Completion Rate */}
-            <div
-              onClick={() => setActiveModalType('COMPLETION_RATE')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-semibold block">Completion Rate</span>
-                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
-                  {Math.round((doneCount / (myTasks.length || 1)) * 100)}% Rate
-                </span>
-                <span className="text-[10px] text-emerald-700 font-bold block pt-1">
-                  {doneCount} of {myTasks.length} Completed
-                </span>
-              </div>
-            </div>
-
-            {/* Tile 5: Completed Tasks */}
+            {/* Tile 4: Completed Tasks */}
             <div
               onClick={() => setActiveModalType('COMPLETED_TASKS')}
               className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
@@ -900,60 +909,8 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Column: Daily Standup Form + Today's Meetings */}
+            {/* Right Column: Today's Meetings */}
             <div className="lg:col-span-1 space-y-6">
-              {/* Daily Standup Submission Card */}
-              <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600" />
-                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">Daily Standup Work Log</h3>
-                </div>
-                <p className="text-[11px] text-gray-500 font-medium">Log daily progress for reviewing lead (Dr. Harshit Mishra).</p>
-
-                <form onSubmit={handleStandupSubmit} className="space-y-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-0.5">Completed Today *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Configured telemetry API rate limiters..."
-                      value={completedToday}
-                      onChange={(e) => setCompletedToday(e.target.value)}
-                      className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-0.5">Planned for Tomorrow</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Audit JWT bearer scopes..."
-                      value={plannedTomorrow}
-                      onChange={(e) => setPlannedTomorrow(e.target.value)}
-                      className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-700 mb-0.5">Blockers / Dependencies</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. None (Self)"
-                      value={blockers}
-                      onChange={(e) => setBlockers(e.target.value)}
-                      className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Submit Standup Work Log</span>
-                  </button>
-                </form>
-              </div>
-
               {/* Today's Meetings Box */}
               <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
@@ -961,8 +918,11 @@ export const EmployeeDashboardView: React.FC = () => {
                   <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">Google Sync</span>
                 </div>
 
-                <div className="space-y-3">
-                  {todaysMeetings.map((m, idx) => (
+                <div className="space-y-3 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
+                  {todaysMeetings.length === 0 ? (
+                    <p className="text-xs font-medium text-gray-400 italic py-2">No meetings scheduled for today</p>
+                  ) : (
+                    todaysMeetings.map((m, idx) => (
                     <div key={m.id || idx} className="p-3.5 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-emerald-800">
@@ -984,7 +944,8 @@ export const EmployeeDashboardView: React.FC = () => {
                         </a>
                       )}
                     </div>
-                  ))}
+                  ))
+                )}
                 </div>
               </div>
             </div>

@@ -56,7 +56,14 @@ export const NotificationsView: React.FC = () => {
   const filteredNotifications = notifications.filter((n) => {
     if (!isEmployee) return true;
     const payload = n.payload || {};
-    return payload.tagged || payload.assigneeName?.includes('Ashutosh') || payload.requesterName?.includes('Ashutosh') || true;
+    const userName = (user?.name || 'Ashutosh Mishra').toLowerCase();
+
+    const isTagged = payload.tagged === true || n.type === 'TAGGED_MENTION';
+    const isAssignee = (payload.assigneeName?.toLowerCase() || '').includes(userName) || (payload.assigneeName?.toLowerCase() || '').includes('ashutosh') || (payload.assigneeName?.toLowerCase() || '').includes('alex');
+    const isRequester = (payload.requesterName?.toLowerCase() || '').includes(userName) || (payload.requesterName?.toLowerCase() || '').includes('ashutosh') || (payload.requesterName?.toLowerCase() || '').includes('alex');
+    const msgContainsUser = (n.message?.toLowerCase() || '').includes(userName) || (n.title?.toLowerCase() || '').includes(userName) || (n.message?.toLowerCase() || '').includes('ashutosh') || (n.message?.toLowerCase() || '').includes('alex');
+
+    return isTagged || isAssignee || isRequester || msgContainsUser;
   });
 
   const renderNotifItem = (notif: any) => {
