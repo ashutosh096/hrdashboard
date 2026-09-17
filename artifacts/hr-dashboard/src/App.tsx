@@ -99,6 +99,7 @@ export const MainContent: React.FC = () => {
         <Route path="/sprints" component={SprintsView} />
         <Route path="/team-tasks" component={TeamTasksView} />
         <Route path="/applications" component={ApplicationsView} />
+        <Route path="/projects" component={ApplicationsView} />
         <Route path="/performance" component={DashboardView} />
         <Route path="/team" component={TeamDirectoryView} />
         <Route path="/reports" component={ReportsView} />

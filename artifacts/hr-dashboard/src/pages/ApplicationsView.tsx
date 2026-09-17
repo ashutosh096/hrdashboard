@@ -58,8 +58,8 @@ export const ApplicationsView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
 
-  // Top Level Toggle: 'APPLICATIONS' or 'PROJECTS'
-  const [activeMainTab, setActiveMainTab] = useState<'APPLICATIONS' | 'PROJECTS'>('APPLICATIONS');
+  // Top Level View: 'PROJECTS'
+  const [activeMainTab] = useState<'PROJECTS'>('PROJECTS');
 
   // Sub-Tabs for Active vs Archived Items
   const [appSubTab, setAppSubTab] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
@@ -373,294 +373,60 @@ export const ApplicationsView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none">
-      {/* Top Header & Main Toggle Controls */}
+      {/* Dedicated Projects Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Applications & Project Specifications</h2>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <FolderKanban className="w-6 h-6 text-emerald-600" />
+            <span>Projects & Specifications</span>
+          </h2>
           <p className="text-xs text-gray-500 font-medium mt-0.5">
-            Manage job/work applications, project proposals, status lifecycles, and archived items.
+            Manage company project proposals, technical specifications, status lifecycles, and project archives.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Top Toggle Group: Job Applications vs Projects */}
-          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-2xs">
-            <button
-              onClick={() => setActiveMainTab('APPLICATIONS')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                activeMainTab === 'APPLICATIONS' ? 'bg-white text-indigo-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>Job Applications</span>
-            </button>
-
-            <button
-              onClick={() => setActiveMainTab('PROJECTS')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                activeMainTab === 'PROJECTS' ? 'bg-white text-emerald-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <FolderKanban className="w-3.5 h-3.5" />
-              <span>Projects & Basic Info</span>
-            </button>
-          </div>
-
-          {activeMainTab === 'APPLICATIONS' ? (
-            <button
-              onClick={() => {
-                setAssignedTo(user?.name || 'Priyanka Sharma');
-                setShowAddModal(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Application</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowAddProjectModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Project</span>
-            </button>
-          )}
+          <button
+            onClick={() => setShowAddProjectModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Project</span>
+          </button>
         </div>
       </div>
-
-      {/* Main Tab 1: APPLICATIONS VIEW */}
-      {activeMainTab === 'APPLICATIONS' && (
-        <div className="space-y-6">
-          {/* 4 Stat Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs">
-              <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">
-                MY APPLICATIONS
-              </span>
-              <span className="text-3xl font-extrabold text-gray-900">{totalAppsCount}</span>
-            </div>
-
-            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-5 shadow-2xs">
-              <span className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider block mb-1">
-                HIGH / URGENT
-              </span>
-              <span className="text-3xl font-extrabold text-amber-900">{highPriorityAppsCount}</span>
-            </div>
-
-            <div className="bg-red-50/60 border border-red-200/80 rounded-2xl p-5 shadow-2xs">
-              <span className="text-[11px] font-extrabold text-red-700 uppercase tracking-wider block mb-1">
-                PENDING / DELAYED
-              </span>
-              <span className="text-3xl font-extrabold text-red-900">{pendingAppsCount}</span>
-            </div>
-
-            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 shadow-2xs">
-              <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider block mb-1">
-                REVIEWED BY LEADS
-              </span>
-              <span className="text-3xl font-extrabold text-emerald-900">2</span>
-            </div>
-          </div>
-
-          {/* Sub-Tab Filter Bar (Active Applications vs Archived / Completed) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 border-t border-gray-200/60">
-            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl border border-gray-200 w-fit">
-              <button
-                onClick={() => setAppSubTab('ACTIVE')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  appSubTab === 'ACTIVE' ? 'bg-white text-indigo-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Active Applications ({activeAppsList.length})</span>
-              </button>
-
-              <button
-                onClick={() => setAppSubTab('ARCHIVED')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  appSubTab === 'ARCHIVED' ? 'bg-white text-emerald-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Archive className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Archived / Completed ({archivedAppsList.length})</span>
-              </button>
-            </div>
-
-            {/* Search Input Bar */}
-            <div className="max-w-md w-full relative">
-              <div className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-200/90 rounded-xl shadow-2xs focus-within:border-indigo-500 transition-all">
-                <Search className="w-4 h-4 text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search applications by title, notes, lead..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent font-medium"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Applications Table */}
+      {/* PROJECTS & SPECIFICATIONS VIEW */}
+      <div className="space-y-6">
+        {/* Project Summary Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs">
-            {displayedAppsList.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      <th className="py-3 px-3">Application Title</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3">Priority</th>
-                      <th className="py-3 px-3">Reviewing Lead</th>
-                      <th className="py-3 px-3">Applicant / Assigned To</th>
-                      <th className="py-3 px-3">Description & Reason Notes</th>
-                      <th className="py-3 px-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-                    {displayedAppsList.map((app) => (
-                      <tr key={app.id} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="py-4 px-3">
-                          <span className="font-bold text-gray-900 block text-sm">{app.title}</span>
-                          {app.urlLink && (
-                            <a
-                              href={app.urlLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[11px] text-indigo-600 hover:underline inline-flex items-center gap-1 font-semibold mt-0.5"
-                            >
-                              <span>{app.urlLink}</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                        </td>
-                        <td className="py-4 px-3">
-                          <div className="space-y-1">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                                app.status === 'Done'
-                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                  : app.status === 'Pending'
-                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                  : app.status === 'Delayed'
-                                  ? 'bg-red-100 text-red-800 border-red-200'
-                                  : 'bg-blue-100 text-blue-800 border-blue-200'
-                              }`}
-                            >
-                              {app.status}
-                            </span>
-                            {app.statusReason && (
-                              <span className="text-[10px] text-amber-800 font-semibold block italic max-w-[140px] truncate">
-                                Reason: {app.statusReason}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-3">
-                          {(() => {
-                            const p = (app.priority || '').toUpperCase();
-                            const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
-                            const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
-                            return (
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] ${color}`}>
-                                {label}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        <td className="py-4 px-3 font-semibold text-gray-800">{app.reviewingLead}</td>
-                        <td className="py-4 px-3 font-bold text-indigo-700">
-                          <div className="flex items-center gap-1.5 pt-1">
-                            <User className="w-3.5 h-3.5 text-indigo-500" />
-                            <span>{app.assignedTo}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-3 text-gray-600 font-normal max-w-xs">
-                          <p className="truncate">{app.description}</p>
-                        </td>
-                        <td className="py-4 px-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {!isEmployee && (
-                              <button
-                                onClick={() => handleCloneApplication(app)}
-                                className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                              >
-                                📋 Clone
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                setSelectedAppToUpdate(app);
-                                setUpdateStatus(app.status);
-                                setStatusReason(app.statusReason || '');
-                              }}
-                              className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>Update Status</span>
-                            </button>
+            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">
+              TOTAL PROJECTS
+            </span>
+            <span className="text-3xl font-extrabold text-gray-900">{totalProjectsCount}</span>
+          </div>
 
-                            {app.urlLink && (
-                              <a
-                                href={app.urlLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition-colors"
-                              >
-                                Open
-                              </a>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="py-16 text-center">
-                <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <h4 className="text-base font-bold text-gray-600">
-                  {appSubTab === 'ARCHIVED' ? 'No archived applications found.' : 'No active applications assigned or found.'}
-                </h4>
-                <p className="text-xs text-gray-400 mt-1">
-                  {appSubTab === 'ARCHIVED'
-                    ? 'Applications marked as "Done" will automatically appear here.'
-                    : 'Click "+ Add Application" above to track a new application.'}
-                </p>
-              </div>
-            )}
+          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 shadow-2xs">
+            <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider block mb-1">
+              ACTIVE PROJECTS
+            </span>
+            <span className="text-3xl font-extrabold text-emerald-900">{activeProjectsCount}</span>
+          </div>
+
+          <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-5 shadow-2xs">
+            <span className="text-[11px] font-extrabold text-blue-700 uppercase tracking-wider block mb-1">
+              IN PLANNING / REVIEW
+            </span>
+            <span className="text-3xl font-extrabold text-blue-900">{planningProjectsCount}</span>
+          </div>
+
+          <div className="bg-purple-50/60 border border-purple-200/80 rounded-2xl p-5 shadow-2xs">
+            <span className="text-[11px] font-extrabold text-purple-700 uppercase tracking-wider block mb-1">
+              COMPLETED / ARCHIVED
+            </span>
+            <span className="text-3xl font-extrabold text-purple-900">{archivedProjectsList.length}</span>
           </div>
         </div>
-      )}
-
-      {/* Main Tab 2: PROJECTS & BASIC INFORMATION VIEW */}
-      {activeMainTab === 'PROJECTS' && (
-        <div className="space-y-6">
-          {/* Project Summary Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs">
-              <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">
-                TOTAL PROJECTS
-              </span>
-              <span className="text-3xl font-extrabold text-gray-900">{totalProjectsCount}</span>
-            </div>
-
-            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 shadow-2xs">
-              <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider block mb-1">
-                ACTIVE PROJECTS
-              </span>
-              <span className="text-3xl font-extrabold text-emerald-900">{activeProjectsCount}</span>
-            </div>
-
-            <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-5 shadow-2xs">
-              <span className="text-[11px] font-extrabold text-blue-700 uppercase tracking-wider block mb-1">
-                IN PLANNING / REVIEW
-              </span>
-              <span className="text-3xl font-extrabold text-blue-900">{planningProjectsCount}</span>
-            </div>
-          </div>
 
           {/* Sub-Tab Switcher for Projects: Active Projects vs Archived Projects */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 border-t border-gray-200/60">
@@ -819,7 +585,6 @@ export const ApplicationsView: React.FC = () => {
             </div>
           )}
         </div>
-      )}
 
       {/* Add New Application Modal */}
       {showAddModal && (
