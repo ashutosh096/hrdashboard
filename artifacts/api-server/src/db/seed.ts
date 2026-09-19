@@ -55,13 +55,11 @@ export async function runSeed() {
         });
     }
 
-    // 2. Seed / Upsert Departments (MAR, DEV, OPS, HR, FIN)
+    // 2. Seed / Upsert Departments (MAR, DEV, OPS)
     const departmentsData = [
       { code: 'MAR', name: 'Marketing' },
       { code: 'DEV', name: 'Engineering & Product' },
       { code: 'OPS', name: 'Operations' },
-      { code: 'HR', name: 'Human Resources' },
-      { code: 'FIN', name: 'Finance' },
     ];
 
     const seededDepts: Record<string, string> = {};
