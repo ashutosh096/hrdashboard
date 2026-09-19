@@ -103,28 +103,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Restore session & active preview role from localStorage or query param on app load
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const queryToken = searchParams.get('token');
+    async function initAuth() {
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryToken = searchParams.get('token');
 
-    if (queryToken) {
-      const decodedUser = decodeJwtPayload(queryToken);
-      if (decodedUser) {
+      let targetToken = queryToken || localStorage.getItem('hros_token');
+
+      if (queryToken) {
         localStorage.setItem('hros_token', queryToken);
-        applySession(decodedUser, queryToken);
         window.history.replaceState({}, document.title, window.location.pathname);
-        setIsLoading(false);
-        return;
       }
+
+      if (targetToken) {
+        const decodedUser = decodeJwtPayload(targetToken);
+        if (decodedUser) {
+          applySession(decodedUser, targetToken);
+
+          // Verify with server that user account still exists in DB!
+          try {
+            const meRes = await fetchApi<{ user: User }>('/api/auth/me');
+            if (meRes && meRes.user) {
+              applySession({ ...decodedUser, ...meRes.user }, targetToken);
+            } else {
+              applySession(null, null);
+            }
+          } catch {
+            applySession(null, null);
+          }
+        } else {
+          applySession(null, null);
+        }
+      } else {
+        applySession(null, null);
+      }
+      setIsLoading(false);
     }
 
-    const storedToken = localStorage.getItem('hros_token');
-    if (storedToken) {
-      const decodedUser = decodeJwtPayload(storedToken);
-      applySession(decodedUser, storedToken);
-    } else {
-      applySession(null, null);
-    }
-    setIsLoading(false);
+    initAuth();
   }, []);
 
   // Multi-tab session synchronization listener across open browser tabs

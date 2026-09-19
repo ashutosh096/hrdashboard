@@ -89,7 +89,7 @@ router.post('/login', async (req, res) => {
       managedTeamId: user.managedTeamId || undefined,
     };
 
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '365d' });
     return res.json({ token, user: userPayload });
   } catch (err: any) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
@@ -98,6 +98,34 @@ router.post('/login', async (req, res) => {
       detail = err.errors.map((e: any) => e.message || String(e)).join('; ');
     }
     return res.status(500).json({ message: `Server login failed: ${detail}` });
+  }
+});
+
+// Verify Current User Session Route
+router.get('/me', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.id));
+    if (!user) {
+      return res.status(401).json({ message: 'User account no longer exists in database' });
+    }
+    return res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        employeeId: user.employeeId || undefined,
+        managedTeamId: user.managedTeamId || undefined,
+      },
+    });
+  } catch {
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 });
 
