@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { db, users, employees, entities, departments, entityCounters, initiatives, epics, sprints, tasks, taskChecklists, taskComments, attendance, meetings, meetingAttendees, googleTokens, and, eq, ne } from '@workspace/db';
+import { db, users, employees, entities, departments, entityCounters, initiatives, epics, sprints, tasks, taskChecklists, taskComments, attendance, meetings, meetingAttendees, googleTokens, notifications, and, eq, ne } from '@workspace/db';
 
 dotenv.config();
 
 export async function runSeed() {
-  console.log('[SEED] Purging dummy data, Google Calendar tokens, and keeping only Admin account...');
+  console.log('[SEED] Purging dummy data, notifications, Google Calendar tokens, and keeping only Admin account...');
   const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@example.com').toLowerCase().trim();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
   const passwordHash = await bcrypt.hash(adminPassword, 10);
@@ -22,7 +22,8 @@ export async function runSeed() {
     await db.delete(epics);
     await db.delete(initiatives);
     await db.delete(googleTokens);
-    console.log('[SEED] Purged dummy tasks, epics, initiatives, sprints, meetings, attendance, and googleTokens.');
+    await db.delete(notifications);
+    console.log('[SEED] Purged dummy tasks, epics, initiatives, sprints, meetings, attendance, googleTokens, and notifications.');
 
     // 1. Seed / Upsert Entities (EHM & CAG)
     const entitiesList = [

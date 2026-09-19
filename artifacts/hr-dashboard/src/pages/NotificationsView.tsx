@@ -19,70 +19,8 @@ export const NotificationsView: React.FC = () => {
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const [data, tasksData] = await Promise.all([
-        fetchApi<any[]>('/api/dashboard/notifications').catch(() => []),
-        fetchApi<any[]>('/api/tasks').catch(() => []),
-      ]);
-      const notifList = Array.isArray(data) ? [...data] : [];
-
-      // Generate automatic notifications for tasks due date, overdue, completed, and reviews
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (Array.isArray(tasksData)) {
-        tasksData.forEach((t: any) => {
-          const taskCode = t.taskCode || t.id;
-          const isDone = t.status === 'DONE';
-          const isDueOrOverdue = t.dueDate && t.dueDate.split('T')[0] <= todayStr;
-
-          if (isDueOrOverdue && !isDone) {
-            notifList.push({
-              id: `auto-due-${t.id}`,
-              type: 'TASK_OVERDUE',
-              payload: {
-                taskCode,
-                taskTitle: t.title,
-                daysOverdue: 1,
-                assigneeName: t.assigneeName,
-                assigneeEmail: t.assigneeEmail,
-                assigneeId: t.assigneeId || t.employeeId,
-              },
-              createdAt: t.dueDate || new Date().toISOString(),
-            });
-          }
-
-          if (isDone) {
-            notifList.push({
-              id: `auto-done-${t.id}`,
-              type: 'TASK_COMPLETED',
-              payload: {
-                taskCode,
-                title: t.title,
-                assigneeName: t.assigneeName,
-                assigneeEmail: t.assigneeEmail,
-                assigneeId: t.assigneeId || t.employeeId,
-                message: `Deliverable task [${taskCode}] marked Done. Signed off & verified.`,
-              },
-              createdAt: t.createdAt || new Date().toISOString(),
-            });
-          }
-
-          if (t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW') {
-            notifList.push({
-              id: `auto-review-${t.id}`,
-              type: 'REVIEW_ASSIGNED',
-              payload: {
-                taskCode,
-                title: t.title,
-                assigneeName: t.assigneeName,
-                assigneeEmail: t.assigneeEmail,
-                assigneeId: t.assigneeId || t.employeeId,
-                message: `Task [${taskCode}] submitted for Manager Lead review and sign-off.`,
-              },
-              createdAt: t.createdAt || new Date().toISOString(),
-            });
-          }
-        });
-      }
-
+      const data = await fetchApi<any[]>('/api/notifications').catch(() => []);
+      const notifList = Array.isArray(data) ? data : [];
       setNotifications(notifList);
     } catch {
       setNotifications([]);
