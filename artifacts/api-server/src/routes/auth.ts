@@ -103,7 +103,7 @@ router.post('/login', async (req, res) => {
 
 // Secure Set Password Route via Invite Token
 router.post('/set-password', async (req, res) => {
-  const { token, password } = req.body;
+  const { token, password, email } = req.body;
   if (!token || !password) {
     return res.status(400).json({ message: 'Token and password required' });
   }
@@ -118,6 +118,10 @@ router.post('/set-password', async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired invite token' });
     }
 
+    if (email && email.toLowerCase().trim() !== invite.email.toLowerCase().trim()) {
+      return res.status(400).json({ message: `Entered email (${email}) does not match invitation recipient (${invite.email})` });
+    }
+
     if (invite.status === 'ACCEPTED') {
       return res.status(400).json({ message: 'Invite token has already been accepted' });
     }
@@ -127,7 +131,7 @@ router.post('/set-password', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const inviteEmail = invite.email.toLowerCase().trim();
+    const inviteEmail = (email || invite.email).toLowerCase().trim();
 
     const [existingUser] = await db
       .select()
