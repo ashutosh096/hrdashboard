@@ -89,26 +89,30 @@ export const AttendanceView: React.FC = () => {
 
   const liveAttendanceData: MonthlyEmployeeAttendance[] = employees.map((emp, idx) => {
     const entity = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
-    const empAtt = attendanceRecords.filter((a) => a.employeeId === emp.id);
-    const presentDays = empAtt.length || 20;
-    const totalWorkingDays = 22;
-    const rate = Math.min(100, Math.round((presentDays / totalWorkingDays) * 100));
+    const empAtt = attendanceRecords.filter(
+      (a) => a.employeeId === emp.id || (emp.email && a.employeeName?.toLowerCase() === emp.email.toLowerCase())
+    );
+    const presentDays = empAtt.length;
+    const hasRecords = empAtt.length > 0;
+    const totalWorkingDays = hasRecords ? 22 : 0;
+    const absentDays = hasRecords ? Math.max(0, totalWorkingDays - presentDays) : 0;
+    const rate = totalWorkingDays > 0 ? Math.min(100, Math.round((presentDays / totalWorkingDays) * 100)) : 0;
 
     return {
       id: emp.id,
       employeeName: `${emp.firstName} ${emp.lastName}`,
       email: emp.email,
       role: emp.designation || 'Specialist',
-      dept: 'Engineering & Operations',
+      dept: emp.departmentName || 'Engineering & Operations',
       entity,
       avatar: idx % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR,
       totalWorkingDays,
       presentDays,
-      absentDays: Math.max(0, totalWorkingDays - presentDays),
+      absentDays,
       halfDays: 0,
       leaveDays: 0,
       attendanceRate: rate,
-      workModeBreakdown: `${presentDays} Office / ${totalWorkingDays - presentDays} Hybrid`,
+      workModeBreakdown: hasRecords ? `${presentDays} Office / ${absentDays} Hybrid` : 'No attendance marked yet',
     };
   });
 

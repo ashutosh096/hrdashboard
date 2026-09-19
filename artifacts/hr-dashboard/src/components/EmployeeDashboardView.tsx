@@ -214,7 +214,8 @@ export const EmployeeDashboardView: React.FC = () => {
   const { selectedEntity } = useEntity();
   const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'BACKLOG' | 'SPRINT'>('OVERVIEW');
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
-  const [myTasks, setMyTasks] = useState<EmployeeDeliverableTask[]>(DEFAULT_EMPLOYEE_TASKS);
+  const [myTasks, setMyTasks] = useState<EmployeeDeliverableTask[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [todaysMeetings, setTodaysMeetings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
@@ -383,6 +384,8 @@ export const EmployeeDashboardView: React.FC = () => {
       }
     } catch (err) {
       console.error('[LOAD DATA EXCEPTION]:', err);
+    } finally {
+      setIsDataLoaded(true);
     }
   };
 
@@ -396,7 +399,9 @@ export const EmployeeDashboardView: React.FC = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
   const delayedTask = scopedMyTasks.find((t) => t.status === 'Delayed');
-  const lateRunningTask = scopedMyTasks.find((t) => t.status !== 'Done' && (t.status === 'Delayed' || (t.dueDate && t.dueDate.split('T')[0] < todayStr))) || delayedTask;
+  const lateRunningTask = isDataLoaded
+    ? (scopedMyTasks.find((t) => t.status !== 'Done' && (t.status === 'Delayed' || (t.dueDate && t.dueDate.split('T')[0] < todayStr))) || delayedTask)
+    : null;
 
   // Specific employee task metrics calculation for Pie Chart
   const doneCount = scopedMyTasks.filter((t) => t.status === 'Done').length;

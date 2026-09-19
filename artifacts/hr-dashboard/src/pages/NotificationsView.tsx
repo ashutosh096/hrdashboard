@@ -41,9 +41,9 @@ export const NotificationsView: React.FC = () => {
                 taskCode,
                 taskTitle: t.title,
                 daysOverdue: 1,
-                assigneeName: t.assigneeName || 'Assigned Employee',
+                assigneeName: t.assigneeName,
+                assigneeEmail: t.assigneeEmail,
                 assigneeId: t.assigneeId || t.employeeId,
-                tagged: true,
               },
               createdAt: t.dueDate || new Date().toISOString(),
             });
@@ -56,10 +56,10 @@ export const NotificationsView: React.FC = () => {
               payload: {
                 taskCode,
                 title: t.title,
-                assigneeName: t.assigneeName || 'Assigned Employee',
+                assigneeName: t.assigneeName,
+                assigneeEmail: t.assigneeEmail,
                 assigneeId: t.assigneeId || t.employeeId,
                 message: `Deliverable task [${taskCode}] marked Done. Signed off & verified.`,
-                tagged: true,
               },
               createdAt: t.createdAt || new Date().toISOString(),
             });
@@ -72,10 +72,10 @@ export const NotificationsView: React.FC = () => {
               payload: {
                 taskCode,
                 title: t.title,
-                assigneeName: t.assigneeName || 'Assigned Employee',
+                assigneeName: t.assigneeName,
+                assigneeEmail: t.assigneeEmail,
                 assigneeId: t.assigneeId || t.employeeId,
                 message: `Task [${taskCode}] submitted for Manager Lead review and sign-off.`,
-                tagged: true,
               },
               createdAt: t.createdAt || new Date().toISOString(),
             });
@@ -85,39 +85,7 @@ export const NotificationsView: React.FC = () => {
 
       setNotifications(notifList);
     } catch {
-      // Fallback notifications with explicit tagging for employee mode
-      setNotifications([
-        {
-          id: '1',
-          type: 'TASK_ASSIGNED',
-          payload: { taskCode: 'EHM-EMP01-001', title: 'API Gateway Telemetry Pipeline Integration', assigneeName: 'Ashutosh Mishra', tagged: true },
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          type: 'TAGGED_MENTION',
-          payload: { title: 'Tagged in Architecture Sync Notes', message: 'Dr. Harshit Mishra tagged @Ashutosh Mishra in Architecture Review.', tagged: true },
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          type: 'TASK_OVERDUE',
-          payload: { taskCode: 'EHM-EMP01-005', taskTitle: 'Automated CI/CD Deployment Pipeline Optimization', daysOverdue: 1, assigneeName: 'Ashutosh Mishra', tagged: true },
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: '4',
-          type: 'DELAY_REQUEST',
-          payload: { taskCode: 'EHM-EMP01-005', title: 'Automated CI/CD Pipeline', requesterName: 'Ashutosh Mishra', tagged: true },
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: '5',
-          type: 'TASK_COMPLETED',
-          payload: { taskCode: 'CAG-EMP01-003', title: 'Telemetry Data Stream Ingestion Engine', assigneeName: 'Ashutosh Mishra', tagged: true },
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -135,17 +103,20 @@ export const NotificationsView: React.FC = () => {
     const userId = user?.id;
     const empId = user?.employeeId;
     const userEmail = (user?.email || '').toLowerCase();
-    const userName = (user?.name || '').toLowerCase();
+    const userName = (user?.name || '').toLowerCase().trim();
 
-    const isTaggedExplicit = payload.tagged === true || n.type === 'TAGGED_MENTION';
-    const isDirectUser = n.userId === userId;
+    const isDirectUser = n.userId === userId || (empId && n.userId === empId);
     const isTaggedUser = Array.isArray(payload.taggedUserIds) && (
       (userId && payload.taggedUserIds.includes(userId)) ||
       (empId && payload.taggedUserIds.includes(empId))
     );
-    const isAssigneeId = payload.assigneeId === userId || (empId && payload.assigneeId === empId) || (userEmail && payload.assigneeEmail?.toLowerCase() === userEmail) || (userName && payload.assigneeName?.toLowerCase().includes(userName));
+    const isAssignee =
+      (userId && payload.assigneeId === userId) ||
+      (empId && payload.assigneeId === empId) ||
+      (userEmail && payload.assigneeEmail?.toLowerCase() === userEmail) ||
+      (userName && payload.assigneeName && payload.assigneeName.toLowerCase().trim() === userName);
 
-    return matchesEntity && (isTaggedExplicit || isDirectUser || isTaggedUser || isAssigneeId);
+    return matchesEntity && (isDirectUser || isTaggedUser || isAssignee);
   });
 
   // Pagination Logic (10 notifications per page)
@@ -270,11 +241,9 @@ export const NotificationsView: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs font-bold text-gray-900">{item.title}</h4>
-                          {(n.payload?.tagged || isEmployee) && (
-                            <span className="text-[9px] bg-purple-100 text-purple-800 font-extrabold px-1.5 py-0.5 rounded">
-                              @Tagged
-                            </span>
-                          )}
+                          <span className="text-[9px] bg-purple-100 text-purple-800 font-extrabold px-1.5 py-0.5 rounded">
+                            @{n.payload?.assigneeName || user?.name || 'Assigned'}
+                          </span>
                         </div>
                         <p className="text-[11px] font-medium text-gray-500">{item.desc}</p>
                       </div>
