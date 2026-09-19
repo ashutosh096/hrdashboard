@@ -1,17 +1,19 @@
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { db, users, employees, entities, departments, entityCounters, initiatives, epics, sprints, tasks, attendance, meetings, meetingAttendees, and, eq, ne } from '@workspace/db';
+import { db, users, employees, entities, departments, entityCounters, initiatives, epics, sprints, tasks, taskChecklists, taskComments, attendance, meetings, meetingAttendees, googleTokens, and, eq, ne } from '@workspace/db';
 
 dotenv.config();
 
 export async function runSeed() {
-  console.log('[SEED] Purging dummy data and keeping only Admin account...');
+  console.log('[SEED] Purging dummy data, Google Calendar tokens, and keeping only Admin account...');
   const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@example.com').toLowerCase().trim();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   try {
-    // 0. Clean up / Purge all dummy operational data
+    // 0. Clean up / Purge all dummy operational data (Child tables first!)
+    await db.delete(taskChecklists);
+    await db.delete(taskComments);
     await db.delete(meetingAttendees);
     await db.delete(meetings);
     await db.delete(attendance);
@@ -19,7 +21,8 @@ export async function runSeed() {
     await db.delete(sprints);
     await db.delete(epics);
     await db.delete(initiatives);
-    console.log('[SEED] Purged dummy tasks, epics, initiatives, sprints, meetings, and attendance.');
+    await db.delete(googleTokens);
+    console.log('[SEED] Purged dummy tasks, epics, initiatives, sprints, meetings, attendance, and googleTokens.');
 
     // 1. Seed / Upsert Entities (EHM & CAG)
     const entitiesList = [
@@ -161,3 +164,6 @@ export async function runSeed() {
     console.error('[SEED ERROR]: Failed to seed/reset database:', err);
   }
 }
+
+// Automatically execute runSeed when running seed.ts
+runSeed().catch(console.error);
