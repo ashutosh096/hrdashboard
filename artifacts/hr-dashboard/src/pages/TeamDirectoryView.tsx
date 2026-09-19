@@ -224,6 +224,8 @@ export const TeamDirectoryView: React.FC = () => {
 
       const targetMail = (email.trim() || personalEmail.trim()).toLowerCase();
 
+      const roleToAssign = user?.role === 'ADMIN' ? role : 'EMPLOYEE';
+
       const res = await fetchApi<any>('/api/employees', {
         method: 'POST',
         body: JSON.stringify({
@@ -231,7 +233,7 @@ export const TeamDirectoryView: React.FC = () => {
           lastName,
           email: email.trim(),
           personalEmail: personalEmail.trim(),
-          role,
+          role: roleToAssign,
           designation: position || 'Specialist',
           salary: 85000,
         }),
@@ -247,11 +249,6 @@ export const TeamDirectoryView: React.FC = () => {
 
       loadTeam();
       setShowAddModal(false);
-
-      if (res.inviteLink) {
-        setCreatedEmployee(res.employee);
-        setCreatedInviteLink(res.inviteLink);
-      }
 
       setFullName('');
       setEmail('');
@@ -383,63 +380,6 @@ export const TeamDirectoryView: React.FC = () => {
         </div>
       )}
 
-      {/* Invitation Link Modal popup after employee creation */}
-      {createdInviteLink && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 select-none">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-emerald-500/30 animate-in fade-in zoom-in-95 duration-200 text-left space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-emerald-600">
-                <Sparkles className="w-5 h-5" />
-                <h3 className="font-bold text-gray-900 text-base">Employee Invitation Link</h3>
-              </div>
-              <button
-                onClick={() => setCreatedInviteLink(null)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="bg-emerald-50/70 border border-emerald-200/80 p-4 rounded-xl space-y-2">
-              <p className="text-xs font-bold text-emerald-900">
-                ✅ Employee {createdEmployee?.firstName || ''} ({createdEmployee?.email}) created!
-              </p>
-              <p className="text-xs text-emerald-800">
-                An invitation email was sent. You can also copy and share this direct setup link with the employee:
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Dashboard Setup URL</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={createdInviteLink}
-                  className="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-2.5 outline-none text-gray-700 select-all"
-                />
-                <button
-                  onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 transition-colors cursor-pointer"
-                >
-                  {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedLink ? 'Copied' : 'Copy Link'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setCreatedInviteLink(null)}
-                className="px-5 py-2 bg-gray-900 text-white font-bold text-xs rounded-xl hover:bg-gray-800 transition-colors cursor-pointer"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Add Employee Form Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
@@ -471,13 +411,19 @@ export const TeamDirectoryView: React.FC = () => {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">Role</label>
                   <select
-                    value={role}
+                    value={user?.role === 'ADMIN' ? role : 'EMPLOYEE'}
                     onChange={e => setRole(e.target.value as 'EMPLOYEE' | 'MANAGER')}
-                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
+                    disabled={user?.role !== 'ADMIN'}
+                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="EMPLOYEE">Employee</option>
-                    <option value="MANAGER">Manager</option>
+                    {user?.role === 'ADMIN' && <option value="MANAGER">Manager</option>}
                   </select>
+                  {user?.role !== 'ADMIN' && (
+                    <p className="text-[10px] text-gray-400 font-medium mt-1">
+                      * Only Admins can assign Manager role.
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -841,13 +841,13 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
     } else if (sprintCategory === 'PAST') {
       // Past Sprints (Past week's sprints: e.g. Week 1 or Week 2 when currently in Week 3, or past due date)
       const isPastWeek = taskWeekIdx > 0 && taskWeekIdx < currentWeekIdx;
-      const isPastDueDate = taskDueDate && taskDueDate < today;
+      const isPastDueDate = Boolean(taskDueDate && taskDueDate < today);
       matchesSprintCategory = isPastWeek || (isPastDueDate && taskCol !== 'BACKLOG');
     } else if (sprintCategory === 'FUTURE') {
       // Future Sprints & Undecided Sprints (Future weeks, or tasks not declared / not decided / Backlog)
       const isFutureWeek = taskWeekIdx > currentWeekIdx;
       const isUndecidedOrBacklog = taskWeekIdx === 0 || taskCol === 'BACKLOG' || !taskWeekStr;
-      const isFutureDueDate = taskDueDate && taskDueDate > today;
+      const isFutureDueDate = Boolean(taskDueDate && taskDueDate > today);
       matchesSprintCategory = isFutureWeek || isUndecidedOrBacklog || isFutureDueDate;
     } else if (sprintCategory === 'DATE_RANGE') {
       if (filterStartDate || filterEndDate) {

@@ -176,7 +176,7 @@ export const DashboardView: React.FC = () => {
   const activeEmployeesPercent = totalEmployeesCount > 0 ? Math.round((activeEmployeesCount / totalEmployeesCount) * 100) : 0;
 
   const loggedInEmployee = employees.find(
-    (e) => e.id === user?.employeeId || e.email?.toLowerCase() === user?.email?.toLowerCase()
+    (e: any) => e.id === user?.employeeId || e.email?.toLowerCase() === user?.email?.toLowerCase()
   );
   const userDisplayName = loggedInEmployee
     ? `${loggedInEmployee.firstName} ${loggedInEmployee.lastName}`

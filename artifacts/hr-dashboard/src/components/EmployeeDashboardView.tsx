@@ -62,14 +62,14 @@ export interface EmployeeDeliverableTask {
   priority: string;
   lead: string;
   assigneeName: string;
-  status: 'In Progress' | 'Done' | 'Delayed' | 'Blocked';
+  status: string;
   dueDate: string;
   outputUrl: string;
   waitingOn: string;
-  notes: string;
-  delayRequested: boolean;
-  sprintWeek: string;
-  completionPct: number;
+  completionPct?: number;
+  delayRequested?: boolean;
+  notes?: string;
+  sprintWeek?: string;
 }
 
 // 12 Team Members list for Team Directory Exception inside Employee View
@@ -475,13 +475,13 @@ export const EmployeeDashboardView: React.FC = () => {
     const matchesSearch =
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.notes.toLowerCase().includes(searchTerm.toLowerCase());
+      (t.notes || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
     return matchesSearch && matchesPriority;
   });
 
   // Active Sprint week tasks filter
-  const activeSprintTasks = scopedMyTasks.filter((t) => t.sprintWeek.includes('Sprint 35'));
+  const activeSprintTasks = scopedMyTasks.filter((t) => (t.sprintWeek || '').includes('Sprint 35'));
 
   // Filter Team Members table search
   const filteredTeamMembers = FULL_TEAM_MEMBERS.filter((m) =>
