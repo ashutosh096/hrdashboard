@@ -24,7 +24,20 @@ export const TasksView: React.FC = () => {
   const isEmployee = user?.role === 'EMPLOYEE';
   const isManager = !isEmployee;
 
-  const [activeTab, setActiveTab] = useState<TabType>('TASKS');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (user?.role === 'EMPLOYEE') {
+      return 'TASKS';
+    }
+    return 'INITIATIVES';
+  });
+
+  useEffect(() => {
+    if (user?.role === 'EMPLOYEE') {
+      setActiveTab('TASKS');
+    } else if (user?.role === 'MANAGER' || user?.role === 'ADMIN') {
+      setActiveTab('INITIATIVES');
+    }
+  }, [user?.role]);
   const [selectedEpicToViewId, setSelectedEpicToViewId] = useState<string | null>(null);
   const [selectedInitiativeToViewId, setSelectedInitiativeToViewId] = useState<string | null>(null);
   const [returnToInitiativeId, setReturnToInitiativeId] = useState<string | null>(null);
