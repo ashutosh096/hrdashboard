@@ -488,8 +488,17 @@ export const EmployeeDashboardView: React.FC = () => {
   // Active Sprint week tasks filter
   const activeSprintTasks = scopedMyTasks.filter((t) => (t.sprintWeek || '').includes('Sprint 35'));
 
-  // Filter Team Members table search
-  const filteredTeamMembers = FULL_TEAM_MEMBERS.filter((m) =>
+  // Filter Team Members table search from live database
+  const mappedTeamMembers = dbEmployees.map((emp) => ({
+    id: emp.id,
+    name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee',
+    role: emp.designation || 'Specialist',
+    dept: emp.departmentName || 'Engineering',
+    entity: emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM',
+    status: 'Active',
+  }));
+
+  const filteredTeamMembers = mappedTeamMembers.filter((m) =>
     matchesEntityFilter(m, selectedEntity) &&
     (m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.role.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -146,7 +146,7 @@ export const TeamDirectoryView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [team, setTeam] = useState<any[]>(DEFAULT_TEAM_MEMBERS);
+  const [team, setTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Invite modal state
@@ -169,29 +169,23 @@ export const TeamDirectoryView: React.FC = () => {
   const loadTeam = async () => {
     try {
       const data = await fetchApi<any[]>('/api/employees');
-      if (data && data.length > 0) {
+      if (Array.isArray(data)) {
         const formatted = data.map(emp => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+          const entityCode = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
           return {
             id: emp.id,
             name: empName,
             email: emp.email,
             phone: emp.phone || '+91 98201 12345',
-            entity: emp.entityId === 'cag' ? 'CAG' : 'EHM',
-            entityName: emp.entityId || 'ehmconsultancy',
-            dept: emp.designation || 'Engineering',
+            entity: entityCode,
+            entityName: entityCode === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy',
+            dept: emp.departmentName || 'Engineering',
             role: emp.designation || 'Specialist',
             avatar: getAvatarByName(empName),
           };
         });
-
-        // Merge API employees with default roster to avoid duplicates
-        const existingNames = new Set(formatted.map(f => f.name.toLowerCase()));
-        const remainingDefaults = DEFAULT_TEAM_MEMBERS.filter(
-          d => !existingNames.has(d.name.toLowerCase())
-        );
-
-        setTeam([...formatted, ...remainingDefaults]);
+        setTeam(formatted);
       }
     } catch (err) {
       console.error('[TEAM DIRECTORY FETCH ERROR]:', err);

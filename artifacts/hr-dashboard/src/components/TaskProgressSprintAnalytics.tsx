@@ -39,13 +39,12 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
     setLoading(true);
     try {
       const rawTasks = await fetchApi<any[]>('/api/tasks');
-      if (Array.isArray(rawTasks) && rawTasks.length > 0) {
+      if (Array.isArray(rawTasks)) {
         const liveTasks = rawTasks.filter((t) => matchesEntityFilter(t, selectedEntity));
         const completedCount = liveTasks.filter((t) => t.status === 'DONE' || t.status === 'COMPLETED').length;
         const toReviewCount = liveTasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW').length;
         const pendingCount = liveTasks.filter((t) => t.status === 'TODO' || t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length;
 
-        // Scale data with live DB state
         const updated = DEFAULT_WEEKLY_DATA.map((item, idx) => {
           const factor = (idx + 1) / 8;
           return {
