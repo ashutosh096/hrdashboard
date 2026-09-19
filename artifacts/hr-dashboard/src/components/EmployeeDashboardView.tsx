@@ -27,6 +27,8 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   X,
+  ArrowRight,
+  Zap,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -46,7 +48,9 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
+import { matchesEntityFilter } from '../utils/entityUtils';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
+import { TaskProgressSprintAnalytics } from './TaskProgressSprintAnalytics';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
 export interface EmployeeDeliverableTask {
@@ -206,7 +210,7 @@ const PERSONAL_VELOCITY_TREND = [
 ];
 
 export const EmployeeDashboardView: React.FC = () => {
-  const { user, setRole } = useAuth();
+  const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'BACKLOG' | 'SPRINT'>('OVERVIEW');
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
@@ -333,10 +337,10 @@ export const EmployeeDashboardView: React.FC = () => {
             status: (t.status === 'DONE'
               ? 'Done'
               : t.status === 'BLOCKED'
-              ? 'Blocked'
-              : t.status === 'DELAYED'
-              ? 'Delayed'
-              : 'In Progress') as any,
+                ? 'Blocked'
+                : t.status === 'DELAYED'
+                  ? 'Delayed'
+                  : 'In Progress') as any,
             dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-18',
             outputUrl: t.deliverableUrl || '',
             waitingOn: 'None (Self)',
@@ -386,13 +390,19 @@ export const EmployeeDashboardView: React.FC = () => {
     loadData();
   }, [user, selectedEmployeeId]);
 
-  const delayedTask = myTasks.find((t) => t.status === 'Delayed');
+  // Scope Employee Tasks & Meetings by Selected Entity (EHM / CAG / ALL)
+  const scopedMyTasks = myTasks.filter((t) => matchesEntityFilter(t, selectedEntity));
+  const scopedTodaysMeetings = todaysMeetings.filter((m) => matchesEntityFilter(m, selectedEntity));
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const delayedTask = scopedMyTasks.find((t) => t.status === 'Delayed');
+  const lateRunningTask = scopedMyTasks.find((t) => t.status !== 'Done' && (t.status === 'Delayed' || (t.dueDate && t.dueDate.split('T')[0] < todayStr))) || delayedTask;
 
   // Specific employee task metrics calculation for Pie Chart
-  const doneCount = myTasks.filter((t) => t.status === 'Done').length;
-  const inProgressCount = myTasks.filter((t) => t.status === 'In Progress').length;
-  const delayedCount = myTasks.filter((t) => t.status === 'Delayed').length;
-  const blockedCount = myTasks.filter((t) => t.status === 'Blocked').length;
+  const doneCount = scopedMyTasks.filter((t) => t.status === 'Done').length;
+  const inProgressCount = scopedMyTasks.filter((t) => t.status === 'In Progress').length;
+  const delayedCount = scopedMyTasks.filter((t) => t.status === 'Delayed').length;
+  const blockedCount = scopedMyTasks.filter((t) => t.status === 'Blocked').length;
 
   const personalTaskPieData = [
     { name: 'Completed', value: doneCount, color: '#10B981' },
@@ -421,13 +431,13 @@ export const EmployeeDashboardView: React.FC = () => {
       myTasks.map((t) =>
         t.id === updated.id
           ? {
-              ...t,
-              status: updated.status,
-              outputUrl: updated.outputUrl || '',
-              waitingOn: updated.waitingOn || 'None (Self)',
-              notes: updated.notes || '',
-              completionPct: updated.status === 'Done' ? 100 : t.completionPct,
-            }
+            ...t,
+            status: updated.status,
+            outputUrl: updated.outputUrl || '',
+            waitingOn: updated.waitingOn || 'None (Self)',
+            notes: updated.notes || '',
+            completionPct: updated.status === 'Done' ? 100 : t.completionPct,
+          }
           : t
       )
     );
@@ -461,7 +471,7 @@ export const EmployeeDashboardView: React.FC = () => {
   };
 
   // Filter tasks for Backlog tab
-  const filteredBacklogTasks = myTasks.filter((t) => {
+  const filteredBacklogTasks = scopedMyTasks.filter((t) => {
     const matchesSearch =
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -471,13 +481,14 @@ export const EmployeeDashboardView: React.FC = () => {
   });
 
   // Active Sprint week tasks filter
-  const activeSprintTasks = myTasks.filter((t) => t.sprintWeek.includes('Sprint 35'));
+  const activeSprintTasks = scopedMyTasks.filter((t) => t.sprintWeek.includes('Sprint 35'));
 
   // Filter Team Members table search
   const filteredTeamMembers = FULL_TEAM_MEMBERS.filter((m) =>
-    m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.dept.toLowerCase().includes(searchTerm.toLowerCase())
+    matchesEntityFilter(m, selectedEntity) &&
+    (m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.dept.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -487,33 +498,30 @@ export const EmployeeDashboardView: React.FC = () => {
         <div className="flex items-center gap-2 bg-gray-100/80 p-1 rounded-xl border border-gray-200">
           <button
             onClick={() => setActiveSubTab('OVERVIEW')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'OVERVIEW'
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'OVERVIEW'
                 ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/60'
                 : 'text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             <BarChart2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>My Overview & Analytics</span>
           </button>
           <button
             onClick={() => setActiveSubTab('BACKLOG')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'BACKLOG'
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'BACKLOG'
                 ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/60'
                 : 'text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             <Layers className="w-3.5 h-3.5 text-blue-600" />
             <span>My Product Backlog ({myTasks.length})</span>
           </button>
           <button
             onClick={() => setActiveSubTab('SPRINT')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'SPRINT'
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'SPRINT'
                 ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/60'
                 : 'text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             <Flame className="w-3.5 h-3.5 text-amber-600" />
             <span>My Active Sprint Week ({activeSprintTasks.length})</span>
@@ -531,101 +539,70 @@ export const EmployeeDashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* SINGLE UNIFIED EMPLOYEE WORKSPACE HEADER BANNER */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-6 text-white shadow-md space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          {/* Left: User Profile & Welcome */}
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 bg-white/20 backdrop-blur-xs rounded-full text-[10px] font-extrabold uppercase tracking-wider text-white">
-                EMPLOYEE PERSONAL WORKSPACE • {activeEmpEmail}
+      {/* COMPACT GREEN CAPSULE HEADER BANNER */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-4 sm:p-5 text-white shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Left Side: Name and Your Mail */}
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">
+                Name
               </span>
-              <span className="text-xs font-mono font-bold text-emerald-200 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-400/30">
-                {activeEmpCode}
+              <span className="text-base sm:text-lg font-bold text-white tracking-tight">
+                {activeEmpName}
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Welcome back, {activeEmpName}! 👋
-            </h2>
-            <p className="text-xs text-emerald-100 font-medium leading-relaxed">
-              Here is your personal task load distribution, sprint velocity analytics, and daily standup schedule.
-            </p>
+            <div className="h-8 w-px bg-white/20 hidden sm:block"></div>
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">
+                Your Mail
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-emerald-50">
+                {activeEmpEmail || user?.email || 'employee@example.com'}
+              </span>
+            </div>
           </div>
 
-          {/* Right: Workspace Status Box & Controls */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            {/* Dark Status Card */}
-            <div className="bg-emerald-950/40 border border-emerald-400/30 backdrop-blur-sm rounded-xl p-3.5 space-y-0.5 min-w-[170px]">
-              <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-300 block">
-                WORKSPACE STATUS
-              </span>
-              <span className="text-xs font-black text-white block">Sprint 35 Active</span>
-              <span className="text-[11px] font-semibold text-emerald-200 block">
-                {myTasks.length} Active Deliverables
-              </span>
-            </div>
-
-            {user?.role === 'ADMIN' && (
-              <div className="flex flex-col gap-2">
-                {dbEmployees.length > 0 && (
-                  <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md border border-white/25 px-3 py-1.5 rounded-xl shadow-xs">
-                    <User className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                    <select
-                      value={activeEmployee?.id || ''}
-                      onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                      className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer max-w-[190px] truncate"
-                    >
-                      {dbEmployees.map((emp) => (
-                        <option key={emp.id} value={emp.id} className="text-gray-900 bg-white">
-                          [{emp.employeeCode}] {emp.firstName} {emp.lastName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
-                  <button
-                    onClick={() => setRole('ADMIN')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg text-emerald-100 hover:text-white hover:bg-white/15 transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-emerald-300" />
-                    <span>Manager View</span>
-                  </button>
-                  <button
-                    onClick={() => setRole('EMPLOYEE')}
-                    className="px-2.5 py-1 text-xs font-extrabold rounded-lg bg-white text-emerald-900 shadow-xs cursor-pointer flex items-center gap-1"
-                  >
-                    <User className="w-3.5 h-3.5" />
-                    <span>Employee Active</span>
-                  </button>
-                </div>
-              </div>
-            )}
+          {/* Right Side: Role */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Role:</span>
+            <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-xs rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/25 shadow-2xs">
+              {user?.role === 'EMPLOYEE' ? 'Employee' : 'Manager'}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Delayed Task Warning Banner */}
-      {delayedTask && (
-        <div className="bg-amber-500/15 border-2 border-amber-500/40 rounded-2xl p-4 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+      {/* TASK RUNNING LATE POP CAPSULE BANNER */}
+      {lateRunningTask && (
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 border-2 border-red-500/50 rounded-2xl p-4 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md animate-in fade-in zoom-in-95 duration-200 select-none">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500 text-white rounded-xl shadow-xs">
-              <AlertTriangle className="w-5 h-5 animate-pulse" />
+            <div className="p-2.5 bg-white/20 backdrop-blur-xs rounded-xl border border-white/30 shrink-0">
+              <AlertTriangle className="w-5 h-5 text-white animate-bounce" />
             </div>
             <div>
-              <h4 className="font-bold text-xs sm:text-sm">⚠️ Task Delay Notice: {delayedTask.taskId}</h4>
-              <p className="text-[11px] font-semibold text-amber-800">
-                Your task <strong className="text-amber-950">{delayedTask.title}</strong> is flagged as delayed.
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-white text-red-700 text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                  Task Running Late 🔴
+                </span>
+                <span className="text-xs font-bold text-red-100">
+                  Due Date: {lateRunningTask.dueDate}
+                </span>
+              </div>
+              <h4 className="font-extrabold text-sm text-white pt-1">
+                [{lateRunningTask.taskId}] {lateRunningTask.title}
+              </h4>
+              <p className="text-[11px] font-medium text-red-100">
+                Lead Reviewer: {lateRunningTask.lead} | Priority: {lateRunningTask.priority}
               </p>
             </div>
           </div>
           <button
-            onClick={() => handleSendDelayRequest(delayedTask.id, delayedTask.taskId)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0"
+            onClick={() => handleSendDelayRequest(lateRunningTask.id, lateRunningTask.taskId)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-red-50 text-red-700 font-extrabold text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span>Send Delay Extension Request</span>
+            <Send className="w-3.5 h-3.5 text-red-600" />
+            <span>Request Extension / Update</span>
           </button>
         </div>
       )}
@@ -710,38 +687,43 @@ export const EmployeeDashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Visual Recharts Section for Employee Personal Analytics */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Chart 1: Employee Personal Task Load Pie Breakdown (35%) */}
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">My Task Load Distribution</h3>
-                  <p className="text-[11px] text-gray-400 font-medium">Personal deliverable status pie chart.</p>
+          {/* Visual Recharts Section: Task Progress & Sprint Analytics (Left 65%) + My Task Load Distribution (Right 35%) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+            <div className="lg:col-span-2">
+              <TaskProgressSprintAnalytics className="h-full" />
+            </div>
+
+            <div className="lg:col-span-1 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm tracking-tight">My Task Load Distribution</h3>
+                    <p className="text-[11px] text-gray-400 font-medium">Personal deliverable status pie chart.</p>
+                  </div>
+                  <PieIcon className="w-4 h-4 text-emerald-600" />
                 </div>
-                <PieIcon className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={personalTaskPieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={75}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {personalTaskPieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="h-52 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={personalTaskPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {personalTaskPieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                 {personalTaskPieData.map((item) => (
@@ -751,79 +733,6 @@ export const EmployeeDashboardView: React.FC = () => {
                     <span className="font-bold text-gray-900">{item.value}</span>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Chart 2: Customizable Visual Analytics View (65%) */}
-            <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">Personal Analytics & Performance Trend</h3>
-                  <p className="text-[11px] text-gray-400 font-medium">Select metric breakdown view to switch analytics visualization.</p>
-                </div>
-
-                <select
-                  value={analyticsMetric}
-                  onChange={(e) => setAnalyticsMetric(e.target.value as any)}
-                  className="text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl px-3 py-1.5 outline-none cursor-pointer focus:ring-2 focus:ring-emerald-500 shadow-2xs"
-                >
-                  <option value="VELOCITY_TREND">📈 Sprint Velocity & Quality Trend</option>
-                  <option value="PRIORITY_BREAKDOWN">📊 Deliverable Priority Distribution</option>
-                  <option value="SPRINT_PACING">🚀 Daily Sprint Completion Pacing</option>
-                </select>
-              </div>
-
-              <div className="h-56 w-full pt-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  {analyticsMetric === 'VELOCITY_TREND' ? (
-                    <AreaChart data={PERSONAL_VELOCITY_TREND} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorVelocity" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="sprint" tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[70, 100]} />
-                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
-                      <Area type="monotone" dataKey="velocity" name="Velocity Score" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorVelocity)" />
-                      <Area type="monotone" dataKey="quality" name="Quality Score" stroke="#8B5CF6" strokeWidth={2} fillOpacity={0} />
-                    </AreaChart>
-                  ) : analyticsMetric === 'PRIORITY_BREAKDOWN' ? (
-                    <BarChart
-                      data={[
-                        { priority: 'Urgent', count: myTasks.filter(t => t.priority === 'URGENT').length || 1, color: '#EF4444' },
-                        { priority: 'High', count: myTasks.filter(t => t.priority === 'HIGH').length || 3, color: '#F59E0B' },
-                        { priority: 'Medium', count: myTasks.filter(t => t.priority === 'MEDIUM').length || 2, color: '#3B82F6' },
-                        { priority: 'Low', count: myTasks.filter(t => t.priority === 'LOW').length || 1, color: '#10B981' },
-                      ]}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="priority" tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
-                      <Bar dataKey="count" name="Task Count" fill="#3B82F6" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  ) : (
-                    <BarChart data={[
-                      { day: 'Mon', completed: 2, target: 2 },
-                      { day: 'Tue', completed: 3, target: 3 },
-                      { day: 'Wed', completed: 1, target: 2 },
-                      { day: 'Thu', completed: 4, target: 3 },
-                      { day: 'Fri', completed: 2, target: 2 },
-                      { day: 'Sat', completed: 1, target: 1 },
-                    ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
-                      <Bar dataKey="completed" name="Completed Deliverables" fill="#10B981" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="target" name="Target Goal" fill="#E2E8F0" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
               </div>
             </div>
           </div>
@@ -891,15 +800,14 @@ export const EmployeeDashboardView: React.FC = () => {
                     {/* Task Status Badge */}
                     <div className="flex items-center gap-2 shrink-0">
                       <span
-                        className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${
-                          t.status === 'Done'
+                        className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${t.status === 'Done'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                             : t.status === 'Delayed'
-                            ? 'bg-amber-100 text-amber-900 border-amber-400 font-black'
-                            : t.status === 'Blocked'
-                            ? 'bg-red-50 text-red-800 border-red-300'
-                            : 'bg-blue-50 text-blue-800 border-blue-300'
-                        }`}
+                              ? 'bg-amber-100 text-amber-900 border-amber-400 font-black'
+                              : t.status === 'Blocked'
+                                ? 'bg-red-50 text-red-800 border-red-300'
+                                : 'bg-blue-50 text-blue-800 border-blue-300'
+                          }`}
                       >
                         {t.status}
                       </span>
@@ -926,29 +834,29 @@ export const EmployeeDashboardView: React.FC = () => {
                     <p className="text-xs font-medium text-gray-400 italic py-2">No meetings scheduled for today</p>
                   ) : (
                     todaysMeetings.map((m, idx) => (
-                    <div key={m.id || idx} className="p-3.5 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-emerald-800">
-                          {m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'}
-                        </span>
-                        <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full">SCHEDULED</span>
+                      <div key={m.id || idx} className="p-3.5 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-emerald-800">
+                            {m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'}
+                          </span>
+                          <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full">SCHEDULED</span>
+                        </div>
+                        <h4 className="font-bold text-gray-900 text-xs">{m.title}</h4>
+                        <p className="text-[11px] text-gray-500 font-medium">{m.description || 'HROS Meeting'}</p>
+                        {m.googleMeetUrl && (
+                          <a
+                            href={m.googleMeetUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg justify-center transition-colors shadow-2xs mt-1"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>Join Google Meet</span>
+                          </a>
+                        )}
                       </div>
-                      <h4 className="font-bold text-gray-900 text-xs">{m.title}</h4>
-                      <p className="text-[11px] text-gray-500 font-medium">{m.description || 'HROS Meeting'}</p>
-                      {m.googleMeetUrl && (
-                        <a
-                          href={m.googleMeetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg justify-center transition-colors shadow-2xs mt-1"
-                        >
-                          <Video className="w-3.5 h-3.5" />
-                          <span>Join Google Meet</span>
-                        </a>
-                      )}
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -1036,15 +944,14 @@ export const EmployeeDashboardView: React.FC = () => {
                     <td className="py-3.5 px-4 font-medium text-gray-600">{t.dueDate}</td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${
-                          t.status === 'Done'
+                        className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${t.status === 'Done'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                             : t.status === 'Delayed'
-                            ? 'bg-amber-100 text-amber-900 border-amber-400'
-                            : t.status === 'Blocked'
-                            ? 'bg-red-50 text-red-800 border-red-300'
-                            : 'bg-blue-50 text-blue-800 border-blue-300'
-                        }`}
+                              ? 'bg-amber-100 text-amber-900 border-amber-400'
+                              : t.status === 'Blocked'
+                                ? 'bg-red-50 text-red-800 border-red-300'
+                                : 'bg-blue-50 text-blue-800 border-blue-300'
+                          }`}
                       >
                         {t.status}
                       </span>
@@ -1143,72 +1050,79 @@ export const EmployeeDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* 🚀 BIG RESPONSIVE TILE DETAIL POP-UP MODALS */}
+      {/* 🚀 RESPONSIVE MINIMAL CLEAN KPI CARD DETAIL MODALS (MATCHING REFERENCE IMAGE 1 & 2) */}
       {activeModalType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
-          <div className="bg-white rounded-3xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
+          <div className="bg-white rounded-2xl p-5 max-w-lg w-full shadow-xl border border-gray-200 max-h-[85vh] overflow-y-auto space-y-4">
+            
             {/* 1. PENDING & TODAY'S TASKS MODAL */}
             {activeModalType === 'PENDING_TASKS' && (
               <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-50 rounded-2xl border border-blue-200 text-blue-600">
-                      <Clock className="w-6 h-6" />
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                      <Clock className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-extrabold text-gray-900">Today's Tasks & Pending Deliverables</h3>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Today's Tasks & Pending</h3>
                       <p className="text-xs text-gray-500 font-medium">
-                        Detailed breakdown of active sprint deliverables needing execution & review
+                        {myTasks.filter(t => t.status !== 'Done').length} tasks needing execution & review
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveModalType(null)}
-                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  {myTasks.filter(t => t.status !== 'Done').map((task) => (
-                    <div
-                      key={task.id}
-                      onClick={() => {
-                        setActiveModalType(null);
-                        handleOpenTaskUpdate(task);
-                      }}
-                      className="p-4 bg-gray-50/80 rounded-2xl border border-gray-200/80 hover:border-blue-300 hover:bg-white transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                            {task.taskId}
-                          </span>
-                          {(() => {
-                            const p = (task.priority || '').toUpperCase();
-                            const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
-                            const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
-                            return (
-                              <span className={`px-2 py-0.5 text-[10px] rounded border ${color}`}>
-                                {label}
-                              </span>
-                            );
-                          })()}
-                          <span className="text-[10px] font-bold text-gray-500">Lead: {task.lead}</span>
-                        </div>
-                        <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
-                        {task.notes && <p className="text-[11px] text-gray-500 line-clamp-1">{task.notes}</p>}
-                      </div>
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {myTasks.filter(t => t.status !== 'Done').length === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-gray-400">No pending tasks found. All caught up!</div>
+                  ) : (
+                    myTasks.filter(t => t.status !== 'Done').slice(0, 5).map((task) => {
+                      const p = (task.priority || '').toUpperCase();
+                      const prioLabel = (p === 'URGENT' || p === 'P1' || p === '1') ? 'urgent' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'high' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'medium' : 'low';
+                      const prioColor = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-50 text-red-700 border-red-200 font-bold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-bold text-gray-500">{task.dueDate}</span>
-                        <span className="px-3 py-1 rounded-xl text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
-                          {task.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => {
+                            setActiveModalType(null);
+                            handleOpenTaskUpdate(task);
+                          }}
+                          className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors cursor-pointer gap-2"
+                        >
+                          <div className="space-y-0.5 min-w-0 flex-1">
+                            <h4 className="text-xs font-bold text-gray-900 truncate">{task.title}</h4>
+                            <p className="text-[11px] text-gray-500 font-medium truncate">
+                              {task.assigneeName || 'Ashutosh Mishra'} · {task.taskId}
+                            </p>
+                          </div>
+
+                          <div className="shrink-0">
+                            <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${prioColor}`}>
+                              {prioLabel}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{Math.max(0, myTasks.filter(t => t.status !== 'Done').length - 5)} more</span>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:border-gray-300 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span>View backlog</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </>
             )}
@@ -1216,52 +1130,53 @@ export const EmployeeDashboardView: React.FC = () => {
             {/* 2. ACTIVE SPRINTS MODAL */}
             {activeModalType === 'ACTIVE_SPRINTS' && (
               <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-amber-600">
-                      <Flame className="w-6 h-6" />
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                      <Flame className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-extrabold text-gray-900">Active Sprint Iterations</h3>
-                      <p className="text-xs text-gray-500 font-medium">Sprint 35 4-week iteration deliverables and progress tracking</p>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Active sprints</h3>
+                      <p className="text-xs text-gray-500 font-medium">Sprint 35 active iteration tracking</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveModalType(null)}
-                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-900">Sprint Cycle Name:</span>
-                    <span className="text-xs font-extrabold text-amber-950 font-mono">Sprint 35 (Current Month 1)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-900">Total Sprint Tasks:</span>
-                    <span className="text-xs font-extrabold text-amber-950">{activeSprintTasks.length} Deliverables</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-900">Reviewing Lead:</span>
-                    <span className="text-xs font-extrabold text-amber-950">Dr. Harshit Mishra (CTO)</span>
-                  </div>
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {activeSprintTasks.length === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-gray-400">No active sprint items.</div>
+                  ) : (
+                    activeSprintTasks.slice(0, 5).map((t) => (
+                      <div key={t.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors gap-2">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-gray-900 truncate">{t.title}</h4>
+                          <p className="text-[11px] text-gray-500 font-medium truncate">
+                            {t.assigneeName || 'Ashutosh Mishra'} · {t.taskId} · {t.sprintWeek}
+                          </p>
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 border border-gray-200 text-gray-700 shrink-0">
+                          {t.status.toLowerCase()}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
 
-                <div className="space-y-2.5">
-                  <h4 className="text-xs font-bold text-gray-900">Tasks in Active Sprint:</h4>
-                  {activeSprintTasks.map((t) => (
-                    <div key={t.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between text-xs font-bold text-gray-800">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-emerald-700">{t.taskId}</span>
-                        <span>{t.title}</span>
-                      </div>
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-extrabold bg-white border border-gray-200">
-                        {t.status}
-                      </span>
-                    </div>
-                  ))}
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{Math.max(0, activeSprintTasks.length - 5)} more</span>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:border-gray-300 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span>View sprints</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </>
             )}
@@ -1269,159 +1184,179 @@ export const EmployeeDashboardView: React.FC = () => {
             {/* 3. GOOGLE MEETINGS MODAL */}
             {activeModalType === 'MEETINGS' && (
               <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-50 rounded-2xl border border-indigo-200 text-indigo-600">
-                      <Calendar className="w-6 h-6" />
+                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100">
+                      <Calendar className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-extrabold text-gray-900">My Scheduled Google Meetings</h3>
-                      <p className="text-xs text-gray-500 font-medium">Google Calendar synced video conference schedule for today</p>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Today's Google Meetings</h3>
+                      <p className="text-xs text-gray-500 font-medium">Calendar synced video conference schedule</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveModalType(null)}
-                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  {todaysMeetings.map((meet) => (
-                    <div key={meet.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-extrabold text-gray-900">{meet.title}</h4>
-                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
-                          {new Date(meet.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      {meet.description && <p className="text-xs text-gray-500 font-medium">{meet.description}</p>}
-                      <div className="pt-2 flex justify-end">
-                        <a
-                          href={meet.googleMeetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-2xs"
-                        >
-                          <Video className="w-3.5 h-3.5" />
-                          <span>Join Google Meet</span>
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* 4. DELIVERABLE COMPLETION RATE MODAL */}
-            {activeModalType === 'COMPLETION_RATE' && (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-600">
-                      <TrendingUp className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-extrabold text-gray-900">Deliverable Completion Rate Analytics</h3>
-                      <p className="text-xs text-gray-500 font-medium">Sprint velocity score, completed ratio, and quality benchmarks</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveModalType(null)}
-                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
-                    <span className="text-xs font-bold text-emerald-800 block">Completion Rate</span>
-                    <span className="text-2xl font-black text-emerald-950 block">
-                      {Math.round((doneCount / (myTasks.length || 1)) * 100)}%
-                    </span>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-2xl border border-purple-200">
-                    <span className="text-xs font-bold text-purple-800 block">Velocity Score</span>
-                    <span className="text-2xl font-black text-purple-950 block">95.0 / 100</span>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 text-xs font-bold text-gray-700 space-y-1">
-                  <div>Completed Items: <span className="text-emerald-700 font-extrabold">{doneCount}</span></div>
-                  <div>In Progress / Pending: <span className="text-blue-700 font-extrabold">{inProgressCount}</span></div>
-                  <div>Delayed Items: <span className="text-amber-700 font-extrabold">{delayedCount}</span></div>
-                </div>
-              </>
-            )}
-
-            {/* 5. COMPLETED TASKS MODAL */}
-            {activeModalType === 'COMPLETED_TASKS' && (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-600">
-                      <CheckCircle2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-extrabold text-gray-900">Completed Deliverables & Sign-offs</h3>
-                      <p className="text-xs text-gray-500 font-medium">Finished tasks with attached output links and lead approvals</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveModalType(null)}
-                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {myTasks.filter(t => t.status === 'Done').map((task) => (
-                    <div key={task.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            {task.taskId}
-                          </span>
-                          <h4 className="text-xs font-extrabold text-gray-900">{task.title}</h4>
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {todaysMeetings.length === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-gray-400">No scheduled Google Meetings for today.</div>
+                  ) : (
+                    todaysMeetings.map((meet) => (
+                      <div key={meet.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors gap-2">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-gray-900 truncate">{meet.title}</h4>
+                          {meet.description && <p className="text-[11px] text-gray-500 truncate">{meet.description}</p>}
                         </div>
-                        <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                          DONE / Approved
-                        </span>
-                      </div>
-
-                      {task.notes && <p className="text-xs text-gray-500 font-medium">{task.notes}</p>}
-
-                      {task.outputUrl && (
-                        <div className="pt-2 flex justify-end">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                            {new Date(meet.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                           <a
-                            href={task.outputUrl}
+                            href={meet.googleMeetUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center gap-1.5 transition-colors"
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg flex items-center gap-1 transition-colors shadow-2xs"
                           >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>View Deliverable Link</span>
+                            <Video className="w-3 h-3" />
+                            <span>Join</span>
                           </a>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{todaysMeetings.length} meetings today</span>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:border-gray-300 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span>Close modal</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </>
             )}
 
-            <div className="flex justify-end pt-3 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setActiveModalType(null)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                Close Details View
-              </button>
-            </div>
+            {/* 4. COMPLETED TASKS MODAL */}
+            {activeModalType === 'COMPLETED_TASKS' && (
+              <>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Completed Deliverables</h3>
+                      <p className="text-xs text-gray-500 font-medium">Finished tasks with lead approvals</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {myTasks.filter(t => t.status === 'Done').length === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-gray-400">No completed tasks yet.</div>
+                  ) : (
+                    myTasks.filter(t => t.status === 'Done').slice(0, 5).map((task) => (
+                      <div key={task.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors gap-2">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-gray-900 truncate">{task.title}</h4>
+                          <p className="text-[11px] text-gray-500 font-medium truncate">
+                            {task.assigneeName || 'Ashutosh Mishra'} · {task.taskId}
+                          </p>
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                          done
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{Math.max(0, doneCount - 5)} more</span>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:border-gray-300 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span>Close modal</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 5. COMPLETION VELOCITY RATE MODAL */}
+            {activeModalType === 'COMPLETION_RATE' && (
+              <>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Sprint velocity</h3>
+                      <p className="text-xs text-gray-500 font-medium">Execution throughput this cycle</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/40 space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <span className="text-[11px] font-medium text-gray-500 block">Total</span>
+                      <span className="text-2xl font-extrabold text-gray-900 block mt-0.5">{myTasks.length}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-gray-500 block">Completed</span>
+                      <span className="text-2xl font-extrabold text-gray-900 block mt-0.5">{doneCount}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-gray-500 block">Velocity</span>
+                      <span className="text-2xl font-extrabold text-gray-900 block mt-0.5">
+                        {myTasks.length > 0 ? Math.round((doneCount / myTasks.length) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-500 rounded-full"
+                      style={{ width: `${myTasks.length > 0 ? Math.round((doneCount / myTasks.length) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:border-gray-300 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs"
+                  >
+                    <span>Close modal</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </>
+            )}
+
           </div>
         </div>
       )}

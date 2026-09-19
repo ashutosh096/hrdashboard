@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar } from 'lucide-react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
@@ -12,6 +12,7 @@ import { fetchApi } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { formatDateTime } from '../utils/dateUtils';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 type TabType = 'INITIATIVES' | 'EPICS' | 'TASKS';
 
@@ -23,17 +24,35 @@ export const TasksView: React.FC = () => {
   const isEmployee = user?.role === 'EMPLOYEE';
   const isManager = !isEmployee;
 
-  const [activeTab, setActiveTab] = useState<TabType>(user?.role === 'EMPLOYEE' ? 'TASKS' : 'INITIATIVES');
+  const [activeTab, setActiveTab] = useState<TabType>('TASKS');
   const [selectedEpicToViewId, setSelectedEpicToViewId] = useState<string | null>(null);
   const [selectedInitiativeToViewId, setSelectedInitiativeToViewId] = useState<string | null>(null);
   const [returnToInitiativeId, setReturnToInitiativeId] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
+  const [isModalReadOnly, setIsModalReadOnly] = useState<boolean>(false);
   const [viewingEpicInTasks, setViewingEpicInTasks] = useState<any | null>(null);
   const [rawEpics, setRawEpics] = useState<any[]>([]);
   const [initiatives, setInitiatives] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [employeeFilter, setEmployeeFilter] = useState<string>(() => {
+    if (user?.role === 'EMPLOYEE') {
+      return user.employeeId || user.id || 'ALL';
+    }
+    return 'ALL';
+  });
+
+  useEffect(() => {
+    if (user?.role === 'EMPLOYEE') {
+      const empId = user.employeeId || user.id;
+      if (empId) setEmployeeFilter(empId);
+    } else {
+      setEmployeeFilter('ALL');
+    }
+  }, [user?.role, user?.employeeId, user?.id]);
+
   const [loading, setLoading] = useState(true);
 
   // Scalable Filtering & Pagination States for 100s of Tasks
@@ -43,15 +62,7 @@ export const TasksView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
 
-  useEffect(() => {
-    if (user?.role === 'EMPLOYEE') {
-      setActiveTab('TASKS');
-    } else {
-      setActiveTab('INITIATIVES');
-    }
-  }, [user?.role]);
-
-  const currentTab = isEmployee ? 'TASKS' : activeTab;
+  const currentTab = activeTab;
 
   const loadTasks = async () => {
     setLoading(true);
@@ -64,6 +75,7 @@ export const TasksView: React.FC = () => {
       ]);
       setRawEpics(epicsData || []);
       setInitiatives(initsData || []);
+      setEmployees(employeesData || []);
 
       const formatted = (tasksData || []).map(t => {
         const parentEpic = (epicsData || []).find(ep => ep.id === t.epicId);
@@ -132,8 +144,23 @@ export const TasksView: React.FC = () => {
     loadTasks();
   }, [user]);
 
+  const isTaskAssignedToUser = (task: any) => {
+    if (isManager) return true;
+    if (!task) return false;
+    const targetId = user?.employeeId || user?.id;
+    const targetEmail = (user?.email || '').toLowerCase();
+    const targetName = (user?.name || '').toLowerCase();
+
+    return Boolean(
+      (targetId && (task.assigneeId === targetId || task.employeeId === targetId)) ||
+      (targetId && Array.isArray(task.assigneeIds) && task.assigneeIds.includes(targetId)) ||
+      (targetEmail && task.assigneeEmail?.toLowerCase() === targetEmail) ||
+      (targetName && (task.assigneeName || task.assignee)?.toLowerCase().includes(targetName))
+    );
+  };
+
   const filteredTasks = tasks.filter(t => {
-    const matchesEntity = selectedEntity === 'ALL' || t.entityCode === selectedEntity;
+    const matchesEntity = matchesEntityFilter(t, selectedEntity);
     const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
     const matchesSearch = !searchQuery.trim() ||
@@ -142,13 +169,30 @@ export const TasksView: React.FC = () => {
       t.parentEpicCode?.toLowerCase().includes(searchQuery.toLowerCase());
 
     let matchesAssignee = true;
-    if (user?.role === 'EMPLOYEE') {
-      const targetId = user.employeeId || user.id;
-      const targetEmail = (user.email || '').toLowerCase();
-      matchesAssignee = (
-        (targetId && (t.assigneeId === targetId || t.employeeId === targetId)) ||
-        (targetId && Array.isArray(t.assigneeIds) && t.assigneeIds.includes(targetId)) ||
-        (targetEmail && t.assigneeEmail?.toLowerCase() === targetEmail)
+    if (employeeFilter !== 'ALL') {
+      const selectedEmp = employees.find((e: any) => e.id === employeeFilter || e.employeeId === employeeFilter);
+      const selFirst = selectedEmp ? (selectedEmp.firstName || '').toLowerCase() : '';
+      const selLast = selectedEmp ? (selectedEmp.lastName || '').toLowerCase() : '';
+      const selCode = selectedEmp ? (selectedEmp.employeeCode || '').toLowerCase() : '';
+      const userEmail = (user?.email || '').toLowerCase();
+      const userName = (user?.name || '').toLowerCase();
+
+      const isMatchingUserSelf = isEmployee && (employeeFilter === user?.employeeId || employeeFilter === user?.id);
+
+      matchesAssignee = Boolean(
+        t.assigneeId === employeeFilter ||
+        t.employeeId === employeeFilter ||
+        t.assigneeEmail === employeeFilter ||
+        (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(employeeFilter)) ||
+        (isMatchingUserSelf && (
+          (userEmail && t.assigneeEmail?.toLowerCase() === userEmail) ||
+          (userName && (t.assigneeName || t.assignee)?.toLowerCase().includes(userName))
+        )) ||
+        (t.assigneeName && (
+          (selFirst && t.assigneeName.toLowerCase().includes(selFirst)) ||
+          (selLast && t.assigneeName.toLowerCase().includes(selLast)) ||
+          (selCode && t.assigneeName.toLowerCase().includes(selCode))
+        ))
       );
     }
 
@@ -173,32 +217,65 @@ export const TasksView: React.FC = () => {
     }
   };
 
-  const handleTaskClick = (task: any) => {
+  const handleTaskClick = (task: any, forceReadOnly: boolean = false) => {
+    const isAssigned = isTaskAssignedToUser(task);
+    const canEdit = isManager || isAssigned;
+    const readOnly = forceReadOnly || !canEdit;
+
+    if (!forceReadOnly && !canEdit) {
+      toast.error('You can only edit tasks assigned to you.');
+    }
+
+    setIsModalReadOnly(readOnly);
     setSelectedTaskToUpdate({
       id: task.id,
-      taskId: task.taskCode,
-      title: task.title,
-      entity: task.entityCode === 'CAG' ? 'CLIMAGRO' : 'EHM',
-      assignee: task.assigneeName,
+      taskId: task.taskCode || task.id,
+      title: task.title || '',
+      entity: task.entityCode === 'CAG' || (task.taskCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
+      assignee: task.assigneeName || task.assignee || 'Unassigned',
+      assigneeId: task.assigneeId || '',
       reviewingLead: task.reviewingLead || 'Manager Lead',
-      status: task.status === 'DONE' ? 'Done' : 'In Progress',
-      outputUrl: task.outputUrl || '',
-      waitingOn: 'None (Self)',
-      notes: task.notes || '',
+      reviewingLeadId: task.reviewingLeadId || '',
+      status: task.status === 'DONE' || task.status === 'Done' ? 'Done' :
+              task.status === 'IN_REVIEW' || task.status === 'To Review' ? 'To Review' :
+              task.status === 'PLANNED' || task.status === 'Planned' ? 'Planned' :
+              task.status === 'BACKLOG' || task.status === 'Backlog' ? 'Backlog' : 'In Progress',
+      outputUrl: task.outputUrl || task.deliverableUrl || '',
+      waitingOn: task.waitingOn || 'None (Self)',
+      notes: task.notes || task.description || '',
+      dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+      targetWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
+      priority: task.priority || 'P3',
       createdAt: task.createdAt,
     });
   };
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
-    const nextStatus = updated.status === 'Done' ? 'DONE' : updated.status === 'In Progress' ? 'IN_PROGRESS' : 'BACKLOG';
-    
+    let nextStatus = 'IN_PROGRESS';
+    if (updated.status === 'Done') nextStatus = 'DONE';
+    else if (updated.status === 'To Review') nextStatus = 'IN_REVIEW';
+    else if (updated.status === 'Planned') nextStatus = 'PLANNED';
+    else if (updated.status === 'Backlog') nextStatus = 'BACKLOG';
+    else if (updated.status === 'Delayed') nextStatus = 'DELAYED';
+    else if (updated.status === 'Blocked') nextStatus = 'BLOCKED';
+
     try {
       await fetchApi(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
+          title: updated.title,
+          entity: updated.entity,
+          assigneeName: updated.assignee,
+          assigneeId: updated.assigneeId,
+          reviewingLead: updated.reviewingLead,
+          reviewingLeadId: updated.reviewingLeadId,
           status: nextStatus,
           deliverableUrl: updated.outputUrl || '',
           description: updated.notes || '',
+          dueDate: updated.dueDate,
+          sprintWeek: updated.targetWeek,
+          priority: updated.priority,
+          waitingOn: updated.waitingOn,
         }),
       });
       toast.success('Task updated successfully in database!');
@@ -312,31 +389,18 @@ export const TasksView: React.FC = () => {
             { id: 'TASKS', label: '3. Tasks', icon: ListTodo },
           ].map((tab) => {
             const Icon = tab.icon;
-            const isLockedForEmp = isEmployee && (tab.id === 'INITIATIVES' || tab.id === 'EPICS');
             const isActive = currentTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => {
-                  if (isLockedForEmp) {
-                    toast.info(`${tab.label} view is locked in Employee mode.`);
-                    return;
-                  }
-                  setActiveTab(tab.id as TabType);
-                }}
+                onClick={() => setActiveTab(tab.id as TabType)}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  isLockedForEmp
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-75'
-                    : isActive
+                  isActive
                     ? 'bg-white text-emerald-700 shadow-xs border border-gray-200/60'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 cursor-pointer'
                 }`}
               >
-                {isLockedForEmp ? (
-                  <Lock className="w-3.5 h-3.5 text-amber-500" />
-                ) : (
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
-                )}
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -413,7 +477,7 @@ export const TasksView: React.FC = () => {
           <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               {/* Search */}
-              <div className="relative sm:col-span-2">
+              <div className="relative sm:col-span-1">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -425,6 +489,26 @@ export const TasksView: React.FC = () => {
                   }}
                   className="w-full pl-9 pr-3 py-1.5 text-xs font-medium border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
                 />
+              </div>
+
+              {/* Employee Filter */}
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
+                <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <select
+                  value={employeeFilter}
+                  onChange={(e) => {
+                    setEmployeeFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Employees ({employees.length || 10} Team Members)</option>
+                  {employees.map((emp: any) => (
+                    <option key={emp.id} value={emp.id}>
+                      [{emp.employeeCode || 'EMP'}] {emp.firstName} {emp.lastName}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Priority Filter */}
@@ -577,25 +661,25 @@ export const TasksView: React.FC = () => {
                             </td>
                             <td className="py-2.5 px-3 text-right">
                               <div className="flex items-center justify-end gap-1">
+                                {/* View Button: Always Read-Only */}
                                 <button
                                   type="button"
-                                  onClick={() => handleTaskClick(t)}
+                                  onClick={() => handleTaskClick(t, true)}
                                   className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
-                                  title="View Task Details"
+                                  title="View Task Details (Read-Only)"
                                 >
                                   <Eye className="w-3.5 h-3.5 text-emerald-600" />
                                 </button>
 
-                                {isManager && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleTaskClick(t)}
-                                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
-                                    title="Edit Task Details"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                                  </button>
-                                )}
+                                {/* Edit Button: Manager can edit all, Employee can edit assigned tasks */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleTaskClick(t, false)}
+                                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
+                                  title={isManager ? "Edit Task Details (Manager Level)" : isTaskAssignedToUser(t) ? "Edit My Assigned Task" : "Edit Task"}
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -658,7 +742,7 @@ export const TasksView: React.FC = () => {
         onClose={() => setSelectedTaskToUpdate(null)}
         onSave={handleSaveTaskUpdate}
         onClone={handleCloneTask}
-        isReadOnly={!isEmployee}
+        isReadOnly={isModalReadOnly}
       />
 
       {/* Feature Epic Details Pop-up Modal (Exact Image 2 Layout) */}

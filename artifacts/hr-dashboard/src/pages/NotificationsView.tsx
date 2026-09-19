@@ -1,21 +1,89 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDateTime } from '../utils/dateUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 export const NotificationsView: React.FC = () => {
   const { user } = useAuth();
+  const { selectedEntity } = useEntity();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const data = await fetchApi<any[]>('/api/dashboard/notifications');
-      setNotifications(Array.isArray(data) ? data : []);
+      const [data, tasksData] = await Promise.all([
+        fetchApi<any[]>('/api/dashboard/notifications').catch(() => []),
+        fetchApi<any[]>('/api/tasks').catch(() => []),
+      ]);
+      const notifList = Array.isArray(data) ? [...data] : [];
+
+      // Generate automatic notifications for tasks due date, overdue, completed, and reviews
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (Array.isArray(tasksData)) {
+        tasksData.forEach((t: any) => {
+          const taskCode = t.taskCode || t.id;
+          const isDone = t.status === 'DONE';
+          const isDueOrOverdue = t.dueDate && t.dueDate.split('T')[0] <= todayStr;
+
+          if (isDueOrOverdue && !isDone) {
+            notifList.push({
+              id: `auto-due-${t.id}`,
+              type: 'TASK_OVERDUE',
+              payload: {
+                taskCode,
+                taskTitle: t.title,
+                daysOverdue: 1,
+                assigneeName: t.assigneeName || 'Assigned Employee',
+                assigneeId: t.assigneeId || t.employeeId,
+                tagged: true,
+              },
+              createdAt: t.dueDate || new Date().toISOString(),
+            });
+          }
+
+          if (isDone) {
+            notifList.push({
+              id: `auto-done-${t.id}`,
+              type: 'TASK_COMPLETED',
+              payload: {
+                taskCode,
+                title: t.title,
+                assigneeName: t.assigneeName || 'Assigned Employee',
+                assigneeId: t.assigneeId || t.employeeId,
+                message: `Deliverable task [${taskCode}] marked Done. Signed off & verified.`,
+                tagged: true,
+              },
+              createdAt: t.createdAt || new Date().toISOString(),
+            });
+          }
+
+          if (t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW') {
+            notifList.push({
+              id: `auto-review-${t.id}`,
+              type: 'REVIEW_ASSIGNED',
+              payload: {
+                taskCode,
+                title: t.title,
+                assigneeName: t.assigneeName || 'Assigned Employee',
+                assigneeId: t.assigneeId || t.employeeId,
+                message: `Task [${taskCode}] submitted for Manager Lead review and sign-off.`,
+                tagged: true,
+              },
+              createdAt: t.createdAt || new Date().toISOString(),
+            });
+          }
+        });
+      }
+
+      setNotifications(notifList);
     } catch {
       // Fallback notifications with explicit tagging for employee mode
       setNotifications([
@@ -43,6 +111,12 @@ export const NotificationsView: React.FC = () => {
           payload: { taskCode: 'EHM-EMP01-005', title: 'Automated CI/CD Pipeline', requesterName: 'Ashutosh Mishra', tagged: true },
           createdAt: new Date().toISOString(),
         },
+        {
+          id: '5',
+          type: 'TASK_COMPLETED',
+          payload: { taskCode: 'CAG-EMP01-003', title: 'Telemetry Data Stream Ingestion Engine', assigneeName: 'Ashutosh Mishra', tagged: true },
+          createdAt: new Date().toISOString(),
+        },
       ]);
     } finally {
       setLoading(false);
@@ -54,10 +128,14 @@ export const NotificationsView: React.FC = () => {
   }, [user]);
 
   const filteredNotifications = notifications.filter((n) => {
-    if (!isEmployee) return true;
     const payload = n.payload || {};
+    const matchesEntity = matchesEntityFilter(n, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
+
+    if (!isEmployee) return matchesEntity;
     const userId = user?.id;
     const empId = user?.employeeId;
+    const userEmail = (user?.email || '').toLowerCase();
+    const userName = (user?.name || '').toLowerCase();
 
     const isTaggedExplicit = payload.tagged === true || n.type === 'TAGGED_MENTION';
     const isDirectUser = n.userId === userId;
@@ -65,10 +143,15 @@ export const NotificationsView: React.FC = () => {
       (userId && payload.taggedUserIds.includes(userId)) ||
       (empId && payload.taggedUserIds.includes(empId))
     );
-    const isAssigneeId = payload.assigneeId === userId || (empId && payload.assigneeId === empId);
+    const isAssigneeId = payload.assigneeId === userId || (empId && payload.assigneeId === empId) || (userEmail && payload.assigneeEmail?.toLowerCase() === userEmail) || (userName && payload.assigneeName?.toLowerCase().includes(userName));
 
-    return isTaggedExplicit || isDirectUser || isTaggedUser || isAssigneeId;
+    return matchesEntity && (isTaggedExplicit || isDirectUser || isTaggedUser || isAssigneeId);
   });
+
+  // Pagination Logic (10 notifications per page)
+  const totalPages = Math.ceil(filteredNotifications.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedNotifications = filteredNotifications.slice(startIndex, startIndex + pageSize);
 
   const renderNotifItem = (notif: any) => {
     const type = notif.type;
@@ -87,8 +170,26 @@ export const NotificationsView: React.FC = () => {
       return {
         icon: AlertTriangle,
         iconBg: 'bg-red-50 text-red-600 border-red-200',
-        title: `Task Overdue Warning: [${payload.taskCode || 'TASK'}] ${payload.taskTitle || ''}`,
-        desc: `Your assigned task is ${payload.daysOverdue || 1} day(s) past due date. Request extension if delayed.`,
+        title: `Task Due / Overdue Warning: [${payload.taskCode || 'TASK'}] ${payload.taskTitle || payload.title || ''}`,
+        desc: `Deliverable task due date has arrived. Please submit output or request extension.`,
+      };
+    }
+
+    if (type === 'TASK_COMPLETED') {
+      return {
+        icon: CheckCircle2,
+        iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+        title: `Task Completed & Signed Off: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: payload.message || `Deliverable task successfully completed and marked Done.`,
+      };
+    }
+
+    if (type === 'REVIEW_ASSIGNED') {
+      return {
+        icon: User,
+        iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+        title: `Review Assigned to Lead: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: payload.message || `Task submitted for manager lead review & sign-off.`,
       };
     }
 
@@ -114,8 +215,8 @@ export const NotificationsView: React.FC = () => {
       return {
         icon: CheckSquare,
         iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-        title: `Task Assigned to You: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: `Assigned deliverable in Sprint 35 cycle.`,
+        title: `Task Assigned: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: payload.message || `Assigned deliverable in Sprint cycle.`,
       };
     }
 
@@ -150,35 +251,75 @@ export const NotificationsView: React.FC = () => {
       {loading ? (
         <div className="py-8 text-center text-xs font-semibold text-gray-400">Loading notifications...</div>
       ) : (
-        <div className="space-y-3">
-          {filteredNotifications.map((n) => {
-            const item = renderNotifItem(n);
-            const Icon = item.icon;
-            return (
-              <div key={n.id} className="bg-white border border-gray-200/80 p-4 rounded-2xl shadow-xs flex items-center justify-between transition-all hover:border-gray-300">
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold shadow-2xs shrink-0 ${item.iconBg}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-gray-900">{item.title}</h4>
-                      {(n.payload?.tagged || isEmployee) && (
-                        <span className="text-[9px] bg-purple-100 text-purple-800 font-extrabold px-1.5 py-0.5 rounded">
-                          @Tagged
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] font-medium text-gray-500">{item.desc}</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-gray-400 shrink-0 ml-3 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-emerald-600" />
-                  {formatDateTime(n.createdAt)}
-                </span>
+        <div className="space-y-4">
+          <div className="space-y-3">
+            {paginatedNotifications.length === 0 ? (
+              <div className="py-12 text-center text-xs font-semibold text-gray-400 bg-white border border-gray-200/80 rounded-2xl">
+                No notifications found matching criteria.
               </div>
-            );
-          })}
+            ) : (
+              paginatedNotifications.map((n) => {
+                const item = renderNotifItem(n);
+                const Icon = item.icon;
+                return (
+                  <div key={n.id} className="bg-white border border-gray-200/80 p-4 rounded-2xl shadow-xs flex items-center justify-between transition-all hover:border-gray-300">
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold shadow-2xs shrink-0 ${item.iconBg}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-gray-900">{item.title}</h4>
+                          {(n.payload?.tagged || isEmployee) && (
+                            <span className="text-[9px] bg-purple-100 text-purple-800 font-extrabold px-1.5 py-0.5 rounded">
+                              @Tagged
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-medium text-gray-500">{item.desc}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-400 shrink-0 ml-3 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-emerald-600" />
+                      {formatDateTime(n.createdAt)}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* 📄 Pagination Bar (10 notifications per page) */}
+          {totalPages > 1 && (
+            <div className="p-3 bg-white border border-gray-200/80 rounded-2xl flex items-center justify-between text-xs font-bold text-gray-600 shadow-2xs">
+              <div>
+                Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filteredNotifications.length)} of {filteredNotifications.length} notifications
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 font-bold text-xs"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <span className="px-2 font-mono text-emerald-800 bg-emerald-50 py-1 rounded-lg border border-emerald-200">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 font-bold text-xs"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

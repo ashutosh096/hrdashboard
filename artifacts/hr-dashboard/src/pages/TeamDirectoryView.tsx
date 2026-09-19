@@ -5,6 +5,7 @@ import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 const DEFAULT_TEAM_MEMBERS = [
   {
@@ -203,7 +204,7 @@ export const TeamDirectoryView: React.FC = () => {
     loadTeam();
   }, []);
 
-  const filtered = team.filter(t => selectedEntity === 'ALL' || t.entity === selectedEntity);
+  const filtered = team.filter(t => matchesEntityFilter(t, selectedEntity));
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -313,46 +314,72 @@ export const TeamDirectoryView: React.FC = () => {
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-xs font-semibold text-gray-400">No employees found.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(member => (
-            <div key={member.id} className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs text-center space-y-4 flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="relative inline-block">
-                  <img src={member.avatar} alt={member.name} className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-emerald-500/20 shadow-xs" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
+          {filtered.map(member => {
+            const isClimagro = (member.entity || '').toUpperCase() === 'CAG' || (member.entityName || '').toLowerCase().includes('climagro');
+            const initials = member.name ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'EM';
+
+            return (
+              <div key={member.id} className="bg-white border border-gray-200/80 rounded-2xl p-5 text-left text-gray-900 shadow-xs flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3.5">
+                    {/* Initials Avatar Badge */}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 shadow-2xs ${
+                      isClimagro ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                    }`}>
+                      {initials}
+                    </div>
+
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-gray-900 tracking-tight truncate">{member.name}</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium truncate">{member.role}</p>
+
+                      {/* Entity & Department Pill Badges */}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                          isClimagro ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                        }`}>
+                          {isClimagro ? 'Climagro' : 'EHM'}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
+                          {member.dept || 'Engineering'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="pt-3 border-t border-gray-100 space-y-1.5 text-xs text-gray-600 font-medium">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="truncate text-gray-700">{member.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="text-gray-700">{member.phone}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="text-base font-bold text-gray-900">{member.name}</h3>
-                  <p className="text-xs font-semibold text-emerald-600 mt-0.5">{member.role}</p>
-                  <p className="text-[10px] text-gray-400 font-medium mt-0.5 tracking-wider font-mono">{member.id}</p>
-                </div>
-
-                <div className="pt-3 border-t border-gray-100 space-y-2 text-xs text-gray-500">
-                  <div className="flex items-center justify-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
-                    <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                    <span className="truncate">{member.email}</span>
+                {/* Remove Action Button */}
+                {!isEmployee && (
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-semibold text-gray-400">{member.id}</span>
+                    <button
+                      onClick={() => handleDeleteEmployee(member.id, member.name)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl transition-colors cursor-pointer"
+                      title="Remove employee record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Remove</span>
+                    </button>
                   </div>
-                  <div className="flex items-center justify-center gap-2 text-gray-400 text-[11px]">
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>{member.phone}</span>
-                  </div>
-                </div>
+                )}
               </div>
-
-              {!isEmployee && (
-                <div className="pt-2 border-t border-gray-100 flex justify-end">
-                  <button
-                    onClick={() => handleDeleteEmployee(member.id, member.name)}
-                    className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                    title="Delete employee and clear DB records"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Employee</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -416,9 +443,9 @@ export const TeamDirectoryView: React.FC = () => {
       {/* Add Employee Form Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white text-gray-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-              <h3 className="font-bold text-gray-900 text-base">Add Employee & Send Invitation</h3>
+              <h3 className="font-bold text-gray-900 text-base">Add employee</h3>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
@@ -430,23 +457,23 @@ export const TeamDirectoryView: React.FC = () => {
             <form onSubmit={handleAddEmployee} className="space-y-4 text-left">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Full Name *</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Full name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Tarul Ma'am"
+                    placeholder="Tarul Sharma"
                     required
                     value={fullName}
                     onChange={e => setFullName(e.target.value)}
-                    className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Role *</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Role</label>
                   <select
                     value={role}
                     onChange={e => setRole(e.target.value as 'EMPLOYEE' | 'MANAGER')}
-                    className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
                     <option value="EMPLOYEE">Employee</option>
                     <option value="MANAGER">Manager</option>
@@ -456,73 +483,74 @@ export const TeamDirectoryView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Personal Email</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Personal email</label>
                   <input
                     type="email"
-                    placeholder="e.g. tarul.personal@gmail.com"
+                    placeholder="tarul.personal@gmail.com"
                     value={personalEmail}
                     onChange={e => setPersonalEmail(e.target.value)}
-                    className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Work Email (Optional)</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Work email (optional)</label>
                   <input
                     type="email"
-                    placeholder="e.g. rahul@climagroanalytics.com"
+                    placeholder="tarul@ehmconsultancy.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Position / Designation</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Position</label>
                   <input
                     type="text"
-                    placeholder="e.g. Senior Systems Engineer"
+                    placeholder="Senior systems engineer"
                     value={position}
                     onChange={e => setPosition(e.target.value)}
-                    className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone number</label>
                   <input
                     type="tel"
-                    placeholder="e.g. +91 98765 43210"
+                    placeholder="+91 98765 43210"
                     value={phoneNumber}
                     onChange={e => setPhoneNumber(e.target.value)}
-                    className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Department</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Department</label>
                   <select
                     value={department}
                     onChange={e => setDepartment(e.target.value)}
-                    className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
                     <option value="Marketing">Marketing</option>
                     <option value="Sales">Sales</option>
                     <option value="Product & Tech">Product & Tech</option>
                     <option value="Operations & Delivery">Operations & Delivery</option>
+                    <option value="Sustainability">Sustainability</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Company Entity</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
                   <select
                     value={entity}
                     onChange={e => setEntity(e.target.value as any)}
-                    className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
                     <option value="EHM">EHM</option>
                     <option value="CAG">CLIMAGRO</option>
@@ -545,7 +573,7 @@ export const TeamDirectoryView: React.FC = () => {
                   className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{isSubmitting ? 'Adding & Sending Invite...' : 'Add & Send Invitation'}</span>
+                  <span>{isSubmitting ? 'Sending...' : 'Send invitation'}</span>
                 </button>
               </div>
             </form>

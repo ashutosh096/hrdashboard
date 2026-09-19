@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { RichTextEditor } from '../components/RichTextEditor';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 export interface ApplicationItem {
   id: string;
@@ -313,7 +314,7 @@ export const ApplicationsView: React.FC = () => {
 
   // Scoped Applications & Active vs Archived Filtering
   const scopedApps = applications.filter(
-    a => (selectedEntity === 'ALL' || a.entity === selectedEntity) && (isEmployee ? a.assignedTo === (user?.name || 'Priyanka Sharma') : true)
+    a => matchesEntityFilter(a, selectedEntity) && (isEmployee ? a.assignedTo === (user?.name || 'Priyanka Sharma') : true)
   );
   const activeAppsList = scopedApps.filter(a => a.status !== 'Done');
   const archivedAppsList = scopedApps.filter(a => a.status === 'Done');
@@ -332,7 +333,7 @@ export const ApplicationsView: React.FC = () => {
   const userEmail = (user?.email || '').toLowerCase();
 
   const scopedProjects = projects.filter(p => {
-    const matchesEntity = selectedEntity === 'ALL' || p.entity === selectedEntity;
+    const matchesEntity = matchesEntityFilter(p, selectedEntity);
     if (!isEmployee) return matchesEntity;
 
     const isLead = (
@@ -603,7 +604,7 @@ export const ApplicationsView: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New Project</span>
+            <span>{isEmployee ? '+ Propose Project' : '+ Add New Project'}</span>
           </button>
         </div>
       </div>
@@ -732,15 +733,16 @@ export const ApplicationsView: React.FC = () => {
                           </span>
                         )}
 
-                        {/* Interactive Status Dropdown */}
                         <select
+                          disabled={isEmployee}
                           value={prj.status}
                           onChange={(e) => {
+                            if (isEmployee) return;
                             const newStatus = e.target.value as 'Planning' | 'Active' | 'In Review' | 'Completed';
                             setProjects(prev => prev.map(p => p.id === prj.id ? { ...p, status: newStatus } : p));
                             toast.success(`Project "${prj.name}" status updated to ${newStatus}!`);
                           }}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border outline-none cursor-pointer transition-all shadow-2xs ${
+                          className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border outline-none ${isEmployee ? 'cursor-default opacity-90' : 'cursor-pointer'} transition-all shadow-2xs ${
                             prj.status === 'Active'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                               : prj.status === 'Planning'
@@ -749,7 +751,7 @@ export const ApplicationsView: React.FC = () => {
                               ? 'bg-amber-50 text-amber-800 border-amber-300'
                               : 'bg-purple-50 text-purple-800 border-purple-300'
                           }`}
-                          title="Change Project Status"
+                          title={isEmployee ? "Project Status (View Only)" : "Change Project Status"}
                         >
                           <option value="Active">🔄 In Progress</option>
                           <option value="In Review">🔍 Reviewing</option>

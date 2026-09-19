@@ -11,13 +11,18 @@ export interface TaskItem {
   id: string;
   taskId: string; // e.g. CA-MAR-01 or EHM-MAR-672
   title: string;
-  entity: string; // ehmconsultancy or climagroanalytics
+  entity: string; // EHM or CLIMAGRO / CAG
   assignee: string;
+  assigneeId?: string;
   reviewingLead: string;
-  status: 'In Progress' | 'Done' | 'Delayed' | 'Blocked';
+  reviewingLeadId?: string;
+  status: string; // 'In Progress' | 'Done' | 'Delayed' | 'Blocked' | 'To Review' | 'Planned' | 'Backlog'
   outputUrl?: string;
   waitingOn?: string;
   notes?: string;
+  dueDate?: string;
+  targetWeek?: string;
+  priority?: string;
   createdAt?: string;
 }
 
@@ -56,27 +61,58 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 }) => {
   const { user } = useAuth();
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
-  
-  const readOnlyMode = isReadOnly !== undefined ? isReadOnly : isManagerOrAdmin;
+  const isEmployee = user?.role === 'EMPLOYEE';
+  const isAssignee = isEmployee
+    ? Boolean(
+        (user?.employeeId && task?.assigneeId === user.employeeId) ||
+        (user?.name && task?.assignee && user.name.toLowerCase() === task.assignee.toLowerCase())
+      )
+    : true;
+
+  const canUserEditTask = isManagerOrAdmin || isAssignee;
+  const readOnlyMode = isReadOnly !== undefined ? isReadOnly : !canUserEditTask;
 
   const [showCloneConfirmModal, setShowCloneConfirmModal] = useState(false);
   const [importChecklistAndLinks, setImportChecklistAndLinks] = useState(true);
 
-  const [entity, setEntity] = useState('climagroanalytics');
+  const [employeesList, setEmployeesList] = useState<{ id: string; name: string; designation: string }[]>([]);
+  const [entity, setEntity] = useState('EHM');
   const [parentTaskId, setParentTaskId] = useState('');
   const [taskName, setTaskName] = useState('');
   const [assignee, setAssignee] = useState('Priyanka Sharma');
+  const [assigneeId, setAssigneeId] = useState('');
   const [reviewingLead, setReviewingLead] = useState('Dr. Harshit Mishra');
+  const [reviewingLeadId, setReviewingLeadId] = useState('');
   const [outputUrl, setOutputUrl] = useState('');
-  const [status, setStatus] = useState<'In Progress' | 'Done' | 'Delayed' | 'Blocked'>('In Progress');
+  const [status, setStatus] = useState<string>('In Progress');
   const [waitingOn, setWaitingOn] = useState('None (Self)');
   const [notes, setNotes] = useState('');
+  const [targetWeek, setTargetWeek] = useState('Week 1 (Days 1–7)');
+  const [priority, setPriority] = useState('P3');
+  const [dueDate, setDueDate] = useState('');
 
   // Checklist & Comments state
   const [checklists, setChecklists] = useState<ChecklistItem[]>([]);
   const [newChecklistText, setNewChecklistText] = useState('');
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchApi<any[]>('/api/employees')
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const list = data.map((e) => ({
+              id: e.id,
+              name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Employee',
+              designation: e.designation || 'Team Member',
+            }));
+            setEmployeesList(list);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   const loadTaskData = async () => {
     if (!task?.id) return;
@@ -94,15 +130,20 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   useEffect(() => {
     if (task) {
-      setEntity(task.entity || 'climagroanalytics');
-      setParentTaskId(task.taskId || 'CA-MAR-01');
+      setEntity(task.entity || 'EHM');
+      setParentTaskId(task.taskId || 'TSK-001');
       setTaskName(task.title || '');
-      setAssignee(task.assignee || 'Priyanka Sharma');
-      setReviewingLead(task.reviewingLead || 'Dr. Harshit Mishra');
+      setAssignee(task.assignee || 'Unassigned');
+      setAssigneeId(task.assigneeId || '');
+      setReviewingLead(task.reviewingLead || 'Manager Lead');
+      setReviewingLeadId(task.reviewingLeadId || '');
       setOutputUrl(task.outputUrl || '');
       setStatus(task.status || 'In Progress');
       setWaitingOn(task.waitingOn || 'None (Self)');
-      setNotes(task.notes || 'Pushed from Roadmap');
+      setNotes(task.notes || '');
+      setTargetWeek(task.targetWeek || 'Week 1 (Days 1–7)');
+      setPriority(task.priority || 'P3');
+      setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       loadTaskData();
     }
   }, [task]);
@@ -171,6 +212,15 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
     if (onSave) {
       onSave({
         ...task,
+        title: taskName,
+        entity,
+        assignee,
+        assigneeId,
+        reviewingLead,
+        reviewingLeadId,
+        targetWeek,
+        priority,
+        dueDate,
         status,
         outputUrl,
         waitingOn,
@@ -191,12 +241,12 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-gray-900 text-base tracking-tight">
-              {readOnlyMode ? `Submission Review: ${parentTaskId}` : `Task Details: ${parentTaskId}`}
+              {readOnlyMode ? `Submission Review: ${parentTaskId}` : `Edit Task Details: ${parentTaskId}`}
             </h3>
             <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-bold ${
               readOnlyMode ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}>
-              {readOnlyMode ? 'Read-Only View 👁️' : 'Auto-Generated ID'}
+              {readOnlyMode ? 'Read-Only View 👁️' : 'Manager Edit Mode ✏️'}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -281,12 +331,23 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Brand / Entity</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={entity === 'ehmconsultancy' || entity === 'EHM' ? 'EHM' : entity === 'climagroanalytics' || entity === 'CAG' ? 'CLIMAGRO' : entity}
-                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                  />
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={entity === 'ehmconsultancy' || entity === 'EHM' ? 'EHM' : entity === 'climagroanalytics' || entity === 'CAG' || entity === 'CLIMAGRO' ? 'CLIMAGRO' : entity}
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={entity}
+                      onChange={(e) => setEntity(e.target.value)}
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="EHM">EHM Consultancy (EHM)</option>
+                      <option value="CLIMAGRO">Climagro Analytics (CAG)</option>
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -313,34 +374,158 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
               {/* Deliverable / Task Name */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable / Task Name</label>
-                <input
-                  type="text"
-                  disabled
-                  value={taskName}
-                  className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 outline-none"
-                />
+                {readOnlyMode ? (
+                  <input
+                    type="text"
+                    disabled
+                    value={taskName}
+                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 outline-none"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={taskName}
+                    onChange={(e) => setTaskName(e.target.value)}
+                    placeholder="Enter task title / deliverable name..."
+                    className="w-full text-xs font-semibold bg-white border border-gray-300 rounded-xl p-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                )}
               </div>
 
               {/* Assignee & Reviewing Lead */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Assignee</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={assignee}
-                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                  />
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={assignee}
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={assignee}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAssignee(val);
+                        const match = employeesList.find((emp) => emp.name === val);
+                        if (match) setAssigneeId(match.id);
+                      }}
+                      className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="">Select Assignee...</option>
+                      {employeesList.map((emp) => (
+                        <option key={emp.id} value={emp.name}>
+                          {emp.name} ({emp.designation})
+                        </option>
+                      ))}
+                      {assignee && !employeesList.some((e) => e.name === assignee) && (
+                        <option value={assignee}>{assignee}</option>
+                      )}
+                    </select>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Reviewing Lead</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={reviewingLead}
-                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                  />
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={reviewingLead}
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={reviewingLead}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setReviewingLead(val);
+                        const match = employeesList.find((emp) => emp.name === val);
+                        if (match) setReviewingLeadId(match.id);
+                      }}
+                      className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="">Select Reviewing Lead...</option>
+                      {employeesList.map((emp) => (
+                        <option key={emp.id} value={emp.name}>
+                          {emp.name} ({emp.designation})
+                        </option>
+                      ))}
+                      {reviewingLead && !employeesList.some((e) => e.name === reviewingLead) && (
+                        <option value={reviewingLead}>{reviewingLead}</option>
+                      )}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* Target Week, Priority & Due Date Row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Week</label>
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={targetWeek}
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={targetWeek}
+                      onChange={(e) => setTargetWeek(e.target.value)}
+                      className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
+                      <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
+                      <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
+                      <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Priority</label>
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={priority}
+                      className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="P1">P1 - Critical / Urgent 🔥</option>
+                      <option value="P2">P2 - High Priority ⚡</option>
+                      <option value="P3">P3 - Medium Priority 📌</option>
+                      <option value="P4">P4 - Low Priority 📝</option>
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Due Date</label>
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={dueDate || 'Not set'}
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -397,6 +582,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       onChange={e => setStatus(e.target.value as any)}
                       className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
+                      <option value="Backlog">Backlog 📂</option>
+                      <option value="Planned">Planned 📋</option>
                       <option value="In Progress">In Progress ⏳</option>
                       <option value="To Review">To Review 🔍</option>
                       <option value="Done">Done / Approved ✅</option>

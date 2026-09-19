@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 
 
@@ -213,6 +214,8 @@ export const MeetingsView: React.FC = () => {
 
     // Keep only Google Calendar synced meetings and exclude meetings older than 7 days back
     const validMeetings = meetings.filter(m => {
+      if (!matchesEntityFilter(m, selectedEntity)) return false;
+
       const isCalendarSynced =
         m.source === 'GOOGLE_CALENDAR' ||
         m.source === 'GOOGLE_CALENDAR_IMPORTED' ||
@@ -491,7 +494,7 @@ export const MeetingsView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {livePresenceList.filter(item => selectedEntity === 'ALL' || item.entity === selectedEntity).map(item => (
+            {livePresenceList.filter(item => matchesEntityFilter(item, selectedEntity)).map(item => (
               <div key={item.id} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-5">
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">

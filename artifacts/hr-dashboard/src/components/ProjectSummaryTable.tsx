@@ -1,7 +1,10 @@
 import React from 'react';
 import { Calendar, ChevronDown, CheckCircle2, RefreshCw, Clock } from 'lucide-react';
+import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 export const ProjectSummaryTable: React.FC = () => {
+  const { selectedEntity } = useEntity();
   const rows = [
     {
       id: 'r-1',
@@ -71,7 +74,7 @@ export const ProjectSummaryTable: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-            {rows.map((row) => {
+            {rows.filter(r => matchesEntityFilter(r, selectedEntity)).map((row) => {
               const Icon = row.icon;
               return (
                 <tr key={row.id} className="hover:bg-gray-50/80 transition-colors">

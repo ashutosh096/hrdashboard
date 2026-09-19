@@ -3,6 +3,7 @@ import { Calendar, Clock } from 'lucide-react';
 import { MALE_AVATAR } from '../utils/avatars';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface ScheduleWidgetProps {
   className?: string;
@@ -60,7 +61,7 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
   }, []);
 
   const filteredTasks = liveTasks
-    .filter((t) => selectedEntity === 'ALL' || t.entity === selectedEntity)
+    .filter((t) => matchesEntityFilter(t, selectedEntity))
     .sort((a, b) => a.rank - b.rank);
 
   return (

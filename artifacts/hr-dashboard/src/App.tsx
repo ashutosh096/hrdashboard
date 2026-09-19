@@ -26,6 +26,7 @@ import { SettingsView } from './pages/SettingsView';
 import { NotificationsView } from './pages/NotificationsView';
 import { ReportsView } from './pages/ReportsView';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { RolePreviewBanner } from './components/RolePreviewBanner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,9 +45,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-50/80">
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
+        <RolePreviewBanner />
         <Navbar
           onOpenClockModal={() => setIsClockModalOpen(true)}
           onOpenTaskModal={() => setIsTaskModalOpen(true)}
@@ -72,7 +74,7 @@ export const MainContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-emerald-400 font-bold text-sm">
+      <div className="fixed inset-0 bg-slate-950 flex items-center justify-center text-emerald-400 font-bold text-sm z-50">
         Loading HROS Operating System...
       </div>
     );

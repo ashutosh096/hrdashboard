@@ -7,6 +7,7 @@ import { formatDateTime } from '../utils/dateUtils';
 import { ProfileModal } from './ProfileModal';
 import { SearchModal } from './SearchModal';
 import { getAvatarByName } from '../utils/avatars';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface NavbarProps {
   onOpenAssignTask?: () => void;
@@ -128,12 +129,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-colors relative"
+              className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all relative flex items-center justify-center cursor-pointer"
               title="Notifications"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-5.5 h-5.5 text-gray-600" />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white animate-pulse shadow-2xs">
                   {unreadNotificationsCount}
                 </span>
               )}
@@ -147,7 +148,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {unreadNotificationsCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1"
+                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
                     >
                       <Check className="w-3 h-3" /> Mark all read
                     </button>
@@ -156,14 +157,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                   {(() => {
-                    const displayNotifications = isEmployee
-                      ? notifications.filter((n: any) => {
-                          const userName = (user?.name || 'Ashutosh Mishra').toLowerCase();
-                          const msgLower = (n.message || '').toLowerCase();
-                          const titleLower = (n.title || '').toLowerCase();
-                          return n.tagged || msgLower.includes(userName) || titleLower.includes(userName) || msgLower.includes('ashutosh') || msgLower.includes('alex') || msgLower.includes('priyanka');
-                        })
-                      : notifications;
+                    const displayNotifications = notifications.filter((n: any) => {
+                      const payload = n.payload || {};
+                      const matchesEntity = matchesEntityFilter(n, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
+                      if (!isEmployee) return matchesEntity;
+
+                      const userName = (user?.name || 'Ashutosh Mishra').toLowerCase();
+                      const msgLower = (n.message || '').toLowerCase();
+                      const titleLower = (n.title || '').toLowerCase();
+                      const isUserMatch = n.tagged || msgLower.includes(userName) || titleLower.includes(userName) || msgLower.includes('ashutosh') || msgLower.includes('alex') || msgLower.includes('priyanka');
+                      return matchesEntity && isUserMatch;
+                    });
 
                     if (displayNotifications.length === 0) {
                       return <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>;
@@ -194,13 +198,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* User Profile Avatar — Opens Profile Details Modal */}
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="pl-1 focus:outline-none"
+            className="pl-1 focus:outline-none cursor-pointer group"
             title="View Profile Details"
           >
             <img
               src={user?.avatarUrl || getAvatarByName(user?.name || user?.email)}
               alt="User avatar"
-              className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500/30 hover:ring-emerald-500 transition-all shadow-2xs cursor-pointer"
+              className="w-9.5 h-9.5 rounded-full object-cover ring-2 ring-emerald-500/40 group-hover:ring-emerald-500 group-hover:scale-105 transition-all shadow-xs"
             />
           </button>
         </div>

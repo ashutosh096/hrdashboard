@@ -56,6 +56,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
   const [loading, setLoading] = useState(false);
 
   // Form State
+  const [selectedEntityId, setSelectedEntityId] = useState<'EHM' | 'CAG'>('EHM');
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
   const [selectedEpicId, setSelectedEpicId] = useState('');
@@ -245,29 +246,48 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
           {/* Left Column (Main Form Fields & Subtask Checklist) */}
           <div className="lg:col-span-7 space-y-4 text-left">
             
-            {/* Parent Epic Selector */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Parent Epic (Optional)</span>
-                </span>
-                <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
-                  Optional
-                </span>
-              </label>
-              <select
-                value={selectedEpicId}
-                onChange={(e) => setSelectedEpicId(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
-              >
-                <option value="">Select Parent Epic (Optional)...</option>
-                {epics.map((ep) => (
-                  <option key={ep.id} value={ep.id}>
-                    [{ep.epicCode}] {ep.title}
-                  </option>
-                ))}
-              </select>
+            {/* Entity & Parent Epic Selectors */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Target Entity *</span>
+                  </span>
+                </label>
+                <select
+                  value={selectedEntityId}
+                  onChange={(e) => setSelectedEntityId(e.target.value as 'EHM' | 'CAG')}
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                >
+                  <option value="EHM">EHM (EHM Consultancy)</option>
+                  <option value="CAG">CLIMAGRO (Climagro Analytics)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Parent Epic (Optional)</span>
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    Optional
+                  </span>
+                </label>
+                <select
+                  value={selectedEpicId}
+                  onChange={(e) => setSelectedEpicId(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                >
+                  <option value="">Select Parent Epic (Optional)...</option>
+                  {epics.map((ep) => (
+                    <option key={ep.id} value={ep.id}>
+                      [{ep.epicCode}] {ep.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Checkbox: Assign this also in sprint */}

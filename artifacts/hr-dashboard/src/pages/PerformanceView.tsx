@@ -32,6 +32,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { useEntity } from '../contexts/EntityContext';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface EmployeeRecord {
   id: string;
@@ -153,19 +154,14 @@ export const PerformanceView: React.FC = () => {
         })),
       };
     })
-    .filter((emp) => selectedEntity === 'ALL' || emp.entity === selectedEntity);
+    .filter((emp) => matchesEntityFilter(emp, selectedEntity));
 
   const selectedEmployee = processedEmployees.find((e) => e.id === selectedEmployeeId);
 
   // Aggregated KPI Stats calculated directly from Database records
   const targetTasks = selectedEmployee
     ? tasks.filter((t) => t.assigneeId === selectedEmployee.id)
-    : selectedEntity === 'ALL'
-    ? tasks
-    : tasks.filter((t) => {
-        const emp = employees.find((e) => e.id === t.assigneeId);
-        return (emp?.employeeCode || '').startsWith(selectedEntity);
-      });
+    : tasks.filter((t) => matchesEntityFilter(t, selectedEntity));
 
   const totalAssigned = targetTasks.length;
   const totalCompleted = targetTasks.filter((t) => t.status === 'DONE').length;

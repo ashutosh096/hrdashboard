@@ -5,6 +5,7 @@ import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface MonthlyEmployeeAttendance {
   id: string;
@@ -118,7 +119,7 @@ export const AttendanceView: React.FC = () => {
     employees[0];
 
   const filteredAttendance = liveAttendanceData.filter((att) => {
-    const matchesEntity = selectedEntity === 'ALL' || att.entity === selectedEntity;
+    const matchesEntity = matchesEntityFilter(att, selectedEntity);
     const matchesSearch =
       att.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       att.dept.toLowerCase().includes(searchTerm.toLowerCase()) ||

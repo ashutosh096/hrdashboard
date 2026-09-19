@@ -3,6 +3,7 @@ import { DollarSign, Download, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 export const SalaryView: React.FC = () => {
   const { selectedEntity } = useEntity();
@@ -20,7 +21,7 @@ export const SalaryView: React.FC = () => {
     { name: 'Jitendra Sir', entity: 'EHM', base: '₹25,00,000', allowances: '₹3,00,000', deductions: '₹1,60,000', netPay: '₹26,40,000' },
     { name: 'Pranshu Dubey', entity: 'EHM', base: '₹13,00,000', allowances: '₹1,40,000', deductions: '₹78,000', netPay: '₹13,62,000' },
     { name: 'Himanshu Tiwari', entity: 'CAG', base: '₹9,20,000', allowances: '₹95,000', deductions: '₹52,000', netPay: '₹9,63,000' },
-  ].filter(emp => selectedEntity === 'ALL' || emp.entity === selectedEntity);
+  ].filter(emp => matchesEntityFilter(emp, selectedEntity));
 
   return (
     <div className="p-6 space-y-6">

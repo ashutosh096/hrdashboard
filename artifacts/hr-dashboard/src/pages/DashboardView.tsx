@@ -44,6 +44,7 @@ import { EmployeeDashboardView } from '../components/EmployeeDashboardView';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface EmployeeRecord {
   id: string;
@@ -76,7 +77,7 @@ const PRIORITY_PIPELINE_DATA = [
 ];
 
 export const DashboardView: React.FC = () => {
-  const { user, setRole } = useAuth();
+  const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [, setLocation] = useLocation();
 
@@ -93,7 +94,7 @@ export const DashboardView: React.FC = () => {
   const [searchTeamTerm, setSearchTeamTerm] = useState('');
 
   // Responsive Modal Detail View State for Tiles
-  const [activeModalType, setActiveModalType] = useState<'TEAM' | 'IN_PROGRESS' | 'PENDING' | 'SPRINTS' | 'INITIATIVES' | 'VELOCITY' | null>(null);
+  const [activeModalType, setActiveModalType] = useState<'TEAM' | 'IN_PROGRESS' | 'PENDING' | 'SPRINTS' | 'INITIATIVES' | 'VELOCITY' | 'OVERDUE' | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -129,71 +130,95 @@ export const DashboardView: React.FC = () => {
     return emp ? `${emp.firstName} ${emp.lastName}` : 'Ashutosh Mishra';
   };
 
+  const getPriorityBadge = (priority: string) => {
+    const prioUpper = (priority || '').toUpperCase();
+    if (prioUpper === 'URGENT' || prioUpper === 'P1' || prioUpper === '1') {
+      return { label: 'P1', color: 'bg-red-50 text-red-700 border-red-200' };
+    }
+    if (prioUpper === 'HIGH' || prioUpper === 'P2' || prioUpper === '2') {
+      return { label: 'P2', color: 'bg-rose-50 text-rose-700 border-rose-200' };
+    }
+    if (prioUpper === 'MEDIUM' || prioUpper === 'P3' || prioUpper === '3') {
+      return { label: 'P3', color: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
+    return { label: 'P4', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+  };
+
+  // Scope Datasets by Selected Entity (EHM / CAG / ALL)
+  const scopedEmployees = employees.filter((e) => matchesEntityFilter(e, selectedEntity));
+  const scopedTasks = tasks.filter((t) => matchesEntityFilter(t, selectedEntity));
+  const scopedInitiatives = initiatives.filter((i) => matchesEntityFilter(i, selectedEntity));
+  const scopedSprints = sprints.filter((s) => matchesEntityFilter(s, selectedEntity));
+  const scopedAttendance = attendanceRecords.filter((a) => matchesEntityFilter(a, selectedEntity));
+
   // Initiatives & Sprints & Tasks Metrics
-  const activeInitiativesList = initiatives.filter(
+  const activeInitiativesList = scopedInitiatives.filter(
     (i) => i.status === 'ACTIVE' || i.status === 'IN_PROGRESS' || i.status === 'PLANNED'
   );
-  const activeInitiativesCount = activeInitiativesList.length || (initiatives.length > 0 ? initiatives.length : 3);
+  const activeInitiativesCount = activeInitiativesList.length;
 
-  const activeSprintsList = sprints.filter((s) => s.status !== 'DONE' && s.status !== 'COMPLETED');
-  const activeSprintsCount = activeSprintsList.length || (sprints.length > 0 ? sprints.length : 4);
+  const activeSprintsList = scopedSprints.filter((s) => s.status !== 'DONE' && s.status !== 'COMPLETED');
+  const activeSprintsCount = activeSprintsList.length;
 
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === 'DONE' || t.status === 'COMPLETED').length;
-  const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length;
-  const pendingTasks = tasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO').length;
+  const totalTasks = scopedTasks.length;
+  const completedTasks = scopedTasks.filter((t) => t.status === 'DONE' || t.status === 'COMPLETED').length;
+  const inProgressTasks = scopedTasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length;
+  const pendingTasks = scopedTasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO').length;
   const completionRate = totalTasks > 0 ? Math.min(100, Math.round((completedTasks / totalTasks) * 100)) : 0;
 
-  const totalEmployeesCount = employees.length || 9;
-  const activeEmployeesCount = employees.filter((e) => (e as any).status !== 'INACTIVE').length || 8;
-  const activeEmployeesPercent = Math.round((activeEmployeesCount / totalEmployeesCount) * 100);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const overdueTasksCount = scopedTasks.filter(
+    (t) => t.status !== 'DONE' && t.status !== 'COMPLETED' && t.dueDate && t.dueDate < todayStr
+  ).length;
+
+  const totalEmployeesCount = scopedEmployees.length;
+  const activeEmployeesCount = scopedEmployees.filter((e) => (e as any).status !== 'INACTIVE').length;
+  const activeEmployeesPercent = totalEmployeesCount > 0 ? Math.round((activeEmployeesCount / totalEmployeesCount) * 100) : 0;
+
+  const loggedInEmployee = employees.find(
+    (e) => e.id === user?.employeeId || e.email?.toLowerCase() === user?.email?.toLowerCase()
+  );
+  const userDisplayName = loggedInEmployee
+    ? `${loggedInEmployee.firstName} ${loggedInEmployee.lastName}`
+    : user?.name || (user?.email ? user.email.split('@')[0] : 'Ashutosh Mishra');
 
   return (
     <div className="p-6 space-y-6 select-none">
-      {/* SINGLE UNIFIED MANAGER WORKSPACE HEADER BANNER */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-6 text-white shadow-md space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          {/* Left: Manager User Profile & Welcome */}
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 bg-white/20 backdrop-blur-xs rounded-full text-[10px] font-extrabold uppercase tracking-wider text-white">
-                MANAGER WORKSPACE • {user?.email || 'manager@ehmclimagro.os'}
+      {/* COMPACT GREEN CAPSULE HEADER BANNER */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-4 sm:p-5 text-white shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Left Side: Name and Your Mail */}
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">
+                Name
               </span>
-              <span className="text-xs font-mono font-bold text-emerald-200 bg-emerald-950/40 px-2.5 py-0.5 rounded border border-emerald-400/30">
-                ROLE: {user?.role === 'ADMIN' ? 'ADMIN' : 'MANAGER'}
+              <span className="text-base sm:text-lg font-bold text-white tracking-tight">
+                {userDisplayName}
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Welcome back, {user?.name || user?.email?.split('@')[0] || 'Manager'}! 👋
-            </h2>
-            <p className="text-xs text-emerald-100 font-medium leading-relaxed">
-              Unified workspace for company attendance, meeting schedules, sprint deliverables, task execution, and team performance analytics (Live Database).
-            </p>
+            <div className="h-8 w-px bg-white/20 hidden sm:block"></div>
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200 block">
+                Your Mail
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-emerald-50">
+                {user?.email || 'admin@example.com'}
+              </span>
+            </div>
           </div>
 
-          {/* Right: Workspace Status Box & Manager Mode Badge */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            <div className="bg-emerald-950/40 border border-emerald-400/30 backdrop-blur-sm rounded-xl p-3.5 space-y-0.5 min-w-[170px]">
-              <span className="text-[10px] font-extrabold tracking-wider uppercase text-emerald-300 block">
-                WORKSPACE STATUS
-              </span>
-              <span className="text-xs font-black text-white block">Manager View Active</span>
-              <span className="text-[11px] font-semibold text-emerald-200 block">
-                {activeEmployeesCount} Present • {totalTasks} Tasks
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-2xs">
-              <div className="px-3.5 py-2 text-xs font-extrabold rounded-lg bg-emerald-500 text-white shadow-xs flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-200 animate-pulse"></span>
-                <span>⚙️ Manager Mode</span>
-              </div>
-            </div>
+          {/* Right Side: Role */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Role:</span>
+            <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-xs rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/25 shadow-2xs">
+              {user?.role === 'ADMIN' || user?.role === 'MANAGER' ? 'Manager' : 'Employee'}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Overview Stat Cards Grid (5 Tiles Sequence for Manager Role) */}
+      {/* Overview Stat Cards Grid (Executive Balanced 5 Tiles Sequence) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Active Team Members"
@@ -210,11 +235,11 @@ export const DashboardView: React.FC = () => {
           onClick={() => setActiveModalType('IN_PROGRESS')}
         />
         <StatCard
-          title="Pending & To Review"
-          value={pendingTasks}
-          icon={<AlertCircle className="w-5 h-5 text-emerald-700" />}
-          trend="Awaiting review or sprint assignment"
-          onClick={() => setActiveModalType('PENDING')}
+          title="Overdue Alerts & Critical"
+          value={overdueTasksCount}
+          icon={<AlertTriangle className="w-5 h-5 text-amber-600" />}
+          trend={`${overdueTasksCount} tasks past due date`}
+          onClick={() => setActiveModalType('OVERDUE')}
         />
         <StatCard
           title="Active Sprints"
@@ -245,424 +270,305 @@ export const DashboardView: React.FC = () => {
       {/* Embedded Unified Task Analytics & Operations Component */}
       <TaskAnalyticsPanel />
 
-      {/* 🚀 RESPONSIVE KPI CARD DETAIL MODALS */}
+      {/* 🚀 RESPONSIVE MINIMAL CLEAN KPI CARD DETAIL MODALS */}
       {activeModalType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
-          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
+          <div className="bg-white rounded-2xl p-5 max-w-lg w-full shadow-xl border border-gray-200 max-h-[85vh] overflow-y-auto space-y-4">
             
-            {/* 0.0 ACTIVE & PRESENT TEAM MEMBERS MODAL */}
+            {/* 1. ACTIVE TEAM MEMBERS MODAL */}
             {activeModalType === 'TEAM' && (
               <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
-                      <Users className="w-6 h-6" />
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                      <Users className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-gray-900 tracking-tight">Active & Present Team Members</h3>
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300">
-                          ● {activeEmployeesCount} Present Today
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 font-medium">Live roster of team members present and active in database</p>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Active Team Members</h3>
+                      <p className="text-xs text-gray-500 font-medium">{activeEmployeesCount} of {totalEmployeesCount} members present today</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveModalType(null)}
                     className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                {/* Instant Search Bar Inside Modal */}
-                <div className="relative">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search present employees by name, code, designation..."
-                    value={searchTeamTerm}
-                    onChange={(e) => setSearchTeamTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
-                  />
-                </div>
-
-                <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
-                  {employees.length === 0 ? (
-                    <div className="p-6 text-center text-xs font-semibold text-gray-400">Loading active team members...</div>
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {scopedEmployees.length === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-gray-400">No team members found for selected entity.</div>
                   ) : (
-                    employees
-                      .filter((emp) => {
-                        if (!searchTeamTerm.trim()) return true;
-                        const term = searchTeamTerm.toLowerCase();
-                        const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
-                        return (
-                          fullName.includes(term) ||
-                          emp.employeeCode?.toLowerCase().includes(term) ||
-                          emp.designation?.toLowerCase().includes(term)
-                        );
-                      })
-                      .map((emp) => {
-                        const attRecord = attendanceRecords.find((a) => a.employeeId === emp.id || a.employeeId === emp.employeeCode);
-                        const clockInTime = attRecord?.clockIn ? new Date(attRecord.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00 AM';
-                        const workMode = attRecord?.workMode || 'OFFICE';
-                        const isCAG = emp.employeeCode?.startsWith('CAG') || (emp as any).entityCode === 'CAG';
+                    scopedEmployees.slice(0, 6).map((emp) => {
+                      const attRecord = scopedAttendance.find((a) => a.employeeId === emp.id || a.employeeId === emp.employeeCode);
+                      const clockInTime = attRecord?.clockIn ? new Date(attRecord.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '9:00 am';
+                      const workMode = attRecord?.workMode || 'OFFICE';
+                      const isRemote = workMode === 'REMOTE';
+                      const isHybrid = workMode === 'HYBRID';
 
-                        return (
-                          <div key={emp.id} className="p-3.5 bg-white rounded-xl border border-gray-200/80 hover:border-emerald-300 hover:shadow-xs transition-all flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="relative">
-                                <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs border border-emerald-200 shadow-2xs">
-                                  {emp.firstName?.[0] || 'E'}{emp.lastName?.[0] || ''}
-                                </div>
-                                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse" title="Present Today" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="text-xs font-bold text-gray-900">{emp.firstName} {emp.lastName}</h4>
-                                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                    {emp.employeeCode}
-                                  </span>
-                                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${
-                                    isCAG ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  }`}>
-                                    {isCAG ? 'CLIMAGRO' : 'EHM'}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] font-medium text-gray-500">{emp.designation || 'Team Member'}</p>
-                              </div>
+                      return (
+                        <div key={emp.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs">
+                              {emp.firstName?.[0] || 'E'}{emp.lastName?.[0] || ''}
                             </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="text-right hidden sm:block">
-                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                                  <Clock className="w-3 h-3 text-emerald-600" />
-                                  <span>In: {clockInTime}</span>
-                                </span>
-                                <span className="text-[9px] text-gray-400 font-medium block mt-0.5">Mode: {workMode}</span>
-                              </div>
-                              <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-300 flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>Present</span>
-                              </span>
+                            <div>
+                              <h4 className="text-xs font-bold text-gray-900">{emp.firstName} {emp.lastName}</h4>
+                              <p className="text-[11px] text-gray-500 font-medium">{emp.designation || 'Team Member'}</p>
                             </div>
                           </div>
-                        );
-                      })
+                          <div className="text-right">
+                            <span className="text-xs font-semibold text-gray-900 block">{clockInTime}</span>
+                            <span className={`text-[10px] font-bold block ${
+                              isRemote ? 'text-gray-500' : isHybrid ? 'text-amber-600' : 'text-emerald-600'
+                            }`}>
+                              {isRemote ? 'Remote' : isHybrid ? 'Hybrid' : 'In office'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500 font-bold">Total Active Team Members: {employees.length}</span>
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{Math.max(0, scopedEmployees.length - 6)} more</span>
                   <button
                     onClick={() => {
                       setActiveModalType(null);
                       setLocation('/team');
                     }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                    className="flex items-center gap-1 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer"
                   >
-                    <span>View Full Team & Attendance Directory</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>View directory</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </>
             )}
 
-            {/* 0.1 ACTIVE SPRINTS MODAL */}
-            {activeModalType === 'SPRINTS' && (
+            {/* 2. TODAY'S TASKS (IN PROGRESS) MODAL */}
+            {activeModalType === 'IN_PROGRESS' && (
               <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
-                      <Zap className="w-6 h-6" />
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                      <Clock className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Active Sprints</h3>
-                      <p className="text-xs text-gray-500 font-medium">Monthly 4-week sprint execution cycles active in database</p>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">In progress today</h3>
+                      <p className="text-xs text-gray-500 font-medium">{inProgressTasks} tasks being executed</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveModalType(null)}
                     className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {sprints.length === 0 ? (
-                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No active sprints loaded.</div>
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {scopedTasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-gray-400">No in-progress tasks found.</div>
                   ) : (
-                    sprints.map((sprint) => (
-                      <div key={sprint.id} className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2.5 py-0.5 rounded border border-emerald-200">
-                            {sprint.sprintCode}
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                            {sprint.targetWeek || 'Week 1 (Days 1–7)'}
+                    scopedTasks
+                      .filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE')
+                      .slice(0, 5)
+                      .map((task) => {
+                        const prioBadge = getPriorityBadge(task.priority);
+
+                        return (
+                          <div key={task.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors">
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                              <p className="text-[11px] text-gray-500 font-medium">
+                                {getAssigneeName(task.assigneeId)} • {task.taskCode}
+                              </p>
+                            </div>
+                            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${prioBadge.color}`}>
+                              {prioBadge.label}
+                            </span>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{Math.max(0, inProgressTasks - 5)} more</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/tasks');
+                    }}
+                    className="flex items-center gap-1 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer"
+                  >
+                    <span>View backlog</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 3. OVERDUE & CRITICAL ALERTS MODAL */}
+            {activeModalType === 'OVERDUE' && (
+              <>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-50 text-red-600 rounded-lg border border-red-100">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Overdue and critical</h3>
+                      <p className="text-xs text-gray-500 font-medium">{overdueTasksCount} items past due date</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {overdueTasksCount === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-emerald-600">
+                      🎉 No overdue tasks. All deliverables on track!
+                    </div>
+                  ) : (
+                    scopedTasks
+                      .filter((t) => t.status !== 'DONE' && t.status !== 'COMPLETED' && t.dueDate && t.dueDate < new Date().toISOString().split('T')[0])
+                      .slice(0, 5)
+                      .map((task) => (
+                        <div key={task.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors">
+                          <div className="space-y-0.5">
+                            <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
+                            <p className="text-[11px] text-red-600 font-medium">
+                              {getAssigneeName(task.assigneeId)} • overdue since {task.dueDate}
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                            {(task.status || 'in progress').toLowerCase()}
                           </span>
                         </div>
-                        <h4 className="text-sm font-bold text-gray-900">{sprint.name}</h4>
-                        <div className="flex items-center justify-between text-xs text-gray-600 pt-1.5 border-t border-emerald-100/80 font-medium">
-                          <span>Employee: <strong className="text-gray-900">{sprint.employeeName || 'Team Member'}</strong></span>
-                          <span className="text-emerald-700 font-bold bg-white px-2 py-0.5 rounded border border-emerald-200">{sprint.status || 'IN_PROGRESS'}</span>
+                      ))
+                  )}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{Math.max(0, overdueTasksCount - 5)} more</span>
+                  <button
+                    onClick={() => {
+                      setActiveModalType(null);
+                      setLocation('/tasks');
+                    }}
+                    className="flex items-center gap-1 font-bold text-gray-900 hover:text-red-600 transition-colors cursor-pointer"
+                  >
+                    <span>Update deadlines</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 4. ACTIVE SPRINTS MODAL */}
+            {activeModalType === 'SPRINTS' && (
+              <>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Active sprints</h3>
+                      <p className="text-xs text-gray-500 font-medium">{activeSprintsCount} running four-week cycles</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveModalType(null)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-white">
+                  {scopedSprints.length === 0 ? (
+                    <div className="p-4 text-center text-xs font-semibold text-gray-400">No active sprints loaded.</div>
+                  ) : (
+                    scopedSprints.slice(0, 5).map((sprint) => (
+                      <div key={sprint.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors">
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-bold text-gray-900">{sprint.name}</h4>
+                          <p className="text-[11px] text-gray-500 font-medium">
+                            {sprint.employeeName || 'Team Member'} • {sprint.sprintCode} - {sprint.targetWeek || 'week 1 of 4'}
+                          </p>
                         </div>
+                        <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                          {(sprint.status || 'planned').toLowerCase()}
+                        </span>
                       </div>
                     ))
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500 font-bold">Total Active Sprints: {sprints.length}</span>
+                <div className="pt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-medium">{Math.max(0, activeSprintsCount - 5)} more</span>
                   <button
                     onClick={() => {
                       setActiveModalType(null);
                       setLocation('/sprints');
                     }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                    className="flex items-center gap-1 font-bold text-gray-900 hover:text-emerald-600 transition-colors cursor-pointer"
                   >
-                    <span>View Full Sprint Cycles Page</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>View sprints</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </>
             )}
 
-            {/* 1. ACTIVE INITIATIVES MODAL */}
-            {activeModalType === 'INITIATIVES' && (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600">
-                      <Target className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Active Strategic Initiatives</h3>
-                      <p className="text-xs text-gray-500 font-medium">Long-term organizational goals & milestones active in database</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveModalType(null)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {initiatives.length === 0 ? (
-                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No initiatives loaded yet.</div>
-                  ) : (
-                    initiatives.map((init) => (
-                      <div key={init.id} className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2.5 py-0.5 rounded border border-emerald-200">
-                            {init.initiativeCode}
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                            {init.targetMonth || 'Month 1'}
-                          </span>
-                        </div>
-                        <h4 className="text-sm font-bold text-gray-900">{init.title}</h4>
-                        <p className="text-xs text-gray-600 line-clamp-2">{init.description}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500 font-bold">Total Strategic Initiatives: {initiatives.length}</span>
-                  <button
-                    onClick={() => {
-                      setActiveModalType(null);
-                      setLocation('/tasks');
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
-                  >
-                    <span>View Strategic Initiatives Page</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* 2. TASKS IN PROGRESS MODAL */}
-            {activeModalType === 'IN_PROGRESS' && (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-50 rounded-xl border border-blue-200 text-blue-600">
-                      <Clock className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Today's Tasks (In Progress)</h3>
-                      <p className="text-xs text-gray-500 font-medium">Sprint backlog deliverables currently being executed</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveModalType(null)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {tasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length === 0 ? (
-                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No in-progress tasks found.</div>
-                  ) : (
-                    tasks
-                      .filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACTIVE')
-                      .map((task) => (
-                        <div key={task.id} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                                {task.taskCode}
-                              </span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                                {task.priority || 'MEDIUM'}
-                              </span>
-                            </div>
-                            <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-lg shrink-0">
-                              In Progress ⏳
-                            </span>
-                          </div>
-                          <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 pt-1.5 border-t border-gray-200/80">
-                            <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            <span>Assigned To: <strong className="text-gray-900">{getAssigneeName(task.assigneeId)}</strong></span>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500 font-bold">In Progress Tasks: {inProgressTasks}</span>
-                  <button
-                    onClick={() => {
-                      setActiveModalType(null);
-                      setLocation('/tasks');
-                    }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
-                  >
-                    <span>View Product Backlog & Tasks Page</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* 3. PENDING & TO REVIEW MODAL */}
-            {activeModalType === 'PENDING' && (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 text-purple-600">
-                      <AlertCircle className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Pending & To Review Deliverables</h3>
-                      <p className="text-xs text-gray-500 font-medium">Tasks awaiting lead approval or backlog allocation</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveModalType(null)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {tasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO').length === 0 ? (
-                    <div className="p-6 text-center text-xs font-semibold text-gray-400">No pending items to review.</div>
-                  ) : (
-                    tasks
-                      .filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW' || t.status === 'PLANNED' || t.status === 'TODO')
-                      .map((task) => (
-                        <div key={task.id} className="p-4 bg-purple-50/40 rounded-xl border border-purple-100 space-y-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono font-bold text-purple-700 bg-white px-2 py-0.5 rounded border border-purple-200">
-                                {task.taskCode}
-                              </span>
-                            </div>
-                            <span className="text-[11px] font-bold text-purple-700 bg-purple-100 px-2.5 py-1 rounded-lg shrink-0">
-                              {task.status}
-                            </span>
-                          </div>
-                          <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-900 pt-1.5 border-t border-purple-100">
-                            <User className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                            <span>Assigned To: <strong className="text-gray-900">{getAssigneeName(task.assigneeId)}</strong></span>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500 font-bold">Pending Review Items: {pendingTasks}</span>
-                  <button
-                    onClick={() => {
-                      setActiveModalType(null);
-                      setLocation('/tasks');
-                    }}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
-                  >
-                    <span>View Backlog & Review Queue</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* 4. COMPLETION VELOCITY RATE MODAL */}
+            {/* 5. SPRINT VELOCITY RATE MODAL */}
             {activeModalType === 'VELOCITY' && (
               <>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-600">
-                      <TrendingUp className="w-6 h-6" />
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                      <TrendingUp className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 tracking-tight">Sprint Completion Velocity Rate</h3>
-                      <p className="text-xs text-gray-500 font-medium">Sprint execution performance and deliverable throughput rate</p>
+                      <h3 className="text-sm font-bold text-gray-900 tracking-tight">Sprint velocity</h3>
+                      <p className="text-xs text-gray-500 font-medium">Execution throughput this cycle</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveModalType(null)}
                     className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200 text-center">
-                    <span className="text-xs font-bold text-amber-800">Total Deliverables</span>
-                    <p className="text-2xl font-extrabold text-amber-900 mt-1">{totalTasks}</p>
+                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/40 space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <span className="text-[11px] font-medium text-gray-500 block">Total</span>
+                      <span className="text-xl font-extrabold text-gray-900 block mt-0.5">{totalTasks}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-gray-500 block">Completed</span>
+                      <span className="text-xl font-extrabold text-gray-900 block mt-0.5">{completedTasks}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-gray-500 block">Velocity</span>
+                      <span className="text-xl font-extrabold text-gray-900 block mt-0.5">{completionRate}%</span>
+                    </div>
                   </div>
-                  <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200 text-center">
-                    <span className="text-xs font-bold text-emerald-800">Completed Tasks</span>
-                    <p className="text-2xl font-extrabold text-emerald-900 mt-1">{completedTasks}</p>
-                  </div>
-                  <div className="bg-blue-50/60 p-3.5 rounded-xl border border-blue-200 text-center">
-                    <span className="text-xs font-bold text-blue-800">Velocity Rate</span>
-                    <p className="text-2xl font-extrabold text-blue-900 mt-1">{completionRate}%</p>
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-gray-700">
-                    <span>Sprint Execution Progress</span>
-                    <span>{completionRate}%</span>
-                  </div>
-                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 transition-all duration-500 rounded-full"
                       style={{ width: `${completionRate}%` }}
@@ -670,17 +576,16 @@ export const DashboardView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                  <span className="text-xs text-gray-500 font-bold">Completed Deliverables: {completedTasks} / {totalTasks}</span>
+                <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => {
                       setActiveModalType(null);
-                      setLocation('/performance');
+                      setLocation('/reports');
                     }}
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                    className="flex items-center gap-1 text-xs font-bold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer"
                   >
-                    <span>View Performance Reports Page</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>View performance</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </>

@@ -10,7 +10,10 @@
   }
 
   html, body {
-    min-height: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background-color: #F8FAFC;
   }
 
   html {
@@ -18,12 +21,11 @@
   }
 
   body {
-    background-color: var(--bg-page);
+    background-color: #F8FAFC;
     color: #111827;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    min-height: 109vh;
-    zoom: 0.92;
+    min-height: 100vh;
   }
 }
 

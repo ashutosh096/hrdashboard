@@ -6,6 +6,8 @@ import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
+import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface InitiativeItem {
   id: string;
@@ -54,6 +56,7 @@ const DEPARTMENT_OPTIONS = [
 ];
 
 export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, selectedInitiativeIdToView, onClearSelectedInitiative }) => {
+  const { selectedEntity } = useEntity();
   const [initiatives, setInitiatives] = useState<InitiativeItem[]>([]);
   const [viewingInitiative, setViewingInitiative] = useState<InitiativeItem | null>(null);
   const [viewingEpicDetails, setViewingEpicDetails] = useState<any | null>(null);
@@ -298,9 +301,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     }
   };
 
-  // Filter Initiatives by Active vs Archive
-  const activeInitiatives = initiatives.filter(i => i.status !== 'DONE' && i.status !== 'COMPLETED');
-  const archivedInitiatives = initiatives.filter(i => i.status === 'DONE' || i.status === 'COMPLETED');
+  // Filter Initiatives by Active vs Archive & selectedEntity
+  const scopedInitiatives = initiatives.filter(i => matchesEntityFilter(i, selectedEntity));
+  const activeInitiatives = scopedInitiatives.filter(i => i.status !== 'DONE' && i.status !== 'COMPLETED');
+  const archivedInitiatives = scopedInitiatives.filter(i => i.status === 'DONE' || i.status === 'COMPLETED');
   const displayedInitiatives = viewMode === 'ACTIVE' ? activeInitiatives : archivedInitiatives;
 
   return (

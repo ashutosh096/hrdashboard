@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, Calendar, CheckCircle2, Clock, Search } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface EmployeeRecord {
   id: string;
@@ -128,11 +129,11 @@ export const TaskAnalyticsPanel: React.FC = () => {
         status,
       };
     })
-    .filter((emp) => selectedEntity === 'ALL' || emp.entity === selectedEntity);
+    .filter((emp) => matchesEntityFilter(emp, selectedEntity));
 
   const filteredEmpAnalytics = employeeAnalytics.filter(
     (emp) =>
-      (selectedEntity === 'ALL' || emp.entity === selectedEntity) &&
+      matchesEntityFilter(emp, selectedEntity) &&
       emp.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

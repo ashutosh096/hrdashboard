@@ -246,6 +246,14 @@ router.patch('/:id', async (req, res) => {
   const { status, deliverableUrl, description, sprintWeek, priority, epicId, sprintId, title, assigneeId } = req.body;
 
   try {
+    const [existingTaskCheck] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, taskId));
+    if (!existingTaskCheck) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (req.user?.role === 'EMPLOYEE' && existingTaskCheck.assigneeId !== req.user.employeeId) {
+      return res.status(403).json({ message: 'You can only update tasks assigned to you' });
+    }
     const updatedTask = await db.transaction(async (tx) => {
       const [existingTask] = await tx.select().from(tasks).where(eq(tasks.id, taskId));
       if (!existingTask) return null;
@@ -320,12 +328,21 @@ router.patch('/:id/status', async (req, res) => {
     return res.status(400).json({ message: 'Status required' });
   }
 
-  // Restrict DELAYED and BLOCKED statuses to ADMIN/MANAGER roles
-  if (['DELAYED', 'BLOCKED'].includes(status) && !['ADMIN', 'MANAGER'].includes(req.user?.role || '')) {
-    return res.status(403).json({ message: 'Only managers and leads can mark tasks as DELAYED or BLOCKED' });
-  }
-
   try {
+    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, taskId));
+    if (!targetTask) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
+      return res.status(403).json({ message: 'You can only update tasks assigned to you' });
+    }
+
+    // Restrict DELAYED and BLOCKED statuses to ADMIN/MANAGER roles
+    if (['DELAYED', 'BLOCKED'].includes(status) && !['ADMIN', 'MANAGER'].includes(req.user?.role || '')) {
+      return res.status(403).json({ message: 'Only managers and leads can mark tasks as DELAYED or BLOCKED' });
+    }
+
     const [updatedTask] = await db
       .update(tasks)
       .set({ status, updatedAt: new Date() })
@@ -352,6 +369,10 @@ router.post('/:id/delay-request', async (req, res) => {
     const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     if (!targetTask) {
       return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
+      return res.status(403).json({ message: 'You can only request delay extensions for tasks assigned to you' });
     }
 
     let targetUser: any = null;
@@ -424,6 +445,12 @@ router.post('/:id/checklists', async (req, res) => {
   if (!itemText) return res.status(400).json({ message: 'itemText is required' });
 
   try {
+    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, id));
+    if (!targetTask) return res.status(404).json({ message: 'Task not found' });
+
+    if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
+      return res.status(403).json({ message: 'You can only update tasks assigned to you' });
+    }
     const existing = await db
       .select()
       .from(taskChecklists)
@@ -453,6 +480,15 @@ router.patch('/checklists/:checklistId', async (req, res) => {
   const { isCompleted, itemText } = req.body;
 
   try {
+    const [checklist] = await db.select().from(taskChecklists).where(eq(taskChecklists.id, checklistId));
+    if (!checklist) return res.status(404).json({ message: 'Checklist item not found' });
+
+    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, checklist.taskId));
+    if (!targetTask) return res.status(404).json({ message: 'Task not found' });
+
+    if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
+      return res.status(403).json({ message: 'You can only update tasks assigned to you' });
+    }
     const updatePayload: any = {};
     if (typeof itemText === 'string') updatePayload.itemText = itemText;
 
@@ -503,6 +539,12 @@ router.post('/:id/comments', async (req, res) => {
   if (!content) return res.status(400).json({ message: 'content is required' });
 
   try {
+    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, id));
+    if (!targetTask) return res.status(404).json({ message: 'Task not found' });
+
+    if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
+      return res.status(403).json({ message: 'You can only update tasks assigned to you' });
+    }
     const authorName = req.user?.email || 'User';
     const [newComment] = await db
       .insert(taskComments)
@@ -518,6 +560,18 @@ router.post('/:id/comments', async (req, res) => {
     res.status(201).json(newComment);
   } catch (err) {
     res.status(500).json({ message: 'Failed to post comment' });
+  }
+});
+
+// DELETE /api/tasks/:id - Manager/Admin protected task deletion
+router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const taskId = String(req.params.id);
+  try {
+    const [deleted] = await db.delete(tasks).where(eq(tasks.id, taskId)).returning();
+    if (!deleted) return res.status(404).json({ message: 'Task not found' });
+    res.json({ message: 'Task deleted successfully', id: taskId });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete task' });
   }
 });
 

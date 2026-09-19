@@ -11,6 +11,8 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { fetchApi } from '@workspace/api-client-react';
+import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface TaskProgressSprintAnalyticsProps {
   className?: string;
@@ -28,6 +30,7 @@ const DEFAULT_WEEKLY_DATA = [
 ];
 
 export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsProps> = ({ className }) => {
+  const { selectedEntity } = useEntity();
   const [chartData, setChartData] = useState(DEFAULT_WEEKLY_DATA);
   const [lastUpdateStr, setLastUpdateStr] = useState('09.06.26 at 11:30 PM');
   const [loading, setLoading] = useState(false);
@@ -35,20 +38,21 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
   const refreshData = async () => {
     setLoading(true);
     try {
-      const liveTasks = await fetchApi<any[]>('/api/tasks');
-      if (Array.isArray(liveTasks) && liveTasks.length > 0) {
-        const completedCount = liveTasks.filter((t) => t.status === 'DONE').length;
+      const rawTasks = await fetchApi<any[]>('/api/tasks');
+      if (Array.isArray(rawTasks) && rawTasks.length > 0) {
+        const liveTasks = rawTasks.filter((t) => matchesEntityFilter(t, selectedEntity));
+        const completedCount = liveTasks.filter((t) => t.status === 'DONE' || t.status === 'COMPLETED').length;
         const toReviewCount = liveTasks.filter((t) => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW').length;
-        const pendingCount = liveTasks.filter((t) => t.status === 'TODO' || t.status === 'IN_PROGRESS').length;
+        const pendingCount = liveTasks.filter((t) => t.status === 'TODO' || t.status === 'IN_PROGRESS' || t.status === 'ACTIVE').length;
 
         // Scale data with live DB state
         const updated = DEFAULT_WEEKLY_DATA.map((item, idx) => {
           const factor = (idx + 1) / 8;
           return {
             ...item,
-            completed: Math.max(item.completed, Math.round(completedCount * factor) + 15),
-            toReview: Math.max(2, Math.round(toReviewCount * (1 - factor * 0.5)) + item.toReview),
-            pending: Math.max(3, Math.round(pendingCount * (1 - factor * 0.6)) + item.pending),
+            completed: Math.round(completedCount * factor),
+            toReview: Math.round(toReviewCount * (1 - factor * 0.5)),
+            pending: Math.round(pendingCount * (1 - factor * 0.6)),
           };
         });
         setChartData(updated);
@@ -67,7 +71,7 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
 
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [selectedEntity]);
 
   return (
     <div className={`bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs select-none space-y-4 ${className || ''}`}>

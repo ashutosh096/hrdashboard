@@ -6,30 +6,18 @@ const router = Router();
 
 router.use(requireAuth);
 
-// GET /api/sprints - Server-side RBAC filtered Sprints endpoint
+// GET /api/sprints - View all sprints for all authenticated roles
 router.get('/', async (req, res) => {
   try {
-    const isEmployee = req.user?.role === 'EMPLOYEE';
-    const userEmployeeId = req.user?.employeeId;
-
+    const { employeeId } = req.query;
     let allSprints;
-    if (isEmployee && userEmployeeId) {
-      // Server-side RBAC restriction: Employees can only view their own personal sprints
+    if (employeeId && typeof employeeId === 'string') {
       allSprints = await db
         .select()
         .from(sprints)
-        .where(eq(sprints.employeeId, userEmployeeId));
+        .where(eq(sprints.employeeId, employeeId));
     } else {
-      // Managers can view all sprints, or filter by employeeId query param
-      const { employeeId } = req.query;
-      if (employeeId && typeof employeeId === 'string') {
-        allSprints = await db
-          .select()
-          .from(sprints)
-          .where(eq(sprints.employeeId, employeeId));
-      } else {
-        allSprints = await db.select().from(sprints);
-      }
+      allSprints = await db.select().from(sprints);
     }
 
     const allTasks = await db.select().from(tasks);
@@ -126,6 +114,56 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   } catch (err: any) {
     console.error('[CREATE SPRINT ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create sprint' });
+  }
+});
+
+// PUT /api/sprints/:id - Manager/Admin protected sprint properties update
+router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const sprintId = req.params.id as string;
+  const { name, goal, startDate, endDate, status } = req.body;
+
+  try {
+    const updatePayload: any = {};
+    if (name !== undefined) updatePayload.name = name;
+    if (goal !== undefined) updatePayload.goal = goal;
+    if (startDate !== undefined) updatePayload.startDate = new Date(startDate);
+    if (endDate !== undefined) updatePayload.endDate = new Date(endDate);
+    if (status !== undefined) updatePayload.status = status;
+
+    const [updated] = await db
+      .update(sprints)
+      .set(updatePayload)
+      .where(eq(sprints.id, sprintId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Sprint not found' });
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[UPDATE SPRINT ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to update sprint' });
+  }
+});
+
+// DELETE /api/sprints/:id - Manager/Admin protected sprint deletion
+router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const sprintId = req.params.id as string;
+  try {
+    const [deleted] = await db
+      .delete(sprints)
+      .where(eq(sprints.id, sprintId))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ message: 'Sprint not found' });
+    }
+
+    res.json({ message: 'Sprint deleted successfully', id: sprintId });
+  } catch (err: any) {
+    console.error('[DELETE SPRINT ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete sprint' });
   }
 });
 

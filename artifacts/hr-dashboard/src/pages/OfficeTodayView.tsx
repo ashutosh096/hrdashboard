@@ -3,6 +3,7 @@ import { Video, Calendar, Clock, Building2, Laptop, CheckCircle2 } from 'lucide-
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 export const OfficeTodayView: React.FC = () => {
   const { selectedEntity } = useEntity();
@@ -102,7 +103,7 @@ export const OfficeTodayView: React.FC = () => {
   });
 
   const filteredPresence = presenceList.filter(
-    item => selectedEntity === 'ALL' || item.entity === selectedEntity
+    item => matchesEntityFilter(item, selectedEntity)
   );
 
   return (

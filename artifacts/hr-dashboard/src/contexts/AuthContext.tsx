@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchApi } from '@workspace/api-client-react';
 
+export type UserRole = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+
 export interface User {
   id: string;
   email: string;
-  role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+  role: UserRole;
   employeeId?: string;
   managedTeamId?: string;
   name?: string;
@@ -14,20 +16,24 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  actualRole: UserRole | null;
+  previewRole: UserRole | null;
   login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
   setUserSession: (user: User, token: string) => void;
-  setRole: (role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => void;
+  setPreviewRole: (role: UserRole) => void;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
+  actualRole: null,
+  previewRole: null,
   login: async () => {},
   logout: () => {},
   setUserSession: () => {},
-  setRole: () => {},
+  setPreviewRole: () => {},
   isLoading: false,
 });
 
@@ -57,21 +63,54 @@ function decodeJwtPayload(token: string): User | null {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [actualRole, setActualRole] = useState<UserRole | null>(null);
+  const [previewRole, setPreviewRoleState] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session & active role from localStorage or query param on app load
+  const applySession = (decodedUser: User | null, authToken: string | null) => {
+    if (!decodedUser || !authToken) {
+      setUser(null);
+      setToken(null);
+      setActualRole(null);
+      setPreviewRoleState(null);
+      localStorage.removeItem('hros_token');
+      localStorage.removeItem('hros_preview_role');
+      localStorage.removeItem('hros_active_role');
+      return;
+    }
+
+    const realRole = decodedUser.role; // Authentic JWT role
+    setActualRole(realRole);
+    setToken(authToken);
+
+    let activePreview = realRole;
+    if (realRole === 'ADMIN') {
+      const storedPreview = (localStorage.getItem('hros_preview_role') || localStorage.getItem('hros_active_role')) as UserRole | null;
+      if (storedPreview && ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(storedPreview)) {
+        activePreview = storedPreview;
+      }
+    } else {
+      localStorage.removeItem('hros_preview_role');
+      localStorage.removeItem('hros_active_role');
+    }
+
+    setPreviewRoleState(activePreview);
+    setUser({
+      ...decodedUser,
+      role: activePreview, // Used solely for client dashboard layout selection
+    });
+  };
+
+  // Restore session & active preview role from localStorage or query param on app load
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const queryToken = searchParams.get('token');
-    const storedRole = localStorage.getItem('hros_active_role') as 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | null;
 
     if (queryToken) {
       const decodedUser = decodeJwtPayload(queryToken);
       if (decodedUser) {
-        if (storedRole) decodedUser.role = storedRole;
         localStorage.setItem('hros_token', queryToken);
-        setUser(decodedUser);
-        setToken(queryToken);
+        applySession(decodedUser, queryToken);
         window.history.replaceState({}, document.title, window.location.pathname);
         setIsLoading(false);
         return;
@@ -81,22 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedToken = localStorage.getItem('hros_token');
     if (storedToken) {
       const decodedUser = decodeJwtPayload(storedToken);
-      if (decodedUser) {
-        if (storedRole) decodedUser.role = storedRole;
-        setUser(decodedUser);
-        setToken(storedToken);
-      } else {
-        // Clear invalid / expired token & lingering demo role
-        localStorage.removeItem('hros_token');
-        localStorage.removeItem('hros_active_role');
-        setUser(null);
-        setToken(null);
-      }
+      applySession(decodedUser, storedToken);
     } else {
-      // Clear lingering demo role when no token exists
-      localStorage.removeItem('hros_active_role');
-      setUser(null);
-      setToken(null);
+      applySession(null, null);
     }
     setIsLoading(false);
   }, []);
@@ -104,23 +130,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Multi-tab session synchronization listener across open browser tabs
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'hros_token' || e.key === 'hros_active_role') {
+      if (e.key === 'hros_token' || e.key === 'hros_preview_role' || e.key === 'hros_active_role') {
         const storedToken = localStorage.getItem('hros_token');
-        const storedRole = localStorage.getItem('hros_active_role') as 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | null;
-
         if (storedToken) {
           const decodedUser = decodeJwtPayload(storedToken);
-          if (decodedUser) {
-            if (storedRole) decodedUser.role = storedRole;
-            setUser(decodedUser);
-            setToken(storedToken);
-          } else {
-            setUser(null);
-            setToken(null);
-          }
+          applySession(decodedUser, storedToken);
         } else {
-          setUser(null);
-          setToken(null);
+          applySession(null, null);
         }
       }
     };
@@ -137,43 +153,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password: pass }),
       });
 
+      localStorage.removeItem('hros_preview_role');
       localStorage.removeItem('hros_active_role');
       localStorage.setItem('hros_token', res.token);
-      setToken(res.token);
-      setUser(res.user);
+      applySession(res.user, res.token);
     } finally {
       setIsLoading(false);
     }
   };
 
   const setUserSession = (userData: User, authToken: string) => {
+    localStorage.removeItem('hros_preview_role');
     localStorage.removeItem('hros_active_role');
     localStorage.setItem('hros_token', authToken);
-    setUser(userData);
-    setToken(authToken);
+    applySession(userData, authToken);
   };
 
-  const setRole = (newRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') => {
-    if (!user || user.role !== 'ADMIN') return;
-    localStorage.setItem('hros_active_role', newRole);
-    setUser((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        role: newRole,
-      };
-    });
+  const setPreviewRole = (newRole: UserRole) => {
+    if (actualRole !== 'ADMIN') {
+      console.warn('[AUTH SECURITY]: Role preview switching is strictly restricted to ADMIN accounts.');
+      return;
+    }
+    localStorage.setItem('hros_preview_role', newRole);
+    setPreviewRoleState(newRole);
+    setUser((prev) => (prev ? { ...prev, role: newRole } : null));
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
     localStorage.removeItem('hros_token');
+    localStorage.removeItem('hros_preview_role');
     localStorage.removeItem('hros_active_role');
+    applySession(null, null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, setUserSession, setRole, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        actualRole,
+        previewRole,
+        login,
+        logout,
+        setUserSession,
+        setPreviewRole,
+        isLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
