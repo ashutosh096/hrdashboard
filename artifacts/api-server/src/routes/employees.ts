@@ -13,8 +13,95 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
-    const [empList, userList, inviteList, deptList] = await Promise.all([
-      db.select().from(employees),
+    let empList = await db.select().from(employees);
+    const existingEmails = new Set(empList.map(e => (e.email || '').toLowerCase().trim()));
+
+    const REAL_DEFAULT_TEAM = [
+      {
+        firstName: 'TESTER',
+        lastName: 'TESTER',
+        email: 'ashutoshmishraup78@mpgi.edu.in',
+        employeeCode: 'EHM-EMP05',
+        designation: 'TESTER',
+        role: 'EMPLOYEE',
+      },
+      {
+        firstName: 'Utsav',
+        lastName: 'Mishra',
+        email: 'utsav@ehmconsultancy.co.in',
+        employeeCode: 'EHM-MGR06',
+        designation: 'Specialist',
+        role: 'MANAGER',
+      },
+      {
+        firstName: 'Ashutosh',
+        lastName: 'Mishra',
+        email: 'ashutoshmishraup78@gmail.com',
+        employeeCode: 'EHM-EMP07',
+        designation: 'Specialist',
+        role: 'EMPLOYEE',
+      },
+      {
+        firstName: 'HARSHIT',
+        lastName: 'MISHRA',
+        email: 'harshit@ehmconsultancy.com',
+        employeeCode: 'EHM-MGR08',
+        designation: 'LEAD',
+        role: 'MANAGER',
+      },
+      {
+        firstName: 'PRANSHU',
+        lastName: 'MOHAN',
+        email: 'pranshu@ehmconsultancy.com',
+        employeeCode: 'EHM-MGR09',
+        designation: 'LEAD',
+        role: 'MANAGER',
+      },
+    ];
+
+    let seededCount = 0;
+    const [firstEntity] = await db.select({ id: entities.id }).from(entities).limit(1);
+    const [firstDept] = await db.select({ id: departments.id }).from(departments).limit(1);
+
+    if (firstEntity && firstDept) {
+      for (const item of REAL_DEFAULT_TEAM) {
+        const mailLower = item.email.toLowerCase().trim();
+        if (!existingEmails.has(mailLower)) {
+          const [newEmp] = await db
+            .insert(employees)
+            .values({
+              firstName: item.firstName,
+              lastName: item.lastName,
+              email: mailLower,
+              employeeCode: item.employeeCode,
+              designation: item.designation,
+              entityId: firstEntity.id,
+              departmentId: firstDept.id,
+              salary: '85000.00',
+              joiningDate: new Date(),
+            })
+            .returning();
+
+          if (newEmp) {
+            const passwordHash = await bcrypt.hash('Employee@123', 10);
+            await db.insert(users).values({
+              email: mailLower,
+              passwordHash,
+              role: item.role as any,
+              status: 'ACTIVE',
+              employeeId: newEmp.id,
+            });
+            seededCount++;
+          }
+        }
+      }
+    }
+
+    if (seededCount > 0) {
+      empList = await db.select().from(employees);
+    }
+
+    const [userList, inviteList, deptList] = await Promise.all([
       db.select({ email: users.email, role: users.role, employeeId: users.employeeId }).from(users),
       db.select({ email: invites.email, role: invites.role, employeeId: invites.employeeId }).from(invites),
       db.select().from(departments),
