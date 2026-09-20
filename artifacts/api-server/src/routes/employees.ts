@@ -377,4 +377,131 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
+// Update Employee Details Route
+router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
+  const { firstName, lastName, email, designation, salary, role, entityId, departmentId } = req.body;
+
+  try {
+    const [emp] = await db.select().from(employees).where(eq(employees.id, id));
+    if (!emp) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    const targetEmail = email ? email.toLowerCase().trim() : emp.email;
+
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+    if (firstName !== undefined) updateData.firstName = firstName.trim();
+    if (lastName !== undefined) updateData.lastName = lastName.trim();
+    if (email !== undefined) updateData.email = targetEmail;
+    if (designation !== undefined) updateData.designation = designation.trim();
+    if (salary !== undefined) updateData.salary = String(salary);
+    if (entityId) updateData.entityId = entityId;
+    if (departmentId) updateData.departmentId = departmentId;
+
+    const [updatedEmp] = await db
+      .update(employees)
+      .set(updateData)
+      .where(eq(employees.id, id))
+      .returning();
+
+    // Update role/email in users table if exists
+    if (role || email) {
+      const userUpdate: any = {};
+      if (role) userUpdate.role = role;
+      if (email) userUpdate.email = targetEmail;
+      await db.update(users).set(userUpdate).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+    }
+
+    // Update role/email in invites table if exists
+    if (role || email) {
+      const inviteUpdate: any = {};
+      if (role) inviteUpdate.role = role;
+      if (email) inviteUpdate.email = targetEmail;
+      await db.update(invites).set(inviteUpdate).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
+    }
+
+    return res.json({ message: 'Employee updated successfully', employee: updatedEmp });
+  } catch (err: any) {
+    console.error('[EMPLOYEE UPDATE ERROR]:', err);
+    return res.status(500).json({ message: err.message || 'Failed to update employee' });
+  }
+});
+
+// Re-invite Employee Route (Resends invitation email using exact same flow as creation)
+router.post('/:id/reinvite', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
+
+  try {
+    const [emp] = await db.select().from(employees).where(eq(employees.id, id));
+    if (!emp) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    const targetEmail = emp.email.toLowerCase().trim();
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 86400000); // 7 days
+
+    // Look up existing user role or invite role
+    const [userRow] = await db.select().from(users).where(or(eq(users.employeeId, id), eq(users.email, targetEmail)));
+    const [inviteRow] = await db.select().from(invites).where(or(eq(invites.employeeId, id), eq(invites.email, targetEmail)));
+    const empRole = userRow?.role || inviteRow?.role || 'EMPLOYEE';
+
+    // Delete existing invite rows for this email/employee
+    await db.delete(invites).where(or(eq(invites.employeeId, id), eq(invites.email, targetEmail)));
+
+    // Insert new invite record
+    await db.insert(invites).values({
+      email: targetEmail,
+      token: inviteToken,
+      role: empRole,
+      employeeId: emp.id,
+      status: 'PENDING',
+      expiresAt,
+    });
+
+    const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
+      ? process.env.APP_URL
+      : 'https://hrdashboard-3s1m.onrender.com';
+    const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
+
+    // Send invitation email via branded email service (same flow as creation)
+    let emailSent = false;
+    let emailError: string | null = null;
+
+    try {
+      const emailResult: any = await sendInviteEmail(targetEmail, inviteToken, `${emp.firstName} ${emp.lastName}`);
+      emailSent = emailResult.sent;
+      if (!emailResult.sent) {
+        emailError = emailResult.error || 'Email send failed';
+      }
+    } catch (e: any) {
+      emailError = e?.message || String(e);
+    }
+
+    // Also attempt Supabase Auth admin invitation if configured
+    try {
+      const redirectUrl = `${appUrl}/accept-invite?token=${inviteToken}`;
+      await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
+        redirectTo: redirectUrl,
+        data: { role: empRole, employeeId: emp.id, inviteToken },
+      });
+    } catch (sbErr) {
+      console.warn('[SUPABASE RE-INVITE NOTICE]:', sbErr);
+    }
+
+    return res.json({
+      message: `Invitation email resent successfully to ${targetEmail}!`,
+      sent: emailSent,
+      error: emailError,
+      inviteLink,
+    });
+  } catch (err: any) {
+    console.error('[EMPLOYEE RE-INVITE ERROR]:', err);
+    return res.status(500).json({ message: err.message || 'Failed to resend invitation' });
+  }
+});
+
 export default router;

@@ -24,10 +24,10 @@ export function matchesEntityFilter(item: any, selectedEntity: string): boolean 
   const isCAGTarget = target === 'CAG' || target === 'CLIMAGRO';
   const isEHMTarget = target === 'EHM';
 
-  // Check 'BOTH' or 'ALL' on item properties (means applies to both entities)
+  // Check 'BOTH', 'COMMON', or 'ALL' on item properties (means applies to both entities)
   const entityCode = (item.entityCode || '').toUpperCase();
   const entity = (item.entity || '').toUpperCase();
-  if (entityCode === 'BOTH' || entityCode === 'ALL' || entity === 'BOTH' || entity === 'ALL') {
+  if (entityCode === 'BOTH' || entityCode === 'ALL' || entityCode === 'COMMON' || entity === 'BOTH' || entity === 'ALL' || entity === 'COMMON') {
     return true;
   }
 
