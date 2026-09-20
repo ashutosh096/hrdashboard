@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users, invites, googleTokens, employees, eq } from '@workspace/db';
+import { db, users, invites, googleTokens, employees, eq, sql } from '@workspace/db';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
@@ -155,7 +155,7 @@ router.post('/set-password', async (req, res) => {
       [invite] = await db
         .select()
         .from(invites)
-        .where(eq(invites.email, targetEmail));
+        .where(sql`TRIM(LOWER(${invites.email})) = ${targetEmail}`);
     }
 
     // Fallback: Check if an employee profile exists for targetEmail
@@ -164,13 +164,13 @@ router.post('/set-password', async (req, res) => {
       [empRecord] = await db
         .select()
         .from(employees)
-        .where(eq(employees.email, targetEmail));
+        .where(sql`TRIM(LOWER(${employees.email})) = ${targetEmail}`);
     }
 
     // Check if user already exists
     const searchEmail = targetEmail || (invite ? invite.email.toLowerCase().trim() : '');
     const [existingUser] = searchEmail
-      ? await db.select().from(users).where(eq(users.email, searchEmail))
+      ? await db.select().from(users).where(sql`TRIM(LOWER(${users.email})) = ${searchEmail}`)
       : [null];
 
     if (!invite && !empRecord && !existingUser) {
