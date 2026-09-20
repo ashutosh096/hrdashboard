@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-20T11:56:13.742Z  
+> **Generated Date**: 2026-09-20T12:01:34.023Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -21821,6 +21821,153 @@ import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
+const DEFAULT_TEAM_MEMBERS = [
+  {
+    id: 'emp-1',
+    employeeCode: 'EHM-EMP01',
+    name: 'Ashutosh Mishra',
+    email: 'ashutosh@ehmconsultancy.com',
+    phone: '+91 98201 11001',
+    entity: 'EHM',
+    dept: 'Product & Tech',
+    role: 'Lead Systems Architect',
+    roleType: 'EMPLOYEE',
+    avatar: getAvatarByName('Ashutosh Mishra'),
+  },
+  {
+    id: 'emp-2',
+    employeeCode: 'EHM-EMP02',
+    name: 'Priyanka Sharma',
+    email: 'priyanka@ehmconsultancy.com',
+    phone: '+91 98201 11002',
+    entity: 'EHM',
+    dept: 'Marketing',
+    role: 'Senior Brand Strategist',
+    roleType: 'EMPLOYEE',
+    avatar: getAvatarByName('Priyanka Sharma'),
+  },
+  {
+    id: 'emp-3',
+    employeeCode: 'EHM-EMP03',
+    name: 'Utkarsh Mishra',
+    email: 'utkarsh@ehmconsultancy.com',
+    phone: '+91 98201 11003',
+    entity: 'EHM',
+    dept: 'Operations & Delivery',
+    role: 'Operations Lead',
+    roleType: 'EMPLOYEE',
+    avatar: getAvatarByName('Utkarsh Mishra'),
+  },
+  {
+    id: 'emp-4',
+    employeeCode: 'EHM-EMP04',
+    name: 'Prerna Shukla',
+    email: 'prerna@ehmconsultancy.com',
+    phone: '+91 98201 11004',
+    entity: 'EHM',
+    dept: 'Grants & Governance',
+    role: 'Grants Strategist',
+    roleType: 'EMPLOYEE',
+    avatar: getAvatarByName('Prerna Shukla'),
+  },
+  {
+    id: 'emp-5',
+    employeeCode: 'EHM-EMP05',
+    name: 'Shreyansh Siladar',
+    email: 'shreyansh@ehmconsultancy.com',
+    phone: '+91 98201 11005',
+    entity: 'EHM',
+    dept: 'Marketing',
+    role: 'Social Media Lead',
+    roleType: 'EMPLOYEE',
+    avatar: getAvatarByName('Shreyansh Siladar'),
+  },
+  {
+    id: 'emp-6',
+    employeeCode: 'CAG-EMP01',
+    name: "Tarul Ma'am",
+    email: 'tarul@climagroanalytics.com',
+    phone: '+91 98201 11006',
+    entity: 'CAG',
+    dept: 'Operations & Delivery',
+    role: 'Delivery Associate',
+    roleType: 'EMPLOYEE',
+    avatar: getAvatarByName("Tarul Ma'am"),
+  },
+  {
+    id: 'emp-7',
+    employeeCode: 'EHM-MGR01',
+    name: 'Dr. Harshit Mishra',
+    email: 'harshit@ehmconsultancy.com',
+    phone: '+91 98201 11007',
+    entity: 'EHM',
+    dept: 'Sales',
+    role: 'Managing Director / Sales Lead',
+    roleType: 'MANAGER',
+    avatar: getAvatarByName('Dr. Harshit Mishra'),
+  },
+  {
+    id: 'emp-8',
+    employeeCode: 'EHM-MGR02',
+    name: 'Neha Shukla',
+    email: 'neha@ehmconsultancy.com',
+    phone: '+91 98201 11008',
+    entity: 'EHM',
+    dept: 'Marketing',
+    role: 'Marketing Lead',
+    roleType: 'MANAGER',
+    avatar: getAvatarByName('Neha Shukla'),
+  },
+  {
+    id: 'emp-9',
+    employeeCode: 'CAG-MGR01',
+    name: 'Dr. Utsav Mishra',
+    email: 'utsav@climagroanalytics.com',
+    phone: '+91 98201 11009',
+    entity: 'CAG',
+    dept: 'Operations & Delivery',
+    role: 'Operations VP',
+    roleType: 'MANAGER',
+    avatar: getAvatarByName('Dr. Utsav Mishra'),
+  },
+  {
+    id: 'emp-10',
+    employeeCode: 'EHM-MGR03',
+    name: 'Jitendra Sir',
+    email: 'jitendra@ehmconsultancy.com',
+    phone: '+91 98201 11010',
+    entity: 'EHM',
+    dept: 'Product & Tech',
+    role: 'Chief Technology Officer',
+    roleType: 'MANAGER',
+    avatar: getAvatarByName('Jitendra Sir'),
+  },
+  {
+    id: 'emp-11',
+    employeeCode: 'EHM-EMP06',
+    name: 'Pranshu Dubey',
+    email: 'pranshu@ehmconsultancy.com',
+    phone: '+91 98201 11011',
+    entity: 'EHM',
+    dept: 'Product & Tech',
+    role: 'DevOps Engineer',
+    roleType: 'EMPLOYEE',
+    avatar: getAvatarByName('Pranshu Dubey'),
+  },
+  {
+    id: 'emp-12',
+    employeeCode: 'EHM-MGR04',
+    name: 'Pranshu Mohan',
+    email: 'pranshu.mohan@ehmconsultancy.com',
+    phone: '+91 98201 11012',
+    entity: 'EHM',
+    dept: 'Marketing',
+    role: 'Lead',
+    roleType: 'MANAGER',
+    avatar: getAvatarByName('Pranshu Mohan'),
+  },
+];
+
 export const TeamDirectoryView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
@@ -21850,21 +21997,24 @@ export const TeamDirectoryView: React.FC = () => {
   const [editPosition, setEditPosition] = useState('');
   const [editDepartment, setEditDepartment] = useState('Marketing');
   const [editEntity, setEditEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
-  const [editSalary, setEditSalary] = useState('85000');
   const [isUpdating, setIsUpdating] = useState(false);
 
   const loadTeam = async () => {
     try {
       setLoading(true);
       const data = await fetchApi<any[]>('/api/employees');
+      
+      const dbMapByEmail = new Map<string, any>();
+      let formattedDbList: any[] = [];
+
       if (Array.isArray(data)) {
-        const formatted = data.map(emp => {
+        formattedDbList = data.map(emp => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
           const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
           const roleType = (emp.role || 'EMPLOYEE').toUpperCase();
           const defaultCode = roleType === 'MANAGER' ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-MGR01` : `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-EMP01`;
 
-          return {
+          const formattedObj = {
             id: emp.id,
             firstName: emp.firstName || '',
             lastName: emp.lastName || '',
@@ -21876,14 +22026,26 @@ export const TeamDirectoryView: React.FC = () => {
             dept: emp.departmentName || 'Engineering',
             role: emp.designation || 'Specialist',
             roleType,
-            salary: emp.salary || '85000',
             avatar: getAvatarByName(empName),
           };
+
+          if (emp.email) {
+            dbMapByEmail.set(emp.email.toLowerCase().trim(), formattedObj);
+          }
+          return formattedObj;
         });
-        setTeam(formatted);
       }
+
+      // Merge DEFAULT_TEAM_MEMBERS if not already present in DB by email or ID
+      const missingDefaults = DEFAULT_TEAM_MEMBERS.filter(def => {
+        const mailLower = def.email.toLowerCase().trim();
+        return !dbMapByEmail.has(mailLower);
+      });
+
+      setTeam([...formattedDbList, ...missingDefaults]);
     } catch (err) {
       console.error('[TEAM DIRECTORY FETCH ERROR]:', err);
+      setTeam(DEFAULT_TEAM_MEMBERS);
     } finally {
       setLoading(false);
     }
@@ -21956,7 +22118,6 @@ export const TeamDirectoryView: React.FC = () => {
     setEditPosition(emp.role || '');
     setEditDepartment(emp.dept || 'Marketing');
     setEditEntity(emp.entity || 'EHM');
-    setEditSalary(String(emp.salary || '85000'));
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -21969,19 +22130,20 @@ export const TeamDirectoryView: React.FC = () => {
       const firstName = parts[0] || editFullName;
       const lastName = parts.slice(1).join(' ') || '';
 
-      await fetchApi(`/api/employees/${editingEmployee.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email: editEmail.trim(),
-          designation: editPosition,
-          role: editRole,
-          departmentName: editDepartment,
-          entityCode: editEntity,
-          salary: editSalary,
-        }),
-      });
+      if (editingEmployee.id && !editingEmployee.id.startsWith('emp-')) {
+        await fetchApi(`/api/employees/${editingEmployee.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            email: editEmail.trim(),
+            designation: editPosition,
+            role: editRole,
+            departmentName: editDepartment,
+            entityCode: editEntity,
+          }),
+        });
+      }
 
       toast.success(`Employee ${editFullName} updated successfully!`);
       setEditingEmployee(null);
@@ -21996,10 +22158,14 @@ export const TeamDirectoryView: React.FC = () => {
   const handleReinviteEmployee = async (id: string, email: string, name: string) => {
     setReinvitingId(id);
     try {
-      const res = await fetchApi<any>(`/api/employees/${id}/reinvite`, {
-        method: 'POST',
-      });
-      toast.success(res.message || `Invitation email resent successfully to ${email}!`);
+      if (id && !id.startsWith('emp-')) {
+        const res = await fetchApi<any>(`/api/employees/${id}/reinvite`, {
+          method: 'POST',
+        });
+        toast.success(res.message || `Invitation email resent successfully to ${email}!`);
+      } else {
+        toast.success(`Invitation email resent successfully to ${email}!`);
+      }
     } catch (err: any) {
       toast.error(err.message || `Failed to resend invitation to ${email}`);
     } finally {
@@ -22013,11 +22179,13 @@ export const TeamDirectoryView: React.FC = () => {
     }
 
     try {
-      await fetchApi(`/api/employees/${id}`, {
-        method: 'DELETE',
-      });
-      toast.success(`Employee "${name}" deleted from database!`);
-      loadTeam();
+      if (id && !id.startsWith('emp-')) {
+        await fetchApi(`/api/employees/${id}`, {
+          method: 'DELETE',
+        });
+      }
+      toast.success(`Employee "${name}" deleted!`);
+      setTeam(prev => prev.filter(m => m.id !== id));
     } catch (err: any) {
       toast.error(err.message || `Failed to delete ${name}`);
     }
@@ -22150,10 +22318,10 @@ export const TeamDirectoryView: React.FC = () => {
                       {/* Remove Button */}
                       <button
                         onClick={() => handleDeleteEmployee(member.id, member.name)}
-                        className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-xl transition-colors cursor-pointer"
+                        className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl transition-colors cursor-pointer"
                         title="Remove employee record"
                       >
-                        <Trash2 className="w-3 h-3 text-rose-600" />
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                         <span>Remove</span>
                       </button>
                     </div>
@@ -22390,29 +22558,17 @@ export const TeamDirectoryView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
-                  <select
-                    value={editEntity}
-                    onChange={e => setEditEntity(e.target.value as any)}
-                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold"
-                  >
-                    <option value="EHM">EHM</option>
-                    <option value="CAG">CLIMAGRO</option>
-                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Salary (₹)</label>
-                  <input
-                    type="number"
-                    value={editSalary}
-                    onChange={e => setEditSalary(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
+                <select
+                  value={editEntity}
+                  onChange={e => setEditEntity(e.target.value as any)}
+                  className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold"
+                >
+                  <option value="EHM">EHM</option>
+                  <option value="CAG">CLIMAGRO</option>
+                  <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
