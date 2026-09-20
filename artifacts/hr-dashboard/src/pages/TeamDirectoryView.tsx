@@ -173,15 +173,20 @@ export const TeamDirectoryView: React.FC = () => {
         const formatted = data.map(emp => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
           const entityCode = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
+          const roleType = (emp.role || 'EMPLOYEE').toUpperCase();
+          const defaultCode = roleType === 'MANAGER' ? `${entityCode}-MGR01` : `${entityCode}-EMP01`;
+
           return {
             id: emp.id,
+            employeeCode: emp.employeeCode || defaultCode,
             name: empName,
             email: emp.email,
-            phone: emp.phone || '+91 98201 12345',
+            phone: emp.phone && emp.phone.trim() ? emp.phone.trim() : null,
             entity: entityCode,
             entityName: entityCode === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy',
             dept: emp.departmentName || 'Engineering',
             role: emp.designation || 'Specialist',
+            roleType,
             avatar: getAvatarByName(empName),
           };
         });
@@ -327,8 +332,8 @@ export const TeamDirectoryView: React.FC = () => {
                       </div>
                       <p className="text-xs text-gray-500 font-medium truncate">{member.role}</p>
 
-                      {/* Entity & Department Pill Badges */}
-                      <div className="flex items-center gap-1.5 pt-1">
+                      {/* Entity, Department & Role Pill Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
                         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider ${
                           isClimagro ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
                         }`}>
@@ -336,6 +341,15 @@ export const TeamDirectoryView: React.FC = () => {
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
                           {member.dept || 'Engineering'}
+                        </span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                          member.roleType === 'ADMIN'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : member.roleType === 'MANAGER'
+                              ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          {member.roleType === 'ADMIN' ? 'ADMIN' : member.roleType === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'}
                         </span>
                       </div>
                     </div>
@@ -347,17 +361,21 @@ export const TeamDirectoryView: React.FC = () => {
                       <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                       <span className="truncate text-gray-700">{member.email}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span className="text-gray-700">{member.phone}</span>
-                    </div>
+                    {member.phone && (
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span className="text-gray-700">{member.phone}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Remove Action Button */}
+                {/* Remove Action Button & Clean Short Code */}
                 {!isEmployee && (
                   <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-semibold text-gray-400">{member.id}</span>
+                    <span className="text-[11px] font-mono font-bold text-gray-700 bg-gray-100 px-2.5 py-0.5 rounded-md border border-gray-200 shadow-2xs">
+                      {member.employeeCode}
+                    </span>
                     <button
                       onClick={() => handleDeleteEmployee(member.id, member.name)}
                       className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl transition-colors cursor-pointer"
@@ -481,7 +499,6 @@ export const TeamDirectoryView: React.FC = () => {
                     <option value="Sales">Sales</option>
                     <option value="Product & Tech">Product & Tech</option>
                     <option value="Operations & Delivery">Operations & Delivery</option>
-                    <option value="Sustainability">Sustainability</option>
                   </select>
                 </div>
 

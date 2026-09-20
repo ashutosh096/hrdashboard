@@ -16,9 +16,22 @@ export const AcceptInviteView: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const searchParams = new URLSearchParams(window.location.search);
-  const token = searchParams.get('token') || '';
-  const emailParam = searchParams.get('email') || '';
+  const getQueryOrHashParam = (paramName: string): string => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromSearch = searchParams.get(paramName);
+    if (fromSearch) return fromSearch;
+
+    if (window.location.hash) {
+      const hashStr = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
+      const hashParams = new URLSearchParams(hashStr);
+      const fromHash = hashParams.get(paramName);
+      if (fromHash) return fromHash;
+    }
+    return '';
+  };
+
+  const token = getQueryOrHashParam('token');
+  const emailParam = getQueryOrHashParam('email');
 
   useEffect(() => {
     if (emailParam) {

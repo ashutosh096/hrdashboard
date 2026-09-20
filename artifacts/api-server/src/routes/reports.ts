@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { db, tasks, employees, entities, sprints, eq } from '@workspace/db';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/sprint-summary', async (req, res) => {
+router.get('/sprint-summary', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const format = (req.query.format as string) || 'json';
   const entityFilter = (req.query.entity as string) || 'ALL';
 

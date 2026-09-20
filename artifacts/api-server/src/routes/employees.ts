@@ -13,9 +13,58 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
-    const allEmployees = await db.select().from(employees);
-    res.json(allEmployees);
+    const [empList, userList, inviteList, deptList] = await Promise.all([
+      db.select().from(employees),
+      db.select({ email: users.email, role: users.role, employeeId: users.employeeId }).from(users),
+      db.select({ email: invites.email, role: invites.role, employeeId: invites.employeeId }).from(invites),
+      db.select().from(departments),
+    ]);
+
+    const userMapByEmpId = new Map<string, string>();
+    const userMapByEmail = new Map<string, string>();
+    userList.forEach((u) => {
+      if (u.employeeId) userMapByEmpId.set(u.employeeId, u.role);
+      if (u.email) userMapByEmail.set(u.email.toLowerCase().trim(), u.role);
+    });
+
+    const inviteMapByEmpId = new Map<string, string>();
+    const inviteMapByEmail = new Map<string, string>();
+    inviteList.forEach((inv) => {
+      if (inv.employeeId) inviteMapByEmpId.set(inv.employeeId, inv.role);
+      if (inv.email) inviteMapByEmail.set(inv.email.toLowerCase().trim(), inv.role);
+    });
+
+    const deptMap = new Map<string, string>();
+    deptList.forEach((d) => {
+      deptMap.set(d.id, d.name);
+    });
+
+    const result = empList.map((emp) => {
+      const emailLower = (emp.email || '').toLowerCase().trim();
+      const userRole = userMapByEmpId.get(emp.id) || userMapByEmail.get(emailLower);
+      const inviteRole = inviteMapByEmpId.get(emp.id) || inviteMapByEmail.get(emailLower);
+
+      let resolvedRole = userRole || inviteRole;
+      if (!resolvedRole) {
+        if (emailLower === 'admin@example.com' || emailLower.startsWith('admin@')) {
+          resolvedRole = 'ADMIN';
+        } else if (emp.employeeCode && (emp.employeeCode.includes('-MGR') || emp.employeeCode.includes('MGR'))) {
+          resolvedRole = 'MANAGER';
+        } else {
+          resolvedRole = 'EMPLOYEE';
+        }
+      }
+
+      return {
+        ...emp,
+        role: resolvedRole,
+        departmentName: deptMap.get(emp.departmentId) || 'Engineering',
+      };
+    });
+
+    res.json(result);
   } catch (err) {
+    console.error('[GET EMPLOYEES ERROR]:', err);
     res.status(500).json({ message: 'Failed to fetch employees' });
   }
 });
@@ -76,7 +125,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .returning();
 
       const seq = updatedCounter.nextEmployeeSeq - 1;
-      const employeeCode = `${entityCode}-E${String(seq).padStart(2, '0')}`;
+      const isMgr = role === 'MANAGER';
+      const employeeCode = `${entityCode}-${isMgr ? 'MGR' : 'EMP'}${String(seq).padStart(2, '0')}`;
 
       // 3. Resolve department ID
       let targetDeptId = departmentId;

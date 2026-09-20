@@ -12,7 +12,7 @@ function getResendClient() {
 async function attemptSupabaseInviteSend(toEmail: string, name: string, inviteLink: string) {
   try {
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(toEmail, {
-      redirectTo: inviteLink,
+      redirectTo: encodeURI(inviteLink),
       data: { name },
     });
     if (error) {

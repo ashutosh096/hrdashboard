@@ -139,8 +139,7 @@ router.post('/', async (req, res) => {
       resolvedOrganizerId = req.user.employeeId;
     }
     if (!resolvedOrganizerId) {
-      const [firstEmp] = await db.select().from(employees).limit(1);
-      resolvedOrganizerId = firstEmp?.id;
+      return res.status(400).json({ message: 'Could not resolve meeting organizer' });
     }
 
     let organizerUserId = req.user?.id || null;

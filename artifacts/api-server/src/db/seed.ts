@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { db, users, employees, entities, departments, entityCounters, initiatives, epics, sprints, tasks, taskChecklists, taskComments, attendance, meetings, meetingAttendees, googleTokens, notifications, and, eq, ne } from '@workspace/db';
+import { db, users, employees, entities, departments, entityCounters, initiatives, epics, sprints, tasks, taskChecklists, taskComments, attendance, meetings, meetingAttendees, googleTokens, notifications, invites, and, eq, ne } from '@workspace/db';
 
 dotenv.config();
 
@@ -120,11 +120,7 @@ export async function runSeed() {
         .where(eq(employees.id, adminEmp.id));
     }
 
-    // Delete non-admin employees
-    await db.delete(employees).where(ne(employees.id, adminEmp.id));
-    console.log('[SEED] Purged all dummy non-admin employee profiles.');
-
-    // 4. Keep ONLY Admin User Accounts & Purge Non-Admin Users
+    // 4. Keep ONLY Admin User Accounts & Purge Non-Admin Users and Invites FIRST
     const [existingAdminUser] = await db.select().from(users).where(eq(users.email, adminEmail));
     if (!existingAdminUser) {
       await db.insert(users).values({
@@ -156,9 +152,14 @@ export async function runSeed() {
         .where(eq(users.email, secondaryEmail));
     }
 
-    // Purge non-admin users
+    // Purge non-admin users & invites before deleting employee records to honor foreign key constraints
+    await db.delete(invites);
     await db.delete(users).where(ne(users.role, 'ADMIN'));
-    console.log('[SEED] Purged all non-admin user accounts.');
+    console.log('[SEED] Purged all non-admin user accounts and invites.');
+
+    // Delete non-admin employees AFTER deleting dependent user/invite records
+    await db.delete(employees).where(ne(employees.id, adminEmp.id));
+    console.log('[SEED] Purged all dummy non-admin employee profiles.');
 
     console.log('✅ [SEED COMPLETE]: All dummy data deleted! Workspace reset to zero with Admin account preserved.');
   } catch (err) {

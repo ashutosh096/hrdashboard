@@ -310,6 +310,11 @@ router.get('/google/callback', async (req, res) => {
       }
     }
 
+    const isUuid = (str: string | null) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    if (!userId || !isUuid(userId)) {
+      return res.status(400).json({ message: 'Invalid or missing session state' });
+    }
+
     const reqHost = req.get('host') || 'localhost:5000';
     const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'http';
     const currentApiUrl = apiServerUrl || `${proto}://${reqHost}`;
@@ -336,59 +341,49 @@ router.get('/google/callback', async (req, res) => {
 
     const { access_token, refresh_token, expires_in } = tokenData;
 
-    const isUuid = (str: string | null) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-    if (!userId || !isUuid(userId)) {
-      const [firstUser] = await db.select().from(users).limit(1);
-      userId = firstUser?.id || null;
+    const [targetUser] = await db.select().from(users).where(eq(users.id, userId));
+    if (!targetUser) {
+      return res.status(400).json({ message: 'Invalid or missing session state' });
     }
 
-    let authTokenToSend: string | null = null;
+    const userPayload = {
+      id: targetUser.id,
+      email: targetUser.email,
+      role: targetUser.role,
+      employeeId: targetUser.employeeId || undefined,
+    };
+    const authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
 
-    if (userId) {
-      const [targetUser] = await db.select().from(users).where(eq(users.id, userId));
-      if (targetUser) {
-        const userPayload = {
-          id: targetUser.id,
-          email: targetUser.email,
-          role: targetUser.role,
-          employeeId: targetUser.employeeId || undefined,
-        };
-        authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
-      }
+    const expiry = new Date(Date.now() + (expires_in || 3600) * 1000);
+    const [existingToken] = await db.select().from(googleTokens).where(eq(googleTokens.userId, userId));
 
-      const expiry = new Date(Date.now() + (expires_in || 3600) * 1000);
-      const [existingToken] = await db.select().from(googleTokens).where(eq(googleTokens.userId, userId));
-
-      if (existingToken) {
-        await db.update(googleTokens)
-          .set({
-            accessToken: access_token,
-            refreshToken: refresh_token || existingToken.refreshToken,
-            expiry,
-            updatedAt: new Date(),
-          })
-          .where(eq(googleTokens.userId, userId));
-      } else {
-        await db.insert(googleTokens).values({
-          userId,
+    if (existingToken) {
+      await db.update(googleTokens)
+        .set({
           accessToken: access_token,
-          refreshToken: refresh_token || '',
+          refreshToken: refresh_token || existingToken.refreshToken,
           expiry,
-        });
-      }
+          updatedAt: new Date(),
+        })
+        .where(eq(googleTokens.userId, userId));
+    } else {
+      await db.insert(googleTokens).values({
+        userId,
+        accessToken: access_token,
+        refreshToken: refresh_token || '',
+        expiry,
+      });
+    }
 
-      if (inviteToken) {
-        await db
-          .update(invites)
-          .set({ status: 'ACCEPTED' })
-          .where(eq(invites.token, inviteToken));
-      }
+    if (inviteToken) {
+      await db
+        .update(invites)
+        .set({ status: 'ACCEPTED' })
+        .where(eq(invites.token, inviteToken));
     }
 
     const targetUrl = returnPath.startsWith('/') ? returnPath : `/${returnPath}`;
-    const redirectUrl = authTokenToSend
-      ? `${appUrl}${targetUrl}?token=${authTokenToSend}&calendarConnected=true`
-      : `${appUrl}${targetUrl}?calendarConnected=true`;
+    const redirectUrl = `${appUrl}${targetUrl}?token=${authTokenToSend}&calendarConnected=true`;
 
     res.redirect(redirectUrl);
   } catch (err) {
