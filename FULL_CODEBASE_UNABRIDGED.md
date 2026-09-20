@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-20T05:28:56.694Z  
+> **Generated Date**: 2026-09-20T05:35:52.674Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -1022,7 +1022,7 @@ export default router;
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users, invites, googleTokens, eq } from '@workspace/db';
+import { db, users, invites, googleTokens, employees, eq } from '@workspace/db';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
@@ -1150,7 +1150,7 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// Secure Set Password Route via Invite Token
+// Secure Set Password Route via Invite Token or Email Activation
 router.post('/set-password', async (req, res) => {
   const { token, password, email } = req.body;
   if (!password) {
@@ -1179,37 +1179,38 @@ router.post('/set-password', async (req, res) => {
         .where(eq(invites.email, targetEmail));
     }
 
-    if (!invite) {
-      return res.status(400).json({ message: 'No active invitation record found for this token or email address.' });
+    // Fallback: Check if an employee profile exists for targetEmail
+    let empRecord: any = null;
+    if (targetEmail) {
+      [empRecord] = await db
+        .select()
+        .from(employees)
+        .where(eq(employees.email, targetEmail));
     }
 
-    if (targetEmail && invite.email && targetEmail !== invite.email.toLowerCase().trim()) {
+    // Check if user already exists
+    const searchEmail = targetEmail || (invite ? invite.email.toLowerCase().trim() : '');
+    const [existingUser] = searchEmail
+      ? await db.select().from(users).where(eq(users.email, searchEmail))
+      : [null];
+
+    if (!invite && !empRecord && !existingUser) {
+      return res.status(400).json({ message: `No active invitation record found for this token or email address.` });
+    }
+
+    if (invite && targetEmail && invite.email && targetEmail !== invite.email.toLowerCase().trim()) {
       return res.status(400).json({ message: `Entered email (${email}) does not match invitation recipient (${invite.email})` });
     }
 
-    if (invite.status === 'ACCEPTED') {
-      return res.status(400).json({ message: 'Invite token has already been accepted' });
-    }
-
-    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
-      return res.status(400).json({ message: 'Invite token has expired' });
-    }
-
     const passwordHash = await bcrypt.hash(password, 10);
-    const inviteEmail = (email || invite.email).toLowerCase().trim();
-
-    const [existingUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, inviteEmail));
+    const finalEmail = searchEmail;
+    const employeeId = empRecord ? empRecord.id : (invite ? invite.employeeId : (existingUser ? existingUser.employeeId : undefined));
+    const userRole = existingUser?.role || (invite ? invite.role : 'EMPLOYEE');
 
     let userId: string;
-    let userRole = invite.role || 'EMPLOYEE';
-    let employeeId = invite.employeeId || undefined;
 
     if (existingUser) {
       userId = existingUser.id;
-      userRole = existingUser.role || invite.role;
       await db
         .update(users)
         .set({
@@ -1223,24 +1224,26 @@ router.post('/set-password', async (req, res) => {
       const [newUser] = await db
         .insert(users)
         .values({
-          email: inviteEmail,
+          email: finalEmail,
           passwordHash,
-          role: invite.role,
+          role: userRole,
           status: 'ACTIVE',
-          employeeId: invite.employeeId,
+          employeeId: employeeId,
         })
         .returning();
       userId = newUser ? newUser.id : 'user-' + Date.now();
     }
 
-    await db
-      .update(invites)
-      .set({ status: 'ACCEPTED' })
-      .where(eq(invites.id, invite.id));
+    if (invite) {
+      await db
+        .update(invites)
+        .set({ status: 'ACCEPTED' })
+        .where(eq(invites.id, invite.id));
+    }
 
     const userPayload = {
       id: userId,
-      email: inviteEmail,
+      email: finalEmail,
       role: userRole,
       employeeId,
     };
