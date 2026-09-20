@@ -42,11 +42,6 @@ export const AcceptInviteView: React.FC = () => {
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!token) {
-      toast.error('Invite token is missing from URL parameters.');
-      return;
-    }
-
     if (!email.trim()) {
       toast.error('Please enter your registered email address.');
       return;

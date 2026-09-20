@@ -132,21 +132,37 @@ router.get('/me', async (req, res) => {
 // Secure Set Password Route via Invite Token
 router.post('/set-password', async (req, res) => {
   const { token, password, email } = req.body;
-  if (!token || !password) {
-    return res.status(400).json({ message: 'Token and password required' });
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required' });
+  }
+
+  if (!token && !email) {
+    return res.status(400).json({ message: 'Either invite token or registered email address is required' });
   }
 
   try {
-    const [invite] = await db
-      .select()
-      .from(invites)
-      .where(eq(invites.token, token));
+    const targetEmail = email ? email.toLowerCase().trim() : '';
 
-    if (!invite) {
-      return res.status(400).json({ message: 'Invalid or expired invite token' });
+    let invite: any = null;
+    if (token) {
+      [invite] = await db
+        .select()
+        .from(invites)
+        .where(eq(invites.token, token));
     }
 
-    if (email && email.toLowerCase().trim() !== invite.email.toLowerCase().trim()) {
+    if (!invite && targetEmail) {
+      [invite] = await db
+        .select()
+        .from(invites)
+        .where(eq(invites.email, targetEmail));
+    }
+
+    if (!invite) {
+      return res.status(400).json({ message: 'No active invitation record found for this token or email address.' });
+    }
+
+    if (targetEmail && invite.email && targetEmail !== invite.email.toLowerCase().trim()) {
       return res.status(400).json({ message: `Entered email (${email}) does not match invitation recipient (${invite.email})` });
     }
 

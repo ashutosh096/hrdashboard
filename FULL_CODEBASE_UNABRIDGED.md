@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-20T05:19:30.802Z  
+> **Generated Date**: 2026-09-20T05:28:56.694Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -1153,21 +1153,37 @@ router.get('/me', async (req, res) => {
 // Secure Set Password Route via Invite Token
 router.post('/set-password', async (req, res) => {
   const { token, password, email } = req.body;
-  if (!token || !password) {
-    return res.status(400).json({ message: 'Token and password required' });
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required' });
+  }
+
+  if (!token && !email) {
+    return res.status(400).json({ message: 'Either invite token or registered email address is required' });
   }
 
   try {
-    const [invite] = await db
-      .select()
-      .from(invites)
-      .where(eq(invites.token, token));
+    const targetEmail = email ? email.toLowerCase().trim() : '';
 
-    if (!invite) {
-      return res.status(400).json({ message: 'Invalid or expired invite token' });
+    let invite: any = null;
+    if (token) {
+      [invite] = await db
+        .select()
+        .from(invites)
+        .where(eq(invites.token, token));
     }
 
-    if (email && email.toLowerCase().trim() !== invite.email.toLowerCase().trim()) {
+    if (!invite && targetEmail) {
+      [invite] = await db
+        .select()
+        .from(invites)
+        .where(eq(invites.email, targetEmail));
+    }
+
+    if (!invite) {
+      return res.status(400).json({ message: 'No active invitation record found for this token or email address.' });
+    }
+
+    if (targetEmail && invite.email && targetEmail !== invite.email.toLowerCase().trim()) {
       return res.status(400).json({ message: `Entered email (${email}) does not match invitation recipient (${invite.email})` });
     }
 
@@ -15803,11 +15819,6 @@ export const AcceptInviteView: React.FC = () => {
 
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!token) {
-      toast.error('Invite token is missing from URL parameters.');
-      return;
-    }
 
     if (!email.trim()) {
       toast.error('Please enter your registered email address.');
