@@ -311,8 +311,8 @@ router.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response
       .from(users)
       .where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
 
-    if (targetUser?.role === 'ADMIN' && callerUser?.email !== 'admin@example.com') {
-      return res.status(403).json({ message: 'Only the primary administrator can delete admin accounts.' });
+    if (targetUser?.role === 'ADMIN' && callerUser?.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only an administrator can delete admin accounts.' });
     }
 
     await db.transaction(async (tx) => {
