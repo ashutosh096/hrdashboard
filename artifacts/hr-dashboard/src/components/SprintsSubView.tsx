@@ -393,10 +393,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
         priority: task.priority || 'P3',
         description: task.description || task.notes || '',
-        checklists: task.checklists || [
-          { id: `c-${Date.now()}-1`, itemText: 'Requirement Analysis & Solution Design', isCompleted: false },
-          { id: `c-${Date.now()}-2`, itemText: 'Implementation & Module Integration', isCompleted: false },
-          { id: `c-${Date.now()}-3`, itemText: 'QA Validation & Code Review Sign-off', isCompleted: false },
+        checklists: (task.checklists && task.checklists.length > 0) ? task.checklists : [
+          { id: `c-${Date.now()}-1`, itemText: 'Checkpoint 1', isCompleted: false },
+          { id: `c-${Date.now()}-2`, itemText: 'Checkpoint 2', isCompleted: false },
+          { id: `c-${Date.now()}-3`, itemText: 'Checkpoint 3', isCompleted: false },
         ],
         comments: task.comments || [],
         newChecklistText: '',
@@ -411,10 +411,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         task,
         deliverableUrl: task.deliverableUrl || task.outputUrl || '',
         notes: task.description || task.notes || '',
-        checklists: task.checklists || [
-          { id: `c-${Date.now()}-1`, itemText: 'Requirement Analysis & Solution Design', isCompleted: true },
-          { id: `c-${Date.now()}-2`, itemText: 'Implementation & Module Integration', isCompleted: true },
-          { id: `c-${Date.now()}-3`, itemText: 'QA Validation & Code Review Sign-off', isCompleted: true },
+        checklists: (task.checklists && task.checklists.length > 0) ? task.checklists : [
+          { id: `c-${Date.now()}-1`, itemText: 'Checkpoint 1', isCompleted: true },
+          { id: `c-${Date.now()}-2`, itemText: 'Checkpoint 2', isCompleted: true },
+          { id: `c-${Date.now()}-3`, itemText: 'Checkpoint 3', isCompleted: true },
         ],
         comments: task.comments || [],
         newChecklistText: '',
@@ -689,14 +689,6 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   };
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
-    let nextStatus = 'IN_PROGRESS';
-    if (updated.status === 'Done') nextStatus = 'DONE';
-    else if (updated.status === 'To Review') nextStatus = 'IN_REVIEW';
-    else if (updated.status === 'Planned') nextStatus = 'PLANNED';
-    else if (updated.status === 'Backlog') nextStatus = 'BACKLOG';
-    else if (updated.status === 'Delayed') nextStatus = 'DELAYED';
-    else if (updated.status === 'Blocked') nextStatus = 'BLOCKED';
-
     try {
       await fetchApi<any>(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
@@ -707,7 +699,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           assigneeId: updated.assigneeId,
           reviewingLead: updated.reviewingLead,
           reviewingLeadId: updated.reviewingLeadId,
-          status: nextStatus,
+          status: updated.status,
           deliverableUrl: updated.outputUrl,
           description: updated.notes,
           dueDate: updated.dueDate,
@@ -716,32 +708,12 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           waitingOn: updated.waitingOn,
         }),
       });
-      toast.success(`Task ${updated.taskId} updated successfully!`);
-      loadData();
-    } catch (err) {
-      toast.success(`Task ${updated.taskId} updated locally!`);
-      setAllTasks(prev =>
-        prev.map(t =>
-          t.id === updated.id
-            ? {
-                ...t,
-                title: updated.title,
-                entity: updated.entity,
-                assigneeName: updated.assignee,
-                assigneeId: updated.assigneeId || t.assigneeId,
-                reviewingLead: updated.reviewingLead,
-                reviewingLeadId: updated.reviewingLeadId || t.reviewingLeadId,
-                status: nextStatus,
-                deliverableUrl: updated.outputUrl,
-                description: updated.notes,
-                dueDate: updated.dueDate,
-                sprintWeek: updated.targetWeek,
-                priority: updated.priority,
-                waitingOn: updated.waitingOn,
-              }
-            : t
-        )
-      );
+      toast.success(`Task ${updated.taskId} updated & saved to live database!`);
+      await loadData();
+    } catch (err: any) {
+      console.error('[SPRINTS TASK PATCH ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task update');
+      throw err;
     }
   };
 
@@ -2442,6 +2414,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           onClose={() => setSelectedTaskToUpdate(null)}
           onSave={handleSaveTaskUpdate}
           onClone={handleCloneTask}
+          onDelete={(deletedId) => {
+            setAllTasks(prev => prev.filter(t => t.id !== deletedId));
+            setSelectedTaskToUpdate(null);
+          }}
           isReadOnly={isModalReadOnly}
         />
       )}

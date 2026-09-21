@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText } from 'lucide-react';
 import { formatDateTime } from '../utils/dateUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -88,17 +88,35 @@ export const NotificationsView: React.FC = () => {
       return {
         icon: CheckCircle2,
         iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-        title: `Task Completed & Signed Off: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: payload.message || `Deliverable task successfully completed and marked Done.`,
+        title: notif.title || `Task Completed & Signed Off: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: notif.message || payload.message || `Deliverable task successfully completed and marked Done.`,
       };
     }
 
-    if (type === 'REVIEW_ASSIGNED') {
+    if (type === 'TASK_REVIEW_SUBMITTED' || type === 'REVIEW_ASSIGNED') {
       return {
-        icon: User,
+        icon: FileText,
         iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-        title: `Review Assigned to Lead: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: payload.message || `Task submitted for manager lead review & sign-off.`,
+        title: notif.title || `Review Pending: [${payload.taskCode || 'TASK'}] ${payload.taskTitle || payload.title || ''}`,
+        desc: notif.message || payload.message || `Task submitted for manager lead review & sign-off.`,
+      };
+    }
+
+    if (type === 'TASK_COMMENT') {
+      return {
+        icon: MessageSquare,
+        iconBg: 'bg-blue-50 text-blue-600 border-blue-200',
+        title: notif.title || `Task Discussion: [${payload.taskCode || 'TASK'}]`,
+        desc: notif.message || payload.message || `New comment posted on task discussion thread.`,
+      };
+    }
+
+    if (type === 'TASK_CHECKLIST_COMPLETE') {
+      return {
+        icon: CheckCheck,
+        iconBg: 'bg-teal-50 text-teal-600 border-teal-200',
+        title: notif.title || `Checklist Completed: [${payload.taskCode || 'TASK'}]`,
+        desc: notif.message || payload.message || `All checklist items have been checked off.`,
       };
     }
 
@@ -116,7 +134,7 @@ export const NotificationsView: React.FC = () => {
         icon: Clock,
         iconBg: 'bg-amber-50 text-amber-600 border-amber-200',
         title: `Delay Extension Submitted: [${payload.taskCode || 'TASK'}]`,
-        desc: `Your extension request for ${payload.title || 'Task'} is pending Lead approval.`,
+        desc: notif.message || `Your extension request for ${payload.title || 'Task'} is pending Lead approval.`,
       };
     }
 
@@ -124,16 +142,16 @@ export const NotificationsView: React.FC = () => {
       return {
         icon: CheckSquare,
         iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-        title: `Task Assigned: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: payload.message || `Assigned deliverable in Sprint cycle.`,
+        title: notif.title || `Task Assigned: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: notif.message || payload.message || `Assigned deliverable in Sprint cycle.`,
       };
     }
 
     return {
       icon: Bell,
       iconBg: 'bg-gray-50 text-gray-600 border-gray-200',
-      title: payload.title || 'System Notification',
-      desc: payload.message || 'Notification alert received',
+      title: notif.title || payload.title || 'System Notification',
+      desc: notif.message || payload.message || 'Notification alert received',
     };
   };
 

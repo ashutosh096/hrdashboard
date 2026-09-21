@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 
 export const LoginView: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -12,6 +13,7 @@ export const LoginView: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -117,9 +119,13 @@ export const LoginView: React.FC = () => {
               />
               <span>Remember me</span>
             </label>
-            <a href="#forgot" onClick={(e) => { e.preventDefault(); toast.info('Password reset feature ready.'); }} className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+            <button
+              type="button"
+              onClick={() => setIsForgotPasswordOpen(true)}
+              className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors focus:outline-none"
+            >
               Forgot Password?
-            </a>
+            </button>
           </div>
 
           {/* Primary Action Button */}
@@ -139,6 +145,14 @@ export const LoginView: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={email}
+      />
     </div>
   );
 };
+

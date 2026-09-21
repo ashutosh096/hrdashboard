@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy } from 'lucide-react';
+import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
@@ -48,8 +48,48 @@ interface TaskUpdateModalProps {
   onClose: () => void;
   onSave?: (updatedTask: TaskItem) => void;
   onClone?: (sourceTask: TaskItem, importChecklistAndLinks: boolean) => void;
+  onDelete?: (taskId: string) => void;
   isReadOnly?: boolean;
 }
+
+const normalizePriorityCode = (p: string | undefined): 'P1' | 'P2' | 'P3' | 'P4' => {
+  if (!p) return 'P3';
+  const val = String(p).toUpperCase().trim();
+  if (val === 'URGENT' || val === 'CRITICAL' || val === 'P1' || val === '1') return 'P1';
+  if (val === 'HIGH' || val === 'P2' || val === '2') return 'P2';
+  if (val === 'MEDIUM' || val === 'MED' || val === 'P3' || val === '3') return 'P3';
+  if (val === 'LOW' || val === 'P4' || val === '4') return 'P4';
+  return 'P3';
+};
+
+const formatPriorityLabel = (p: string | undefined): string => {
+  const code = normalizePriorityCode(p);
+  if (code === 'P1') return 'P1 - Critical / Urgent 🔥';
+  if (code === 'P2') return 'P2 - High Priority ⚡';
+  if (code === 'P3') return 'P3 - Medium Priority 📌';
+  if (code === 'P4') return 'P4 - Low Priority 📝';
+  return 'P3 - Medium Priority 📌';
+};
+
+const parseDateForInput = (d: string | undefined | null): string => {
+  if (!d) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(d).trim())) {
+    return String(d).trim();
+  }
+  const parsed = new Date(d);
+  if (isNaN(parsed.getTime())) return '';
+  const yyyy = parsed.getFullYear();
+  const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+  const dd = String(parsed.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const formatDueDateDisplay = (d: string | undefined | null): string => {
+  if (!d) return 'Not set';
+  const parsed = new Date(d);
+  if (isNaN(parsed.getTime())) return String(d);
+  return parsed.toLocaleDateString();
+};
 
 export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   isOpen,
@@ -57,9 +97,11 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   onClose,
   onSave,
   onClone,
+  onDelete,
   isReadOnly,
 }) => {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
   const isEmployee = user?.role === 'EMPLOYEE';
   const isAssignee = isEmployee
@@ -74,6 +116,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   const [showCloneConfirmModal, setShowCloneConfirmModal] = useState(false);
   const [importChecklistAndLinks, setImportChecklistAndLinks] = useState(true);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   const [employeesList, setEmployeesList] = useState<{ id: string; name: string; designation: string }[]>([]);
   const [entity, setEntity] = useState('EHM');
@@ -96,6 +140,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [newChecklistText, setNewChecklistText] = useState('');
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
+  const [isSavingTask, setIsSavingTask] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -133,17 +178,22 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setEntity(task.entity || 'EHM');
       setParentTaskId(task.taskId || 'TSK-001');
       setTaskName(task.title || '');
-      setAssignee(task.assignee || 'Unassigned');
+      
+      const cleanAssignee = (task.assignee || 'Unassigned').replace(/\(.*?\)/g, '').trim();
+      setAssignee(cleanAssignee);
       setAssigneeId(task.assigneeId || '');
-      setReviewingLead(task.reviewingLead || 'Manager Lead');
+
+      const cleanLead = (task.reviewingLead || 'Manager Lead').replace(/\(.*?\)/g, '').trim();
+      setReviewingLead(cleanLead);
       setReviewingLeadId(task.reviewingLeadId || '');
+
       setOutputUrl(task.outputUrl || '');
       setStatus(task.status || 'In Progress');
       setWaitingOn(task.waitingOn || 'None (Self)');
       setNotes(task.notes || '');
       setTargetWeek(task.targetWeek || 'Week 1 (Days 1–7)');
-      setPriority(task.priority || 'P3');
-      setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
+      setPriority(normalizePriorityCode(task.priority));
+      setDueDate(parseDateForInput(task.dueDate));
       loadTaskData();
     }
   }, [task]);
@@ -203,32 +253,41 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnlyMode) {
       onClose();
       return;
     }
     if (onSave) {
-      onSave({
-        ...task,
-        title: taskName,
-        entity,
-        assignee,
-        assigneeId,
-        reviewingLead,
-        reviewingLeadId,
-        targetWeek,
-        priority,
-        dueDate,
-        status,
-        outputUrl,
-        waitingOn,
-        notes,
-      });
+      try {
+        setIsSavingTask(true);
+        await onSave({
+          ...task,
+          title: taskName,
+          entity,
+          assignee,
+          assigneeId,
+          reviewingLead,
+          reviewingLeadId,
+          targetWeek,
+          priority,
+          dueDate,
+          status,
+          outputUrl,
+          waitingOn,
+          notes,
+        });
+        onClose();
+      } catch (err: any) {
+        console.error('[MODAL SAVE ERROR]:', err);
+        toast.error(err?.message || 'Failed to save changes to database');
+      } finally {
+        setIsSavingTask(false);
+      }
+    } else {
+      onClose();
     }
-    toast.success(`Task ${parentTaskId} updated & synced with Reviewing Lead (${reviewingLead})!`);
-    onClose();
   };
 
   const completedChecklistCount = checklists.filter((c) => c.isCompleted).length;
@@ -250,6 +309,17 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirmModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Delete Task (Admin Only)"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                <span>Delete Task</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShowCloneConfirmModal(true)}
@@ -267,6 +337,62 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal Popup */}
+        {showDeleteConfirmModal && task && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+            <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-200 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
+              <div className="flex items-center gap-3 text-red-700">
+                <div className="p-2 bg-red-100 rounded-xl">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-gray-900">Delete Task Confirmation</h4>
+                  <p className="text-xs text-gray-500 font-medium">Permanent Admin Action</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-red-50/50 rounded-xl border border-red-200 text-xs font-semibold text-gray-800 space-y-2">
+                <div>Are you sure you want to permanently delete task <span className="font-mono text-red-700 font-bold">[{parentTaskId}]</span> "{taskName}"?</div>
+                <p className="text-[11px] text-red-600 font-medium">This will permanently remove this task, all checklist items, and comment logs.</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirmModal(false)}
+                  className="px-3.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingTask}
+                  onClick={async () => {
+                    try {
+                      setIsDeletingTask(true);
+                      await fetchApi(`/api/tasks/${task.id}`, { method: 'DELETE' });
+                      toast.success(`Task ${parentTaskId} deleted successfully!`);
+                      setShowDeleteConfirmModal(false);
+                      if (onDelete) {
+                        onDelete(task.id);
+                      }
+                      onClose();
+                    } catch (err: any) {
+                      toast.error(err?.message || 'Failed to delete task');
+                    } finally {
+                      setIsDeletingTask(false);
+                    }
+                  }}
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeletingTask ? 'Deleting...' : 'Yes, Delete Task'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Clone Confirmation Modal Popup */}
         {showCloneConfirmModal && (
@@ -405,23 +531,23 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     />
                   ) : (
                     <select
-                      value={assignee}
+                      value={assigneeId || (employeesList.find((e) => e.name.toLowerCase() === assignee.toLowerCase())?.id || '')}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        setAssignee(val);
-                        const match = employeesList.find((emp) => emp.name === val);
-                        if (match) setAssigneeId(match.id);
+                        const targetId = e.target.value;
+                        setAssigneeId(targetId);
+                        const match = employeesList.find((emp) => emp.id === targetId);
+                        if (match) setAssignee(match.name);
                       }}
                       className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
                       <option value="">Select Assignee...</option>
                       {employeesList.map((emp) => (
-                        <option key={emp.id} value={emp.name}>
+                        <option key={emp.id} value={emp.id}>
                           {emp.name} ({emp.designation})
                         </option>
                       ))}
-                      {assignee && !employeesList.some((e) => e.name === assignee) && (
-                        <option value={assignee}>{assignee}</option>
+                      {assignee && !employeesList.some((e) => e.name.toLowerCase() === assignee.toLowerCase() || e.id === assigneeId) && (
+                        <option value={assigneeId || assignee}>{assignee}</option>
                       )}
                     </select>
                   )}
@@ -438,23 +564,23 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     />
                   ) : (
                     <select
-                      value={reviewingLead}
+                      value={reviewingLeadId || (employeesList.find((e) => e.name.toLowerCase() === reviewingLead.toLowerCase())?.id || '')}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        setReviewingLead(val);
-                        const match = employeesList.find((emp) => emp.name === val);
-                        if (match) setReviewingLeadId(match.id);
+                        const targetId = e.target.value;
+                        setReviewingLeadId(targetId);
+                        const match = employeesList.find((emp) => emp.id === targetId);
+                        if (match) setReviewingLead(match.name);
                       }}
                       className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
                       <option value="">Select Reviewing Lead...</option>
                       {employeesList.map((emp) => (
-                        <option key={emp.id} value={emp.name}>
+                        <option key={emp.id} value={emp.id}>
                           {emp.name} ({emp.designation})
                         </option>
                       ))}
-                      {reviewingLead && !employeesList.some((e) => e.name === reviewingLead) && (
-                        <option value={reviewingLead}>{reviewingLead}</option>
+                      {reviewingLead && !employeesList.some((e) => e.name.toLowerCase() === reviewingLead.toLowerCase() || e.id === reviewingLeadId) && (
+                        <option value={reviewingLeadId || reviewingLead}>{reviewingLead}</option>
                       )}
                     </select>
                   )}
@@ -492,12 +618,12 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     <input
                       type="text"
                       disabled
-                      value={priority}
-                      className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                      value={formatPriorityLabel(priority)}
+                      className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 outline-none"
                     />
                   ) : (
                     <select
-                      value={priority}
+                      value={normalizePriorityCode(priority)}
                       onChange={(e) => setPriority(e.target.value)}
                       className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
@@ -515,7 +641,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     <input
                       type="text"
                       disabled
-                      value={dueDate || 'Not set'}
+                      value={formatDueDateDisplay(dueDate)}
                       className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                     />
                   ) : (
@@ -661,10 +787,11 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     </button>
                     <button
                       type="submit"
-                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                      disabled={isSavingTask}
+                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
-                      <span>Save Changes</span>
+                      <span>{isSavingTask ? 'Saving to Database...' : 'Save Changes'}</span>
                     </button>
                   </>
                 )}

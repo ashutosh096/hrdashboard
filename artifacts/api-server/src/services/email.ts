@@ -27,7 +27,11 @@ async function attemptSupabaseInviteSend(toEmail: string, name: string, inviteLi
   }
 }
 
-async function attemptSmtpSend(toEmail: string, htmlContent: string) {
+async function attemptSmtpSend(
+  toEmail: string,
+  htmlContent: string,
+  subject: string = 'You have been invited to EHM-Climagro OS — Accept Invite'
+) {
   const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.MAIL_USER || '';
   const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || '';
 
@@ -70,7 +74,7 @@ async function attemptSmtpSend(toEmail: string, htmlContent: string) {
       const info = await transporter.sendMail({
         from: `EHM-Climagro OS <${smtpUser}>`,
         to: toEmail,
-        subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
+        subject: subject,
         html: htmlContent,
       });
 
@@ -104,15 +108,18 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   console.warn('[SUPABASE INVITE FAILED, FALLING BACK TO SMTP/RESEND]:', supabaseResult?.error);
 
   const htmlContent = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 12px; background-color: #ffffff;">
-      <h2 style="color: #111827; margin-top: 0; font-size: 20px;">You have been invited to create a user account</h2>
-      <p style="color: #374151; font-size: 15px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
-      <p style="color: #374151; font-size: 15px; line-height: 1.5;">You have been invited to create a user account on <a href="${appUrl}" style="color: #10B981; text-decoration: underline; font-weight: bold;">${appUrl}</a>.</p>
-      <p style="color: #374151; font-size: 15px; line-height: 1.5;">Follow this link to accept the invite:</p>
-      <div style="margin: 24px 0;">
-        <a href="${inviteLink}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 15px;">Accept the invite</a>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #E5E7EB; border-radius: 16px; background-color: #ffffff;">
+      <div style="margin-bottom: 24px;">
+        <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #10B981;">EHM-Climagro OS</span>
       </div>
-      <p style="color: #6B7280; font-size: 13px; line-height: 1.4; border-top: 1px solid #F3F4F6; padding-top: 16px; margin-top: 24px;">
+      <h2 style="color: #111827; margin-top: 0; font-size: 20px; font-weight: 700;">You have been invited to create a user account</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">You have been invited to create a user account on <a href="${appUrl}" style="color: #10B981; text-decoration: underline; font-weight: 600;">${appUrl}</a>.</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">Follow this link to accept the invite and set up your password:</p>
+      <div style="margin: 28px 0;">
+        <a href="${inviteLink}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">Accept the invite</a>
+      </div>
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.5; border-top: 1px solid #F3F4F6; padding-top: 20px; margin-top: 28px;">
         You're receiving this email because an invitation was sent to set up your account on EHM-Climagro OS.<br/>
         Or copy and paste this direct link: <a href="${inviteLink}" style="color: #10B981;">${inviteLink}</a>
       </p>
@@ -120,13 +127,13 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   `;
 
   // Priority 2: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
-  const smtpResult = await attemptSmtpSend(toEmail, htmlContent);
+  const smtpResult = await attemptSmtpSend(toEmail, htmlContent, 'You have been invited to EHM-Climagro OS — Accept Invite');
   if (smtpResult) {
     if (smtpResult.sent) return smtpResult;
     console.warn('[SMTP DELIVERY FAILED, FALLING BACK TO RESEND/NOTICE]:', smtpResult.error);
   }
 
-  // Priority 2: Resend API if configured
+  // Priority 3: Resend API if configured
   const currentResendKey = process.env.RESEND_API_KEY;
   const resendClient = currentResendKey && !currentResendKey.includes('your_resend_key') && !currentResendKey.includes('123456789')
     ? new Resend(currentResendKey)
@@ -153,6 +160,79 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   }
 
   console.log('[EMAIL SERVICE NOTICE] Neither SMTP nor Resend API Key is configured. Invite link printed above.');
+  return { sent: false, provider: 'None', error: 'No email service credentials (SMTP_USER/SMTP_PASS or RESEND_API_KEY) found in server environment.' };
+}
+
+export async function sendPasswordResetOtpEmail(toEmail: string, otp: string, name: string = 'User') {
+  console.log(`\n======================================================`);
+  console.log(`[PASSWORD RESET OTP ATTEMPT] To: ${toEmail} (${name})`);
+  console.log(`[OTP CODE]: ${otp} (Valid for 10 minutes)`);
+  console.log(`======================================================\n`);
+
+  const subject = `Your EHM-Climagro OS Password Reset Code: ${otp}`;
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #E5E7EB; border-radius: 16px; background-color: #ffffff;">
+      <div style="margin-bottom: 24px;">
+        <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #10B981;">EHM-Climagro OS</span>
+      </div>
+      <h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">Password Reset Verification Code</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">We received a request to reset your password for your EHM-Climagro OS account. Use the 6-digit verification code below to complete the reset process:</p>
+      
+      <div style="margin: 28px 0; text-align: center; background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 24px;">
+        <span style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #166534; margin-bottom: 8px;">One-Time Verification Code</span>
+        <div style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 38px; font-weight: 800; letter-spacing: 8px; color: #047857; line-height: 1.2;">
+          ${otp}
+        </div>
+        <span style="display: block; font-size: 13px; color: #15803D; margin-top: 8px; font-weight: 500;">⏱️ This code will expire in 10 minutes</span>
+      </div>
+
+      <p style="color: #4B5563; font-size: 14px; line-height: 1.6;">
+        Enter this code into the password reset window in your browser to choose a new password. For security reasons, do not share this code with anyone.
+      </p>
+
+      <div style="border-top: 1px solid #F3F4F6; padding-top: 20px; margin-top: 28px;">
+        <p style="color: #9CA3AF; font-size: 13px; line-height: 1.5; margin: 0;">
+          If you did not request a password reset, you can safely ignore this email. Your existing password will remain active and unchanged.
+        </p>
+      </div>
+    </div>
+  `;
+
+  // Priority 1: Fast Dual-Port SMTP using the exact same configured transporter
+  const smtpResult = await attemptSmtpSend(toEmail, htmlContent, subject);
+  if (smtpResult) {
+    if (smtpResult.sent) return smtpResult;
+    console.warn('[SMTP OTP DELIVERY FAILED, FALLING BACK TO RESEND/NOTICE]:', smtpResult.error);
+  }
+
+  // Priority 2: Resend API if configured
+  const currentResendKey = process.env.RESEND_API_KEY;
+  const resendClient = currentResendKey && !currentResendKey.includes('your_resend_key') && !currentResendKey.includes('123456789')
+    ? new Resend(currentResendKey)
+    : null;
+
+  if (resendClient) {
+    try {
+      const emailResult = await resendClient.emails.send({
+        from: 'EHM-Climagro OS <onboarding@resend.dev>',
+        to: toEmail,
+        subject: subject,
+        html: htmlContent,
+      });
+      if (emailResult.error) {
+        console.error('[RESEND OTP EMAIL API ERROR]:', emailResult.error);
+        return { sent: false, provider: 'Resend', error: emailResult.error.message };
+      }
+      console.log(`[RESEND OTP DELIVERED]: Email ID ${emailResult.data?.id}`);
+      return { sent: true, provider: 'Resend', id: emailResult.data?.id };
+    } catch (err: any) {
+      console.error('[EMAIL SERVICE RESEND OTP ERROR]:', err?.message || err);
+      return { sent: false, provider: 'Resend', error: err?.message || String(err) };
+    }
+  }
+
+  console.log('[EMAIL SERVICE NOTICE] Neither SMTP nor Resend API Key is configured. OTP code printed above.');
   return { sent: false, provider: 'None', error: 'No email service credentials (SMTP_USER/SMTP_PASS or RESEND_API_KEY) found in server environment.' };
 }
 

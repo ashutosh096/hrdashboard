@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
@@ -31,6 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(3);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -51,6 +52,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   useEffect(() => {
     loadNotifications();
   }, []);
+
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target as Node)) {
+        setShowNotificationsDropdown(false);
+      }
+    };
+
+    if (showNotificationsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotificationsDropdown]);
 
   const handleMarkAllRead = async () => {
     try {
@@ -126,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Notifications Dropdown Container */}
-          <div className="relative">
+          <div className="relative" ref={notifDropdownRef}>
             <button
               onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
               className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all relative flex items-center justify-center cursor-pointer"

@@ -33,6 +33,7 @@ export const tasks = pgTable('tasks', {
   priority: taskPriorityEnum('priority').default('MEDIUM').notNull(),
   dueDate: timestamp('due_date').notNull(),
   dependencyTaskId: uuid('dependency_task_id'),
+  waitingOn: varchar('waiting_on', { length: 255 }).default('None (Self)'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

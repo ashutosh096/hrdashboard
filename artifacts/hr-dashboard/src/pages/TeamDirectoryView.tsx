@@ -21,7 +21,6 @@ export const TeamDirectoryView: React.FC = () => {
   // Add Form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [personalEmail, setPersonalEmail] = useState('');
   const [role, setRole] = useState<'EMPLOYEE' | 'MANAGER'>('EMPLOYEE');
   const [position, setPosition] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -85,8 +84,8 @@ export const TeamDirectoryView: React.FC = () => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!email.trim() && !personalEmail.trim()) {
-      toast.error('Please provide at least a Work Email or Personal Email.');
+    if (!email.trim()) {
+      toast.error('Please provide an email address.');
       return;
     }
 
@@ -97,7 +96,7 @@ export const TeamDirectoryView: React.FC = () => {
       const firstName = parts[0] || fullName;
       const lastName = parts.slice(1).join(' ') || '';
 
-      const targetMail = (email.trim() || personalEmail.trim()).toLowerCase();
+      const targetMail = email.trim().toLowerCase();
       const roleToAssign = user?.role === 'ADMIN' ? role : 'EMPLOYEE';
 
       await fetchApi<any>('/api/employees', {
@@ -105,8 +104,8 @@ export const TeamDirectoryView: React.FC = () => {
         body: JSON.stringify({
           firstName,
           lastName,
-          email: email.trim(),
-          personalEmail: personalEmail.trim(),
+          email: targetMail,
+          phone: phoneNumber.trim() || undefined,
           role: roleToAssign,
           designation: position || 'Specialist',
           entityCode: entity,
@@ -121,7 +120,6 @@ export const TeamDirectoryView: React.FC = () => {
 
       setFullName('');
       setEmail('');
-      setPersonalEmail('');
       setRole('EMPLOYEE');
       setPosition('');
       setPhoneNumber('');
@@ -392,36 +390,13 @@ export const TeamDirectoryView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Personal email</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email address</label>
                   <input
                     type="email"
-                    placeholder="tarul.personal@gmail.com"
-                    value={personalEmail}
-                    onChange={e => setPersonalEmail(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Work email (optional)</label>
-                  <input
-                    type="email"
-                    placeholder="tarul@ehmconsultancy.com"
+                    placeholder="name@company.com"
+                    required
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Position</label>
-                  <input
-                    type="text"
-                    placeholder="Senior systems engineer"
-                    value={position}
-                    onChange={e => setPosition(e.target.value)}
                     className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
                   />
                 </div>
@@ -440,6 +415,17 @@ export const TeamDirectoryView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Position</label>
+                  <input
+                    type="text"
+                    placeholder="Senior systems engineer"
+                    value={position}
+                    onChange={e => setPosition(e.target.value)}
+                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">Department</label>
                   <select
                     value={department}
@@ -452,19 +438,19 @@ export const TeamDirectoryView: React.FC = () => {
                     <option value="Operations & Delivery">Operations & Delivery</option>
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
-                  <select
-                    value={entity}
-                    onChange={e => setEntity(e.target.value as any)}
-                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold"
-                  >
-                    <option value="EHM">EHM</option>
-                    <option value="CAG">CLIMAGRO</option>
-                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
+                <select
+                  value={entity}
+                  onChange={e => setEntity(e.target.value as any)}
+                  className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold"
+                >
+                  <option value="EHM">EHM</option>
+                  <option value="CAG">CLIMAGRO</option>
+                  <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">

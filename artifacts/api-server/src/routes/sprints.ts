@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, sprints, employees, entities, epics, tasks, entityCounters, eq, sql, and } from '@workspace/db';
+import { db, sprints, employees, entities, epics, tasks, taskChecklists, taskComments, taskNotes, entityCounters, eq, inArray, sql, and } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -147,20 +147,31 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// DELETE /api/sprints/:id - Manager/Admin protected sprint deletion
+// DELETE /api/sprints/:id - Admin & Manager protected sprint deletion
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
   try {
-    const [deleted] = await db
-      .delete(sprints)
-      .where(eq(sprints.id, sprintId))
-      .returning();
-
-    if (!deleted) {
+    const [sprint] = await db.select().from(sprints).where(eq(sprints.id, sprintId));
+    if (!sprint) {
       return res.status(404).json({ message: 'Sprint not found' });
     }
 
-    res.json({ message: 'Sprint deleted successfully', id: sprintId });
+    await db.transaction(async (tx) => {
+      // Find linked tasks
+      const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(eq(tasks.sprintId, sprintId));
+      const taskIds = linkedTasks.map(t => t.id);
+
+      if (taskIds.length > 0) {
+        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
+        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
+        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
+        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+      }
+
+      await tx.delete(sprints).where(eq(sprints.id, sprintId));
+    });
+
+    res.json({ message: `Sprint ${sprint.sprintCode || sprint.name} deleted successfully`, id: sprintId });
   } catch (err: any) {
     console.error('[DELETE SPRINT ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to delete sprint' });

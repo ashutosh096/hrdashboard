@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye } from 'lucide-react';
+import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye, Trash2 } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
@@ -7,6 +7,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
+import { useAuth } from '../contexts/AuthContext';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface InitiativeItem {
@@ -56,10 +57,16 @@ const DEPARTMENT_OPTIONS = [
 ];
 
 export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, selectedInitiativeIdToView, onClearSelectedInitiative }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { selectedEntity } = useEntity();
   const [initiatives, setInitiatives] = useState<InitiativeItem[]>([]);
   const [viewingInitiative, setViewingInitiative] = useState<InitiativeItem | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [viewingEpicDetails, setViewingEpicDetails] = useState<any | null>(null);
+  const [showDeleteEpicConfirm, setShowDeleteEpicConfirm] = useState(false);
+  const [isDeletingEpic, setIsDeletingEpic] = useState(false);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -560,6 +567,17 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               <span className="text-sm font-bold text-gray-700">Initiative</span>
 
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                    title="Delete Initiative (Admin Only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
                 {isManager && (
                   <button
                     type="button"
@@ -636,31 +654,29 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 )}
               </div>
 
-              {/* Success Metric Box */}
-              <div>
-                {isEditMode ? (
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                    <span className="text-xs text-gray-400 font-medium block">Success metric</span>
-                    <input
-                      type="text"
-                      value={editTargetDeliverableMetric}
-                      onChange={(e) => setEditTargetDeliverableMetric(e.target.value)}
-                      placeholder="e.g. 100% OAuth and carbon reporting pass"
-                      className="w-full px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg bg-white"
-                    />
+              {/* Success Metric Box (Only shown if filled or in Edit Mode) */}
+              {isEditMode ? (
+                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
+                  <span className="text-xs text-gray-400 font-medium block">Success metric (Optional)</span>
+                  <input
+                    type="text"
+                    value={editTargetDeliverableMetric}
+                    onChange={(e) => setEditTargetDeliverableMetric(e.target.value)}
+                    placeholder="e.g. 99.9% Uptime, 50k MAU Growth (leave blank to hide)"
+                    className="w-full px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg bg-white"
+                  />
+                </div>
+              ) : viewingInitiative.targetDeliverableMetric ? (
+                <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                    <Target className="w-4 h-4 text-emerald-400" />
+                    <span>Success metric</span>
                   </div>
-                ) : (
-                  <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
-                    <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
-                      <Target className="w-4 h-4 text-emerald-400" />
-                      <span>Success metric</span>
-                    </div>
-                    <p className="text-sm font-bold text-white pl-6">
-                      {viewingInitiative.targetDeliverableMetric || '100% OAuth and carbon reporting pass'}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  <p className="text-sm font-bold text-white pl-6">
+                    {viewingInitiative.targetDeliverableMetric}
+                  </p>
+                </div>
+              ) : null}
 
               {/* 3-Column Metadata Grid */}
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
@@ -674,7 +690,14 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingInitiative.subDepartment || viewingInitiative.departmentId || 'Product and tech'}
+                    {(() => {
+                      const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
+                      if (!dept) return 'Product & Tech';
+                      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Engineering & Product';
+                      }
+                      return dept;
+                    })()}
                   </span>
                 </div>
 
@@ -797,6 +820,65 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR INITIATIVE DELETION (ADMIN ONLY) */}
+      {showDeleteConfirm && viewingInitiative && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Strategic Initiative</h3>
+                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to permanently delete initiative{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                {viewingInitiative.initiativeCode}
+              </span>{' '}
+              "{viewingInitiative.title}"? This will permanently delete all associated epics, sprints, and tasks.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  try {
+                    setIsDeleting(true);
+                    await fetchApi(`/api/initiatives/${viewingInitiative.id}`, { method: 'DELETE' });
+                    toast.success(`Initiative ${viewingInitiative.initiativeCode} deleted successfully!`);
+                    setShowDeleteConfirm(false);
+                    setViewingInitiative(null);
+                    setIsEditMode(false);
+                    onClearSelectedInitiative?.();
+                    loadData();
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to delete initiative');
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Initiative'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1107,142 +1189,139 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         </div>
       )}
 
-      {/* 👁️ POP CARD EPIC DETAILS MODAL (OPENED OVER INITIATIVE) */}
+      {/* 👁️ POP CARD EPIC DETAILS MODAL (EXACT IMAGE 1 UNIFIED DESIGN) */}
       {viewingEpicDetails && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
-          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-gray-900">Feature Epic Details</h3>
-                  <p className="text-[11px] text-gray-400 font-semibold">
-                    Full breakdown of goal, metadata, and linked tasks
-                  </p>
-                </div>
-              </div>
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Top Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0 bg-white">
+              <span className="text-sm font-bold text-gray-700">Epic</span>
 
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteEpicConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                    title="Delete Epic (Admin Only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setViewingEpicDetails(null)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Modal Body Content */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* 1. Epic Title */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Epic Title
-                </span>
-                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
-                  {viewingEpicDetails.title}
-                </h2>
-              </div>
-
-              {/* 2. Metadata Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Epic Code
-                  </span>
-                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                    {viewingEpicDetails.epicCode}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Entity / Brand
-                  </span>
-                  <span className="text-xs font-bold text-blue-700 font-mono">
-                    {(viewingEpicDetails.epicCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Target Date / Week
-                  </span>
-                  <span className="text-xs font-bold text-purple-700">
-                    {viewingEpicDetails.targetWeek || viewingEpicDetails.targetDate || 'Week 1 (Days 1–7)'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Status
-                  </span>
-                  <select
-                    value={viewingEpicDetails.status === 'DONE' || viewingEpicDetails.status === 'COMPLETED' ? 'DONE' : viewingEpicDetails.status || 'PLANNED'}
-                    onChange={(e) => handleEpicStatusChange(viewingEpicDetails.id, e.target.value)}
-                    className="text-xs font-extrabold px-2 py-0.5 rounded uppercase border bg-white text-emerald-700 border-emerald-300 focus:outline-none cursor-pointer"
-                  >
-                    <option value="PLANNED">PLANNED</option>
-                    <option value="IN_PROGRESS">IN PROGRESS</option>
-                    <option value="DONE">DONE</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 3. Parent Initiative Link Box */}
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+              {/* Breadcrumb & Badges */}
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpicDetails.initiativeId) || viewingInitiative;
-                const parentCode = parentInit?.initiativeCode || 'N/A';
-                const parentTitle = parentInit?.title || 'No Parent Initiative Linked';
+                const parentTitle = parentInit?.title || 'Initiative';
+                const isCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const rawStatus = viewingEpicDetails.status || 'PLANNED';
+                const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
                 return (
-                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
-                      <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Parent Initiative Code:</span>
+                  <div className="space-y-3">
+                    {/* Breadcrumb */}
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
                       {parentInit ? (
-                        <button
-                          type="button"
+                        <span 
                           onClick={() => {
                             setViewingEpicDetails(null);
                             setViewingInitiative(parentInit);
                           }}
-                          className="font-mono text-emerald-800 font-extrabold bg-white hover:bg-emerald-100 hover:text-emerald-900 px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer text-sm"
-                          title="Click to view Parent Initiative"
+                          className="text-blue-600 hover:underline cursor-pointer font-semibold"
                         >
-                          <span>{parentCode}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
-                        </button>
+                          {parentTitle}
+                        </span>
                       ) : (
-                        <span className="font-mono text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200 text-sm">{parentCode}</span>
+                        <span className="text-blue-600 font-semibold">{parentTitle}</span>
                       )}
+                      <span>&gt;</span>
+                      <span className="text-gray-400">this epic</span>
                     </div>
-                    <div className="text-sm font-bold text-emerald-900 pl-6">
-                      Parent Initiative Title: <span className="font-semibold text-gray-800">{parentTitle}</span>
+
+                    {/* Badges line */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                        {viewingEpicDetails.epicCode}
+                      </span>
+                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
+                        {isCAG ? 'Climagro' : 'EHM'}
+                      </span>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                        {statusLabel}
+                      </span>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* 4. Description */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Epic Description
-                </span>
-                {viewingEpicDetails.description ? (
-                  <MarkdownViewer content={viewingEpicDetails.description} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-sm text-gray-800" />
-                ) : (
-                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs text-gray-400 italic">
-                    No epic description provided.
-                  </div>
+              {/* Epic Title & Description */}
+              <div className="space-y-1.5">
+                <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-snug">
+                  {viewingEpicDetails.title}
+                </h2>
+                {viewingEpicDetails.description && (
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                    {viewingEpicDetails.description}
+                  </p>
                 )}
               </div>
 
-              {/* 5. Hanging Tasks Linked Under Epic */}
+              {/* Success Metric Box (Dark Theme Banner - Only shown if filled) */}
+              {viewingEpicDetails.targetDeliverableMetric ? (
+                <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                    <Target className="w-4 h-4 text-emerald-400" />
+                    <span>Success metric</span>
+                  </div>
+                  <p className="text-sm font-bold text-white pl-6">
+                    {viewingEpicDetails.targetDeliverableMetric}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* 3-Column Metadata Grid */}
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Target week</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingEpicDetails.targetWeek || viewingEpicDetails.targetDate || 'Week 1 • days 1–7'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {(() => {
+                      const dept = viewingEpicDetails.department || (viewingInitiative as any)?.departmentName;
+                      if (!dept || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Engineering & Product';
+                      }
+                      return dept;
+                    })()}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingEpicDetails.createdAt ? new Date(viewingEpicDetails.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Linked Tasks Section with Progress Bar */}
               {(() => {
                 const isEpicCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG');
                 const combined = [
@@ -1250,90 +1329,145 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   ...allTasks.filter((t: any) => t.epicId === viewingEpicDetails.id || t.parentEpicCode === viewingEpicDetails.epicCode)
                 ];
                 const linkedTasks = Array.from(new Map(combined.map((t: any) => [t.id || t.taskCode, t])).values());
+                const targetTasksCount = Math.max(linkedTasks.length, 3);
+                const doneCount = linkedTasks.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
 
                 return (
-                  <div className="space-y-3 pt-2">
-                    <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <ListTodo className="w-4 h-4 text-emerald-600 animate-pulse" />
-                        <span>Hanging Tasks Linked Under Epic ({linkedTasks.length})</span>
-                      </span>
-                      {linkedTasks.length > 0 && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 animate-pulse">
-                          ● Live Connected
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    {/* Header line & Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-gray-900">Linked tasks</h4>
+                        <span className="text-xs font-medium text-gray-500">
+                          {doneCount} of {linkedTasks.length} done
                         </span>
-                      )}
-                    </h4>
+                      </div>
+                      <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((doneCount / Math.max(1, linkedTasks.length)) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
 
-                    {linkedTasks.length > 0 ? (
-                      <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-emerald-400 before:via-purple-400 before:to-emerald-200">
-                        {linkedTasks.map((taskItem: any, idx: number) => {
-                          const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                            ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                            : (taskItem.taskCode || 'TSK-001');
+                    {/* Tasks List */}
+                    <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+                      {linkedTasks.map((taskItem: any, idx: number) => {
+                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
+                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
+                          : (taskItem.taskCode || 'TSK-001');
 
-                          return (
-                            <div
-                              key={taskItem.id || idx}
-                              style={{ animationDelay: `${idx * 100}ms` }}
-                              className="relative group transition-all duration-300 animate-in fade-in slide-in-from-top-3"
-                            >
-                              <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
-                              <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
+                        const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
+                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
 
-                              <div
-                                onClick={() => handleOpenTaskModal(taskItem)}
-                                className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer"
-                              >
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                                    {displayTaskCode}
-                                  </span>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                    taskItem.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                                    taskItem.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                                    'bg-amber-50 text-amber-800 border-amber-200'
-                                  }`}>
-                                    {taskItem.status || 'TODO'}
-                                  </span>
-                                </div>
+                        const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
+                        const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
+                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (taskItem.priority === 'URGENT' || taskItem.priority === 'HIGH' || taskItem.priority === 'P1') ? 'P1' : 'Planned';
 
-                                <h5 className="font-bold text-xs text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">
-                                  {taskItem.title}
-                                </h5>
-
-                                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2 mt-2 border-t border-gray-100">
-                                  <span className="truncate max-w-[220px]">
-                                    <span className="text-gray-400">Assignee:</span> {taskItem.assigneeName || taskItem.assignee || 'admin@example.com'}
-                                  </span>
-                                  <div className="flex items-center gap-1 text-gray-400 text-[10px]">
-                                    <Calendar className="w-3 h-3 text-emerald-500" />
-                                    <span>{taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '2026-09-08'}</span>
-                                  </div>
-                                </div>
-                              </div>
+                        return (
+                          <div
+                            key={taskItem.id || idx}
+                            onClick={() => handleOpenTaskModal(taskItem)}
+                            className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <h5 className="font-bold text-xs text-gray-900 group-hover:text-emerald-700 transition-colors">
+                                {taskItem.title}
+                              </h5>
+                              <p className="text-[11px] text-gray-400 font-medium">
+                                {displayTaskCode} • {assigneeStr} • {dateStr}
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-xs text-gray-400 bg-gray-50/80 rounded-xl border border-dashed border-gray-200">
-                        No Tasks created under this Epic yet.
-                      </div>
-                    )}
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
+                                isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                'bg-gray-100 text-gray-700 border-gray-200'
+                              }`}>
+                                {taskStatusLabel}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Uncreated Task Slots */}
+                      {Array.from({ length: Math.max(0, targetTasksCount - linkedTasks.length) }).map((_, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
+                          <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toast.info(`Task creation for ${viewingEpicDetails.epicCode} initiated`);
+                            }}
+                            className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Modal Footer */}
-            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end shrink-0">
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR EPIC DELETION (ADMIN ONLY) */}
+      {showDeleteEpicConfirm && viewingEpicDetails && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Feature Epic</h3>
+                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to permanently delete epic{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                {viewingEpicDetails.epicCode}
+              </span>{' '}
+              "{viewingEpicDetails.title}"? This will permanently delete all associated sprints and tasks.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setViewingEpicDetails(null)}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                onClick={() => setShowDeleteEpicConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
-                Close View Mode
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingEpic}
+                onClick={async () => {
+                  try {
+                    setIsDeletingEpic(true);
+                    await fetchApi(`/api/epics/${viewingEpicDetails.id}`, { method: 'DELETE' });
+                    toast.success(`Epic ${viewingEpicDetails.epicCode} deleted successfully!`);
+                    setShowDeleteEpicConfirm(false);
+                    setViewingEpicDetails(null);
+                    loadData();
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to delete epic');
+                  } finally {
+                    setIsDeletingEpic(false);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                {isDeletingEpic ? 'Deleting...' : 'Delete Epic'}
               </button>
             </div>
           </div>
@@ -1344,6 +1478,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         isOpen={!!selectedTaskToView}
         task={selectedTaskToView}
         onClose={() => setSelectedTaskToView(null)}
+        onDelete={(deletedId) => {
+          setAllTasks(prev => prev.filter(t => t.id !== deletedId));
+          setSelectedTaskToView(null);
+        }}
         isReadOnly={true}
       />
     </div>

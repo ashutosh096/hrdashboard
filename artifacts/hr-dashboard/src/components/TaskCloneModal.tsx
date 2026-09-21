@@ -160,12 +160,12 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-semibold text-gray-900"
+                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-semibold text-gray-900 cursor-pointer"
               >
-                <option value="LOW">P4 (Low Priority)</option>
-                <option value="MEDIUM">P3 (Medium Priority)</option>
-                <option value="HIGH">P2 (High Priority)</option>
-                <option value="URGENT">P1 (Top Priority)</option>
+                <option value="URGENT">P1 - Critical / Urgent 🔥</option>
+                <option value="HIGH">P2 - High Priority ⚡</option>
+                <option value="MEDIUM">P3 - Medium Priority 📌</option>
+                <option value="LOW">P4 - Low Priority 📝</option>
               </select>
             </div>
           </div>

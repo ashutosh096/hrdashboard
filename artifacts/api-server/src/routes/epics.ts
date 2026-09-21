@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, epics, initiatives, entityCounters, entities, sprints, tasks, eq, sql } from '@workspace/db';
+import { db, epics, initiatives, entityCounters, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -139,6 +139,52 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   } catch (err: any) {
     console.error('[UPDATE EPIC ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update epic' });
+  }
+});
+
+// DELETE /api/epics/:id - Admin protected epic deletion
+router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
+  const epicId = req.params.id as string;
+  try {
+    const [epic] = await db.select().from(epics).where(eq(epics.id, epicId));
+    if (!epic) {
+      return res.status(404).json({ message: 'Epic not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      // 1. Find linked sprints
+      const linkedSprints = await tx.select({ id: sprints.id }).from(sprints).where(eq(sprints.epicId, epicId));
+      const sprintIds = linkedSprints.map(s => s.id);
+
+      // 2. Find linked tasks
+      const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(
+        sprintIds.length > 0
+          ? or(eq(tasks.epicId, epicId), inArray(tasks.sprintId, sprintIds))
+          : eq(tasks.epicId, epicId)
+      );
+      const taskIds = linkedTasks.map(t => t.id);
+
+      // 3. Delete task child items
+      if (taskIds.length > 0) {
+        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
+        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
+        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
+        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+      }
+
+      // 4. Delete sprints
+      if (sprintIds.length > 0) {
+        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
+      }
+
+      // 5. Delete epic
+      await tx.delete(epics).where(eq(epics.id, epicId));
+    });
+
+    res.json({ message: `Epic ${epic.epicCode} deleted successfully`, id: epicId });
+  } catch (err: any) {
+    console.error('[DELETE EPIC ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete epic' });
   }
 });
 

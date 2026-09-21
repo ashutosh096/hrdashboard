@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, taskChecklists, taskComments, eq, sql, asc } from '@workspace/db';
+import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, taskChecklists, taskComments, taskNotes, eq, sql, asc } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -17,6 +17,81 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch tasks' });
   }
 });
+
+function normalizeTaskPriority(priority: any): 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' {
+  if (!priority) return 'MEDIUM';
+  const p = String(priority).toUpperCase().trim();
+  if (p === 'P1' || p === '1' || p.includes('CRITICAL') || p.includes('URGENT') || p === 'URGENT') return 'URGENT';
+  if (p === 'P2' || p === '2' || p.includes('HIGH') || p === 'HIGH') return 'HIGH';
+  if (p === 'P3' || p === '3' || p.includes('MEDIUM') || p === 'MEDIUM') return 'MEDIUM';
+  if (p === 'P4' || p === '4' || p.includes('LOW') || p === 'LOW') return 'LOW';
+  return 'MEDIUM';
+}
+
+function normalizeTaskStatus(status: any): 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'DONE' | 'DELAYED' | 'BLOCKED' {
+  if (!status) return 'TODO';
+  const s = String(status).toUpperCase().trim();
+  if (s === 'DONE' || s.includes('APPROV') || s === 'APPROVED' || s === 'COMPLETED') return 'DONE';
+  if (s === 'IN_PROGRESS' || s === 'IN PROGRESS' || s === 'IN_REVIEW' || s === 'TO REVIEW' || s === 'REVIEW') return 'IN_PROGRESS';
+  if (s === 'TODO' || s === 'PLANNED') return 'TODO';
+  if (s === 'BACKLOG') return 'BACKLOG';
+  if (s === 'DELAYED') return 'DELAYED';
+  if (s === 'BLOCKED') return 'BLOCKED';
+  return 'TODO';
+}
+
+export async function createTaskNotification({
+  targetEmployeeId,
+  targetUserId,
+  type,
+  title,
+  message,
+  taskId,
+  taskCode,
+  taskTitle,
+  extraPayload = {},
+}: {
+  targetEmployeeId?: string | null;
+  targetUserId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  taskId: string;
+  taskCode?: string | null;
+  taskTitle?: string | null;
+  extraPayload?: any;
+}) {
+  try {
+    let resolvedUserId = targetUserId;
+    if (!resolvedUserId && targetEmployeeId) {
+      const [userRow] = await db.select().from(users).where(eq(users.employeeId, targetEmployeeId));
+      if (userRow) resolvedUserId = userRow.id;
+    }
+
+    if (!resolvedUserId) {
+      const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
+      if (fallbackAdmin) resolvedUserId = fallbackAdmin.id;
+    }
+
+    if (resolvedUserId) {
+      await db.insert(notifications).values({
+        userId: resolvedUserId,
+        type,
+        payload: {
+          title,
+          message,
+          taskId,
+          taskCode,
+          taskTitle,
+          ...extraPayload,
+        },
+      });
+      console.log(`[NOTIFICATION DISPATCHED] type: ${type} to user: ${resolvedUserId} for task: ${taskCode}`);
+    }
+  } catch (err) {
+    console.error('[TASK NOTIFICATION DISPATCH ERROR]:', err);
+  }
+}
 
 // Enforce ADMIN and MANAGER role for creating tasks
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
@@ -192,8 +267,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
             assigneeId: assignee.id,
             creatorId: targetCreatorId,
             reviewingLeadId: targetReviewingLeadId,
-            status: status || 'TODO',
-            priority: priority || 'MEDIUM',
+            status: normalizeTaskStatus(status),
+            priority: normalizeTaskPriority(priority),
             dueDate: dueDateVal,
             deliverableUrl: deliverableUrl || null,
           })
@@ -240,13 +315,33 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// PATCH /api/tasks/:id - Update Task details with Code Immutability & Auto Ancestry Derivation
-router.patch('/:id', async (req, res) => {
+// Unified Task Update Handler (Supports both PATCH & PUT /api/tasks/:id)
+const handleTaskUpdate = async (req: any, res: any) => {
   const taskId = req.params.id;
-  const { status, deliverableUrl, description, sprintWeek, priority, epicId, sprintId, title, assigneeId } = req.body;
+  const {
+    status,
+    deliverableUrl,
+    outputUrl,
+    description,
+    notes,
+    sprintWeek,
+    targetWeek,
+    priority,
+    epicId,
+    sprintId,
+    title,
+    assigneeId,
+    assigneeName,
+    reviewingLeadId,
+    reviewingLead,
+    dueDate,
+    entityId,
+    entity,
+    waitingOn,
+  } = req.body;
 
   try {
-    const [existingTaskCheck] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, taskId));
+    const [existingTaskCheck] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     if (!existingTaskCheck) {
       return res.status(404).json({ message: 'Task not found' });
     }
@@ -254,19 +349,95 @@ router.patch('/:id', async (req, res) => {
     if (req.user?.role === 'EMPLOYEE' && existingTaskCheck.assigneeId !== req.user.employeeId) {
       return res.status(403).json({ message: 'You can only update tasks assigned to you' });
     }
-    const updatedTask = await db.transaction(async (tx) => {
-      const [existingTask] = await tx.select().from(tasks).where(eq(tasks.id, taskId));
-      if (!existingTask) return null;
 
+    const updatedTask = await db.transaction(async (tx) => {
       const updateData: any = { updatedAt: new Date() };
 
-      if (status !== undefined) updateData.status = status;
-      if (deliverableUrl !== undefined) updateData.deliverableUrl = deliverableUrl;
-      if (description !== undefined) updateData.description = description;
-      if (sprintWeek !== undefined) updateData.sprintWeek = sprintWeek;
-      if (priority !== undefined) updateData.priority = priority;
-      if (title !== undefined) updateData.title = title;
-      if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
+      if (status !== undefined) {
+        updateData.status = normalizeTaskStatus(status);
+      }
+      if (deliverableUrl !== undefined || outputUrl !== undefined) {
+        updateData.deliverableUrl = deliverableUrl !== undefined ? deliverableUrl : outputUrl;
+      }
+      if (description !== undefined || notes !== undefined) {
+        updateData.description = description !== undefined ? description : notes;
+      }
+      if (sprintWeek !== undefined || targetWeek !== undefined) {
+        updateData.sprintWeek = sprintWeek !== undefined ? sprintWeek : targetWeek;
+      }
+      if (priority !== undefined) {
+        updateData.priority = normalizeTaskPriority(priority);
+      }
+      if (title !== undefined && typeof title === 'string' && title.trim()) {
+        updateData.title = title.trim();
+      }
+      if (waitingOn !== undefined) {
+        updateData.waitingOn = String(waitingOn).trim() || 'None (Self)';
+      }
+
+      // Handle Assignee ID / Name
+      if (assigneeId && typeof assigneeId === 'string' && assigneeId.length === 36) {
+        updateData.assigneeId = assigneeId;
+      } else if (assigneeName || assigneeId) {
+        const rawTarget = String(assigneeName || assigneeId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
+        const allEmps = await tx.select().from(employees);
+        const matchedEmp = allEmps.find(
+          (e) =>
+            e.id === assigneeId ||
+            `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
+            e.firstName.toLowerCase() === rawTarget ||
+            e.lastName?.toLowerCase() === rawTarget ||
+            e.employeeCode.toLowerCase() === rawTarget
+        );
+        if (matchedEmp) {
+          updateData.assigneeId = matchedEmp.id;
+        }
+      }
+
+      // Handle Reviewing Lead ID / Name
+      if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.length === 36) {
+        updateData.reviewingLeadId = reviewingLeadId;
+      } else if (reviewingLead || reviewingLeadId) {
+        const rawTarget = String(reviewingLead || reviewingLeadId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
+        const allEmps = await tx.select().from(employees);
+        const matchedLead = allEmps.find(
+          (e) =>
+            e.id === reviewingLeadId ||
+            `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
+            e.firstName.toLowerCase() === rawTarget ||
+            e.lastName?.toLowerCase() === rawTarget ||
+            e.employeeCode.toLowerCase() === rawTarget
+        );
+        if (matchedLead) {
+          updateData.reviewingLeadId = matchedLead.id;
+        }
+      }
+
+      // Handle Due Date
+      if (dueDate !== undefined && dueDate !== null && dueDate !== '') {
+        const parsedDate = new Date(dueDate);
+        if (!isNaN(parsedDate.getTime())) {
+          updateData.dueDate = parsedDate;
+        }
+      }
+
+      // Handle Entity
+      if (entityId && typeof entityId === 'string' && entityId.length === 36) {
+        updateData.entityId = entityId;
+      } else if (entity && typeof entity === 'string') {
+        const allEnts = await tx.select().from(entities);
+        const matchedEnt = allEnts.find(
+          (e) =>
+            e.id === entity ||
+            e.code.toLowerCase() === entity.toLowerCase() ||
+            e.name.toLowerCase().includes(entity.toLowerCase()) ||
+            (entity.toLowerCase().includes('ehm') && e.code === 'EHM') ||
+            (entity.toLowerCase().includes('climagro') && e.code === 'CAG')
+        );
+        if (matchedEnt) {
+          updateData.entityId = matchedEnt.id;
+        }
+      }
 
       // Handle Lineage Updates (Epic / Sprint reassignment) while keeping taskCode IMMUTABLE
       if (epicId !== undefined) {
@@ -277,7 +448,6 @@ router.patch('/:id', async (req, res) => {
           updateData.epicId = epicId;
           updateData.sprintId = null;
           updateData.taskType = 'EPIC_TASK';
-          // Auto-update initiativeId to new epic's parent initiative!
           updateData.initiativeId = newEpic.initiativeId;
         } else {
           updateData.epicId = null;
@@ -312,12 +482,66 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    // Trigger lifecycle notifications based on changes:
+    const oldStatus = existingTaskCheck.status;
+    const newStatus = updatedTask.status;
+
+    // 1. If assigned to a new assignee:
+    if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTaskCheck.assigneeId) {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.assigneeId,
+        type: 'TASK_ASSIGNED',
+        title: `Task Reassigned: [${updatedTask.taskCode}]`,
+        message: `You have been assigned to task [${updatedTask.taskCode}] "${updatedTask.title}".`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
+    }
+
+    // 2. If status moved to TO_REVIEW / IN_REVIEW or deliverable URL submitted:
+    if (
+      (req.body.status === 'TO_REVIEW' || req.body.status === 'IN_REVIEW' || req.body.status === 'To Review') ||
+      (updatedTask.deliverableUrl && updatedTask.deliverableUrl !== existingTaskCheck.deliverableUrl)
+    ) {
+      const targetLeadId = updatedTask.reviewingLeadId || updatedTask.creatorId;
+      createTaskNotification({
+        targetEmployeeId: targetLeadId,
+        type: 'TASK_REVIEW_SUBMITTED',
+        title: `Review Pending: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has deliverables ready for your manager review & sign-off.`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+        extraPayload: { deliverableUrl: updatedTask.deliverableUrl },
+      }).catch(console.error);
+    }
+
+    // 3. If status marked as DONE:
+    if (newStatus === 'DONE' && oldStatus !== 'DONE') {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.assigneeId,
+        type: 'TASK_COMPLETED',
+        title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
+        message: `Your deliverable for task [${updatedTask.taskCode}] "${updatedTask.title}" has been signed off and marked Done!`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
+    }
+
     res.json(updatedTask);
   } catch (err: any) {
     console.error('[TASK UPDATE ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update task' });
   }
-});
+};
+
+// PATCH /api/tasks/:id - Update Task details with Code Immutability & Auto Ancestry Derivation
+router.patch('/:id', handleTaskUpdate);
+
+// PUT /api/tasks/:id - Update Task details
+router.put('/:id', handleTaskUpdate);
 
 // PATCH /api/tasks/:id/status
 router.patch('/:id/status', async (req, res) => {
@@ -329,7 +553,7 @@ router.patch('/:id/status', async (req, res) => {
   }
 
   try {
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, taskId));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     if (!targetTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
@@ -343,14 +567,38 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(403).json({ message: 'Only managers and leads can mark tasks as DELAYED or BLOCKED' });
     }
 
+    const normalizedStatus = normalizeTaskStatus(status);
     const [updatedTask] = await db
       .update(tasks)
-      .set({ status, updatedAt: new Date() })
+      .set({ status: normalizedStatus, updatedAt: new Date() })
       .where(eq(tasks.id, taskId))
       .returning();
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Notifications for status change:
+    if (normalizedStatus === 'DONE' && targetTask.status !== 'DONE') {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.assigneeId,
+        type: 'TASK_COMPLETED',
+        title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been marked Done.`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
+    } else if (status === 'TO_REVIEW' || status === 'IN_REVIEW' || status === 'To Review') {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.reviewingLeadId || updatedTask.creatorId,
+        type: 'TASK_REVIEW_SUBMITTED',
+        title: `Review Pending: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" is ready for review.`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
     }
 
     res.json(updatedTask);
@@ -445,7 +693,7 @@ router.post('/:id/checklists', async (req, res) => {
   if (!itemText) return res.status(400).json({ message: 'itemText is required' });
 
   try {
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, id));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, id));
     if (!targetTask) return res.status(404).json({ message: 'Task not found' });
 
     if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
@@ -456,19 +704,17 @@ router.post('/:id/checklists', async (req, res) => {
       .from(taskChecklists)
       .where(eq(taskChecklists.taskId, id));
 
-    const nextSortOrder = existing.length + 1;
-
-    const [newItem] = await db
+    const [created] = await db
       .insert(taskChecklists)
       .values({
         taskId: id,
         itemText,
         isCompleted: false,
-        sortOrder: nextSortOrder,
+        sortOrder: existing.length,
       })
       .returning();
 
-    res.status(201).json(newItem);
+    res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ message: 'Failed to add checklist item' });
   }
@@ -483,7 +729,7 @@ router.patch('/checklists/:checklistId', async (req, res) => {
     const [checklist] = await db.select().from(taskChecklists).where(eq(taskChecklists.id, checklistId));
     if (!checklist) return res.status(404).json({ message: 'Checklist item not found' });
 
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, checklist.taskId));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, checklist.taskId));
     if (!targetTask) return res.status(404).json({ message: 'Task not found' });
 
     if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
@@ -510,6 +756,23 @@ router.patch('/checklists/:checklistId', async (req, res) => {
       .set(updatePayload)
       .where(eq(taskChecklists.id, checklistId))
       .returning();
+
+    // Check if all checklists are now completed:
+    if (isCompleted) {
+      const allItems = await db.select().from(taskChecklists).where(eq(taskChecklists.taskId, targetTask.id));
+      const allDone = allItems.every(c => c.id === checklistId || c.isCompleted);
+      if (allDone && allItems.length > 0) {
+        createTaskNotification({
+          targetEmployeeId: targetTask.reviewingLeadId || targetTask.creatorId,
+          type: 'TASK_CHECKLIST_COMPLETE',
+          title: `Checklist Completed: [${targetTask.taskCode}]`,
+          message: `All checklist items have been checked off for task [${targetTask.taskCode}] "${targetTask.title}".`,
+          taskId: targetTask.id,
+          taskCode: targetTask.taskCode,
+          taskTitle: targetTask.title,
+        }).catch(console.error);
+      }
+    }
 
     res.json(updated);
   } catch (err) {
@@ -539,7 +802,7 @@ router.post('/:id/comments', async (req, res) => {
   if (!content) return res.status(400).json({ message: 'content is required' });
 
   try {
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, id));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, id));
     if (!targetTask) return res.status(404).json({ message: 'Task not found' });
 
     if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
@@ -557,21 +820,52 @@ router.post('/:id/comments', async (req, res) => {
       })
       .returning();
 
+    // Notify the other party about the comment:
+    if (!isSystemLog) {
+      const isAuthorAssignee = req.user?.employeeId === targetTask.assigneeId;
+      const targetRecipientEmpId = isAuthorAssignee
+        ? (targetTask.reviewingLeadId || targetTask.creatorId)
+        : targetTask.assigneeId;
+
+      if (targetRecipientEmpId) {
+        createTaskNotification({
+          targetEmployeeId: targetRecipientEmpId,
+          type: 'TASK_COMMENT',
+          title: `Task Comment: [${targetTask.taskCode}]`,
+          message: `${authorName} commented on task [${targetTask.taskCode}]: "${content.slice(0, 80)}"`,
+          taskId: targetTask.id,
+          taskCode: targetTask.taskCode,
+          taskTitle: targetTask.title,
+        }).catch(console.error);
+      }
+    }
+
     res.status(201).json(newComment);
   } catch (err) {
     res.status(500).json({ message: 'Failed to post comment' });
   }
 });
 
-// DELETE /api/tasks/:id - Manager/Admin protected task deletion
+// DELETE /api/tasks/:id - Admin & Manager protected task deletion
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const taskId = String(req.params.id);
   try {
-    const [deleted] = await db.delete(tasks).where(eq(tasks.id, taskId)).returning();
-    if (!deleted) return res.status(404).json({ message: 'Task not found' });
-    res.json({ message: 'Task deleted successfully', id: taskId });
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to delete task' });
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(taskChecklists).where(eq(taskChecklists.taskId, taskId));
+      await tx.delete(taskComments).where(eq(taskComments.taskId, taskId));
+      await tx.delete(taskNotes).where(eq(taskNotes.taskId, taskId));
+      await tx.delete(tasks).where(eq(tasks.id, taskId));
+    });
+
+    res.json({ message: `Task ${task.taskCode || task.title} deleted successfully`, id: taskId });
+  } catch (err: any) {
+    console.error('[DELETE TASK ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete task' });
   }
 });
 

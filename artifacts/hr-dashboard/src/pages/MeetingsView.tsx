@@ -572,20 +572,6 @@ export const MeetingsView: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {availability.length > 0 && (
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Sync Calendar Availability Windows</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {availability.map((emp) => (
-                  <div key={emp.employeeId} className="border border-gray-200/80 rounded-xl p-3.5 space-y-1 bg-gray-50/50">
-                    <h5 className="text-xs font-bold text-gray-900">{emp.name}</h5>
-                    <span className="text-[10px] text-gray-400 font-medium block">{emp.designation || 'Team Member'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 

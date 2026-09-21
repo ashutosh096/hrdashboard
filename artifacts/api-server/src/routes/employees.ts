@@ -13,105 +13,7 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
-    let empList = await db.select().from(employees);
-    const existingEmails = new Set(empList.map(e => (e.email || '').toLowerCase().trim()));
-
-    const REAL_DEFAULT_TEAM = [
-      {
-        firstName: 'TESTER',
-        lastName: 'TESTER',
-        email: 'ashutoshmishraup78@mpgi.edu.in',
-        employeeCode: 'EHM-EMP05',
-        designation: 'TESTER',
-        role: 'EMPLOYEE',
-      },
-      {
-        firstName: 'Utsav',
-        lastName: 'Mishra',
-        email: 'utsav@ehmconsultancy.co.in',
-        employeeCode: 'EHM-MGR06',
-        designation: 'Specialist',
-        role: 'MANAGER',
-      },
-      {
-        firstName: 'Ashutosh',
-        lastName: 'Mishra',
-        email: 'ashutoshmishraup78@gmail.com',
-        employeeCode: 'EHM-EMP07',
-        designation: 'Specialist',
-        role: 'EMPLOYEE',
-      },
-      {
-        firstName: 'HARSHIT',
-        lastName: 'MISHRA',
-        email: 'harshit@ehmconsultancy.com',
-        employeeCode: 'EHM-MGR08',
-        designation: 'LEAD',
-        role: 'MANAGER',
-      },
-      {
-        firstName: 'PRANSHU',
-        lastName: 'MOHAN',
-        email: 'pranshu@ehmconsultancy.com',
-        employeeCode: 'EHM-MGR09',
-        designation: 'LEAD',
-        role: 'MANAGER',
-      },
-    ];
-
-    let seededCount = 0;
-    const [firstEntity] = await db.select({ id: entities.id }).from(entities).limit(1);
-    const [firstDept] = await db.select({ id: departments.id }).from(departments).limit(1);
-
-    if (firstEntity && firstDept) {
-      for (const item of REAL_DEFAULT_TEAM) {
-        const mailLower = item.email.toLowerCase().trim();
-        if (!existingEmails.has(mailLower)) {
-          const [newEmp] = await db
-            .insert(employees)
-            .values({
-              firstName: item.firstName,
-              lastName: item.lastName,
-              email: mailLower,
-              employeeCode: item.employeeCode,
-              designation: item.designation,
-              entityId: firstEntity.id,
-              departmentId: firstDept.id,
-              salary: null,
-              joiningDate: new Date(),
-            })
-            .returning();
-
-          if (newEmp) {
-            const inviteToken = crypto.randomBytes(32).toString('hex');
-            const expiresAt = new Date(Date.now() + 7 * 86400000);
-            await db.insert(invites).values({
-              email: mailLower,
-              token: inviteToken,
-              role: item.role as any,
-              employeeId: newEmp.id,
-              status: 'PENDING',
-              expiresAt,
-            });
-
-            const randomSecret = crypto.randomBytes(32).toString('hex');
-            const passwordHash = await bcrypt.hash(randomSecret, 10);
-            await db.insert(users).values({
-              email: mailLower,
-              passwordHash,
-              role: item.role as any,
-              status: 'PENDING',
-              employeeId: newEmp.id,
-            });
-            seededCount++;
-          }
-        }
-      }
-    }
-
-    if (seededCount > 0) {
-      empList = await db.select().from(employees);
-    }
+    const empList = await db.select().from(employees);
 
     const [userList, inviteList, deptList] = await Promise.all([
       db.select({ email: users.email, role: users.role, employeeId: users.employeeId }).from(users),
@@ -223,20 +125,34 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       }
 
       const entityCode = entity.code; // "EHM" or "CAG"
+      const isMgr = role === 'MANAGER';
+      const prefix = `${entityCode}-${isMgr ? 'MGR' : 'EMP'}`;
 
-      // 2. Atomic sequence increment for employeeCode (e.g. EHM-EMP01)
-      const [updatedCounter] = await tx
+      const allExisting = await tx
+        .select({ employeeCode: employees.employeeCode })
+        .from(employees)
+        .where(eq(employees.entityId, targetEntityId));
+
+      let maxNum = 0;
+      for (const e of allExisting) {
+        if (e.employeeCode && e.employeeCode.startsWith(prefix)) {
+          const numPart = parseInt(e.employeeCode.slice(prefix.length), 10);
+          if (!isNaN(numPart) && numPart > maxNum) {
+            maxNum = numPart;
+          }
+        }
+      }
+
+      const seq = maxNum + 1;
+      const employeeCode = `${prefix}${String(seq).padStart(2, '0')}`;
+
+      await tx
         .insert(entityCounters)
-        .values({ entityId: targetEntityId, nextEmployeeSeq: 2 })
+        .values({ entityId: targetEntityId, nextEmployeeSeq: seq + 1 })
         .onConflictDoUpdate({
           target: entityCounters.entityId,
-          set: { nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` },
-        })
-        .returning();
-
-      const seq = updatedCounter.nextEmployeeSeq - 1;
-      const isMgr = role === 'MANAGER';
-      const employeeCode = `${entityCode}-${isMgr ? 'MGR' : 'EMP'}${String(seq).padStart(2, '0')}`;
+          set: { nextEmployeeSeq: seq + 1 },
+        });
 
       // 3. Resolve department ID
       let targetDeptId = departmentId;

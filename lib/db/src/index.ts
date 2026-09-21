@@ -30,9 +30,14 @@ export * from './schema/notifications.js';
 export * from './schema/initiatives.js';
 export * from './schema/epics.js';
 export * from './schema/sprints.js';
+export * from './schema/password_reset_otps.js';
 
-const DEFAULT_DB_URL = 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
-const connectionString = process.env.DATABASE_URL || DEFAULT_DB_URL;
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('[FATAL CONFIG ERROR]: DATABASE_URL environment variable is required.');
+}
+
 const isRemoteDb = !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1');
 
 const pool = new pg.Pool({

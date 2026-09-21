@@ -1,1061 +1,177 @@
-# EHM-Climagro OS — Complete Unabridged Codebase
+# 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-## PROJECT DIRECTORY TREE
-```
-.gitignore
-CODEBASE.md
-GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md
-HROS_MASTER_PROMPT_FIXED (1).md
-HROS_MASTER_PROMPT_V2.md
-PROJECT_CODEBASE_SUMMARY.md
-artifacts/api-server/package.json
-artifacts/api-server/src/config/jwt.ts
-artifacts/api-server/src/db/fix_constraint.ts
-artifacts/api-server/src/db/seed.ts
-artifacts/api-server/src/db/verify.ts
-artifacts/api-server/src/index.ts
-artifacts/api-server/src/jobs/digest-cron.ts
-artifacts/api-server/src/jobs/overdue-check-cron.ts
-artifacts/api-server/src/jobs/sync-cron.ts
-artifacts/api-server/src/middleware/auth.ts
-artifacts/api-server/src/routes/announcements.ts
-artifacts/api-server/src/routes/applications.ts
-artifacts/api-server/src/routes/attendance.ts
-artifacts/api-server/src/routes/auth.ts
-artifacts/api-server/src/routes/dashboard.ts
-artifacts/api-server/src/routes/employees.ts
-artifacts/api-server/src/routes/epics.ts
-artifacts/api-server/src/routes/initiatives.ts
-artifacts/api-server/src/routes/meetings.ts
-artifacts/api-server/src/routes/notifications.ts
-artifacts/api-server/src/routes/reports.ts
-artifacts/api-server/src/routes/sprints.ts
-artifacts/api-server/src/routes/tasks.ts
-artifacts/api-server/src/services/calendar-sync.ts
-artifacts/api-server/src/services/email.ts
-artifacts/api-server/src/services/encryption.ts
-artifacts/api-server/src/services/supabase-admin.ts
-artifacts/api-server/src/verify_connection.ts
-artifacts/api-server/tsconfig.json
-artifacts/hr-dashboard/index.html
-artifacts/hr-dashboard/package.json
-artifacts/hr-dashboard/public/login-bg.jpg
-artifacts/hr-dashboard/src/App.tsx
-artifacts/hr-dashboard/src/components/ClockInModal.tsx
-artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx
-artifacts/hr-dashboard/src/components/EpicsSubView.tsx
-artifacts/hr-dashboard/src/components/ErrorBoundary.tsx
-artifacts/hr-dashboard/src/components/ExportReportModal.tsx
-artifacts/hr-dashboard/src/components/InitiativesSubView.tsx
-artifacts/hr-dashboard/src/components/MarkAttendanceModal.tsx
-artifacts/hr-dashboard/src/components/MarkdownViewer.tsx
-artifacts/hr-dashboard/src/components/Navbar.tsx
-artifacts/hr-dashboard/src/components/ProfileModal.tsx
-artifacts/hr-dashboard/src/components/ProjectSummaryTable.tsx
-artifacts/hr-dashboard/src/components/RevenueChart.tsx
-artifacts/hr-dashboard/src/components/RichTextEditor.tsx
-artifacts/hr-dashboard/src/components/RolePreviewBanner.tsx
-artifacts/hr-dashboard/src/components/ScheduleMeetingModal.tsx
-artifacts/hr-dashboard/src/components/ScheduleWidget.tsx
-artifacts/hr-dashboard/src/components/SearchModal.tsx
-artifacts/hr-dashboard/src/components/Sidebar.tsx
-artifacts/hr-dashboard/src/components/SprintsSubView.tsx
-artifacts/hr-dashboard/src/components/StatCard.tsx
-artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx
-artifacts/hr-dashboard/src/components/TaskAssignModal.tsx
-artifacts/hr-dashboard/src/components/TaskCloneModal.tsx
-artifacts/hr-dashboard/src/components/TaskProgressSprintAnalytics.tsx
-artifacts/hr-dashboard/src/components/TaskUpdateModal.tsx
-artifacts/hr-dashboard/src/contexts/AuthContext.tsx
-artifacts/hr-dashboard/src/contexts/EntityContext.tsx
-artifacts/hr-dashboard/src/index.css
-artifacts/hr-dashboard/src/main.tsx
-artifacts/hr-dashboard/src/pages/AcceptInviteView.tsx
-artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx
-artifacts/hr-dashboard/src/pages/ApplicationsView.tsx
-artifacts/hr-dashboard/src/pages/AttendanceView.tsx
-artifacts/hr-dashboard/src/pages/DashboardView.tsx
-artifacts/hr-dashboard/src/pages/LoginView.tsx
-artifacts/hr-dashboard/src/pages/MeetingsView.tsx
-artifacts/hr-dashboard/src/pages/NotificationsView.tsx
-artifacts/hr-dashboard/src/pages/OfficeTodayView.tsx
-artifacts/hr-dashboard/src/pages/PerformanceView.tsx
-artifacts/hr-dashboard/src/pages/ReportsView.tsx
-artifacts/hr-dashboard/src/pages/SalaryView.tsx
-artifacts/hr-dashboard/src/pages/SettingsView.tsx
-artifacts/hr-dashboard/src/pages/SprintsView.tsx
-artifacts/hr-dashboard/src/pages/TasksView.tsx
-artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx
-artifacts/hr-dashboard/src/pages/TeamTasksView.tsx
-artifacts/hr-dashboard/src/utils/avatars.ts
-artifacts/hr-dashboard/src/utils/dateUtils.ts
-artifacts/hr-dashboard/src/utils/entityUtils.ts
-artifacts/hr-dashboard/tsconfig.json
-artifacts/hr-dashboard/vite.config.ts
-chatdiscussion.md
-drizzle.config.ts
-lib/api-client-react/package.json
-lib/api-client-react/src/index.ts
-lib/api-client-react/tsconfig.json
-lib/api-zod/package.json
-lib/api-zod/src/index.ts
-lib/api-zod/tsconfig.json
-lib/db/apply_0005_migration.mjs
-lib/db/apply_migration.mjs
-lib/db/audit_epics.mjs
-lib/db/backfill.mjs
-lib/db/check_tasks.mjs
-lib/db/drizzle.config.ts
-lib/db/drizzle/0000_soft_cerebro.sql
-lib/db/drizzle/0001_blue_cerise.sql
-lib/db/drizzle/0002_silky_onslaught.sql
-lib/db/drizzle/0003_fair_sue_storm.sql
-lib/db/drizzle/0004_agile_schema_alignment.sql
-lib/db/drizzle/0005_task_checklists_and_comments.sql
-lib/db/drizzle/meta/0000_snapshot.json
-lib/db/drizzle/meta/0001_snapshot.json
-lib/db/drizzle/meta/0002_snapshot.json
-lib/db/drizzle/meta/0003_snapshot.json
-lib/db/drizzle/meta/_journal.json
-lib/db/fix_sprint_codes.mjs
-lib/db/package.json
-lib/db/src/index.ts
-lib/db/src/schema/announcements.ts
-lib/db/src/schema/applications.ts
-lib/db/src/schema/attendance.ts
-lib/db/src/schema/audit_logs.ts
-lib/db/src/schema/departments.ts
-lib/db/src/schema/employees.ts
-lib/db/src/schema/entities.ts
-lib/db/src/schema/entity_counters.ts
-lib/db/src/schema/epics.ts
-lib/db/src/schema/google_tokens.ts
-lib/db/src/schema/initiatives.ts
-lib/db/src/schema/invites.ts
-lib/db/src/schema/meeting_attendees.ts
-lib/db/src/schema/meetings.ts
-lib/db/src/schema/notifications.ts
-lib/db/src/schema/sprints.ts
-lib/db/src/schema/task_checklists.ts
-lib/db/src/schema/task_comments.ts
-lib/db/src/schema/task_notes.ts
-lib/db/src/schema/task_templates.ts
-lib/db/src/schema/tasks.ts
-lib/db/src/schema/users.ts
-lib/db/tsconfig.json
-lib/db/verify_all_tests.mjs
-lib/db/verify_overdue_dual_notif.mjs
-package.json
-pnpm-workspace.yaml
-```
+> Generated on: 2026-09-21T19:33:47.534Z
+> Total Source Files Included: 140
 
-## FILE: .gitignore
+## Table of Contents
 
-```text
-# Dependencies
-node_modules/
-.pnpm-store/
+- [artifacts/api-server/.env.example](#file-artifacts-api-server--env-example)
+- [artifacts/api-server/package.json](#file-artifacts-api-server-package-json)
+- [artifacts/api-server/src/config/jwt.ts](#file-artifacts-api-server-src-config-jwt-ts)
+- [artifacts/api-server/src/db/fix_constraint.ts](#file-artifacts-api-server-src-db-fix_constraint-ts)
+- [artifacts/api-server/src/db/seed.ts](#file-artifacts-api-server-src-db-seed-ts)
+- [artifacts/api-server/src/db/verify.ts](#file-artifacts-api-server-src-db-verify-ts)
+- [artifacts/api-server/src/generate_unabridged_codebase.ts](#file-artifacts-api-server-src-generate_unabridged_codebase-ts)
+- [artifacts/api-server/src/index.ts](#file-artifacts-api-server-src-index-ts)
+- [artifacts/api-server/src/jobs/digest-cron.ts](#file-artifacts-api-server-src-jobs-digest-cron-ts)
+- [artifacts/api-server/src/jobs/overdue-check-cron.ts](#file-artifacts-api-server-src-jobs-overdue-check-cron-ts)
+- [artifacts/api-server/src/jobs/sync-cron.ts](#file-artifacts-api-server-src-jobs-sync-cron-ts)
+- [artifacts/api-server/src/middleware/auth.ts](#file-artifacts-api-server-src-middleware-auth-ts)
+- [artifacts/api-server/src/routes/announcements.ts](#file-artifacts-api-server-src-routes-announcements-ts)
+- [artifacts/api-server/src/routes/applications.ts](#file-artifacts-api-server-src-routes-applications-ts)
+- [artifacts/api-server/src/routes/attendance.ts](#file-artifacts-api-server-src-routes-attendance-ts)
+- [artifacts/api-server/src/routes/auth.ts](#file-artifacts-api-server-src-routes-auth-ts)
+- [artifacts/api-server/src/routes/dashboard.ts](#file-artifacts-api-server-src-routes-dashboard-ts)
+- [artifacts/api-server/src/routes/employees.ts](#file-artifacts-api-server-src-routes-employees-ts)
+- [artifacts/api-server/src/routes/epics.ts](#file-artifacts-api-server-src-routes-epics-ts)
+- [artifacts/api-server/src/routes/initiatives.ts](#file-artifacts-api-server-src-routes-initiatives-ts)
+- [artifacts/api-server/src/routes/meetings.ts](#file-artifacts-api-server-src-routes-meetings-ts)
+- [artifacts/api-server/src/routes/notifications.ts](#file-artifacts-api-server-src-routes-notifications-ts)
+- [artifacts/api-server/src/routes/reports.ts](#file-artifacts-api-server-src-routes-reports-ts)
+- [artifacts/api-server/src/routes/sprints.ts](#file-artifacts-api-server-src-routes-sprints-ts)
+- [artifacts/api-server/src/routes/tasks.ts](#file-artifacts-api-server-src-routes-tasks-ts)
+- [artifacts/api-server/src/services/calendar-sync.ts](#file-artifacts-api-server-src-services-calendar-sync-ts)
+- [artifacts/api-server/src/services/email.ts](#file-artifacts-api-server-src-services-email-ts)
+- [artifacts/api-server/src/services/encryption.ts](#file-artifacts-api-server-src-services-encryption-ts)
+- [artifacts/api-server/src/services/supabase-admin.ts](#file-artifacts-api-server-src-services-supabase-admin-ts)
+- [artifacts/api-server/src/verify_connection.ts](#file-artifacts-api-server-src-verify_connection-ts)
+- [artifacts/api-server/tsconfig.json](#file-artifacts-api-server-tsconfig-json)
+- [artifacts/hr-dashboard/index.html](#file-artifacts-hr-dashboard-index-html)
+- [artifacts/hr-dashboard/package.json](#file-artifacts-hr-dashboard-package-json)
+- [artifacts/hr-dashboard/src/App.tsx](#file-artifacts-hr-dashboard-src-App-tsx)
+- [artifacts/hr-dashboard/src/components/ClockInModal.tsx](#file-artifacts-hr-dashboard-src-components-ClockInModal-tsx)
+- [artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx](#file-artifacts-hr-dashboard-src-components-EmployeeDashboardView-tsx)
+- [artifacts/hr-dashboard/src/components/EpicsSubView.tsx](#file-artifacts-hr-dashboard-src-components-EpicsSubView-tsx)
+- [artifacts/hr-dashboard/src/components/ErrorBoundary.tsx](#file-artifacts-hr-dashboard-src-components-ErrorBoundary-tsx)
+- [artifacts/hr-dashboard/src/components/ExportReportModal.tsx](#file-artifacts-hr-dashboard-src-components-ExportReportModal-tsx)
+- [artifacts/hr-dashboard/src/components/ForgotPasswordModal.tsx](#file-artifacts-hr-dashboard-src-components-ForgotPasswordModal-tsx)
+- [artifacts/hr-dashboard/src/components/InitiativesSubView.tsx](#file-artifacts-hr-dashboard-src-components-InitiativesSubView-tsx)
+- [artifacts/hr-dashboard/src/components/MarkAttendanceModal.tsx](#file-artifacts-hr-dashboard-src-components-MarkAttendanceModal-tsx)
+- [artifacts/hr-dashboard/src/components/MarkdownViewer.tsx](#file-artifacts-hr-dashboard-src-components-MarkdownViewer-tsx)
+- [artifacts/hr-dashboard/src/components/Navbar.tsx](#file-artifacts-hr-dashboard-src-components-Navbar-tsx)
+- [artifacts/hr-dashboard/src/components/ProfileModal.tsx](#file-artifacts-hr-dashboard-src-components-ProfileModal-tsx)
+- [artifacts/hr-dashboard/src/components/ProjectSummaryTable.tsx](#file-artifacts-hr-dashboard-src-components-ProjectSummaryTable-tsx)
+- [artifacts/hr-dashboard/src/components/RevenueChart.tsx](#file-artifacts-hr-dashboard-src-components-RevenueChart-tsx)
+- [artifacts/hr-dashboard/src/components/RichTextEditor.tsx](#file-artifacts-hr-dashboard-src-components-RichTextEditor-tsx)
+- [artifacts/hr-dashboard/src/components/RolePreviewBanner.tsx](#file-artifacts-hr-dashboard-src-components-RolePreviewBanner-tsx)
+- [artifacts/hr-dashboard/src/components/ScheduleMeetingModal.tsx](#file-artifacts-hr-dashboard-src-components-ScheduleMeetingModal-tsx)
+- [artifacts/hr-dashboard/src/components/ScheduleWidget.tsx](#file-artifacts-hr-dashboard-src-components-ScheduleWidget-tsx)
+- [artifacts/hr-dashboard/src/components/SearchModal.tsx](#file-artifacts-hr-dashboard-src-components-SearchModal-tsx)
+- [artifacts/hr-dashboard/src/components/Sidebar.tsx](#file-artifacts-hr-dashboard-src-components-Sidebar-tsx)
+- [artifacts/hr-dashboard/src/components/SprintsSubView.tsx](#file-artifacts-hr-dashboard-src-components-SprintsSubView-tsx)
+- [artifacts/hr-dashboard/src/components/StatCard.tsx](#file-artifacts-hr-dashboard-src-components-StatCard-tsx)
+- [artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx](#file-artifacts-hr-dashboard-src-components-TaskAnalyticsPanel-tsx)
+- [artifacts/hr-dashboard/src/components/TaskAssignModal.tsx](#file-artifacts-hr-dashboard-src-components-TaskAssignModal-tsx)
+- [artifacts/hr-dashboard/src/components/TaskCloneModal.tsx](#file-artifacts-hr-dashboard-src-components-TaskCloneModal-tsx)
+- [artifacts/hr-dashboard/src/components/TaskProgressSprintAnalytics.tsx](#file-artifacts-hr-dashboard-src-components-TaskProgressSprintAnalytics-tsx)
+- [artifacts/hr-dashboard/src/components/TaskUpdateModal.tsx](#file-artifacts-hr-dashboard-src-components-TaskUpdateModal-tsx)
+- [artifacts/hr-dashboard/src/contexts/AuthContext.tsx](#file-artifacts-hr-dashboard-src-contexts-AuthContext-tsx)
+- [artifacts/hr-dashboard/src/contexts/EntityContext.tsx](#file-artifacts-hr-dashboard-src-contexts-EntityContext-tsx)
+- [artifacts/hr-dashboard/src/index.css](#file-artifacts-hr-dashboard-src-index-css)
+- [artifacts/hr-dashboard/src/main.tsx](#file-artifacts-hr-dashboard-src-main-tsx)
+- [artifacts/hr-dashboard/src/pages/AcceptInviteView.tsx](#file-artifacts-hr-dashboard-src-pages-AcceptInviteView-tsx)
+- [artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx](#file-artifacts-hr-dashboard-src-pages-AnnouncementsView-tsx)
+- [artifacts/hr-dashboard/src/pages/ApplicationsView.tsx](#file-artifacts-hr-dashboard-src-pages-ApplicationsView-tsx)
+- [artifacts/hr-dashboard/src/pages/AttendanceView.tsx](#file-artifacts-hr-dashboard-src-pages-AttendanceView-tsx)
+- [artifacts/hr-dashboard/src/pages/DashboardView.tsx](#file-artifacts-hr-dashboard-src-pages-DashboardView-tsx)
+- [artifacts/hr-dashboard/src/pages/LoginView.tsx](#file-artifacts-hr-dashboard-src-pages-LoginView-tsx)
+- [artifacts/hr-dashboard/src/pages/MeetingsView.tsx](#file-artifacts-hr-dashboard-src-pages-MeetingsView-tsx)
+- [artifacts/hr-dashboard/src/pages/NotificationsView.tsx](#file-artifacts-hr-dashboard-src-pages-NotificationsView-tsx)
+- [artifacts/hr-dashboard/src/pages/OfficeTodayView.tsx](#file-artifacts-hr-dashboard-src-pages-OfficeTodayView-tsx)
+- [artifacts/hr-dashboard/src/pages/PerformanceView.tsx](#file-artifacts-hr-dashboard-src-pages-PerformanceView-tsx)
+- [artifacts/hr-dashboard/src/pages/ReportsView.tsx](#file-artifacts-hr-dashboard-src-pages-ReportsView-tsx)
+- [artifacts/hr-dashboard/src/pages/SalaryView.tsx](#file-artifacts-hr-dashboard-src-pages-SalaryView-tsx)
+- [artifacts/hr-dashboard/src/pages/SettingsView.tsx](#file-artifacts-hr-dashboard-src-pages-SettingsView-tsx)
+- [artifacts/hr-dashboard/src/pages/SprintsView.tsx](#file-artifacts-hr-dashboard-src-pages-SprintsView-tsx)
+- [artifacts/hr-dashboard/src/pages/TasksView.tsx](#file-artifacts-hr-dashboard-src-pages-TasksView-tsx)
+- [artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx](#file-artifacts-hr-dashboard-src-pages-TeamDirectoryView-tsx)
+- [artifacts/hr-dashboard/src/pages/TeamTasksView.tsx](#file-artifacts-hr-dashboard-src-pages-TeamTasksView-tsx)
+- [artifacts/hr-dashboard/src/utils/avatars.ts](#file-artifacts-hr-dashboard-src-utils-avatars-ts)
+- [artifacts/hr-dashboard/src/utils/dateUtils.ts](#file-artifacts-hr-dashboard-src-utils-dateUtils-ts)
+- [artifacts/hr-dashboard/src/utils/entityUtils.ts](#file-artifacts-hr-dashboard-src-utils-entityUtils-ts)
+- [artifacts/hr-dashboard/tsconfig.json](#file-artifacts-hr-dashboard-tsconfig-json)
+- [artifacts/hr-dashboard/vite.config.ts](#file-artifacts-hr-dashboard-vite-config-ts)
+- [drizzle.config.ts](#file-drizzle-config-ts)
+- [lib/api-client-react/package.json](#file-lib-api-client-react-package-json)
+- [lib/api-client-react/src/index.ts](#file-lib-api-client-react-src-index-ts)
+- [lib/api-client-react/tsconfig.json](#file-lib-api-client-react-tsconfig-json)
+- [lib/api-zod/package.json](#file-lib-api-zod-package-json)
+- [lib/api-zod/src/index.ts](#file-lib-api-zod-src-index-ts)
+- [lib/api-zod/tsconfig.json](#file-lib-api-zod-tsconfig-json)
+- [lib/db/apply_0005_migration.mjs](#file-lib-db-apply_0005_migration-mjs)
+- [lib/db/apply_migration.mjs](#file-lib-db-apply_migration-mjs)
+- [lib/db/audit_epics.mjs](#file-lib-db-audit_epics-mjs)
+- [lib/db/backfill.mjs](#file-lib-db-backfill-mjs)
+- [lib/db/check_tasks.mjs](#file-lib-db-check_tasks-mjs)
+- [lib/db/drizzle.config.ts](#file-lib-db-drizzle-config-ts)
+- [lib/db/drizzle/0000_soft_cerebro.sql](#file-lib-db-drizzle-0000_soft_cerebro-sql)
+- [lib/db/drizzle/0001_blue_cerise.sql](#file-lib-db-drizzle-0001_blue_cerise-sql)
+- [lib/db/drizzle/0002_silky_onslaught.sql](#file-lib-db-drizzle-0002_silky_onslaught-sql)
+- [lib/db/drizzle/0003_fair_sue_storm.sql](#file-lib-db-drizzle-0003_fair_sue_storm-sql)
+- [lib/db/drizzle/0004_agile_schema_alignment.sql](#file-lib-db-drizzle-0004_agile_schema_alignment-sql)
+- [lib/db/drizzle/0005_task_checklists_and_comments.sql](#file-lib-db-drizzle-0005_task_checklists_and_comments-sql)
+- [lib/db/drizzle/meta/0000_snapshot.json](#file-lib-db-drizzle-meta-0000_snapshot-json)
+- [lib/db/drizzle/meta/0001_snapshot.json](#file-lib-db-drizzle-meta-0001_snapshot-json)
+- [lib/db/drizzle/meta/0002_snapshot.json](#file-lib-db-drizzle-meta-0002_snapshot-json)
+- [lib/db/drizzle/meta/0003_snapshot.json](#file-lib-db-drizzle-meta-0003_snapshot-json)
+- [lib/db/drizzle/meta/_journal.json](#file-lib-db-drizzle-meta-_journal-json)
+- [lib/db/fix_sprint_codes.mjs](#file-lib-db-fix_sprint_codes-mjs)
+- [lib/db/package.json](#file-lib-db-package-json)
+- [lib/db/src/index.ts](#file-lib-db-src-index-ts)
+- [lib/db/src/schema/announcements.ts](#file-lib-db-src-schema-announcements-ts)
+- [lib/db/src/schema/applications.ts](#file-lib-db-src-schema-applications-ts)
+- [lib/db/src/schema/attendance.ts](#file-lib-db-src-schema-attendance-ts)
+- [lib/db/src/schema/audit_logs.ts](#file-lib-db-src-schema-audit_logs-ts)
+- [lib/db/src/schema/departments.ts](#file-lib-db-src-schema-departments-ts)
+- [lib/db/src/schema/employees.ts](#file-lib-db-src-schema-employees-ts)
+- [lib/db/src/schema/entities.ts](#file-lib-db-src-schema-entities-ts)
+- [lib/db/src/schema/entity_counters.ts](#file-lib-db-src-schema-entity_counters-ts)
+- [lib/db/src/schema/epics.ts](#file-lib-db-src-schema-epics-ts)
+- [lib/db/src/schema/google_tokens.ts](#file-lib-db-src-schema-google_tokens-ts)
+- [lib/db/src/schema/initiatives.ts](#file-lib-db-src-schema-initiatives-ts)
+- [lib/db/src/schema/invites.ts](#file-lib-db-src-schema-invites-ts)
+- [lib/db/src/schema/meeting_attendees.ts](#file-lib-db-src-schema-meeting_attendees-ts)
+- [lib/db/src/schema/meetings.ts](#file-lib-db-src-schema-meetings-ts)
+- [lib/db/src/schema/notifications.ts](#file-lib-db-src-schema-notifications-ts)
+- [lib/db/src/schema/password_reset_otps.ts](#file-lib-db-src-schema-password_reset_otps-ts)
+- [lib/db/src/schema/sprints.ts](#file-lib-db-src-schema-sprints-ts)
+- [lib/db/src/schema/task_checklists.ts](#file-lib-db-src-schema-task_checklists-ts)
+- [lib/db/src/schema/task_comments.ts](#file-lib-db-src-schema-task_comments-ts)
+- [lib/db/src/schema/task_notes.ts](#file-lib-db-src-schema-task_notes-ts)
+- [lib/db/src/schema/task_templates.ts](#file-lib-db-src-schema-task_templates-ts)
+- [lib/db/src/schema/tasks.ts](#file-lib-db-src-schema-tasks-ts)
+- [lib/db/src/schema/users.ts](#file-lib-db-src-schema-users-ts)
+- [lib/db/tsconfig.json](#file-lib-db-tsconfig-json)
+- [lib/db/verify_all_tests.mjs](#file-lib-db-verify_all_tests-mjs)
+- [lib/db/verify_overdue_dual_notif.mjs](#file-lib-db-verify_overdue_dual_notif-mjs)
+- [package.json](#file-package-json)
 
-# Builds & Outputs
-dist/
-build/
-*.log
+---
 
-# Environment variables & secrets
-.env
-.env.local
-.env.production
-
-# IDE & System
-.DS_Store
-.idea/
-.vscode/
-*.suo
-*.user
-
-# Temporary files
-scratch/
+### File: `artifacts/api-server/.env.example`
 
 ```
+# Supabase PostgreSQL Database Connection String
+DATABASE_URL="postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
 
-## FILE: CODEBASE.md
+# Server Configuration
+PORT=5000
+APP_URL="http://localhost:5173"
 
-```markdown
-# EHM-Climagro OS — Full Project Codebase & Technical Specification
+# JWT & Security Secrets
+JWT_SECRET="hros_jwt_super_secret_key_2026"
+TOKEN_ENCRYPTION_KEY="hros_token_encryption_secret_key_32bytes!"
 
-> **Platform Name**: EHM-Climagro OS (HR, Operations, Agile Deliverables & Meeting Management System)  
-> **Entities Supported**: `ehmconsultancy` and `climagroanalytics`  
-> **Target Audience**: Management Team, Team Leads, Employees  
+# Third-Party Integrations
+RESEND_API_KEY="re_123456789_your_resend_key"
+GOOGLE_CLIENT_ID="mock-google-client-id"
+GOOGLE_CLIENT_SECRET="mock-google-client-secret"
 
----
-
-## 📋 Executive Overview
-
-**EHM-Climagro OS** is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, Agile Hierarchy, and Meeting Management platform designed for cross-entity team collaboration between **ehmconsultancy** and **climagroanalytics**.
-
-### Key System Capabilities:
-
-1. **Full 4-Level Agile Hierarchy & Lineage Model (Initiatives ➔ Epics ➔ Sprints ➔ Tasks)**:
-   - **Level 1: Strategic Initiatives (`InitiativesSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}` (e.g. `EHM-I01`, `CAG-I01`).
-     - Form fields: Title, Brand/Entity (`ehmconsultancy`, `climagroanalytics`), Department, Sub-Department/Track, Target Deliverable Metric, Target Month, Epics division count (`1` to `8`).
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 2: Feature Epics (`EpicsSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}-EP{seq2}` (e.g. `EHM-I01-EP01`).
-     - Nests under parent Initiative. Includes `next_task_seq` counter for scoped task numbering resetting at `T001`.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 3: Personal Sprints (`SprintsSubView.tsx`)**:
-     - 6-column Kanban Board View (`BACKLOG`, `PLANNED`, `TODO`, `IN_PROGRESS`, `TO_REVIEW`, `DONE`).
-     - Product Backlog and Planned columns stay visible across all sprint week filters.
-     - Includes HTML5 Drag-and-Drop (sliding cards between columns) and status dropdown transitions.
-     - Status transition workflows:
-       - **Shift to Planned**: Triggers confirmation modal (*"Are you sure you want to shift task to Planned?"*).
-       - **Assign Task & Configure Sprint Parameters**: Moving from Backlog/Planned to active columns opens assignment modal (Assignee, Reviewing Lead, Sprint Week, Due Date, Priority).
-     - Dedicated `👁 View` button on task cards to open details pop-up modal.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside sprint task creation form.
-   - **Level 4: Deliverable Tasks (`TasksView.tsx` & `TaskAssignModal.tsx`)**:
-     - **Epic Task**: `{ENTITY}-I{seq2}-EP{seq2}-T{seq3}` (e.g. `EHM-I01-EP01-T001`). Auto-derives parent `initiative_id` from parent epic.
-     - **Sprint Task**: `{ENTITY}-E{seq2}-W{weekNum}-T{seq3}` (e.g. `EHM-E01-W1-T001`). Multi-employee assignments clone tasks per assignee linked via `group_task_id`.
-     - **Backlog Task**: `{ENTITY}-T{seq3}` (e.g. `EHM-T001`).
-     - **Immutable Task Codes**: Reassigning a task's epic or sprint updates the foreign keys only, keeping `task_code` immutable.
-     - **Optional Parent Epic & Sprint Selection**: Parent Epic field is optional across task creation forms. Target Sprint dropdown presents clean `Active Sprint` vs `Future Sprint` options.
-     - **Subtask Checklist & Activity Comments**: Integrated 2-column task assignment modals (`TaskAssignModal.tsx` & `SprintsSubView.tsx`) with real-time subtask checklists (`X of Y Completed`) and Activity & Comments feed.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside task creation form.
-
-2. **Dashboard & Performance Operations (`DashboardView.tsx` & `EmployeeDashboardView.tsx`)**:
-   - Clean, header workspace status banner (removed clocked in/clock out text widget).
-   - 5 Featured Responsive KPI Tiles:
-     1. **Today's Tasks & Pending**
-     2. **Active Sprint Cycles**
-     3. **Google Meetings Scheduled**
-     4. **Deliverable Completion Rate**
-     5. **Completed Tasks**
-   - Interactive Detail Pop-up Modals: Clicking any tile opens a big responsive pop-up modal with complete details, tasks, meeting links, or completion deliverables.
-   - Customizable Analytics View: Dropdown selector to switch between **Sprint Velocity & Quality Trend**, **Priority Distribution**, and **Daily Sprint Completion Pacing**.
-
-3. **100% Live Database API Wiring (Zero Mock Data)**:
-   - All components fetch real records from Express API endpoints (`/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`, `/api/attendance`, `/api/meetings`, `/api/reports`).
-   - Completion velocity rates are calculated dynamically from database counts and hard-capped at $\le 100\%$.
-
-4. **Supabase PostgreSQL & Official Drizzle Migration**:
-   - Official checked-in Drizzle migration: [`lib/db/drizzle/0004_agile_schema_alignment.sql`](file:///c:/hrdashboard/lib/db/drizzle/0004_agile_schema_alignment.sql).
-   - Enforced database constraints (`NOT NULL UNIQUE` on `initiative_code` and `sprint_code`, `NOT NULL` on `employee_id`).
-   - Symmetric DB `CHECK` constraint `chk_task_type_lineage` ensuring `task_type` strictly matches foreign key states (`EPIC_TASK`, `SPRINT_TASK`, `BACKLOG`).
-
-5. **Security & Middleware Protection**:
-   - `requireAuth` applied across all protected backend routes.
-   - `requireRole(['ADMIN', 'MANAGER'])` applied to POST/PUT on `/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`.
-
-6. **Employee Onboarding & Supabase Admin Email Integration**:
-   - **Add Employee Modal**: Support for Personal Email (`personalEmail`), optional Work Email (`email`), and explicit Role selector (`EMPLOYEE` / `MANAGER`) in `TeamDirectoryView.tsx`.
-   - **Supabase Admin Client (`supabase-admin.ts`)**: Initialized `@supabase/supabase-js` admin client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `src/services/supabase-admin.ts`.
-   - **Automated Invitations**: `POST /api/employees` triggers `supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, { redirectTo: `${appUrl}/accept-invite?token=${inviteToken}` })`.
-
----
-
-## 🔑 Database Authentication Credentials
-
-| Role | Email | Password | Access Rights |
-| :--- | :--- | :--- | :--- |
-| **Admin / Manager** | `admin@example.com` | `admin123` | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Create/Edit Initiatives, Epics & Sprints |
-
----
-
-## 🛠️ Complete Technology Stack
-
-| Layer | Technology Used | Description |
-| :--- | :--- | :--- |
-| **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture (0 TS errors) |
-| **Build Tool & Server** | **Vite 6** | Fast HMR dev server & asset bundling |
-| **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens (75% font-size density) |
-| **Iconography** | **Lucide React** | Modern vector icon library |
-| **Routing** | **Wouter** | Lightweight hooks-based SPA router |
-| **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
-| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` / `10000` |
-| **Database & ORM** | **Supabase PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Third-Party Integrations** | **Google Calendar API v3** + **Resend API** | OAuth 2.0 Meet link generation & notification emails |
-
----
-
-## 🚀 Verification & Build Status
-
-- **Supabase Connection**: Verified (`SELECT 1` ➔ `connected: 1, current_database: "postgres"`)
-- **TypeScript Compilation**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
-- **GitHub Push Status**: Pushed to `origin/main` (`https://github.com/ashutosh096/hrdashboard.git`)
-- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md)
-
-```
-
-## FILE: GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md
-
-```markdown
-# 📅 Google Calendar & Google Meet Live Integration Guide
-
-This guide explains how **HROS** connects to Google Calendar to fetch live meeting details, synchronize Google Meet video links, handle OAuth 2.0 authentication, and store synced meetings in the database.
-
----
-
-## 🏗️ Architecture & Component Flow
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant Frontend as React HR Dashboard (/meetings)
-    participant Server as Express API Server (/api)
-    participant TokenStore as PostgreSQL (google_tokens table, encrypted)
-    participant GoogleAPI as Google Calendar API v3
-    participant DB as PostgreSQL (meetingsTable)
-
-    %% 1. OAuth Authorization
-    User->>Frontend: Click "Connect Google Calendar"
-    Frontend->>Server: GET /api/auth/google
-    Server-->>User: Redirect to accounts.google.com/o/oauth2/v2/auth
-    User->>GoogleAPI: Grant Calendar Permissions
-    GoogleAPI-->>Server: Redirect /api/auth/google/callback?code=XYZ
-    Server->>GoogleAPI: POST /oauth2/v2/token (code exchange)
-    GoogleAPI-->>Server: Return access_token & refresh_token
-    Server->>TokenStore: Save tokens in google-tokens.json
-    Server-->>Frontend: Redirect /meetings?sync=success
-
-    %% 2. Live Sync Execution
-    User->>Frontend: Click "Sync Calendar"
-    Frontend->>Server: POST /api/meetings/sync
-    Server->>TokenStore: Read User Access & Refresh Token
-    alt Access Token Expired?
-        Server->>GoogleAPI: POST /oauth2/v3/token (grant_type=refresh_token)
-        GoogleAPI-->>Server: New access_token
-        Server->>TokenStore: Update user token expiry
-    end
-    Server->>GoogleAPI: GET /calendar/v3/users/me/calendarList
-    GoogleAPI-->>Server: List of Calendars (Primary & Secondary)
-    Server->>GoogleAPI: GET /calendar/v3/calendars/{calId}/events
-    GoogleAPI-->>Server: Return Array of Events & Google Meet Links
-    Server->>DB: Upsert Meetings (insert new, update existing, clean deleted)
-    Server-->>Frontend: { success: true, count: N }
-    Frontend-->>User: Render live updated meetings timeline
 ```
 
 ---
 
-## 🛠️ Step-by-Step Implementation Details
-
-### 1. OAuth 2.0 Authentication Setup (`/api/auth/google`)
-To request calendar access from Google, the server initiates an OAuth 2.0 authorization redirect with offline consent.
-
-* **Endpoint**: `GET /api/auth/google`
-* **Requested Scopes**:
-  - `https://www.googleapis.com/auth/calendar`
-  - `https://www.googleapis.com/auth/calendar.events`
-* **Parameters**:
-  - `access_type=offline` (Requests a `refresh_token` for persistent background syncing)
-  - `prompt=consent` (Ensures refresh token is re-issued)
-
----
-
-### 2. Authorization Callback & Token Storage (`/api/auth/google/callback`)
-When the user grants consent, Google redirects back with a one-time authorization `code`.
-
-* **Token Exchange**:
-  ```typescript
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `http://localhost:8080/api/auth/google/callback`,
-      grant_type: "authorization_code",
-    }),
-  });
-  ```
-* **Storage Schema** (`google_tokens` table in PostgreSQL, not a flat file):
-  ```typescript
-  // lib/db/src/schema/google-tokens.ts
-  export const googleTokens = pgTable("google_tokens", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull().unique().references(() => users.id),
-    accessToken: text("access_token").notNull(),   // encrypted at rest (e.g. via pgcrypto or app-level AES)
-    refreshToken: text("refresh_token").notNull(), // encrypted at rest
-    expiry: timestamp("expiry").notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-  });
-  ```
-  Storing tokens in a flat JSON file on disk doesn't scale past one developer's local machine, isn't safe on a real server, and won't survive redeploys/containers — the database table above is the production-safe replacement.
-
----
-
-### 3. Automatic Token Refresh Logic
-Before executing any sync, the server automatically inspects the stored token expiry time.
-
-```typescript
-if (Date.now() > userToken.expiry) {
-  const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: userToken.refreshToken,
-      grant_type: "refresh_token",
-    }),
-  });
-  const refreshData = await refreshRes.json();
-  userToken.accessToken = refreshData.access_token;
-  userToken.expiry = Date.now() + (refreshData.expires_in * 1000);
-  await saveTokens(tokens);
-}
-```
-
----
-
-### 4. Fetching Live Events & Extracting Google Meet Links (`/api/meetings/sync`)
-
-The sync endpoint executes live queries against Google Calendar APIs:
-
-1. **Discover Writable Calendars**:
-   Queries `https://www.googleapis.com/calendar/v3/users/me/calendarList` to discover both primary and secondary shared team calendars.
-
-2. **Query Recent & Future Events**:
-   Calls `https://www.googleapis.com/calendar/v3/calendars/{calendarId}/events?singleEvents=true&orderBy=startTime&timeMin={7_DAYS_AGO}`.
-
-3. **Extract Google Meet Video Links**:
-   Checks multiple fallback properties to retrieve video conference URLs:
-   - `event.hangoutLink`
-   - `event.conferenceData.entryPoints` (where `entryPointType === 'video'`)
-   - `event.location` (if URL format)
-
-4. **Upsert into Database (`meetingsTable`)**:
-   - Uses `googleEventId` to prevent duplicates.
-   - If the event exists in PostgreSQL, updates title, description, time slots, attendees, and meeting links.
-   - If the event is new, inserts a record with `source: 'GOOGLE_CALENDAR'`.
-   - **Cleanup**: Any meeting tagged `GOOGLE_CALENDAR` that was deleted in Google is automatically purged from the local database.
-
----
-
-### 🧪 5. Simulated / Demo Mode
-
-For local development or environments without active Google OAuth API Keys, the sync endpoint accepts `{ simulated: true }`:
-
-```powershell
-# API Payload for Demo Mode
-Invoke-RestMethod -Uri "http://localhost:8080/api/meetings/sync" -Method POST -ContentType "application/json" -Body '{"simulated": true}'
-```
-
-This injects realistic Google Meet events (e.g. `https://meet.google.com/qwe-rtyu-iop`) into the dashboard so developers can test the complete calendar UI immediately.
-
----
-
-## 📜 Key Source Files Reference
-* **Backend Integration Route**: [`google-calendar.ts`](file:///c:/hros/artifacts/api-server/src/routes/google-calendar.ts)
-* **Meetings Database Route**: [`meetings.ts`](file:///c:/hros/artifacts/api-server/src/routes/meetings.ts)
-* **Frontend Calendar Page**: [`meetings.tsx`](file:///c:/hros/artifacts/hr-dashboard/src/pages/meetings.tsx)
-
-```
-
-## FILE: HROS_MASTER_PROMPT_FIXED (1).md
-
-```markdown
-# 🚀 HROS - Complete AI Master Build Prompt & Architecture Specification
-
-Use this complete prompt specification in any AI coding environment (like Antigravity, Claude, or ChatGPT) to build this exact **Human Resource Operating System (HROS)** application from scratch.
-
----
-
-## 📋 System Master Prompt (Copy & Paste to AI)
-
-```text
-You are an expert full-stack principal architect and senior UI engineer. Build a complete, enterprise-grade, state-of-the-art Human Resource Operating System (HROS) monorepo web application.
-
-### 🏛️ Architecture & Tech Stack Requirements
-1. Monorepo Setup:
-   - Tooling: pnpm workspaces
-   - Backend Artifact: Express.js (v5) TypeScript REST API (`@workspace/api-server`)
-   - Frontend Artifact: React 19 + Vite (`@workspace/hr-dashboard`)
-   - Database Package: Drizzle ORM + PostgreSQL (`@workspace/db`)
-   - Shared Schema & Client: Zod schemas (`@workspace/api-zod`) + React Query hooks (`@workspace/api-client-react`)
-
-2. Frontend Stack & Styling:
-   - Framework: React 19 with Vite 7
-   - Routing: Wouter (`wouter`) lightweight router
-   - Styling: Tailwind CSS v4 + Vanilla CSS custom variables for glassmorphism
-   - UI Components: Radix UI primitives, Lucide React icons, Sonner toast notifications
-   - Analytics & Charts: Recharts for attendance trends & department metrics
-   - State & Data Fetching: TanStack React Query (`@tanstack/react-query`)
-
-3. Backend & Security:
-   - API Framework: Express.js with JSON body parser & cookie-parser
-   - Database & ORM: PostgreSQL with Drizzle ORM schema declaration & migrations
-   - Authentication: JWT tokens (Access + Refresh tokens) stored securely, password hashing with bcryptjs
-   - Logging: Pino & Pino-HTTP structured logging
-   - Third-party OAuth tokens (e.g. Google Calendar access/refresh tokens): store encrypted in the `google_tokens` table, never in a flat file (`.json`) on disk — required for multi-user support and safe production deployment
-   - Secrets (`GOOGLE_CLIENT_SECRET`, `JWT_SECRET`, `SEED_ADMIN_PASSWORD`, etc.): loaded only from environment variables / `.env` (excluded via `.gitignore`), never hardcoded in source
-   - Transactional Email: Resend (or Nodemailer + SMTP as fallback) for sending employee invite links, using `RESEND_API_KEY` from environment variables
-
----
-
-### 🗄️ Database Schemas & Data Entities
-
-Implement the following database models in Drizzle ORM:
-
-1. `users`:
-   - `id`: UUID (Primary Key)
-   - `email`: string (unique)
-   - `password_hash`: string
-   - `role`: enum ('ADMIN', 'HR_MANAGER', 'EMPLOYEE')
-   - `employee_id`: UUID (nullable foreign key to `employees`)
-   - `created_at`, `updated_at`
-
-2. `employees`:
-   - `id`: UUID (Primary Key)
-   - `first_name`, `last_name`: string
-   - `email`: string (unique)
-   - `department`: string ('Engineering', 'HR', 'Sales', 'Marketing', 'Operations', 'Finance')
-   - `designation`: string
-   - `salary`: decimal
-   - `joining_date`: timestamp
-   - `status`: enum ('ACTIVE', 'ON_LEAVE', 'TERMINATED')
-   - `avatar_url`: string (optional)
-
-3. `attendance`:
-   - `id`: UUID (Primary Key)
-   - `employee_id`: UUID (foreign key)
-   - `date`: date
-   - `clock_in`: timestamp
-   - `clock_out`: timestamp (nullable)
-   - `work_mode`: enum ('IN_OFFICE', 'REMOTE', 'HYBRID')
-   - `status`: enum ('PRESENT', 'LATE', 'HALF_DAY', 'ABSENT', 'ON_LEAVE')
-   - `total_hours`: decimal
-
-4. `meetings`:
-   - `id`: UUID (Primary Key)
-   - `title`: string
-   - `description`: text
-   - `start_time`, `end_time`: timestamp
-   - `location`: string (physical room or 'Google Meet')
-   - `google_meet_url`: string (nullable)
-   - `organizer_id`: UUID (foreign key)
-   - `invitees`: jsonb array of employee IDs
-   - `google_event_id`: string (nullable, unique — used to upsert/dedupe synced Google Calendar events)
-   - `source`: enum ('INTERNAL', 'GOOGLE_CALENDAR') default 'INTERNAL'
-
-9. `invites`:
-   - `id`: UUID (Primary Key)
-   - `email`: string
-   - `token`: string (unique, cryptographically random, used in the invite link)
-   - `role`: enum ('ADMIN', 'HR_MANAGER', 'EMPLOYEE')
-   - `employee_id`: UUID (foreign key to `employees`, the pre-created employee record this invite activates)
-   - `status`: enum ('PENDING', 'ACCEPTED', 'EXPIRED')
-   - `expires_at`: timestamp (e.g. 7 days from creation)
-   - `created_at`: timestamp
-   - Note: `users.status` should also gain a `PENDING` value alongside `ACTIVE`/`INACTIVE`, so a user row can exist (created by the admin) before the employee has accepted their invite and set up authentication.
-
-10. `google_tokens`:
-   - `id`: UUID (Primary Key)
-   - `user_id`: UUID (foreign key to `users`, unique)
-   - `access_token`: string (encrypted at rest)
-   - `refresh_token`: string (encrypted at rest)
-   - `expiry`: timestamp
-   - `created_at`, `updated_at`
-   - Note: replaces the flat-file `google-tokens.json` approach — OAuth tokens must live in the database, encrypted, never in a plaintext file, so the app works with multiple users and survives redeploys.
-
-5. `tasks`:
-   - `id`: UUID (Primary Key)
-   - `title`: string
-   - `description`: text
-   - `priority`: enum ('LOW', 'MEDIUM', 'HIGH', 'URGENT')
-   - `status`: enum ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')
-   - `assignee_id`: UUID (foreign key)
-   - `creator_id`: UUID (foreign key)
-   - `due_date`: timestamp
-
-6. `announcements`:
-   - `id`: UUID (Primary Key)
-   - `title`: string
-   - `content`: text
-   - `priority`: enum ('NORMAL', 'IMPORTANT', 'URGENT')
-   - `is_pinned`: boolean
-   - `target_department`: string ('ALL' or specific department)
-   - `created_at`: timestamp
-
-7. `applications`:
-   - `id`: UUID (Primary Key)
-   - `employee_id`: UUID (foreign key)
-   - `type`: enum ('LEAVE', 'REMOTE_WORK', 'REIMBURSEMENT', 'EQUIPMENT')
-   - `reason`: text
-   - `status`: enum ('PENDING', 'APPROVED', 'REJECTED')
-   - `start_date`, `end_date`: timestamp (nullable)
-   - `reviewed_by`: UUID (nullable foreign key)
-
-8. `audit_logs`:
-   - `id`: UUID (Primary Key)
-   - `user_id`: UUID
-   - `action`: string
-   - `details`: jsonb
-   - `created_at`: timestamp
-
----
-
-### 🔗 Employee Invite & Google Calendar Auto-Link Flow
-
-Implement this end-to-end flow so that adding an employee results in them receiving a dashboard link by email, and signing in with that same Google account automatically links their personal Google Calendar/Meet:
-
-1. **Admin adds employee** (`POST /api/employees`):
-   - Creates a row in `employees`.
-   - Creates a matching row in `users` with `status: 'PENDING'` and no `password_hash` yet.
-   - Creates a row in `invites` with a random token, `status: 'PENDING'`, `expires_at` = now + 7 days.
-   - Sends an email (via the Transactional Email service) to the employee containing a link:
-     `https://yourapp.com/accept-invite?token={token}`
-
-2. **Employee opens the invite link** (`GET /accept-invite?token=...` on the frontend):
-   - Frontend calls `GET /api/invites/:token` to validate the token (checks it exists, isn't expired, isn't already accepted).
-   - If valid, shows two options: "Set a password" or **"Continue with Google"**.
-
-3. **Employee chooses "Continue with Google"**:
-   - Frontend redirects to `GET /api/auth/google?inviteToken={token}`.
-   - Server stores the invite token in the OAuth `state` parameter so it survives the redirect round-trip.
-   - Google shows its consent screen requesting Calendar access (same scopes as the existing Calendar integration).
-
-4. **Google redirects back** (`GET /api/auth/google/callback?code=...&state={inviteToken}`):
-   - Server exchanges `code` for `access_token` + `refresh_token`.
-   - Server re-validates the invite token from `state`, and confirms the email Google returned matches the invited employee's email (prevents someone accepting another person's invite).
-   - Server activates the account: sets `users.status = 'ACTIVE'`, links `users.employee_id`.
-   - Server saves the tokens into `google_tokens`, keyed to this specific `user_id`.
-   - Server marks the `invites` row as `status: 'ACCEPTED'`.
-   - Server issues the JWT access + refresh tokens and redirects to `/dashboard?welcome=true`.
-
-5. **Result**: From this point on, `/api/meetings/sync` for this user reads their own row in `google_tokens`, so their personal Google Calendar and Google Meet links stay synced — independent of any other employee's calendar.
-
-**Edge cases to handle**:
-- Invite token expired → show a "Request a new invite" screen, admin can trigger `POST /api/invites/:id/resend`.
-- Employee's Google account email doesn't match the invited email → reject with a clear error, don't activate the account.
-- Employee already has an account → invite link should just redirect to normal login.
-
----
-
-### 🎨 Key Frontend Pages & Core Features
-
-1. Overview Dashboard (`/`):
-   - Executive summary cards: Total Employees, Attendance Rate %, Pending Tasks, Today's Meetings, Active Announcements.
-   - Interactive Recharts line chart showing weekly attendance trends.
-   - Donut chart displaying employee distribution across departments.
-   - Quick-action panel (Clock-in, Schedule Meeting, New Task).
-
-2. Attendance Management (`/attendance`):
-   - 1-Click Clock-In / Clock-Out modal with Work Mode selector (In-Office, Remote, Hybrid).
-   - Real-time work hour counter.
-   - Filterable attendance history log table with status badges (Present, Late, Absent, On-Leave).
-
-3. "Office Today" Presence (`/office-today`):
-   - Live visual grid of employees present in-office vs remote vs absent today.
-   - Search bar and department filter tags.
-
-4. Team Directory (`/team`):
-   - Employee roster grid and table views with detailed metadata.
-   - Add/Edit employee modal forms with validation.
-
-5. Meeting Scheduler (`/meetings`):
-   - Upcoming & past meeting list with avatar stacks for invitees.
-   - Integration with Google Meet link auto-generation (`meet.google.com/...`).
-   - Time-slot validation to prevent double-booking.
-
-6. Task Manager (`/tasks`):
-   - Kanban board / list view grouped by status (Pending, In Progress, Completed).
-   - Priority indicators (Urgent red, High orange, Medium blue, Low grey).
-
-7. Salary & Payroll (`/salary`):
-   - Employee compensation list with base salary, allowances, deductions, and net pay calculations.
-
-8. Leave & Applications (`/applications`):
-   - Application submit form for employees (Leave, Remote Work, Reimbursement).
-   - Manager approval workflow buttons (Approve / Reject) with status updates.
-
-9. Company Bulletin (`/announcements`):
-   - Post news feed with Pinned notices at the top and urgency badges.
-
-10. Accept Invite (`/accept-invite`):
-    - Reads the `token` query param, validates it against `GET /api/invites/:token`.
-    - Shows the employee's name/email (read-only) and two setup options: "Set a password" (standard form) or "Continue with Google" (redirects into the OAuth flow described above, which also links their Calendar).
-    - Handles expired/invalid token states with a clear message and a "Request new invite" action (visible to the employee, which pings their admin, or a direct resend if they have access).
-
----
-
-### 💅 UI/UX Design System Guidelines
-- Design Aesthetic: Premium dark mode with subtle glassmorphic backdrop filters (`backdrop-filter: blur(12px)`), neon emerald (`#10B981`) and electric violet (`#6366F1`) accents.
-- Responsive Layout: Sidebar navigation with collapsible mobile support.
-- Micro-animations: Smooth Framer Motion transitions for card entrances, modals, and tab switches.
-- Zero Placeholders: Include mock seed data. Auto-seed a dev-only admin account using values from environment variables (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`) with safe fallback defaults (e.g. `admin@example.com` / a randomly generated password printed once to the server console on first run) — never hardcode a real email or password in source code, prompts, or seed scripts.
-```
-
----
-
-## 📁 Monorepo File Structure Reference
-
-```text
-hros/
-├── artifacts/
-│   ├── api-server/         # Express backend (Controllers, Routes, Auth)
-│   │   ├── src/
-│   │   │   ├── routes/     # attendance.ts, tasks.ts, meetings.ts, etc.
-│   │   │   ├── index.ts
-│   │   │   └── build.mjs
-│   │   └── package.json
-│   ├── hr-dashboard/       # Vite + React 19 Frontend
-│   │   ├── src/
-│   │   │   ├── pages/      # dashboard.tsx, attendance.tsx, meetings.tsx, etc.
-│   │   │   ├── components/ # layout, ui components
-│   │   │   ├── contexts/   # auth-context.tsx
-│   │   │   └── App.tsx
-│   │   └── package.json
-├── lib/
-│   ├── db/                 # Drizzle ORM Schemas & Migration Config
-│   │   └── src/schema/     # users.ts, employees.ts, attendance.ts, etc.
-│   ├── api-zod/            # Zod Validation schemas
-│   └── api-client-react/   # Autogenerated API React hooks
-├── pnpm-workspace.yaml     # Monorepo configuration
-├── package.json
-└── README.md
-```
-
-```
-
-## FILE: HROS_MASTER_PROMPT_V2.md
-
-```markdown
-# HROS — Master Build Prompt (v2, Advanced)
-
-Paste this entire document into your AI coding tool to scaffold/extend the HROS codebase. This supersedes `HROS_MASTER_PROMPT_FIXED.md` — it keeps everything that document got right (schema fixes, invite flow, encrypted token storage) and adds the full v2 feature set below.
-
-This is an **internal office tool** for one client, ~15–16 total users across two entities. Build for that scale — not a public SaaS product. No multi-tenant abstraction, no enterprise infra, no compliance UI.
-
----
-
-## 1. What HROS Is
-
-A single internal HR + operations platform covering two company entities — **EHM** and **CliAgro** — with three user roles: **Admin** (you, the developer/owner), **Manager** (2–4 people), and **Employee** (9–12 people). Modules: Dashboard, Attendance, Meetings (Google Calendar/Meet synced), Office Today (live presence), Announcements, Tasks/Sprints, Salary, Applications, Team.
-
----
-
-## 2. Tech Stack (final)
-
-**Frontend**
-- React 19 + Vite 7
-- Routing: Wouter
-- Styling: Tailwind CSS v4 + custom CSS variables
-- UI: Radix UI primitives, Lucide React icons, Sonner (toasts)
-- Charts: Recharts
-- Data/state: TanStack React Query
-- Animations: Framer Motion
-
-**Backend**
-- Express.js v5 (TypeScript)
-- Auth: custom JWT (access + refresh tokens) + bcryptjs — **not** Supabase Auth (see rationale below)
-- Logging: Pino + Pino-HTTP
-- Email: Resend (free tier, 3,000/mo — plenty at this scale)
-
-**Database / Realtime / Storage — Supabase (free tier)**
-- PostgreSQL (via Supabase) + Drizzle ORM for schema/migrations
-- **Supabase Realtime** — powers live presence status, live Kanban updates, live notifications (subscribing to Postgres table changes). Replaces any need for a separate Socket.IO/Redis setup.
-- **Supabase Storage** — MOM documents, meeting transcripts, employee avatars, deliverable file uploads
-- **`pg_cron`** (Supabase) — scheduled Google Calendar sync jobs, daily digest triggers. No job queue (BullMQ/Redis) needed at this volume.
-
-**Google Integration**
-- Google Calendar API v3 + per-user Google OAuth 2.0 (offline access, refresh tokens)
-- Google OAuth consent screen stays in **Testing** mode with your ~16 users added as test users — no need for Google's verification review (that's only required past 100 users)
-
-**Monorepo**
-- pnpm workspaces
-- Shared Zod schemas (`@workspace/api-zod`)
-- Auto-generated React Query hooks (`@workspace/api-client-react`)
-
-**Hosting (free/near-free)**
-- Backend: Render (free or hobby tier ~$7/mo to avoid spin-down)
-- Frontend: Vercel free tier
-- Database/Realtime/Storage: Supabase free tier
-- Email: Resend free tier
-
-**Why custom auth, not Supabase Auth:** Supabase Auth's Google provider gives identity only, not the Calendar API scopes/refresh tokens needed for Meet sync — you'd still need a separate `google_tokens` table and OAuth flow regardless. The existing custom invite/JWT design already handles this correctly, so it stays as-is rather than being replaced.
-
----
-
-## 3. Roles, Entities & Access Model
-
-### Roles (3-tier)
-1. **Admin** — full visibility and control across both entities, all managers, all employees. Created manually (not through the invite flow) — this is you.
-2. **Manager** (2–4 total) — has their own login credentials and profile. Can:
-   - Assign tasks to individual employees or to a **group** of employees at once
-   - See and manage only **their own team's** employees and tasks (scoped — Manager A cannot see Manager B's team by default)
-   - View their team's attendance, presence, and task throughput
-3. **Employee** (9–12 total) — has their own login. Can:
-   - See only their own tasks, mark them In Progress / Done
-   - See their own attendance, salary/payslip, meetings
-   - See company-wide Announcements and Team Directory
-
-### Entities
-- Two hardcoded entities: **EHM** and **CliAgro** (no generic "add new company" system — just these two, hardcoded in schema/config)
-- Every employee, manager, task, and meeting belongs to one entity
-- A **top-header entity switcher/filter** lets Admin/Managers toggle between EHM view, CliAgro view, or a combined cross-entity view
-
-### RBAC implementation
-- JWT includes `role`, `entityId`, and (for managers) `managedTeamId` claims
-- Express middleware: `requireRole()`, `requireEntityAccess()`, `requireTeamScope()` — centralized, not scattered ad hoc checks
-- Enforce manager scoping at the query level (managers' API calls are automatically filtered to their team's employee IDs)
-
----
-
-## 4. Employee & Manager Onboarding
-
-Reuse the existing invite flow design, applied to both Managers and Employees:
-
-1. Admin (or Manager, for their own team) adds a person via **Add Employee** modal → creates `employees` row + `users` row (`status: PENDING`, no password) + `invites` row (random token, 7-day expiry) → invite email sent via Resend with dashboard link `/accept-invite?token=...`
-2. Person opens link → frontend validates token via `GET /api/invites/:token`
-3. They set a password **and/or** click "Continue with Google" (auth method decision below)
-4. **On first login**, they are prompted with a clear consent step: *"Allow HROS to sync your Google Calendar and Meet so meetings show up automatically."* This is a distinct, explicit step — not bundled silently into login.
-5. Google OAuth flow (`/api/auth/google?inviteToken=...`) → callback verifies the Google account email matches the invited email → activates user, saves tokens to `google_tokens` (encrypted, keyed to `user_id`), marks invite `ACCEPTED`, issues JWTs
-6. From then on, that person's calendar/meetings sync independently — each person's `google_tokens` row is private to them
-
-**Auth method decision:** Keep **password + optional Google OAuth** (not Google-only), since Calendar sync consent is separate from login itself, and you don't want a single Google outage or a lost Google account to lock someone out of viewing their tasks/salary.
-
----
-
-## 5. Google Calendar / Meet Integration
-
-Extends the existing `GOOGLE_CALENDAR_INTEGRATION_GUIDE_FIXED.md` design (which is architecturally correct) with these v2 additions:
-
-- **Per-user sync**, not a single global "Connect Google Calendar" button — each employee/manager has their own sync, driven by their own `google_tokens` row
-- **Two-way visibility**: meetings created *inside* HROS sync out to Google Calendar + generate a Meet link (as already built — see the "Schedule New Meeting" modal with "Add to Google Calendar" / "Generate Google Meet link" toggles). Meetings created *directly in Google Calendar* that include an HROS employee as a guest sync *into* HROS automatically via the existing upsert-by-`googleEventId` logic.
-- **Live presence derivation**: when a synced meeting is currently active (`now` between event start/end) for a given user, their presence status in **Office Today** / **Team** automatically shows **"In Meeting — until [time]"**. This clears automatically when the meeting ends — no manual toggle.
-- **Sync trigger**: `pg_cron` scheduled sync every few minutes per active user (lightweight polling — no webhook/push complexity needed at this scale) plus a manual "Sync Calendar" button as fallback
-- **Meeting → Task linking**: from a meeting's detail view, a follow-up action item can be converted directly into a task with one click, pre-filling entity/attendee context
-
----
-
-## 6. Task & Sprint System (Advanced)
-
-### Data model additions
-- `entities` (EHM, CliAgro — seeded, not user-creatable)
-- `departments` (per entity — e.g. Marketing, Engineering)
-- `tasks` table gains: `brandEntityId`, `departmentId`, `taskId` (auto-generated per entity, pattern `{ENTITY}-{DEPT}-{TYPE}-{SEQ}`, e.g. `EHM-MAR-ADH-672`), `sprintWeek`, `parentTaskId` (nullable, for subtasks), `assigneeId`, `reviewingLeadId`, `deliverableUrl`, `status` (`TODO` / `IN_PROGRESS` / `DONE`), `priority`, `dueDate`, `dependencyTaskId` (nullable "Waiting On"), `groupTaskId` (nullable — links copies of a group-assigned task together)
-- `task_notes` — progress notes / standup-style comments, timestamped, author-tagged (append-only log, not a single overwritable field)
-- `task_checklists` — optional subtasks/checklist items within a task (e.g. Design / Copy / Dev / QA)
-- `task_templates` — reusable task shapes for recurring deliverable types, pre-filling entity/department/checklist
-
-### Assign Task modal (matches your reference screenshots)
-Fields: Brand/Entity, Department, Task ID (auto-generated, editable), Target Sprint Week, Task Title/Deliverable Name, Assignee (single) **or** multi-select for group assignment, Reviewing Lead, Deliverable URL (optional).
-
-### Group assignment behavior
-When a manager assigns the same task to 2–3 employees at once:
-- Each employee gets their **own independent task row** (same `groupTaskId`, separate `assigneeId` and `status`)
-- On each employee's **Team/profile page**, the group task is visibly tagged as shared (e.g. "Also assigned to: Priya, Rahul")
-- Each person marks **their own copy** Done independently — one person finishing doesn't auto-complete the others'
-
-### Task Details / edit modal (matches your reference screenshot)
-Fields: Brand/Entity (locked), Parent Task ID (locked), editable Deliverable name, 1-click reassign Assignee dropdown, Reviewing Lead, Deliverable URL, Status dropdown, Dependency/"Waiting On" dropdown, append-only Progress Notes thread, "Save Changes & Sync" button.
-
-### Kanban board
-- Columns: To Do / In Progress / Done
-- Drag-and-drop between columns
-- WIP limit indicator per employee (visual warning, not a hard block) so managers can spot overload
-- Overdue tasks get a red badge directly on the card, visible without opening it
-
-### Sprint reporting
-- Exportable weekly/sprint summary per entity and per department: tasks completed / in-progress / blocked
-- Cross-entity comparison view: EHM vs CliAgro side by side — headcount, task throughput, attendance %
-
----
-
-## 7. Dashboard & Navigation — Visual Design Direction
-
-Adopt the **layout and visual language** of the reference design (light theme, green accent, clean card-based UI) while keeping all actual HROS data/entities — do **not** reuse its placeholder content (no "Nova Creative Team," no Orion/Zenith/Helios, no Zoom).
-
-### Sidebar
-- Top: logo mark + "HR OS" wordmark (keep existing purple-indigo brand accent, or shift to the green accent from the reference — client's call, flag this as an open choice)
-- **Entity switcher** directly below the logo, styled like the reference's team/workspace switcher dropdown — toggles between EHM / CliAgro / Both
-- Nav items with icon + label, active state highlighted, matching the reference's clean spacing and rounded active-pill style: Dashboard, Attendance, Meetings, Office Today, Announcements, Tasks, Salary, Applications, Team
-- Bottom: user profile chip (avatar, name, role) + logout, as already built
-
-### Top header
-- Global search bar (search across tasks, employees, meetings, announcements) styled like the reference's "Search ⌘K" bar
-- Notification bell (live, Supabase Realtime-backed)
-- Profile avatar
-
-### Role-specific home screens
-- **Admin dashboard**: company-wide stat cards (adapt reference's stat-card row style) — Total Employees, Present Today, Active Meetings, Active Tasks — plus the cross-entity comparison panel
-- **Manager dashboard**: their team's sprint progress, workload distribution, today's schedule
-- **Employee dashboard**: a **"My Day" widget** — today's meetings + today's due tasks in one glance (styled like the reference's "Schedule" panel with Meetings/Task tabs)
-
-### Dashboard panels (styled per reference, HROS content)
-- Stat card row (top): reuse reference's card style — icon chip, big number, label
-- Main chart panel (reference's "Weekly Revenue" chart slot): repurpose as **Attendance/Task Completion Trends** — line/area chart, Recharts
-- Schedule panel with tabs (reference's Meetings/Task tabs): shows today's meetings and today's tasks, "View Detail" links
-- Summary table at bottom (reference's "Project Progress Summary" table): repurpose as **Sprint/Task Summary** — Task/Project name, entity, status badges (Completed / Ongoing / Pending, styled with the same colored pill treatment)
-
----
-
-## 8. Feature List — Explicit Scope
-
-### In scope (v2)
-- 3-tier roles (Admin/Manager/Employee) with manager-to-team scoping
-- Two hardcoded entities (EHM, CliAgro) with header switcher + cross-entity comparison
-- Employee/Manager invite → credential + link email → first-login Google Calendar/Meet consent step
-- Per-user Google Calendar/Meet sync, two-way (HROS↔Google)
-- Live presence status derived from active meetings (auto-clears)
-- Advanced task system: auto Task IDs per entity, sprint weeks, dependencies, group assignment, subtasks/checklists, task templates, append-only progress notes
-- Kanban with drag-and-drop + WIP visual limits + overdue flags
-- Meeting → Task conversion
-- Role-specific dashboards + "My Day" widget for employees
-- Global search across tasks/employees/meetings/announcements
-- Daily digest notification (lightweight, via Resend) — "You have N tasks due this week"
-- Pinned announcements + read receipts ("seen by")
-- Exportable weekly/sprint summary per entity/department
-- Supabase Realtime-backed live notifications and live Kanban updates
-
-### Explicitly out of scope (client decision)
-- Geo/IP/WiFi-based auto check-in
-- Leave application + approval workflow
-- Timesheet / hours-logged tracking
-- Multi-tenant "add new company" system (entities are hardcoded to EHM/CliAgro)
-- Google OAuth production verification (staying in Testing mode is fine at this user count)
-
----
-
-## 9. Open Decisions Still Needed From Client
-
-1. Sidebar accent color — keep current purple-indigo brand, or adopt the reference's green accent?
-2. Should Managers ever see other Managers' teams (read-only), or stay fully siloed?
-3. Confirm auth method: password + optional Google OAuth (recommended), not Google-only.
-
----
-
-## 10. Build Order Suggestion
-
-1. Extend schema: `entities`, `departments`, role/scoping fields on `users`, extended `tasks` fields, `task_notes`, `task_checklists`, `task_templates`, `notifications`
-2. Wire up Supabase (Postgres connection via Drizzle, Realtime channels, Storage buckets)
-3. RBAC middleware + entity/team scoping
-4. Rebuild Task system (Assign Task modal, Task Details modal, Kanban, group assignment)
-5. Entity switcher + cross-entity comparison dashboard
-6. Per-user Google Calendar sync + live presence derivation
-7. Role-specific dashboards with reference-styled panels
-8. Global search, daily digest, pinned announcements/read receipts
-9. Meeting → Task linking
-10. Polish pass: WIP indicators, overdue badges, export/reporting views
-
-```
-
-## FILE: PROJECT_CODEBASE_SUMMARY.md
-
-```markdown
-# EHM-Climagro OS — Full Project Codebase & Technical Specification
-
-> **Platform Name**: EHM-Climagro OS (HR, Operations, Agile Deliverables & Meeting Management System)  
-> **Entities Supported**: `ehmconsultancy` and `climagroanalytics`  
-> **Target Audience**: Management Team, Team Leads, Employees  
-
----
-
-## 📋 Executive Overview
-
-**EHM-Climagro OS** is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, Agile Hierarchy, and Meeting Management platform designed for cross-entity team collaboration between **ehmconsultancy** and **climagroanalytics**.
-
-### Key System Capabilities:
-
-1. **Full 4-Level Agile Hierarchy & Lineage Model (Initiatives ➔ Epics ➔ Sprints ➔ Tasks)**:
-   - **Level 1: Strategic Initiatives (`InitiativesSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}` (e.g. `EHM-I01`, `CAG-I01`).
-     - Form fields: Title, Brand/Entity (`ehmconsultancy`, `climagroanalytics`), Department, Sub-Department/Track, Target Deliverable Metric, Target Month, Epics division count (`1` to `8`).
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 2: Feature Epics (`EpicsSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}-EP{seq2}` (e.g. `EHM-I01-EP01`).
-     - Nests under parent Initiative. Includes `next_task_seq` counter for scoped task numbering resetting at `T001`.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 3: Personal Sprints (`SprintsSubView.tsx`)**:
-     - 6-column Kanban Board View (`BACKLOG`, `PLANNED`, `TODO`, `IN_PROGRESS`, `TO_REVIEW`, `DONE`).
-     - Product Backlog and Planned columns stay visible across all sprint week filters.
-     - Includes HTML5 Drag-and-Drop (sliding cards between columns) and status dropdown transitions.
-     - Status transition workflows:
-       - **Shift to Planned**: Triggers confirmation modal (*"Are you sure you want to shift task to Planned?"*).
-       - **Assign Task & Configure Sprint Parameters**: Moving from Backlog/Planned to active columns opens assignment modal (Assignee, Reviewing Lead, Sprint Week, Due Date, Priority).
-     - Dedicated `👁 View` button on task cards to open details pop-up modal.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside sprint task creation form.
-   - **Level 4: Deliverable Tasks (`TasksView.tsx` & `TaskAssignModal.tsx`)**:
-     - **Epic Task**: `{ENTITY}-I{seq2}-EP{seq2}-T{seq3}` (e.g. `EHM-I01-EP01-T001`). Auto-derives parent `initiative_id` from parent epic.
-     - **Sprint Task**: `{ENTITY}-E{seq2}-W{weekNum}-T{seq3}` (e.g. `EHM-E01-W1-T001`). Multi-employee assignments clone tasks per assignee linked via `group_task_id`.
-     - **Backlog Task**: `{ENTITY}-T{seq3}` (e.g. `EHM-T001`).
-     - **Immutable Task Codes**: Reassigning a task's epic or sprint updates the foreign keys only, keeping `task_code` immutable.
-     - **Optional Parent Epic & Sprint Selection**: Parent Epic field is optional across task creation forms. Target Sprint dropdown presents clean `Active Sprint` vs `Future Sprint` options.
-     - **Subtask Checklist & Activity Comments**: Integrated 2-column task assignment modals (`TaskAssignModal.tsx` & `SprintsSubView.tsx`) with real-time subtask checklists (`X of Y Completed`) and Activity & Comments feed.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside task creation form.
-
-2. **Dashboard & Performance Operations (`DashboardView.tsx` & `EmployeeDashboardView.tsx`)**:
-   - Clean, header workspace status banner (removed clocked in/clock out text widget).
-   - 5 Featured Responsive KPI Tiles:
-     1. **Today's Tasks & Pending**
-     2. **Active Sprint Cycles**
-     3. **Google Meetings Scheduled**
-     4. **Deliverable Completion Rate**
-     5. **Completed Tasks**
-   - Interactive Detail Pop-up Modals: Clicking any tile opens a big responsive pop-up modal with complete details, tasks, meeting links, or completion deliverables.
-   - Customizable Analytics View: Dropdown selector to switch between **Sprint Velocity & Quality Trend**, **Priority Distribution**, and **Daily Sprint Completion Pacing**.
-
-3. **100% Live Database API Wiring (Zero Mock Data)**:
-   - All components fetch real records from Express API endpoints (`/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`, `/api/attendance`, `/api/meetings`, `/api/reports`).
-   - Completion velocity rates are calculated dynamically from database counts and hard-capped at $\le 100\%$.
-
-4. **Supabase PostgreSQL & Official Drizzle Migration**:
-   - Official checked-in Drizzle migration: [`lib/db/drizzle/0004_agile_schema_alignment.sql`](file:///c:/hrdashboard/lib/db/drizzle/0004_agile_schema_alignment.sql).
-   - Enforced database constraints (`NOT NULL UNIQUE` on `initiative_code` and `sprint_code`, `NOT NULL` on `employee_id`).
-   - Symmetric DB `CHECK` constraint `chk_task_type_lineage` ensuring `task_type` strictly matches foreign key states (`EPIC_TASK`, `SPRINT_TASK`, `BACKLOG`).
-
-5. **Security & Middleware Protection**:
-   - `requireAuth` applied across all protected backend routes.
-   - `requireRole(['ADMIN', 'MANAGER'])` applied to POST/PUT on `/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`.
-
-6. **Employee Onboarding, Gmail SMTP & Supabase Admin Email Integration**:
-   - **Add Employee Modal**: Support for Personal Email (`personalEmail`), optional Work Email (`email`), and explicit Role selector (`EMPLOYEE` / `MANAGER`) in `TeamDirectoryView.tsx`.
-   - **Submit Loading State & Double-Click Protection**: Submit button disables immediately upon click, displaying `Adding & Sending Invite...` with a `Loader2` spinning icon to prevent duplicate submissions during email dispatch.
-   - **Dual-Port Fast SMTP Email Service (`email.ts`)**: Built-in Nodemailer dual-port (Port 465 SSL & Port 587 STARTTLS) failover with strict 4-second timeouts. Includes embedded base64 fallback credentials (`ashutoshmishraup78@gmail.com` / `wjwvyziipwcvnyxv`) and auto-sanitization of spaces in Google App Passwords (`SMTP_PASS`).
-   - **Real-Time Toast Delivery Status**: Displays explicit success notification (`Employee added! Invitation email sent to [email]`) or warning toast if email delivery fails.
-   - **Comprehensive Multi-Table Cascade Delete (`DELETE /api/employees/:id`)**: Transactional cascade delete cleaning up notifications, google tokens, users, task checklists/comments/notes, tasks, sprints (and sprint tasks), epics/initiatives owner references, task templates, applications, meeting attendees, meetings, attendance, invites, employee records, and Supabase Auth admin users.
-
----
-
-## 🔑 Database Authentication Credentials
-
-| Role | Email | Password | Access Rights |
-| :--- | :--- | :--- | :--- |
-| **Admin / Manager** | `admin@example.com` | `admin123` | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Create/Edit Initiatives, Epics & Sprints |
-
----
-
-## 🛠️ Complete Technology Stack
-
-| Layer | Technology Used | Description |
-| :--- | :--- | :--- |
-| **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture (0 TS errors) |
-| **Build Tool & Server** | **Vite 6** | Fast HMR dev server & asset bundling |
-| **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens (75% font-size density) |
-| **Iconography** | **Lucide React** | Modern vector icon library |
-| **Routing** | **Wouter** | Lightweight hooks-based SPA router |
-| **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
-| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on Render |
-| **Database & ORM** | **Supabase PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Email Transports** | **Gmail SMTP (Nodemailer)** + **Resend API** | Dual-port 465/587 fast failover email delivery |
-
----
-
-## 🚀 Verification & Build Status
-
-- **Supabase Connection**: Verified (`SELECT 1` ➔ `connected: 1, current_database: "postgres"`)
-- **TypeScript Compilation**: `pnpm build` ➔ **PASSED (0 Errors)**
-- **Render Production App**: `https://hrdashboard-3s1m.onrender.com`
-- **GitHub Push Status**: Pushed to `origin/main` (`https://github.com/ashutosh096/hrdashboard.git`)
-- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md)
-
-```
-
-## FILE: artifacts/api-server/package.json
+### File: `artifacts/api-server/package.json`
 
 ```json
 {
@@ -1100,7 +216,9 @@ Adopt the **layout and visual language** of the reference design (light theme, g
 
 ```
 
-## FILE: artifacts/api-server/src/config/jwt.ts
+---
+
+### File: `artifacts/api-server/src/config/jwt.ts`
 
 ```typescript
 import dotenv from 'dotenv';
@@ -1116,7 +234,9 @@ export const JWT_SECRET = jwtSecret;
 
 ```
 
-## FILE: artifacts/api-server/src/db/fix_constraint.ts
+---
+
+### File: `artifacts/api-server/src/db/fix_constraint.ts`
 
 ```typescript
 import { db, sql } from '@workspace/db';
@@ -1146,7 +266,9 @@ fixConstraint().then(() => process.exit(0));
 
 ```
 
-## FILE: artifacts/api-server/src/db/seed.ts
+---
+
+### File: `artifacts/api-server/src/db/seed.ts`
 
 ```typescript
 import bcrypt from 'bcryptjs';
@@ -1314,7 +436,9 @@ export async function runSeed() {
 
 ```
 
-## FILE: artifacts/api-server/src/db/verify.ts
+---
+
+### File: `artifacts/api-server/src/db/verify.ts`
 
 ```typescript
 import dotenv from 'dotenv';
@@ -1338,7 +462,137 @@ runVerification().then(() => process.exit(0));
 
 ```
 
-## FILE: artifacts/api-server/src/index.ts
+---
+
+### File: `artifacts/api-server/src/generate_unabridged_codebase.ts`
+
+```typescript
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT_DIR = path.resolve('C:/hrdashboard');
+const OUTPUT_FILE = path.join(ROOT_DIR, 'FULL_CODEBASE_UNABRIDGED.md');
+
+const EXCLUDED_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  '.system_generated',
+  '.gemini',
+  '.agents',
+  'brain',
+  '.user_uploaded',
+]);
+
+const INCLUDED_EXTS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.json',
+  '.css',
+  '.html',
+  '.sql',
+  '.env.example',
+]);
+
+const EXCLUDED_FILES = new Set([
+  'pnpm-lock.yaml',
+  'package-lock.json',
+  'yarn.lock',
+  'FULL_CODEBASE_UNABRIDGED.md',
+  '.env',
+]);
+
+function getLanguage(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case '.ts':
+      return 'typescript';
+    case '.tsx':
+      return 'tsx';
+    case '.js':
+    case '.mjs':
+      return 'javascript';
+    case '.jsx':
+      return 'jsx';
+    case '.json':
+      return 'json';
+    case '.css':
+      return 'css';
+    case '.html':
+      return 'html';
+    case '.sql':
+      return 'sql';
+    default:
+      return '';
+  }
+}
+
+function scanDir(dir: string, fileList: string[] = []): string[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    const relPath = path.relative(ROOT_DIR, fullPath);
+
+    if (entry.isDirectory()) {
+      if (!EXCLUDED_DIRS.has(entry.name)) {
+        scanDir(fullPath, fileList);
+      }
+    } else if (entry.isFile()) {
+      const ext = path.extname(entry.name).toLowerCase();
+      if ((INCLUDED_EXTS.has(ext) || entry.name === '.env.example') && !EXCLUDED_FILES.has(entry.name)) {
+        // Exclude huge generated / scratch files
+        if (!relPath.includes('scratch') && !relPath.includes('dist') && !relPath.includes('.cache')) {
+          fileList.push(fullPath);
+        }
+      }
+    }
+  }
+
+  return fileList;
+}
+
+async function generate() {
+  console.log('🔍 Scanning files to build FULL_CODEBASE_UNABRIDGED.md...');
+  const allFiles = scanDir(ROOT_DIR).sort();
+  console.log(`Found ${allFiles.length} source code files.`);
+
+  let content = `# 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP\n\n`;
+  content += `> Generated on: ${new Date().toISOString()}\n`;
+  content += `> Total Source Files Included: ${allFiles.length}\n\n`;
+  content += `## Table of Contents\n\n`;
+
+  for (const file of allFiles) {
+    const rel = path.relative(ROOT_DIR, file).replace(/\\/g, '/');
+    content += `- [${rel}](#file-${rel.replace(/[^a-zA-Z0-9_-]/g, '-')})\n`;
+  }
+
+  content += `\n---\n\n`;
+
+  for (const file of allFiles) {
+    const rel = path.relative(ROOT_DIR, file).replace(/\\/g, '/');
+    const lang = getLanguage(file);
+    const code = fs.readFileSync(file, 'utf-8');
+
+    content += `### File: \`${rel}\`\n\n`;
+    content += `\`\`\`${lang}\n${code}\n\`\`\`\n\n---\n\n`;
+  }
+
+  fs.writeFileSync(OUTPUT_FILE, content, 'utf-8');
+  console.log(`✅ FULL_CODEBASE_UNABRIDGED.md updated successfully (${(fs.statSync(OUTPUT_FILE).size / 1024).toFixed(1)} KB)`);
+}
+
+generate().catch(console.error);
+
+```
+
+---
+
+### File: `artifacts/api-server/src/index.ts`
 
 ```typescript
 import express from 'express';
@@ -1454,7 +708,9 @@ app.listen(PORT, () => {
 
 ```
 
-## FILE: artifacts/api-server/src/jobs/digest-cron.ts
+---
+
+### File: `artifacts/api-server/src/jobs/digest-cron.ts`
 
 ```typescript
 import { sendDigestEmail } from '../services/email.js';
@@ -1470,7 +726,9 @@ export function startDigestCron() {
 
 ```
 
-## FILE: artifacts/api-server/src/jobs/overdue-check-cron.ts
+---
+
+### File: `artifacts/api-server/src/jobs/overdue-check-cron.ts`
 
 ```typescript
 import { db, tasks, employees, users, notifications, googleTokens, eq, and, ne, lt, lte, gt, gte, sql } from '@workspace/db';
@@ -1626,7 +884,9 @@ export async function runOverdueAndTokenChecks() {
 
 ```
 
-## FILE: artifacts/api-server/src/jobs/sync-cron.ts
+---
+
+### File: `artifacts/api-server/src/jobs/sync-cron.ts`
 
 ```typescript
 import { db, googleTokens } from '@workspace/db';
@@ -1659,7 +919,9 @@ async function runSyncAllUsers() {
 
 ```
 
-## FILE: artifacts/api-server/src/middleware/auth.ts
+---
+
+### File: `artifacts/api-server/src/middleware/auth.ts`
 
 ```typescript
 import { Request, Response, NextFunction } from 'express';
@@ -1724,7 +986,9 @@ export function requireTeamScope(req: Request, res: Response, next: NextFunction
 
 ```
 
-## FILE: artifacts/api-server/src/routes/announcements.ts
+---
+
+### File: `artifacts/api-server/src/routes/announcements.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -1782,7 +1046,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/applications.ts
+---
+
+### File: `artifacts/api-server/src/routes/applications.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -1901,7 +1167,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/attendance.ts
+---
+
+### File: `artifacts/api-server/src/routes/attendance.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2057,14 +1325,18 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/auth.ts
+---
+
+### File: `artifacts/api-server/src/routes/auth.ts`
 
 ```typescript
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users, invites, googleTokens, employees, eq, sql } from '@workspace/db';
+import crypto from 'crypto';
+import { db, users, invites, googleTokens, employees, passwordResetOtps, eq, and, sql } from '@workspace/db';
 import { JWT_SECRET } from '../config/jwt.js';
+import { sendPasswordResetOtpEmail } from '../services/email.js';
 
 const router = Router();
 
@@ -2473,11 +1745,235 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
+// Request Password Reset OTP Route
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ message: 'Valid email is required' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    // Check if user exists in database
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`TRIM(LOWER(${users.email})) = ${normalizedEmail}`);
+
+    // Rate-limiting check: check if an OTP was created less than 45 seconds ago
+    const [existingOtp] = await db
+      .select()
+      .from(passwordResetOtps)
+      .where(sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`);
+
+    const now = Date.now();
+    if (existingOtp && existingOtp.createdAt) {
+      const timeSinceCreation = now - new Date(existingOtp.createdAt).getTime();
+      if (timeSinceCreation < 45000) {
+        // Enforce 45s cooldown: do not generate new OTP, return generic message without error
+        return res.json({ message: 'If that email is registered, a verification code has been sent.' });
+      }
+    }
+
+    if (user) {
+      // Find employee name if available
+      let userName = 'Team Member';
+      if (user.employeeId) {
+        const [emp] = await db.select().from(employees).where(eq(employees.id, user.employeeId));
+        if (emp) {
+          const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+          if (fullName) userName = fullName;
+        }
+      }
+
+      // Generate 6-digit cryptographically secure numeric OTP
+      const otp = crypto.randomInt(100000, 1000000).toString();
+      const otpHash = await bcrypt.hash(otp, 10);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+      // Enforce single active row per email: delete any existing row for this email
+      await db
+        .delete(passwordResetOtps)
+        .where(sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`);
+
+      // Insert fresh OTP row
+      await db.insert(passwordResetOtps).values({
+        email: normalizedEmail,
+        otpHash,
+        attempts: 0,
+        verified: false,
+        resetToken: null,
+        expiresAt,
+      });
+
+      // Dispatch OTP email asynchronously / securely
+      sendPasswordResetOtpEmail(normalizedEmail, otp, userName).catch(err => {
+        console.error('[FORGOT-PASSWORD EMAIL ERROR]:', err);
+      });
+    }
+
+    // Always return generic response to prevent email enumeration / timing attacks
+    return res.json({ message: 'If that email is registered, a verification code has been sent.' });
+  } catch (err) {
+    console.error('[FORGOT-PASSWORD ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to process password reset request' });
+  }
+});
+
+// Verify OTP Route
+router.post('/verify-otp', async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ message: 'Email and verification code are required' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const cleanOtp = String(otp).trim();
+
+  try {
+    const [otpRow] = await db
+      .select()
+      .from(passwordResetOtps)
+      .where(sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`);
+
+    if (!otpRow) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // Check expiry
+    if (new Date(otpRow.expiresAt) < new Date()) {
+      await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+      return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
+    }
+
+    // Check brute-force attempts
+    if (otpRow.attempts >= 5) {
+      await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+      return res.status(400).json({ message: 'Too many failed attempts. Please request a new verification code.' });
+    }
+
+    // Compare bcrypt hash
+    const isValid = await bcrypt.compare(cleanOtp, otpRow.otpHash);
+    if (!isValid) {
+      const newAttempts = otpRow.attempts + 1;
+      if (newAttempts >= 5) {
+        await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+        return res.status(400).json({ message: 'Too many failed attempts. Please request a new verification code.' });
+      } else {
+        await db
+          .update(passwordResetOtps)
+          .set({ attempts: newAttempts })
+          .where(eq(passwordResetOtps.id, otpRow.id));
+        return res.status(400).json({ message: `Invalid verification code. ${5 - newAttempts} attempt(s) remaining.` });
+      }
+    }
+
+    // OTP is valid: generate 32-byte hex reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    await db
+      .update(passwordResetOtps)
+      .set({
+        verified: true,
+        resetToken: resetToken,
+      })
+      .where(eq(passwordResetOtps.id, otpRow.id));
+
+    return res.json({ resetToken, message: 'Code verified successfully' });
+  } catch (err) {
+    console.error('[VERIFY-OTP ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to verify verification code' });
+  }
+});
+
+// Reset Password Route
+router.post('/reset-password', async (req, res) => {
+  const { email, resetToken, newPassword } = req.body;
+
+  if (!email || !resetToken || !newPassword) {
+    return res.status(400).json({ message: 'Email, reset token, and new password are required' });
+  }
+
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    const [otpRow] = await db
+      .select()
+      .from(passwordResetOtps)
+      .where(
+        and(
+          sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`,
+          eq(passwordResetOtps.resetToken, resetToken),
+          eq(passwordResetOtps.verified, true)
+        )
+      );
+
+    if (!otpRow) {
+      return res.status(400).json({ message: 'Invalid or expired password reset session. Please request a new code.' });
+    }
+
+    if (new Date(otpRow.expiresAt) < new Date()) {
+      await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+      return res.status(400).json({ message: 'Password reset session has expired. Please request a new code.' });
+    }
+
+    // Find the user
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`TRIM(LOWER(${users.email})) = ${normalizedEmail}`);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User account not found' });
+    }
+
+    // Hash new password and update user
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        status: 'ACTIVE',
+      })
+      .where(eq(users.id, user.id));
+
+    // Delete used OTP row immediately to prevent replay attacks
+    await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+
+    // Generate fresh JWT token for seamless auto-login
+    const userPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      employeeId: user.employeeId || undefined,
+      managedTeamId: user.managedTeamId || undefined,
+    };
+
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '365d' });
+
+    console.log(`[PASSWORD RESET SUCCESS] User ${user.email} updated password and auto-logged in`);
+    return res.json({
+      message: 'Password has been reset successfully',
+      token,
+      user: userPayload,
+    });
+  } catch (err) {
+    console.error('[RESET-PASSWORD ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to reset password' });
+  }
+});
+
 export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/dashboard.ts
+---
+
+### File: `artifacts/api-server/src/routes/dashboard.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2675,7 +2171,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/employees.ts
+---
+
+### File: `artifacts/api-server/src/routes/employees.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -2693,105 +2191,7 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
-    let empList = await db.select().from(employees);
-    const existingEmails = new Set(empList.map(e => (e.email || '').toLowerCase().trim()));
-
-    const REAL_DEFAULT_TEAM = [
-      {
-        firstName: 'TESTER',
-        lastName: 'TESTER',
-        email: 'ashutoshmishraup78@mpgi.edu.in',
-        employeeCode: 'EHM-EMP05',
-        designation: 'TESTER',
-        role: 'EMPLOYEE',
-      },
-      {
-        firstName: 'Utsav',
-        lastName: 'Mishra',
-        email: 'utsav@ehmconsultancy.co.in',
-        employeeCode: 'EHM-MGR06',
-        designation: 'Specialist',
-        role: 'MANAGER',
-      },
-      {
-        firstName: 'Ashutosh',
-        lastName: 'Mishra',
-        email: 'ashutoshmishraup78@gmail.com',
-        employeeCode: 'EHM-EMP07',
-        designation: 'Specialist',
-        role: 'EMPLOYEE',
-      },
-      {
-        firstName: 'HARSHIT',
-        lastName: 'MISHRA',
-        email: 'harshit@ehmconsultancy.com',
-        employeeCode: 'EHM-MGR08',
-        designation: 'LEAD',
-        role: 'MANAGER',
-      },
-      {
-        firstName: 'PRANSHU',
-        lastName: 'MOHAN',
-        email: 'pranshu@ehmconsultancy.com',
-        employeeCode: 'EHM-MGR09',
-        designation: 'LEAD',
-        role: 'MANAGER',
-      },
-    ];
-
-    let seededCount = 0;
-    const [firstEntity] = await db.select({ id: entities.id }).from(entities).limit(1);
-    const [firstDept] = await db.select({ id: departments.id }).from(departments).limit(1);
-
-    if (firstEntity && firstDept) {
-      for (const item of REAL_DEFAULT_TEAM) {
-        const mailLower = item.email.toLowerCase().trim();
-        if (!existingEmails.has(mailLower)) {
-          const [newEmp] = await db
-            .insert(employees)
-            .values({
-              firstName: item.firstName,
-              lastName: item.lastName,
-              email: mailLower,
-              employeeCode: item.employeeCode,
-              designation: item.designation,
-              entityId: firstEntity.id,
-              departmentId: firstDept.id,
-              salary: null,
-              joiningDate: new Date(),
-            })
-            .returning();
-
-          if (newEmp) {
-            const inviteToken = crypto.randomBytes(32).toString('hex');
-            const expiresAt = new Date(Date.now() + 7 * 86400000);
-            await db.insert(invites).values({
-              email: mailLower,
-              token: inviteToken,
-              role: item.role as any,
-              employeeId: newEmp.id,
-              status: 'PENDING',
-              expiresAt,
-            });
-
-            const randomSecret = crypto.randomBytes(32).toString('hex');
-            const passwordHash = await bcrypt.hash(randomSecret, 10);
-            await db.insert(users).values({
-              email: mailLower,
-              passwordHash,
-              role: item.role as any,
-              status: 'PENDING',
-              employeeId: newEmp.id,
-            });
-            seededCount++;
-          }
-        }
-      }
-    }
-
-    if (seededCount > 0) {
-      empList = await db.select().from(employees);
-    }
+    const empList = await db.select().from(employees);
 
     const [userList, inviteList, deptList] = await Promise.all([
       db.select({ email: users.email, role: users.role, employeeId: users.employeeId }).from(users),
@@ -2903,20 +2303,34 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       }
 
       const entityCode = entity.code; // "EHM" or "CAG"
+      const isMgr = role === 'MANAGER';
+      const prefix = `${entityCode}-${isMgr ? 'MGR' : 'EMP'}`;
 
-      // 2. Atomic sequence increment for employeeCode (e.g. EHM-EMP01)
-      const [updatedCounter] = await tx
+      const allExisting = await tx
+        .select({ employeeCode: employees.employeeCode })
+        .from(employees)
+        .where(eq(employees.entityId, targetEntityId));
+
+      let maxNum = 0;
+      for (const e of allExisting) {
+        if (e.employeeCode && e.employeeCode.startsWith(prefix)) {
+          const numPart = parseInt(e.employeeCode.slice(prefix.length), 10);
+          if (!isNaN(numPart) && numPart > maxNum) {
+            maxNum = numPart;
+          }
+        }
+      }
+
+      const seq = maxNum + 1;
+      const employeeCode = `${prefix}${String(seq).padStart(2, '0')}`;
+
+      await tx
         .insert(entityCounters)
-        .values({ entityId: targetEntityId, nextEmployeeSeq: 2 })
+        .values({ entityId: targetEntityId, nextEmployeeSeq: seq + 1 })
         .onConflictDoUpdate({
           target: entityCounters.entityId,
-          set: { nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` },
-        })
-        .returning();
-
-      const seq = updatedCounter.nextEmployeeSeq - 1;
-      const isMgr = role === 'MANAGER';
-      const employeeCode = `${entityCode}-${isMgr ? 'MGR' : 'EMP'}${String(seq).padStart(2, '0')}`;
+          set: { nextEmployeeSeq: seq + 1 },
+        });
 
       // 3. Resolve department ID
       let targetDeptId = departmentId;
@@ -3299,11 +2713,13 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/epics.ts
+---
+
+### File: `artifacts/api-server/src/routes/epics.ts`
 
 ```typescript
 import { Router } from 'express';
-import { db, epics, initiatives, entityCounters, entities, sprints, tasks, eq, sql } from '@workspace/db';
+import { db, epics, initiatives, entityCounters, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -3446,15 +2862,63 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
+// DELETE /api/epics/:id - Admin protected epic deletion
+router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
+  const epicId = req.params.id as string;
+  try {
+    const [epic] = await db.select().from(epics).where(eq(epics.id, epicId));
+    if (!epic) {
+      return res.status(404).json({ message: 'Epic not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      // 1. Find linked sprints
+      const linkedSprints = await tx.select({ id: sprints.id }).from(sprints).where(eq(sprints.epicId, epicId));
+      const sprintIds = linkedSprints.map(s => s.id);
+
+      // 2. Find linked tasks
+      const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(
+        sprintIds.length > 0
+          ? or(eq(tasks.epicId, epicId), inArray(tasks.sprintId, sprintIds))
+          : eq(tasks.epicId, epicId)
+      );
+      const taskIds = linkedTasks.map(t => t.id);
+
+      // 3. Delete task child items
+      if (taskIds.length > 0) {
+        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
+        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
+        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
+        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+      }
+
+      // 4. Delete sprints
+      if (sprintIds.length > 0) {
+        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
+      }
+
+      // 5. Delete epic
+      await tx.delete(epics).where(eq(epics.id, epicId));
+    });
+
+    res.json({ message: `Epic ${epic.epicCode} deleted successfully`, id: epicId });
+  } catch (err: any) {
+    console.error('[DELETE EPIC ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete epic' });
+  }
+});
+
 export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/initiatives.ts
+---
+
+### File: `artifacts/api-server/src/routes/initiatives.ts`
 
 ```typescript
 import { Router } from 'express';
-import { db, initiatives, entityCounters, entities, employees, epics, eq, sql } from '@workspace/db';
+import { db, initiatives, entityCounters, entities, departments, employees, epics, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -3483,17 +2947,20 @@ router.get('/', async (req, res) => {
       })
       .from(initiatives);
 
-    // Fetch linked epics & entities for each initiative
+    // Fetch linked epics, entities & departments for each initiative
     const allEpics = await db.select().from(epics);
     const allEntities = await db.select().from(entities);
+    const allDepts = await db.select().from(departments);
 
     const enriched = allInitiatives.map(init => {
       const entity = allEntities.find(e => e.id === init.entityId);
+      const dept = allDepts.find(d => d.id === init.departmentId);
       const linkedEpics = allEpics.filter(e => e.initiativeId === init.id);
       return {
         ...init,
         entityName: (entity?.name || '').toLowerCase().includes('cag') || (entity?.name || '').toLowerCase().includes('climagro') || init.initiativeCode.startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
         entityCode: entity?.code || (init.initiativeCode.startsWith('CAG') ? 'CAG' : 'EHM'),
+        departmentName: dept?.name || init.subDepartment || 'Product & Tech',
         epicsCount: linkedEpics.length,
         epics: linkedEpics,
       };
@@ -3623,11 +3090,77 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
+// DELETE /api/initiatives/:id - Admin protected initiative deletion
+router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
+  const initId = req.params.id as string;
+  try {
+    const [init] = await db.select().from(initiatives).where(eq(initiatives.id, initId));
+    if (!init) {
+      return res.status(404).json({ message: 'Initiative not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      // 1. Find all linked epics
+      const linkedEpics = await tx.select({ id: epics.id }).from(epics).where(eq(epics.initiativeId, initId));
+      const epicIds = linkedEpics.map(e => e.id);
+
+      // 2. Find all linked sprints
+      const linkedSprints = epicIds.length > 0
+        ? await tx.select({ id: sprints.id }).from(sprints).where(inArray(sprints.epicId, epicIds))
+        : [];
+      const sprintIds = linkedSprints.map(s => s.id);
+
+      // 3. Find all linked tasks
+      let taskIds: string[] = [];
+      if (epicIds.length > 0 && sprintIds.length > 0) {
+        const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(
+          or(inArray(tasks.epicId, epicIds), inArray(tasks.sprintId, sprintIds))
+        );
+        taskIds = linkedTasks.map(t => t.id);
+      } else if (epicIds.length > 0) {
+        const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(inArray(tasks.epicId, epicIds));
+        taskIds = linkedTasks.map(t => t.id);
+      } else if (sprintIds.length > 0) {
+        const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(inArray(tasks.sprintId, sprintIds));
+        taskIds = linkedTasks.map(t => t.id);
+      }
+
+      // 4. Delete task child items
+      if (taskIds.length > 0) {
+        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
+        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
+        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
+        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+      }
+
+      // 5. Delete sprints
+      if (sprintIds.length > 0) {
+        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
+      }
+
+      // 6. Delete epics
+      if (epicIds.length > 0) {
+        await tx.delete(epics).where(inArray(epics.id, epicIds));
+      }
+
+      // 7. Delete initiative
+      await tx.delete(initiatives).where(eq(initiatives.id, initId));
+    });
+
+    res.json({ message: `Initiative ${init.initiativeCode} deleted successfully`, id: initId });
+  } catch (err: any) {
+    console.error('[DELETE INITIATIVE ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete initiative' });
+  }
+});
+
 export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/meetings.ts
+---
+
+### File: `artifacts/api-server/src/routes/meetings.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -3883,7 +3416,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/notifications.ts
+---
+
+### File: `artifacts/api-server/src/routes/notifications.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -3960,7 +3495,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/reports.ts
+---
+
+### File: `artifacts/api-server/src/routes/reports.ts`
 
 ```typescript
 import { Router } from 'express';
@@ -4039,11 +3576,13 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/sprints.ts
+---
+
+### File: `artifacts/api-server/src/routes/sprints.ts`
 
 ```typescript
 import { Router } from 'express';
-import { db, sprints, employees, entities, epics, tasks, entityCounters, eq, sql, and } from '@workspace/db';
+import { db, sprints, employees, entities, epics, tasks, taskChecklists, taskComments, taskNotes, entityCounters, eq, inArray, sql, and } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -4191,20 +3730,31 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// DELETE /api/sprints/:id - Manager/Admin protected sprint deletion
+// DELETE /api/sprints/:id - Admin & Manager protected sprint deletion
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
   try {
-    const [deleted] = await db
-      .delete(sprints)
-      .where(eq(sprints.id, sprintId))
-      .returning();
-
-    if (!deleted) {
+    const [sprint] = await db.select().from(sprints).where(eq(sprints.id, sprintId));
+    if (!sprint) {
       return res.status(404).json({ message: 'Sprint not found' });
     }
 
-    res.json({ message: 'Sprint deleted successfully', id: sprintId });
+    await db.transaction(async (tx) => {
+      // Find linked tasks
+      const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(eq(tasks.sprintId, sprintId));
+      const taskIds = linkedTasks.map(t => t.id);
+
+      if (taskIds.length > 0) {
+        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
+        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
+        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
+        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+      }
+
+      await tx.delete(sprints).where(eq(sprints.id, sprintId));
+    });
+
+    res.json({ message: `Sprint ${sprint.sprintCode || sprint.name} deleted successfully`, id: sprintId });
   } catch (err: any) {
     console.error('[DELETE SPRINT ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to delete sprint' });
@@ -4215,12 +3765,14 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/routes/tasks.ts
+---
+
+### File: `artifacts/api-server/src/routes/tasks.ts`
 
 ```typescript
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, taskChecklists, taskComments, eq, sql, asc } from '@workspace/db';
+import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, taskChecklists, taskComments, taskNotes, eq, sql, asc } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -4237,6 +3789,81 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch tasks' });
   }
 });
+
+function normalizeTaskPriority(priority: any): 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' {
+  if (!priority) return 'MEDIUM';
+  const p = String(priority).toUpperCase().trim();
+  if (p === 'P1' || p === '1' || p.includes('CRITICAL') || p.includes('URGENT') || p === 'URGENT') return 'URGENT';
+  if (p === 'P2' || p === '2' || p.includes('HIGH') || p === 'HIGH') return 'HIGH';
+  if (p === 'P3' || p === '3' || p.includes('MEDIUM') || p === 'MEDIUM') return 'MEDIUM';
+  if (p === 'P4' || p === '4' || p.includes('LOW') || p === 'LOW') return 'LOW';
+  return 'MEDIUM';
+}
+
+function normalizeTaskStatus(status: any): 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'DONE' | 'DELAYED' | 'BLOCKED' {
+  if (!status) return 'TODO';
+  const s = String(status).toUpperCase().trim();
+  if (s === 'DONE' || s.includes('APPROV') || s === 'APPROVED' || s === 'COMPLETED') return 'DONE';
+  if (s === 'IN_PROGRESS' || s === 'IN PROGRESS' || s === 'IN_REVIEW' || s === 'TO REVIEW' || s === 'REVIEW') return 'IN_PROGRESS';
+  if (s === 'TODO' || s === 'PLANNED') return 'TODO';
+  if (s === 'BACKLOG') return 'BACKLOG';
+  if (s === 'DELAYED') return 'DELAYED';
+  if (s === 'BLOCKED') return 'BLOCKED';
+  return 'TODO';
+}
+
+export async function createTaskNotification({
+  targetEmployeeId,
+  targetUserId,
+  type,
+  title,
+  message,
+  taskId,
+  taskCode,
+  taskTitle,
+  extraPayload = {},
+}: {
+  targetEmployeeId?: string | null;
+  targetUserId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  taskId: string;
+  taskCode?: string | null;
+  taskTitle?: string | null;
+  extraPayload?: any;
+}) {
+  try {
+    let resolvedUserId = targetUserId;
+    if (!resolvedUserId && targetEmployeeId) {
+      const [userRow] = await db.select().from(users).where(eq(users.employeeId, targetEmployeeId));
+      if (userRow) resolvedUserId = userRow.id;
+    }
+
+    if (!resolvedUserId) {
+      const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
+      if (fallbackAdmin) resolvedUserId = fallbackAdmin.id;
+    }
+
+    if (resolvedUserId) {
+      await db.insert(notifications).values({
+        userId: resolvedUserId,
+        type,
+        payload: {
+          title,
+          message,
+          taskId,
+          taskCode,
+          taskTitle,
+          ...extraPayload,
+        },
+      });
+      console.log(`[NOTIFICATION DISPATCHED] type: ${type} to user: ${resolvedUserId} for task: ${taskCode}`);
+    }
+  } catch (err) {
+    console.error('[TASK NOTIFICATION DISPATCH ERROR]:', err);
+  }
+}
 
 // Enforce ADMIN and MANAGER role for creating tasks
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
@@ -4412,8 +4039,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
             assigneeId: assignee.id,
             creatorId: targetCreatorId,
             reviewingLeadId: targetReviewingLeadId,
-            status: status || 'TODO',
-            priority: priority || 'MEDIUM',
+            status: normalizeTaskStatus(status),
+            priority: normalizeTaskPriority(priority),
             dueDate: dueDateVal,
             deliverableUrl: deliverableUrl || null,
           })
@@ -4460,13 +4087,33 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// PATCH /api/tasks/:id - Update Task details with Code Immutability & Auto Ancestry Derivation
-router.patch('/:id', async (req, res) => {
+// Unified Task Update Handler (Supports both PATCH & PUT /api/tasks/:id)
+const handleTaskUpdate = async (req: any, res: any) => {
   const taskId = req.params.id;
-  const { status, deliverableUrl, description, sprintWeek, priority, epicId, sprintId, title, assigneeId } = req.body;
+  const {
+    status,
+    deliverableUrl,
+    outputUrl,
+    description,
+    notes,
+    sprintWeek,
+    targetWeek,
+    priority,
+    epicId,
+    sprintId,
+    title,
+    assigneeId,
+    assigneeName,
+    reviewingLeadId,
+    reviewingLead,
+    dueDate,
+    entityId,
+    entity,
+    waitingOn,
+  } = req.body;
 
   try {
-    const [existingTaskCheck] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, taskId));
+    const [existingTaskCheck] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     if (!existingTaskCheck) {
       return res.status(404).json({ message: 'Task not found' });
     }
@@ -4474,19 +4121,95 @@ router.patch('/:id', async (req, res) => {
     if (req.user?.role === 'EMPLOYEE' && existingTaskCheck.assigneeId !== req.user.employeeId) {
       return res.status(403).json({ message: 'You can only update tasks assigned to you' });
     }
-    const updatedTask = await db.transaction(async (tx) => {
-      const [existingTask] = await tx.select().from(tasks).where(eq(tasks.id, taskId));
-      if (!existingTask) return null;
 
+    const updatedTask = await db.transaction(async (tx) => {
       const updateData: any = { updatedAt: new Date() };
 
-      if (status !== undefined) updateData.status = status;
-      if (deliverableUrl !== undefined) updateData.deliverableUrl = deliverableUrl;
-      if (description !== undefined) updateData.description = description;
-      if (sprintWeek !== undefined) updateData.sprintWeek = sprintWeek;
-      if (priority !== undefined) updateData.priority = priority;
-      if (title !== undefined) updateData.title = title;
-      if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
+      if (status !== undefined) {
+        updateData.status = normalizeTaskStatus(status);
+      }
+      if (deliverableUrl !== undefined || outputUrl !== undefined) {
+        updateData.deliverableUrl = deliverableUrl !== undefined ? deliverableUrl : outputUrl;
+      }
+      if (description !== undefined || notes !== undefined) {
+        updateData.description = description !== undefined ? description : notes;
+      }
+      if (sprintWeek !== undefined || targetWeek !== undefined) {
+        updateData.sprintWeek = sprintWeek !== undefined ? sprintWeek : targetWeek;
+      }
+      if (priority !== undefined) {
+        updateData.priority = normalizeTaskPriority(priority);
+      }
+      if (title !== undefined && typeof title === 'string' && title.trim()) {
+        updateData.title = title.trim();
+      }
+      if (waitingOn !== undefined) {
+        updateData.waitingOn = String(waitingOn).trim() || 'None (Self)';
+      }
+
+      // Handle Assignee ID / Name
+      if (assigneeId && typeof assigneeId === 'string' && assigneeId.length === 36) {
+        updateData.assigneeId = assigneeId;
+      } else if (assigneeName || assigneeId) {
+        const rawTarget = String(assigneeName || assigneeId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
+        const allEmps = await tx.select().from(employees);
+        const matchedEmp = allEmps.find(
+          (e) =>
+            e.id === assigneeId ||
+            `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
+            e.firstName.toLowerCase() === rawTarget ||
+            e.lastName?.toLowerCase() === rawTarget ||
+            e.employeeCode.toLowerCase() === rawTarget
+        );
+        if (matchedEmp) {
+          updateData.assigneeId = matchedEmp.id;
+        }
+      }
+
+      // Handle Reviewing Lead ID / Name
+      if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.length === 36) {
+        updateData.reviewingLeadId = reviewingLeadId;
+      } else if (reviewingLead || reviewingLeadId) {
+        const rawTarget = String(reviewingLead || reviewingLeadId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
+        const allEmps = await tx.select().from(employees);
+        const matchedLead = allEmps.find(
+          (e) =>
+            e.id === reviewingLeadId ||
+            `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
+            e.firstName.toLowerCase() === rawTarget ||
+            e.lastName?.toLowerCase() === rawTarget ||
+            e.employeeCode.toLowerCase() === rawTarget
+        );
+        if (matchedLead) {
+          updateData.reviewingLeadId = matchedLead.id;
+        }
+      }
+
+      // Handle Due Date
+      if (dueDate !== undefined && dueDate !== null && dueDate !== '') {
+        const parsedDate = new Date(dueDate);
+        if (!isNaN(parsedDate.getTime())) {
+          updateData.dueDate = parsedDate;
+        }
+      }
+
+      // Handle Entity
+      if (entityId && typeof entityId === 'string' && entityId.length === 36) {
+        updateData.entityId = entityId;
+      } else if (entity && typeof entity === 'string') {
+        const allEnts = await tx.select().from(entities);
+        const matchedEnt = allEnts.find(
+          (e) =>
+            e.id === entity ||
+            e.code.toLowerCase() === entity.toLowerCase() ||
+            e.name.toLowerCase().includes(entity.toLowerCase()) ||
+            (entity.toLowerCase().includes('ehm') && e.code === 'EHM') ||
+            (entity.toLowerCase().includes('climagro') && e.code === 'CAG')
+        );
+        if (matchedEnt) {
+          updateData.entityId = matchedEnt.id;
+        }
+      }
 
       // Handle Lineage Updates (Epic / Sprint reassignment) while keeping taskCode IMMUTABLE
       if (epicId !== undefined) {
@@ -4497,7 +4220,6 @@ router.patch('/:id', async (req, res) => {
           updateData.epicId = epicId;
           updateData.sprintId = null;
           updateData.taskType = 'EPIC_TASK';
-          // Auto-update initiativeId to new epic's parent initiative!
           updateData.initiativeId = newEpic.initiativeId;
         } else {
           updateData.epicId = null;
@@ -4532,12 +4254,66 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    // Trigger lifecycle notifications based on changes:
+    const oldStatus = existingTaskCheck.status;
+    const newStatus = updatedTask.status;
+
+    // 1. If assigned to a new assignee:
+    if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTaskCheck.assigneeId) {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.assigneeId,
+        type: 'TASK_ASSIGNED',
+        title: `Task Reassigned: [${updatedTask.taskCode}]`,
+        message: `You have been assigned to task [${updatedTask.taskCode}] "${updatedTask.title}".`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
+    }
+
+    // 2. If status moved to TO_REVIEW / IN_REVIEW or deliverable URL submitted:
+    if (
+      (req.body.status === 'TO_REVIEW' || req.body.status === 'IN_REVIEW' || req.body.status === 'To Review') ||
+      (updatedTask.deliverableUrl && updatedTask.deliverableUrl !== existingTaskCheck.deliverableUrl)
+    ) {
+      const targetLeadId = updatedTask.reviewingLeadId || updatedTask.creatorId;
+      createTaskNotification({
+        targetEmployeeId: targetLeadId,
+        type: 'TASK_REVIEW_SUBMITTED',
+        title: `Review Pending: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has deliverables ready for your manager review & sign-off.`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+        extraPayload: { deliverableUrl: updatedTask.deliverableUrl },
+      }).catch(console.error);
+    }
+
+    // 3. If status marked as DONE:
+    if (newStatus === 'DONE' && oldStatus !== 'DONE') {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.assigneeId,
+        type: 'TASK_COMPLETED',
+        title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
+        message: `Your deliverable for task [${updatedTask.taskCode}] "${updatedTask.title}" has been signed off and marked Done!`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
+    }
+
     res.json(updatedTask);
   } catch (err: any) {
     console.error('[TASK UPDATE ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update task' });
   }
-});
+};
+
+// PATCH /api/tasks/:id - Update Task details with Code Immutability & Auto Ancestry Derivation
+router.patch('/:id', handleTaskUpdate);
+
+// PUT /api/tasks/:id - Update Task details
+router.put('/:id', handleTaskUpdate);
 
 // PATCH /api/tasks/:id/status
 router.patch('/:id/status', async (req, res) => {
@@ -4549,7 +4325,7 @@ router.patch('/:id/status', async (req, res) => {
   }
 
   try {
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, taskId));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     if (!targetTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
@@ -4563,14 +4339,38 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(403).json({ message: 'Only managers and leads can mark tasks as DELAYED or BLOCKED' });
     }
 
+    const normalizedStatus = normalizeTaskStatus(status);
     const [updatedTask] = await db
       .update(tasks)
-      .set({ status, updatedAt: new Date() })
+      .set({ status: normalizedStatus, updatedAt: new Date() })
       .where(eq(tasks.id, taskId))
       .returning();
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Notifications for status change:
+    if (normalizedStatus === 'DONE' && targetTask.status !== 'DONE') {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.assigneeId,
+        type: 'TASK_COMPLETED',
+        title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been marked Done.`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
+    } else if (status === 'TO_REVIEW' || status === 'IN_REVIEW' || status === 'To Review') {
+      createTaskNotification({
+        targetEmployeeId: updatedTask.reviewingLeadId || updatedTask.creatorId,
+        type: 'TASK_REVIEW_SUBMITTED',
+        title: `Review Pending: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" is ready for review.`,
+        taskId: updatedTask.id,
+        taskCode: updatedTask.taskCode,
+        taskTitle: updatedTask.title,
+      }).catch(console.error);
     }
 
     res.json(updatedTask);
@@ -4665,7 +4465,7 @@ router.post('/:id/checklists', async (req, res) => {
   if (!itemText) return res.status(400).json({ message: 'itemText is required' });
 
   try {
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, id));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, id));
     if (!targetTask) return res.status(404).json({ message: 'Task not found' });
 
     if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
@@ -4676,19 +4476,17 @@ router.post('/:id/checklists', async (req, res) => {
       .from(taskChecklists)
       .where(eq(taskChecklists.taskId, id));
 
-    const nextSortOrder = existing.length + 1;
-
-    const [newItem] = await db
+    const [created] = await db
       .insert(taskChecklists)
       .values({
         taskId: id,
         itemText,
         isCompleted: false,
-        sortOrder: nextSortOrder,
+        sortOrder: existing.length,
       })
       .returning();
 
-    res.status(201).json(newItem);
+    res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ message: 'Failed to add checklist item' });
   }
@@ -4703,7 +4501,7 @@ router.patch('/checklists/:checklistId', async (req, res) => {
     const [checklist] = await db.select().from(taskChecklists).where(eq(taskChecklists.id, checklistId));
     if (!checklist) return res.status(404).json({ message: 'Checklist item not found' });
 
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, checklist.taskId));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, checklist.taskId));
     if (!targetTask) return res.status(404).json({ message: 'Task not found' });
 
     if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
@@ -4730,6 +4528,23 @@ router.patch('/checklists/:checklistId', async (req, res) => {
       .set(updatePayload)
       .where(eq(taskChecklists.id, checklistId))
       .returning();
+
+    // Check if all checklists are now completed:
+    if (isCompleted) {
+      const allItems = await db.select().from(taskChecklists).where(eq(taskChecklists.taskId, targetTask.id));
+      const allDone = allItems.every(c => c.id === checklistId || c.isCompleted);
+      if (allDone && allItems.length > 0) {
+        createTaskNotification({
+          targetEmployeeId: targetTask.reviewingLeadId || targetTask.creatorId,
+          type: 'TASK_CHECKLIST_COMPLETE',
+          title: `Checklist Completed: [${targetTask.taskCode}]`,
+          message: `All checklist items have been checked off for task [${targetTask.taskCode}] "${targetTask.title}".`,
+          taskId: targetTask.id,
+          taskCode: targetTask.taskCode,
+          taskTitle: targetTask.title,
+        }).catch(console.error);
+      }
+    }
 
     res.json(updated);
   } catch (err) {
@@ -4759,7 +4574,7 @@ router.post('/:id/comments', async (req, res) => {
   if (!content) return res.status(400).json({ message: 'content is required' });
 
   try {
-    const [targetTask] = await db.select({ assigneeId: tasks.assigneeId }).from(tasks).where(eq(tasks.id, id));
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, id));
     if (!targetTask) return res.status(404).json({ message: 'Task not found' });
 
     if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
@@ -4777,21 +4592,52 @@ router.post('/:id/comments', async (req, res) => {
       })
       .returning();
 
+    // Notify the other party about the comment:
+    if (!isSystemLog) {
+      const isAuthorAssignee = req.user?.employeeId === targetTask.assigneeId;
+      const targetRecipientEmpId = isAuthorAssignee
+        ? (targetTask.reviewingLeadId || targetTask.creatorId)
+        : targetTask.assigneeId;
+
+      if (targetRecipientEmpId) {
+        createTaskNotification({
+          targetEmployeeId: targetRecipientEmpId,
+          type: 'TASK_COMMENT',
+          title: `Task Comment: [${targetTask.taskCode}]`,
+          message: `${authorName} commented on task [${targetTask.taskCode}]: "${content.slice(0, 80)}"`,
+          taskId: targetTask.id,
+          taskCode: targetTask.taskCode,
+          taskTitle: targetTask.title,
+        }).catch(console.error);
+      }
+    }
+
     res.status(201).json(newComment);
   } catch (err) {
     res.status(500).json({ message: 'Failed to post comment' });
   }
 });
 
-// DELETE /api/tasks/:id - Manager/Admin protected task deletion
+// DELETE /api/tasks/:id - Admin & Manager protected task deletion
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const taskId = String(req.params.id);
   try {
-    const [deleted] = await db.delete(tasks).where(eq(tasks.id, taskId)).returning();
-    if (!deleted) return res.status(404).json({ message: 'Task not found' });
-    res.json({ message: 'Task deleted successfully', id: taskId });
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to delete task' });
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(taskChecklists).where(eq(taskChecklists.taskId, taskId));
+      await tx.delete(taskComments).where(eq(taskComments.taskId, taskId));
+      await tx.delete(taskNotes).where(eq(taskNotes.taskId, taskId));
+      await tx.delete(tasks).where(eq(tasks.id, taskId));
+    });
+
+    res.json({ message: `Task ${task.taskCode || task.title} deleted successfully`, id: taskId });
+  } catch (err: any) {
+    console.error('[DELETE TASK ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete task' });
   }
 });
 
@@ -4799,7 +4645,9 @@ export default router;
 
 ```
 
-## FILE: artifacts/api-server/src/services/calendar-sync.ts
+---
+
+### File: `artifacts/api-server/src/services/calendar-sync.ts`
 
 ```typescript
 import { db, meetings, users, employees, googleTokens, eq, and, gte, lte } from '@workspace/db';
@@ -4962,7 +4810,9 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
 
 ```
 
-## FILE: artifacts/api-server/src/services/email.ts
+---
+
+### File: `artifacts/api-server/src/services/email.ts`
 
 ```typescript
 import { Resend } from 'resend';
@@ -4994,7 +4844,11 @@ async function attemptSupabaseInviteSend(toEmail: string, name: string, inviteLi
   }
 }
 
-async function attemptSmtpSend(toEmail: string, htmlContent: string) {
+async function attemptSmtpSend(
+  toEmail: string,
+  htmlContent: string,
+  subject: string = 'You have been invited to EHM-Climagro OS — Accept Invite'
+) {
   const rawUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.MAIL_USER || '';
   const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || process.env.MAIL_PASS || '';
 
@@ -5037,7 +4891,7 @@ async function attemptSmtpSend(toEmail: string, htmlContent: string) {
       const info = await transporter.sendMail({
         from: `EHM-Climagro OS <${smtpUser}>`,
         to: toEmail,
-        subject: 'You have been invited to EHM-Climagro OS — Accept Invite',
+        subject: subject,
         html: htmlContent,
       });
 
@@ -5071,15 +4925,18 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   console.warn('[SUPABASE INVITE FAILED, FALLING BACK TO SMTP/RESEND]:', supabaseResult?.error);
 
   const htmlContent = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E7EB; border-radius: 12px; background-color: #ffffff;">
-      <h2 style="color: #111827; margin-top: 0; font-size: 20px;">You have been invited to create a user account</h2>
-      <p style="color: #374151; font-size: 15px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
-      <p style="color: #374151; font-size: 15px; line-height: 1.5;">You have been invited to create a user account on <a href="${appUrl}" style="color: #10B981; text-decoration: underline; font-weight: bold;">${appUrl}</a>.</p>
-      <p style="color: #374151; font-size: 15px; line-height: 1.5;">Follow this link to accept the invite:</p>
-      <div style="margin: 24px 0;">
-        <a href="${inviteLink}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 15px;">Accept the invite</a>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #E5E7EB; border-radius: 16px; background-color: #ffffff;">
+      <div style="margin-bottom: 24px;">
+        <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #10B981;">EHM-Climagro OS</span>
       </div>
-      <p style="color: #6B7280; font-size: 13px; line-height: 1.4; border-top: 1px solid #F3F4F6; padding-top: 16px; margin-top: 24px;">
+      <h2 style="color: #111827; margin-top: 0; font-size: 20px; font-weight: 700;">You have been invited to create a user account</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">You have been invited to create a user account on <a href="${appUrl}" style="color: #10B981; text-decoration: underline; font-weight: 600;">${appUrl}</a>.</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">Follow this link to accept the invite and set up your password:</p>
+      <div style="margin: 28px 0;">
+        <a href="${inviteLink}" style="background-color: #10B981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">Accept the invite</a>
+      </div>
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.5; border-top: 1px solid #F3F4F6; padding-top: 20px; margin-top: 28px;">
         You're receiving this email because an invitation was sent to set up your account on EHM-Climagro OS.<br/>
         Or copy and paste this direct link: <a href="${inviteLink}" style="color: #10B981;">${inviteLink}</a>
       </p>
@@ -5087,13 +4944,13 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   `;
 
   // Priority 2: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
-  const smtpResult = await attemptSmtpSend(toEmail, htmlContent);
+  const smtpResult = await attemptSmtpSend(toEmail, htmlContent, 'You have been invited to EHM-Climagro OS — Accept Invite');
   if (smtpResult) {
     if (smtpResult.sent) return smtpResult;
     console.warn('[SMTP DELIVERY FAILED, FALLING BACK TO RESEND/NOTICE]:', smtpResult.error);
   }
 
-  // Priority 2: Resend API if configured
+  // Priority 3: Resend API if configured
   const currentResendKey = process.env.RESEND_API_KEY;
   const resendClient = currentResendKey && !currentResendKey.includes('your_resend_key') && !currentResendKey.includes('123456789')
     ? new Resend(currentResendKey)
@@ -5120,6 +4977,79 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
   }
 
   console.log('[EMAIL SERVICE NOTICE] Neither SMTP nor Resend API Key is configured. Invite link printed above.');
+  return { sent: false, provider: 'None', error: 'No email service credentials (SMTP_USER/SMTP_PASS or RESEND_API_KEY) found in server environment.' };
+}
+
+export async function sendPasswordResetOtpEmail(toEmail: string, otp: string, name: string = 'User') {
+  console.log(`\n======================================================`);
+  console.log(`[PASSWORD RESET OTP ATTEMPT] To: ${toEmail} (${name})`);
+  console.log(`[OTP CODE]: ${otp} (Valid for 10 minutes)`);
+  console.log(`======================================================\n`);
+
+  const subject = `Your EHM-Climagro OS Password Reset Code: ${otp}`;
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #E5E7EB; border-radius: 16px; background-color: #ffffff;">
+      <div style="margin-bottom: 24px;">
+        <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #10B981;">EHM-Climagro OS</span>
+      </div>
+      <h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">Password Reset Verification Code</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6;">We received a request to reset your password for your EHM-Climagro OS account. Use the 6-digit verification code below to complete the reset process:</p>
+      
+      <div style="margin: 28px 0; text-align: center; background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 24px;">
+        <span style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #166534; margin-bottom: 8px;">One-Time Verification Code</span>
+        <div style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 38px; font-weight: 800; letter-spacing: 8px; color: #047857; line-height: 1.2;">
+          ${otp}
+        </div>
+        <span style="display: block; font-size: 13px; color: #15803D; margin-top: 8px; font-weight: 500;">⏱️ This code will expire in 10 minutes</span>
+      </div>
+
+      <p style="color: #4B5563; font-size: 14px; line-height: 1.6;">
+        Enter this code into the password reset window in your browser to choose a new password. For security reasons, do not share this code with anyone.
+      </p>
+
+      <div style="border-top: 1px solid #F3F4F6; padding-top: 20px; margin-top: 28px;">
+        <p style="color: #9CA3AF; font-size: 13px; line-height: 1.5; margin: 0;">
+          If you did not request a password reset, you can safely ignore this email. Your existing password will remain active and unchanged.
+        </p>
+      </div>
+    </div>
+  `;
+
+  // Priority 1: Fast Dual-Port SMTP using the exact same configured transporter
+  const smtpResult = await attemptSmtpSend(toEmail, htmlContent, subject);
+  if (smtpResult) {
+    if (smtpResult.sent) return smtpResult;
+    console.warn('[SMTP OTP DELIVERY FAILED, FALLING BACK TO RESEND/NOTICE]:', smtpResult.error);
+  }
+
+  // Priority 2: Resend API if configured
+  const currentResendKey = process.env.RESEND_API_KEY;
+  const resendClient = currentResendKey && !currentResendKey.includes('your_resend_key') && !currentResendKey.includes('123456789')
+    ? new Resend(currentResendKey)
+    : null;
+
+  if (resendClient) {
+    try {
+      const emailResult = await resendClient.emails.send({
+        from: 'EHM-Climagro OS <onboarding@resend.dev>',
+        to: toEmail,
+        subject: subject,
+        html: htmlContent,
+      });
+      if (emailResult.error) {
+        console.error('[RESEND OTP EMAIL API ERROR]:', emailResult.error);
+        return { sent: false, provider: 'Resend', error: emailResult.error.message };
+      }
+      console.log(`[RESEND OTP DELIVERED]: Email ID ${emailResult.data?.id}`);
+      return { sent: true, provider: 'Resend', id: emailResult.data?.id };
+    } catch (err: any) {
+      console.error('[EMAIL SERVICE RESEND OTP ERROR]:', err?.message || err);
+      return { sent: false, provider: 'Resend', error: err?.message || String(err) };
+    }
+  }
+
+  console.log('[EMAIL SERVICE NOTICE] Neither SMTP nor Resend API Key is configured. OTP code printed above.');
   return { sent: false, provider: 'None', error: 'No email service credentials (SMTP_USER/SMTP_PASS or RESEND_API_KEY) found in server environment.' };
 }
 
@@ -5277,7 +5207,9 @@ export async function sendCalendarReconnectEmail(toEmail: string, userName: stri
 
 ```
 
-## FILE: artifacts/api-server/src/services/encryption.ts
+---
+
+### File: `artifacts/api-server/src/services/encryption.ts`
 
 ```typescript
 import crypto from 'node:crypto';
@@ -5311,16 +5243,18 @@ export function decrypt(cipherText: string): string {
 
 ```
 
-## FILE: artifacts/api-server/src/services/supabase-admin.ts
+---
+
+### File: `artifacts/api-server/src/services/supabase-admin.ts`
 
 ```typescript
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://qlnghemivzcyazvtndhv.supabase.co';
+const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!serviceRoleKey) {
-  throw new Error('[FATAL SECURITY ERROR]: SUPABASE_SERVICE_ROLE_KEY environment variable is required.');
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('[FATAL SECURITY ERROR]: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required.');
 }
 
 export const supabaseAdmin: SupabaseClient = createClient(
@@ -5336,7 +5270,9 @@ export const supabaseAdmin: SupabaseClient = createClient(
 
 ```
 
-## FILE: artifacts/api-server/src/verify_connection.ts
+---
+
+### File: `artifacts/api-server/src/verify_connection.ts`
 
 ```typescript
 import { db } from '@workspace/db';
@@ -5364,7 +5300,9 @@ verify();
 
 ```
 
-## FILE: artifacts/api-server/tsconfig.json
+---
+
+### File: `artifacts/api-server/tsconfig.json`
 
 ```json
 {
@@ -5383,7 +5321,9 @@ verify();
 
 ```
 
-## FILE: artifacts/hr-dashboard/index.html
+---
+
+### File: `artifacts/hr-dashboard/index.html`
 
 ```html
 <!DOCTYPE html>
@@ -5405,7 +5345,9 @@ verify();
 
 ```
 
-## FILE: artifacts/hr-dashboard/package.json
+---
+
+### File: `artifacts/hr-dashboard/package.json`
 
 ```json
 {
@@ -5446,13 +5388,16 @@ verify();
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/App.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/App.tsx`
 
 ```tsx
 import React, { useState } from 'react';
 import { Route, Switch, useLocation } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
+import { fetchApi } from '@workspace/api-client-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { EntityProvider } from './contexts/EntityContext';
 import { Sidebar } from './components/Sidebar';
@@ -5495,6 +5440,20 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
+  const handleAssignTaskSubmit = async (taskData: any) => {
+    try {
+      const created = await fetchApi<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify(taskData),
+      });
+      toast.success(`Task ${created?.taskCode || 'created'} saved to live database!`);
+      queryClient.invalidateQueries();
+    } catch (err: any) {
+      console.error('[TASK ASSIGN MODAL SUBMIT ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task to database');
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
@@ -5512,7 +5471,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       </div>
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <TaskAssignModal isOpen={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} onSubmit={() => {}} />
+      <TaskAssignModal isOpen={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} onSubmit={handleAssignTaskSubmit} />
       <ClockInModal isOpen={isClockModalOpen} onClose={() => setIsClockModalOpen(false)} />
       <ExportReportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
     </div>
@@ -5580,7 +5539,9 @@ export default App;
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ClockInModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ClockInModal.tsx`
 
 ```tsx
 import React, { useState } from 'react';
@@ -5676,7 +5637,9 @@ export const ClockInModal: React.FC<ClockInModalProps> = ({ isOpen, onClose }) =
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/EmployeeDashboardView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -5935,38 +5898,43 @@ export const EmployeeDashboardView: React.FC = () => {
   const activeEmpCode = activeEmployee?.employeeCode || (user?.employeeId ? `EMP-${user.employeeId.slice(0, 4)}` : 'EHM-E01');
   const activeEmpDesignation = activeEmployee?.designation || 'Senior Team Member';
 
-  const handleCreatePersonalTask = (e: React.FormEvent) => {
+  const handleCreatePersonalTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
       toast.error('Please enter a task deliverable title.');
       return;
     }
 
-    const newTask: EmployeeDeliverableTask = {
-      id: `emp-t-${Date.now()}`,
-      taskId: `${activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM'}-EMP01-00${myTasks.length + 1}`,
-      title: newTitle,
-      dept: newDept,
-      entity: activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM',
-      priority: newPriority,
-      lead: newLead,
-      assigneeName: activeEmpName,
-      status: 'In Progress',
-      dueDate: newDueDate,
-      outputUrl: newOutputUrl,
-      waitingOn: 'None (Self)',
-      notes: newNotes,
-      delayRequested: false,
-      sprintWeek: newSprintWeek,
-      completionPct: 10,
-    };
+    const entityCode = activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM';
+    const targetEmpId = activeEmployee?.id || user?.employeeId || user?.id;
 
-    setMyTasks([newTask, ...myTasks]);
-    toast.success(`Task "${newTitle}" created for ${activeEmpName}!`);
-    setIsCreateModalOpen(false);
-    setNewTitle('');
-    setNewNotes('');
-    setNewOutputUrl('');
+    try {
+      const createdTask = await fetchApi<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          description: newNotes.trim() || undefined,
+          priority: newPriority,
+          dueDate: newDueDate,
+          deliverableUrl: newOutputUrl.trim() || undefined,
+          assigneeId: targetEmpId,
+          entityCode: entityCode,
+          entity: entityCode,
+          sprintWeek: newSprintWeek,
+          status: 'IN_PROGRESS',
+        }),
+      });
+
+      toast.success(`Task "${newTitle}" created and saved to live database!`);
+      setIsCreateModalOpen(false);
+      setNewTitle('');
+      setNewNotes('');
+      setNewOutputUrl('');
+      await loadData();
+    } catch (err: any) {
+      console.error('[CREATE PERSONAL TASK ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task to database');
+    }
   };
 
   // Standup Log State
@@ -6007,30 +5975,37 @@ export const EmployeeDashboardView: React.FC = () => {
 
             return matchesAssignment;
           })
-          .map((t) => ({
-            id: t.id,
-            taskId: t.taskCode || t.id,
-            title: t.title,
-            dept: currentTargetEmp?.departmentName || 'Product & Tech',
-            entity: t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM',
-            priority: t.priority || 'MEDIUM',
-            lead: t.reviewingLead || 'Dr. Harshit Mishra',
-            assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Employee'),
-            status: (t.status === 'DONE'
-              ? 'Done'
-              : t.status === 'BLOCKED'
-                ? 'Blocked'
-                : t.status === 'DELAYED'
-                  ? 'Delayed'
-                  : 'In Progress') as any,
-            dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-18',
-            outputUrl: t.deliverableUrl || '',
-            waitingOn: 'None (Self)',
-            notes: t.description || '',
-            delayRequested: false,
-            sprintWeek: t.sprintWeek || 'Sprint 35 (Current)',
-            completionPct: t.status === 'DONE' ? 100 : 65,
-          }));
+          .map((t) => {
+            const matchedLeadEmp = (empData || []).find((e: any) => e.id === t.reviewingLeadId || e.employeeId === t.reviewingLeadId);
+            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Dr. Harshit Mishra');
+
+            return {
+              id: t.id,
+              taskId: t.taskCode || t.id,
+              title: t.title,
+              dept: currentTargetEmp?.departmentName || 'Product & Tech',
+              entity: t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM',
+              priority: t.priority || 'MEDIUM',
+              lead: leadName,
+              reviewingLeadId: t.reviewingLeadId || matchedLeadEmp?.id,
+              assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Employee'),
+              assigneeId: t.assigneeId,
+              status: (t.status === 'DONE'
+                ? 'Done'
+                : t.status === 'BLOCKED'
+                  ? 'Blocked'
+                  : t.status === 'DELAYED'
+                    ? 'Delayed'
+                    : 'In Progress') as any,
+              dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-18',
+              outputUrl: t.deliverableUrl || '',
+              waitingOn: t.waitingOn || 'None (Self)',
+              notes: t.description || '',
+              delayRequested: false,
+              sprintWeek: t.sprintWeek || 'Sprint 35 (Current)',
+              completionPct: t.status === 'DONE' ? 100 : 65,
+            };
+          });
 
         setMyTasks(filteredTasks);
       }
@@ -6112,22 +6087,39 @@ export const EmployeeDashboardView: React.FC = () => {
     });
   };
 
-  const handleSaveTaskUpdate = (updated: TaskItem) => {
-    setMyTasks(
-      myTasks.map((t) =>
-        t.id === updated.id
-          ? {
-            ...t,
-            status: updated.status,
-            outputUrl: updated.outputUrl || '',
-            waitingOn: updated.waitingOn || 'None (Self)',
-            notes: updated.notes || '',
-            completionPct: updated.status === 'Done' ? 100 : t.completionPct,
-          }
-          : t
-      )
-    );
-    toast.success(`Personal task ${updated.taskId} updated successfully!`);
+  const handleSaveTaskUpdate = async (updated: TaskItem) => {
+    try {
+      await fetchApi(`/api/tasks/${updated.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: updated.status,
+          deliverableUrl: updated.outputUrl || '',
+          description: updated.notes || '',
+          waitingOn: updated.waitingOn,
+          priority: updated.priority,
+          dueDate: updated.dueDate,
+        }),
+      });
+      setMyTasks(
+        myTasks.map((t) =>
+          t.id === updated.id
+            ? {
+              ...t,
+              status: updated.status,
+              outputUrl: updated.outputUrl || '',
+              waitingOn: updated.waitingOn || 'None (Self)',
+              notes: updated.notes || '',
+              completionPct: updated.status === 'Done' ? 100 : t.completionPct,
+            }
+            : t
+        )
+      );
+      toast.success(`Personal task ${updated.taskId} updated & saved to live database!`);
+    } catch (err: any) {
+      console.error('[EMPLOYEE DASH TASK UPDATE ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task update to database');
+      throw err;
+    }
   };
 
   const handleSendDelayRequest = async (taskId: string, taskCode: string) => {
@@ -7062,6 +7054,10 @@ export const EmployeeDashboardView: React.FC = () => {
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
         onSave={handleSaveTaskUpdate}
+        onDelete={(deletedId) => {
+          setMyTasks((prev: EmployeeDeliverableTask[]) => prev.filter((t: EmployeeDeliverableTask) => t.id !== deletedId));
+          setSelectedTask(null);
+        }}
         isReadOnly={false}
       />
 
@@ -7212,11 +7208,13 @@ export const EmployeeDashboardView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/EpicsSubView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/EpicsSubView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown, Trash2 } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
@@ -7224,6 +7222,7 @@ import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
+import { useAuth } from '../contexts/AuthContext';
 
 interface EpicItem {
   id: string;
@@ -7273,7 +7272,13 @@ const TARGET_WEEK_OPTIONS = [
 ];
 
 export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSelectInitiative, selectedEpicIdToView, onClearSelectedEpic }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [epics, setEpics] = useState<EpicItem[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteInitiativeConfirm, setShowDeleteInitiativeConfirm] = useState(false);
+  const [isDeletingInitiative, setIsDeletingInitiative] = useState(false);
   const [initiatives, setInitiatives] = useState<InitiativeOption[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -7807,6 +7812,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               <span className="text-sm font-bold text-gray-700">Epic</span>
 
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                    title="Delete Epic (Admin Only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
                 {isManager && (
                   <button
                     type="button"
@@ -7890,6 +7906,19 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 )}
               </div>
 
+              {/* Success Metric Box (Dark Theme Banner - Only shown if filled) */}
+              {(viewingEpic as any).targetDeliverableMetric ? (
+                <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                    <Target className="w-4 h-4 text-emerald-400" />
+                    <span>Success metric</span>
+                  </div>
+                  <p className="text-sm font-bold text-white pl-6">
+                    {(viewingEpic as any).targetDeliverableMetric}
+                  </p>
+                </div>
+              ) : null}
+
               {/* 3-Column Metadata Grid */}
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <div>
@@ -7902,19 +7931,25 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingEpic.department || 'Product and tech'}
+                    {(() => {
+                      const dept = viewingEpic.department;
+                      if (!dept || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Product and tech';
+                      }
+                      return dept;
+                    })()}
                   </span>
                 </div>
 
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingEpic.createdAt ? new Date(viewingEpic.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '8 Sep 2026'}
+                    {viewingEpic.createdAt ? new Date(viewingEpic.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
                   </span>
                 </div>
               </div>
 
-              {/* Linked Tasks Section */}
+              {/* Linked Tasks Section with Progress Bar */}
               {(() => {
                 const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
                 const combined = [
@@ -7922,47 +7957,57 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   ...allTasks.filter((t: any) => t.epicId === viewingEpic.id || t.parentEpicCode === viewingEpic.epicCode)
                 ];
                 const linkedTasks = Array.from(new Map(combined.map((t: any) => [t.id || t.taskCode, t])).values());
+                const targetTasksCount = Math.max(linkedTasks.length, 3);
                 const doneCount = linkedTasks.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
 
                 return (
                   <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold text-gray-900">Linked tasks</h4>
-                      <span className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span>{doneCount} of {linkedTasks.length} done</span>
-                      </span>
+                    {/* Header line & Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-gray-900">Linked tasks</h4>
+                        <span className="text-xs font-medium text-gray-500">
+                          {doneCount} of {linkedTasks.length} done
+                        </span>
+                      </div>
+                      <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((doneCount / Math.max(1, linkedTasks.length)) * 100))}%` }}
+                        />
+                      </div>
                     </div>
 
-                    {linkedTasks.length > 0 ? (
-                      <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
-                        {linkedTasks.map((taskItem: any, idx: number) => {
-                          const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                            ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                            : (taskItem.taskCode || 'TSK-001');
+                    {/* Tasks List */}
+                    <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+                      {linkedTasks.map((taskItem: any, idx: number) => {
+                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
+                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
+                          : (taskItem.taskCode || 'TSK-001');
 
-                          const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
-                          const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '18 Sep';
+                        const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
+                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
 
-                          const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
-                          const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
-                          const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (taskItem.priority === 'URGENT' || taskItem.priority === 'HIGH' || taskItem.priority === 'P1') ? 'P1' : 'P2';
+                        const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
+                        const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
+                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (taskItem.priority === 'URGENT' || taskItem.priority === 'HIGH' || taskItem.priority === 'P1') ? 'P1' : 'Planned';
 
-                          return (
-                            <div
-                              key={taskItem.id || idx}
-                              onClick={() => handleOpenTaskModal(taskItem)}
-                              className="py-3 flex items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                            >
-                              <div className="space-y-1 min-w-0 flex-1">
-                                <h5 className="font-bold text-xs text-gray-900 group-hover:text-emerald-700 transition-colors">
-                                  {taskItem.title}
-                                </h5>
-                                <p className="text-[11px] text-gray-400 font-medium">
-                                  {displayTaskCode} • {assigneeStr} • {dateStr}
-                                </p>
-                              </div>
+                        return (
+                          <div
+                            key={taskItem.id || idx}
+                            onClick={() => handleOpenTaskModal(taskItem)}
+                            className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <h5 className="font-bold text-xs text-gray-900 group-hover:text-emerald-700 transition-colors">
+                                {taskItem.title}
+                              </h5>
+                              <p className="text-[11px] text-gray-400 font-medium">
+                                {displayTaskCode} • {assigneeStr} • {dateStr}
+                              </p>
+                            </div>
 
+                            <div className="flex items-center gap-3 shrink-0">
                               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
                                 isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
@@ -7971,31 +8016,89 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                               }`}>
                                 {taskStatusLabel}
                               </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-xs text-gray-400 bg-gray-50/60 rounded-xl border border-dashed border-gray-200">
-                        No tasks created under this epic yet.
-                      </div>
-                    )}
+                          </div>
+                        );
+                      })}
 
-                    {/* Add Task Button */}
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          toast.info(`Task creation for ${viewingEpic.epicCode} initiated`);
-                        }}
-                        className="px-3.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
-                      >
-                        Add task
-                      </button>
+                      {/* Uncreated Task Slots */}
+                      {Array.from({ length: Math.max(0, targetTasksCount - linkedTasks.length) }).map((_, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
+                          <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toast.info(`Creating Task slot ${linkedTasks.length + idx + 1} for ${viewingEpic.epicCode}`);
+                            }}
+                            className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR EPIC DELETION (ADMIN ONLY) */}
+      {showDeleteConfirm && viewingEpic && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Feature Epic</h3>
+                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to permanently delete epic{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                {viewingEpic.epicCode}
+              </span>{' '}
+              "{viewingEpic.title}"? This will permanently delete all associated sprints and tasks.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  try {
+                    setIsDeleting(true);
+                    await fetchApi(`/api/epics/${viewingEpic.id}`, { method: 'DELETE' });
+                    toast.success(`Epic ${viewingEpic.epicCode} deleted successfully!`);
+                    setShowDeleteConfirm(false);
+                    setViewingEpic(null);
+                    if (onClearSelectedEpic) onClearSelectedEpic();
+                    loadData();
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to delete epic');
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Epic'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -8295,220 +8398,285 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         isOpen={!!selectedTaskToView}
         task={selectedTaskToView}
         onClose={() => setSelectedTaskToView(null)}
+        onDelete={(deletedId) => {
+          setAllTasks(prev => prev.filter(t => t.id !== deletedId));
+          setSelectedTaskToView(null);
+        }}
         isReadOnly={true}
       />
 
-      {/* Strategic Initiative Details Modal (Exact Image 1 layout) */}
+      {/* 🚀 BIG VIEW MODE MODAL FOR STRATEGIC INITIATIVE (EXACT IMAGE 1 DESIGN) */}
       {viewingInitiativeInEpics && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto select-none">
-          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
-                  <Target className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-gray-900">
-                    Strategic Initiative Details
-                  </h3>
-                  <p className="text-[11px] text-gray-400 font-semibold">
-                    Full breakdown of goal, metadata, and linked epics
-                  </p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Top Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0 bg-white">
+              <span className="text-sm font-bold text-gray-700">Initiative</span>
 
-              <button
-                onClick={() => setViewingInitiativeInEpics(null)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteInitiativeConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                    title="Delete Initiative (Admin Only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSelectInitiative) {
+                        onSelectInitiative(viewingInitiativeInEpics.id);
+                        setViewingInitiativeInEpics(null);
+                      } else {
+                        toast.info(`Editing initiative ${viewingInitiativeInEpics.initiativeCode}`);
+                      }
+                    }}
+                    className="px-3.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewingInitiativeInEpics(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Modal Body Content */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-left">
-              {/* Section 1: Initiative Title */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Initiative Title
-                </span>
-                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+              {/* Badges line */}
+              {(() => {
+                const isCAG = (viewingInitiativeInEpics.entityName || viewingInitiativeInEpics.initiativeCode || '').toLowerCase().includes('cag') || (viewingInitiativeInEpics.entityName || '').toLowerCase().includes('climagro');
+                const isDone = viewingInitiativeInEpics.status === 'DONE' || viewingInitiativeInEpics.status === 'COMPLETED';
+                const isInProgress = viewingInitiativeInEpics.status === 'ACTIVE' || viewingInitiativeInEpics.status === 'IN_PROGRESS';
+                const statusLabel = isDone ? 'Done' : isInProgress ? 'In progress' : 'Planned';
+
+                return (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                      {viewingInitiativeInEpics.initiativeCode || viewingInitiativeInEpics.code || 'INIT'}
+                    </span>
+                    <span className="text-gray-300 font-bold">•</span>
+                    <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
+                      {isCAG ? 'Climagro' : 'EHM'}
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                      {statusLabel}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Title & Description */}
+              <div className="space-y-1.5">
+                <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-snug">
                   {viewingInitiativeInEpics.title}
                 </h2>
-              </div>
-
-              {/* Section 2: Initiative Metadata Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Initiative Code
-                  </span>
-                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                    {viewingInitiativeInEpics.initiativeCode || viewingInitiativeInEpics.code || 'CAG-INIT'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Entity / Brand
-                  </span>
-                  <span className="text-xs font-bold text-gray-900">
-                    {(viewingInitiativeInEpics.initiativeCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Due Date / Target Month
-                  </span>
-                  <span className="text-xs font-bold text-purple-700 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-purple-500" />
-                    <span>{viewingInitiativeInEpics.targetMonth || 'Month 1 (Weeks 1–4)'}</span>
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Posting Date & Time
-                  </span>
-                  <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{formatDateTime(viewingInitiativeInEpics.createdAt)}</span>
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Department & Track
-                  </span>
-                  <span className="text-xs font-bold text-amber-800 flex items-center gap-1">
-                    <Tag className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{viewingInitiativeInEpics.subDepartment || viewingInitiativeInEpics.departmentId || 'Product & Tech'}</span>
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Current Status
-                  </span>
-                  <span className="text-xs font-extrabold px-2.5 py-1 rounded uppercase border bg-blue-100 text-blue-800 border-blue-300 inline-block">
-                    {viewingInitiativeInEpics.status || 'IN_PROGRESS'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Target Epics Division
-                  </span>
-                  <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
-                    <Layers className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{viewingInitiativeInEpics.epicsCount || 0} / {viewingInitiativeInEpics.epicsCountTarget || 3} Epics</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Section 3: Target Deliverable Metric Goal */}
-              <div>
-                <h4 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Target Deliverable Metric Goal</span>
-                </h4>
-                {viewingInitiativeInEpics.targetDeliverableMetric ? (
-                  <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-bold text-emerald-950">
-                    {viewingInitiativeInEpics.targetDeliverableMetric}
-                  </div>
-                ) : (
-                  <p className="text-xs italic text-gray-400">No deliverable metric target specified.</p>
+                {viewingInitiativeInEpics.description && (
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                    {viewingInitiativeInEpics.description}
+                  </p>
                 )}
               </div>
 
-              {/* Section 4: Detailed Description */}
-              <div>
-                <h4 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Initiative Description
-                </h4>
-                {viewingInitiativeInEpics.description ? (
-                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 text-xs text-gray-800">
-                    <MarkdownViewer content={viewingInitiativeInEpics.description} />
+              {/* Success Metric Box (Only shown if filled) */}
+              {viewingInitiativeInEpics.targetDeliverableMetric ? (
+                <div>
+                  <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-1 shadow-2xs">
+                    <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                      <Target className="w-4 h-4 text-emerald-400" />
+                      <span>Success metric</span>
+                    </div>
+                    <p className="text-sm font-bold text-white pl-6">
+                      {viewingInitiativeInEpics.targetDeliverableMetric}
+                    </p>
                   </div>
-                ) : (
-                  <p className="text-xs italic text-gray-400">No description provided.</p>
-                )}
-              </div>
+                </div>
+              ) : null}
 
-              {/* Section 5: Linked Epics */}
-              <div className="border-t border-gray-100 pt-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-xs font-extrabold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-emerald-600" />
-                    <span>Linked Epics ({viewingInitiativeInEpics.epics?.length || 0} / {viewingInitiativeInEpics.epicsCountTarget || 3} Planned)</span>
-                  </h4>
+              {/* 3-Column Metadata Grid */}
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Timeline</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingInitiativeInEpics.targetMonth || 'Month 1 (Weeks 1-4)'}
+                  </span>
                 </div>
 
-                {viewingInitiativeInEpics.epics && viewingInitiativeInEpics.epics.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {viewingInitiativeInEpics.epics.map((epic: any) => {
-                      const epicStatus = epic.status || 'PLANNED';
-                      return (
-                        <div
-                          key={epic.id}
-                          onClick={() => {
-                            const foundEpic = epics.find(e => e.id === epic.id || e.epicCode === epic.epicCode);
-                            setViewingInitiativeInEpics(null);
-                            setViewingEpic(foundEpic || epic);
-                          }}
-                          className="bg-white p-3.5 rounded-2xl border border-gray-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between text-left"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Epic Code</span>
-                                <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                  {epic.epicCode}
-                                </span>
-                              </div>
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {(() => {
+                      const dept = viewingInitiativeInEpics.departmentName || viewingInitiativeInEpics.subDepartment || viewingInitiativeInEpics.department || viewingInitiativeInEpics.departmentId;
+                      if (!dept) return 'Product & Tech';
+                      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Engineering & Product';
+                      }
+                      return dept;
+                    })()}
+                  </span>
+                </div>
 
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5 text-right">Status</span>
-                                <span className="text-[9px] font-bold px-2 py-0.5 rounded uppercase border bg-blue-100 text-blue-800 border-blue-300">
-                                  {epicStatus}
-                                </span>
-                              </div>
-                            </div>
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingInitiativeInEpics.createdAt ? new Date(viewingInitiativeInEpics.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                  </span>
+                </div>
+              </div>
 
-                            <div className="mt-2">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Epic Title</span>
-                              <h4 className="text-xs font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">
+              {/* Linked Epics Section */}
+              {(() => {
+                const childEpics = (viewingInitiativeInEpics.epics && viewingInitiativeInEpics.epics.length > 0)
+                  ? viewingInitiativeInEpics.epics
+                  : epics.filter(e => e.initiativeId === viewingInitiativeInEpics.id);
+                const targetEpicsCount = viewingInitiativeInEpics.epicsCountTarget || 3;
+                const createdCount = childEpics.length;
+
+                return (
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    {/* Header line & Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-gray-900">Linked epics</h4>
+                        <span className="text-xs font-medium text-gray-500">
+                          {createdCount} of {targetEpicsCount} created
+                        </span>
+                      </div>
+                      <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((createdCount / targetEpicsCount) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Epics List */}
+                    <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+                      {childEpics.map((epic: any) => {
+                        const epicStatus = epic.status || 'PLANNED';
+                        const isEpicDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED';
+                        const isEpicInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
+                        const epicStatusLabel = isEpicDone ? 'Done' : isEpicInProgress ? 'Active' : 'Planned';
+
+                        return (
+                          <div
+                            key={epic.id}
+                            onClick={() => {
+                              const foundEpic = epics.find(e => e.id === epic.id || e.epicCode === epic.epicCode);
+                              setViewingInitiativeInEpics(null);
+                              setViewingEpic(foundEpic || epic);
+                            }}
+                            className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <h5 className="font-bold text-xs text-gray-900 group-hover:text-emerald-700 transition-colors">
                                 {epic.title}
-                              </h4>
+                              </h5>
+                              <p className="text-[11px] text-gray-400 font-medium">
+                                {epic.epicCode} • {(epic as any).tasksCount || 0} tasks
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
+                                isEpicDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                isEpicInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                'bg-gray-100 text-gray-700 border-gray-200'
+                              }`}>
+                                {epicStatusLabel}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
                             </div>
                           </div>
+                        );
+                      })}
 
-                          <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100 text-xs font-bold text-emerald-600">
-                            <span>View Epic Details</span>
-                            <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
-                          </div>
+                      {/* Uncreated Epic Slots */}
+                      {Array.from({ length: Math.max(0, targetEpicsCount - createdCount) }).map((_, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
+                          <span>Epic slot {createdCount + idx + 1} — not created yet</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedInitiativeId(viewingInitiativeInEpics.id);
+                              setViewingInitiativeInEpics(null);
+                              setIsModalOpen(true);
+                            }}
+                            className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                          >
+                            Add
+                          </button>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-6 text-xs text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                    No Epics created under this Initiative yet.
-                  </div>
-                )}
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR INITIATIVE DELETION (ADMIN ONLY) */}
+      {showDeleteInitiativeConfirm && viewingInitiativeInEpics && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Strategic Initiative</h3>
+                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end">
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to permanently delete initiative{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                {viewingInitiativeInEpics.initiativeCode}
+              </span>{' '}
+              "{viewingInitiativeInEpics.title}"? This will permanently delete all associated epics, sprints, and tasks.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setViewingInitiativeInEpics(null)}
-                className="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-6 py-2.5 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                onClick={() => setShowDeleteInitiativeConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
-                Close View Mode
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingInitiative}
+                onClick={async () => {
+                  try {
+                    setIsDeletingInitiative(true);
+                    await fetchApi(`/api/initiatives/${viewingInitiativeInEpics.id}`, { method: 'DELETE' });
+                    toast.success(`Initiative ${viewingInitiativeInEpics.initiativeCode} deleted successfully!`);
+                    setShowDeleteInitiativeConfirm(false);
+                    setViewingInitiativeInEpics(null);
+                    loadData();
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to delete initiative');
+                  } finally {
+                    setIsDeletingInitiative(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeletingInitiative ? 'Deleting...' : 'Yes, Delete Initiative'}</span>
               </button>
             </div>
           </div>
@@ -8520,7 +8688,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ErrorBoundary.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ErrorBoundary.tsx`
 
 ```tsx
 import React, { Component, ErrorInfo, ReactNode } from 'react';
@@ -8609,7 +8779,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ExportReportModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ExportReportModal.tsx`
 
 ```tsx
 import React from 'react';
@@ -8674,11 +8846,544 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({ isOpen, on
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/InitiativesSubView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ForgotPasswordModal.tsx`
+
+```tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'wouter';
+import { Mail, KeyRound, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft, RefreshCw, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { fetchApi } from '@workspace/api-client-react';
+import { useAuth } from '../contexts/AuthContext';
+
+interface ForgotPasswordModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialEmail?: string;
+}
+
+type Step = 'EMAIL' | 'OTP' | 'PASSWORD' | 'SUCCESS';
+
+export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
+  isOpen,
+  onClose,
+  initialEmail = '',
+}) => {
+  const [, setLocation] = useLocation();
+  const { setUserSession } = useAuth();
+
+  const [step, setStep] = useState<Step>('EMAIL');
+  const [email, setEmail] = useState('');
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
+
+  // Auto-login auth payload after successful reset
+  const [authPayload, setAuthPayload] = useState<{ user: any; token: string } | null>(null);
+
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Initialize email when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setEmail(initialEmail || '');
+      setStep('EMAIL');
+      setOtpDigits(['', '', '', '', '', '']);
+      setResetToken('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setErrorMessage(null);
+      setAuthPayload(null);
+    }
+  }, [isOpen, initialEmail]);
+
+  // Countdown timer for OTP resend
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  // Focus first OTP input when reaching OTP step
+  useEffect(() => {
+    if (step === 'OTP' && otpInputRefs.current[0]) {
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 100);
+    }
+  }, [step]);
+
+  // Auto-redirect timer on success
+  useEffect(() => {
+    if (step === 'SUCCESS') {
+      const redirectTimer = setTimeout(() => {
+        handleFinalRedirect();
+      }, 2500);
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [step, authPayload]);
+
+  if (!isOpen) return null;
+
+  // Password Validation Checklist Rules
+  const hasMinLength = newPassword.length >= 8;
+  const hasUppercase = /[A-Z]/.test(newPassword);
+  const hasNumber = /[0-9]/.test(newPassword);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
+  const isPasswordFormValid = hasMinLength && hasUppercase && hasNumber && passwordsMatch;
+
+  // Step 1: Send OTP
+  const handleRequestOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      await fetchApi<{ message: string }>('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+
+      toast.success('Verification code sent to your email.');
+      setStep('OTP');
+      setCountdown(60);
+    } catch (err: any) {
+      console.error('[FORGOT PASSWORD REQUEST ERROR]:', err);
+      // Fallback message to prevent user enumeration
+      toast.success('Verification code sent if email is registered.');
+      setStep('OTP');
+      setCountdown(60);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Resend OTP handler
+  const handleResendOtp = async () => {
+    if (countdown > 0 || isLoading) return;
+    await handleRequestOtp();
+  };
+
+  // OTP Input Changes
+  const handleOtpChange = (index: number, val: string) => {
+    const value = val.replace(/[^0-9]/g, '');
+    if (!value) {
+      const newDigits = [...otpDigits];
+      newDigits[index] = '';
+      setOtpDigits(newDigits);
+      return;
+    }
+
+    // Single digit input
+    const singleDigit = value.slice(-1);
+    const newDigits = [...otpDigits];
+    newDigits[index] = singleDigit;
+    setOtpDigits(newDigits);
+
+    // Auto focus next input
+    if (index < 5 && singleDigit) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  // Handle OTP backspace
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Handle OTP paste
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim().replace(/[^0-9]/g, '');
+    if (!pastedData) return;
+
+    const digits = pastedData.slice(0, 6).split('');
+    const newDigits = [...otpDigits];
+    digits.forEach((digit, i) => {
+      if (i < 6) newDigits[i] = digit;
+    });
+    setOtpDigits(newDigits);
+
+    const focusIndex = Math.min(digits.length, 5);
+    otpInputRefs.current[focusIndex]?.focus();
+  };
+
+  // Step 2: Verify OTP
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const otp = otpDigits.join('');
+    if (otp.length !== 6) {
+      setErrorMessage('Please enter the complete 6-digit verification code.');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await fetchApi<{ resetToken: string; message: string }>('/api/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim().toLowerCase(), otp }),
+      });
+
+      if (res && res.resetToken) {
+        setResetToken(res.resetToken);
+        toast.success('Code verified successfully!');
+        setStep('PASSWORD');
+      } else {
+        setErrorMessage('Invalid verification code. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('[VERIFY OTP ERROR]:', err);
+      setErrorMessage(err.message || 'Invalid or expired verification code.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 3: Reset Password
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPasswordFormValid) {
+      setErrorMessage('Please meet all password requirements before continuing.');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await fetchApi<{ token: string; user: any; message: string }>('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          resetToken,
+          newPassword,
+        }),
+      });
+
+      if (res && res.token && res.user) {
+        setAuthPayload({ user: res.user, token: res.token });
+      }
+
+      toast.success('Password updated successfully!');
+      setStep('SUCCESS');
+    } catch (err: any) {
+      console.error('[RESET PASSWORD ERROR]:', err);
+      setErrorMessage(err.message || 'Failed to update password. Session may have expired.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Final Action: Complete Login & Redirect
+  const handleFinalRedirect = () => {
+    if (authPayload) {
+      setUserSession(authPayload.user, authPayload.token);
+      onClose();
+      setLocation('/');
+    } else {
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700/80 shadow-[0_0_60px_rgba(16,185,129,0.15)] rounded-3xl max-w-md w-full p-6 sm:p-8 relative text-white overflow-hidden">
+        
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          disabled={isLoading}
+          className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Header Icon & Title */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            {step === 'SUCCESS' ? (
+              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+            ) : step === 'PASSWORD' ? (
+              <Lock className="w-5 h-5 text-emerald-400" />
+            ) : (
+              <KeyRound className="w-5 h-5 text-emerald-400" />
+            )}
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              {step === 'EMAIL' && 'Forgot Password'}
+              {step === 'OTP' && 'Verify Code'}
+              {step === 'PASSWORD' && 'Set New Password'}
+              {step === 'SUCCESS' && 'Password Reset Complete'}
+            </h2>
+            <p className="text-xs text-slate-400">
+              {step === 'EMAIL' && 'Enter your registered email to receive an OTP code'}
+              {step === 'OTP' && 'Enter the 6-digit code sent to your email'}
+              {step === 'PASSWORD' && 'Create a secure new password for your account'}
+              {step === 'SUCCESS' && 'Your credentials have been securely updated'}
+            </p>
+          </div>
+        </div>
+
+        {/* Error Alert Box */}
+        {errorMessage && (
+          <div className="mb-5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300">
+            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* STEP 1: Email Form */}
+        {step === 'EMAIL' && (
+          <form onSubmit={handleRequestOtp} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">Registered Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="email"
+                  required
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-950/80 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl py-2.5 pl-10 pr-4 text-xs font-medium text-white placeholder-slate-500 outline-none transition-all"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !email}
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <span>Send Verification Code</span>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* STEP 2: 6-Digit OTP Form */}
+        {step === 'OTP' && (
+          <form onSubmit={handleVerifyOtp} className="space-y-5">
+            <div className="text-center">
+              <span className="text-xs text-slate-400">Sent code to </span>
+              <span className="text-xs font-semibold text-emerald-400">{email}</span>
+              <button
+                type="button"
+                onClick={() => { setStep('EMAIL'); setErrorMessage(null); }}
+                className="ml-2 text-xs text-slate-400 hover:text-white underline"
+              >
+                Change
+              </button>
+            </div>
+
+            {/* 6 Digit Segmented Inputs */}
+            <div className="flex items-center justify-between gap-2 sm:gap-3" onPaste={handleOtpPaste}>
+              {otpDigits.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => { otpInputRefs.current[index] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-bold bg-slate-950/80 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 rounded-xl text-emerald-400 outline-none transition-all"
+                />
+              ))}
+            </div>
+
+            {/* Countdown & Resend Option */}
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+              <span>Code expires in 10 minutes</span>
+              {countdown > 0 ? (
+                <span className="text-slate-500 font-mono">Resend in {countdown}s</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={isLoading}
+                  className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Resend code</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => { setStep('EMAIL'); setErrorMessage(null); }}
+                className="w-1/3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading || otpDigits.some((d) => !d)}
+                className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <span>Verify Code</span>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* STEP 3: Password Reset Form */}
+        {step === 'PASSWORD' && (
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            {/* New Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">New Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-slate-950/80 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl py-2.5 pl-10 pr-10 text-xs font-medium text-white placeholder-slate-500 outline-none transition-all"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">Confirm New Password</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-slate-950/80 border border-slate-700/80 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-xl py-2.5 pl-10 pr-10 text-xs font-medium text-white placeholder-slate-500 outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Dynamic Password Validation Checklist */}
+            <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-3 space-y-1.5 text-[11px]">
+              <div className={`flex items-center gap-2 ${hasMinLength ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                <CheckCircle2 className={`w-3.5 h-3.5 ${hasMinLength ? 'text-emerald-400' : 'text-slate-600'}`} />
+                <span>At least 8 characters long</span>
+              </div>
+              <div className={`flex items-center gap-2 ${hasUppercase ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                <CheckCircle2 className={`w-3.5 h-3.5 ${hasUppercase ? 'text-emerald-400' : 'text-slate-600'}`} />
+                <span>Contains at least 1 uppercase letter</span>
+              </div>
+              <div className={`flex items-center gap-2 ${hasNumber ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                <CheckCircle2 className={`w-3.5 h-3.5 ${hasNumber ? 'text-emerald-400' : 'text-slate-600'}`} />
+                <span>Contains at least 1 number</span>
+              </div>
+              <div className={`flex items-center gap-2 ${passwordsMatch ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                <CheckCircle2 className={`w-3.5 h-3.5 ${passwordsMatch ? 'text-emerald-400' : 'text-slate-600'}`} />
+                <span>Passwords match</span>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !isPasswordFormValid}
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <span>Update Password & Sign In</span>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* STEP 4: Success Screen */}
+        {step === 'SUCCESS' && (
+          <div className="py-4 text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 mx-auto shadow-[0_0_30px_rgba(16,185,129,0.4)] animate-in zoom-in-50 duration-300">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-white">Password Updated!</h3>
+              <p className="text-xs text-slate-300">
+                You have successfully reset your password. You are being redirected to your dashboard...
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleFinalRedirect}
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all flex items-center justify-center gap-2 mt-4"
+            >
+              <span>Go to Dashboard Now</span>
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+```
+
+---
+
+### File: `artifacts/hr-dashboard/src/components/InitiativesSubView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye } from 'lucide-react';
+import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye, Trash2 } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
@@ -8686,6 +9391,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
+import { useAuth } from '../contexts/AuthContext';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface InitiativeItem {
@@ -8735,10 +9441,16 @@ const DEPARTMENT_OPTIONS = [
 ];
 
 export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, selectedInitiativeIdToView, onClearSelectedInitiative }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { selectedEntity } = useEntity();
   const [initiatives, setInitiatives] = useState<InitiativeItem[]>([]);
   const [viewingInitiative, setViewingInitiative] = useState<InitiativeItem | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [viewingEpicDetails, setViewingEpicDetails] = useState<any | null>(null);
+  const [showDeleteEpicConfirm, setShowDeleteEpicConfirm] = useState(false);
+  const [isDeletingEpic, setIsDeletingEpic] = useState(false);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -9239,6 +9951,17 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               <span className="text-sm font-bold text-gray-700">Initiative</span>
 
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                    title="Delete Initiative (Admin Only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
                 {isManager && (
                   <button
                     type="button"
@@ -9315,31 +10038,29 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 )}
               </div>
 
-              {/* Success Metric Box */}
-              <div>
-                {isEditMode ? (
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                    <span className="text-xs text-gray-400 font-medium block">Success metric</span>
-                    <input
-                      type="text"
-                      value={editTargetDeliverableMetric}
-                      onChange={(e) => setEditTargetDeliverableMetric(e.target.value)}
-                      placeholder="e.g. 100% OAuth and carbon reporting pass"
-                      className="w-full px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg bg-white"
-                    />
+              {/* Success Metric Box (Only shown if filled or in Edit Mode) */}
+              {isEditMode ? (
+                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
+                  <span className="text-xs text-gray-400 font-medium block">Success metric (Optional)</span>
+                  <input
+                    type="text"
+                    value={editTargetDeliverableMetric}
+                    onChange={(e) => setEditTargetDeliverableMetric(e.target.value)}
+                    placeholder="e.g. 99.9% Uptime, 50k MAU Growth (leave blank to hide)"
+                    className="w-full px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg bg-white"
+                  />
+                </div>
+              ) : viewingInitiative.targetDeliverableMetric ? (
+                <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                    <Target className="w-4 h-4 text-emerald-400" />
+                    <span>Success metric</span>
                   </div>
-                ) : (
-                  <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
-                    <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
-                      <Target className="w-4 h-4 text-emerald-400" />
-                      <span>Success metric</span>
-                    </div>
-                    <p className="text-sm font-bold text-white pl-6">
-                      {viewingInitiative.targetDeliverableMetric || '100% OAuth and carbon reporting pass'}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  <p className="text-sm font-bold text-white pl-6">
+                    {viewingInitiative.targetDeliverableMetric}
+                  </p>
+                </div>
+              ) : null}
 
               {/* 3-Column Metadata Grid */}
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
@@ -9353,7 +10074,14 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingInitiative.subDepartment || viewingInitiative.departmentId || 'Product and tech'}
+                    {(() => {
+                      const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
+                      if (!dept) return 'Product & Tech';
+                      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Engineering & Product';
+                      }
+                      return dept;
+                    })()}
                   </span>
                 </div>
 
@@ -9476,6 +10204,65 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR INITIATIVE DELETION (ADMIN ONLY) */}
+      {showDeleteConfirm && viewingInitiative && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Strategic Initiative</h3>
+                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to permanently delete initiative{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                {viewingInitiative.initiativeCode}
+              </span>{' '}
+              "{viewingInitiative.title}"? This will permanently delete all associated epics, sprints, and tasks.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  try {
+                    setIsDeleting(true);
+                    await fetchApi(`/api/initiatives/${viewingInitiative.id}`, { method: 'DELETE' });
+                    toast.success(`Initiative ${viewingInitiative.initiativeCode} deleted successfully!`);
+                    setShowDeleteConfirm(false);
+                    setViewingInitiative(null);
+                    setIsEditMode(false);
+                    onClearSelectedInitiative?.();
+                    loadData();
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to delete initiative');
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Initiative'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -9786,142 +10573,139 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         </div>
       )}
 
-      {/* 👁️ POP CARD EPIC DETAILS MODAL (OPENED OVER INITIATIVE) */}
+      {/* 👁️ POP CARD EPIC DETAILS MODAL (EXACT IMAGE 1 UNIFIED DESIGN) */}
       {viewingEpicDetails && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
-          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-gray-900">Feature Epic Details</h3>
-                  <p className="text-[11px] text-gray-400 font-semibold">
-                    Full breakdown of goal, metadata, and linked tasks
-                  </p>
-                </div>
-              </div>
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Top Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0 bg-white">
+              <span className="text-sm font-bold text-gray-700">Epic</span>
 
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteEpicConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                    title="Delete Epic (Admin Only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setViewingEpicDetails(null)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Modal Body Content */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* 1. Epic Title */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Epic Title
-                </span>
-                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
-                  {viewingEpicDetails.title}
-                </h2>
-              </div>
-
-              {/* 2. Metadata Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Epic Code
-                  </span>
-                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                    {viewingEpicDetails.epicCode}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Entity / Brand
-                  </span>
-                  <span className="text-xs font-bold text-blue-700 font-mono">
-                    {(viewingEpicDetails.epicCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Target Date / Week
-                  </span>
-                  <span className="text-xs font-bold text-purple-700">
-                    {viewingEpicDetails.targetWeek || viewingEpicDetails.targetDate || 'Week 1 (Days 1–7)'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Status
-                  </span>
-                  <select
-                    value={viewingEpicDetails.status === 'DONE' || viewingEpicDetails.status === 'COMPLETED' ? 'DONE' : viewingEpicDetails.status || 'PLANNED'}
-                    onChange={(e) => handleEpicStatusChange(viewingEpicDetails.id, e.target.value)}
-                    className="text-xs font-extrabold px-2 py-0.5 rounded uppercase border bg-white text-emerald-700 border-emerald-300 focus:outline-none cursor-pointer"
-                  >
-                    <option value="PLANNED">PLANNED</option>
-                    <option value="IN_PROGRESS">IN PROGRESS</option>
-                    <option value="DONE">DONE</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 3. Parent Initiative Link Box */}
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+              {/* Breadcrumb & Badges */}
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpicDetails.initiativeId) || viewingInitiative;
-                const parentCode = parentInit?.initiativeCode || 'N/A';
-                const parentTitle = parentInit?.title || 'No Parent Initiative Linked';
+                const parentTitle = parentInit?.title || 'Initiative';
+                const isCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const rawStatus = viewingEpicDetails.status || 'PLANNED';
+                const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
                 return (
-                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
-                      <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Parent Initiative Code:</span>
+                  <div className="space-y-3">
+                    {/* Breadcrumb */}
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
                       {parentInit ? (
-                        <button
-                          type="button"
+                        <span 
                           onClick={() => {
                             setViewingEpicDetails(null);
                             setViewingInitiative(parentInit);
                           }}
-                          className="font-mono text-emerald-800 font-extrabold bg-white hover:bg-emerald-100 hover:text-emerald-900 px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer text-sm"
-                          title="Click to view Parent Initiative"
+                          className="text-blue-600 hover:underline cursor-pointer font-semibold"
                         >
-                          <span>{parentCode}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
-                        </button>
+                          {parentTitle}
+                        </span>
                       ) : (
-                        <span className="font-mono text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200 text-sm">{parentCode}</span>
+                        <span className="text-blue-600 font-semibold">{parentTitle}</span>
                       )}
+                      <span>&gt;</span>
+                      <span className="text-gray-400">this epic</span>
                     </div>
-                    <div className="text-sm font-bold text-emerald-900 pl-6">
-                      Parent Initiative Title: <span className="font-semibold text-gray-800">{parentTitle}</span>
+
+                    {/* Badges line */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                        {viewingEpicDetails.epicCode}
+                      </span>
+                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
+                        {isCAG ? 'Climagro' : 'EHM'}
+                      </span>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                        {statusLabel}
+                      </span>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* 4. Description */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Epic Description
-                </span>
-                {viewingEpicDetails.description ? (
-                  <MarkdownViewer content={viewingEpicDetails.description} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-sm text-gray-800" />
-                ) : (
-                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs text-gray-400 italic">
-                    No epic description provided.
-                  </div>
+              {/* Epic Title & Description */}
+              <div className="space-y-1.5">
+                <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-snug">
+                  {viewingEpicDetails.title}
+                </h2>
+                {viewingEpicDetails.description && (
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                    {viewingEpicDetails.description}
+                  </p>
                 )}
               </div>
 
-              {/* 5. Hanging Tasks Linked Under Epic */}
+              {/* Success Metric Box (Dark Theme Banner - Only shown if filled) */}
+              {viewingEpicDetails.targetDeliverableMetric ? (
+                <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                    <Target className="w-4 h-4 text-emerald-400" />
+                    <span>Success metric</span>
+                  </div>
+                  <p className="text-sm font-bold text-white pl-6">
+                    {viewingEpicDetails.targetDeliverableMetric}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* 3-Column Metadata Grid */}
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Target week</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingEpicDetails.targetWeek || viewingEpicDetails.targetDate || 'Week 1 • days 1–7'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {(() => {
+                      const dept = viewingEpicDetails.department || (viewingInitiative as any)?.departmentName;
+                      if (!dept || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Engineering & Product';
+                      }
+                      return dept;
+                    })()}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingEpicDetails.createdAt ? new Date(viewingEpicDetails.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Linked Tasks Section with Progress Bar */}
               {(() => {
                 const isEpicCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG');
                 const combined = [
@@ -9929,90 +10713,145 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   ...allTasks.filter((t: any) => t.epicId === viewingEpicDetails.id || t.parentEpicCode === viewingEpicDetails.epicCode)
                 ];
                 const linkedTasks = Array.from(new Map(combined.map((t: any) => [t.id || t.taskCode, t])).values());
+                const targetTasksCount = Math.max(linkedTasks.length, 3);
+                const doneCount = linkedTasks.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
 
                 return (
-                  <div className="space-y-3 pt-2">
-                    <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <ListTodo className="w-4 h-4 text-emerald-600 animate-pulse" />
-                        <span>Hanging Tasks Linked Under Epic ({linkedTasks.length})</span>
-                      </span>
-                      {linkedTasks.length > 0 && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 animate-pulse">
-                          ● Live Connected
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    {/* Header line & Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-gray-900">Linked tasks</h4>
+                        <span className="text-xs font-medium text-gray-500">
+                          {doneCount} of {linkedTasks.length} done
                         </span>
-                      )}
-                    </h4>
+                      </div>
+                      <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((doneCount / Math.max(1, linkedTasks.length)) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
 
-                    {linkedTasks.length > 0 ? (
-                      <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-emerald-400 before:via-purple-400 before:to-emerald-200">
-                        {linkedTasks.map((taskItem: any, idx: number) => {
-                          const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                            ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                            : (taskItem.taskCode || 'TSK-001');
+                    {/* Tasks List */}
+                    <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+                      {linkedTasks.map((taskItem: any, idx: number) => {
+                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
+                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
+                          : (taskItem.taskCode || 'TSK-001');
 
-                          return (
-                            <div
-                              key={taskItem.id || idx}
-                              style={{ animationDelay: `${idx * 100}ms` }}
-                              className="relative group transition-all duration-300 animate-in fade-in slide-in-from-top-3"
-                            >
-                              <div className="absolute -left-6 top-4 w-3.5 h-0.5 bg-emerald-400 group-hover:bg-emerald-500 transition-colors" />
-                              <div className="absolute -left-6 top-3.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 group-hover:scale-125 transition-transform" />
+                        const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
+                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
 
-                              <div
-                                onClick={() => handleOpenTaskModal(taskItem)}
-                                className="bg-gradient-to-r from-emerald-50/70 via-white to-purple-50/30 p-3.5 rounded-xl border border-gray-200 shadow-2xs group-hover:shadow-md group-hover:border-emerald-400 transition-all cursor-pointer"
-                              >
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <span className="font-mono font-extrabold text-[11px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                                    {displayTaskCode}
-                                  </span>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                    taskItem.status === 'DONE' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                                    taskItem.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                                    'bg-amber-50 text-amber-800 border-amber-200'
-                                  }`}>
-                                    {taskItem.status || 'TODO'}
-                                  </span>
-                                </div>
+                        const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
+                        const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
+                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (taskItem.priority === 'URGENT' || taskItem.priority === 'HIGH' || taskItem.priority === 'P1') ? 'P1' : 'Planned';
 
-                                <h5 className="font-bold text-xs text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors">
-                                  {taskItem.title}
-                                </h5>
-
-                                <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pt-2 mt-2 border-t border-gray-100">
-                                  <span className="truncate max-w-[220px]">
-                                    <span className="text-gray-400">Assignee:</span> {taskItem.assigneeName || taskItem.assignee || 'admin@example.com'}
-                                  </span>
-                                  <div className="flex items-center gap-1 text-gray-400 text-[10px]">
-                                    <Calendar className="w-3 h-3 text-emerald-500" />
-                                    <span>{taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '2026-09-08'}</span>
-                                  </div>
-                                </div>
-                              </div>
+                        return (
+                          <div
+                            key={taskItem.id || idx}
+                            onClick={() => handleOpenTaskModal(taskItem)}
+                            className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <h5 className="font-bold text-xs text-gray-900 group-hover:text-emerald-700 transition-colors">
+                                {taskItem.title}
+                              </h5>
+                              <p className="text-[11px] text-gray-400 font-medium">
+                                {displayTaskCode} • {assigneeStr} • {dateStr}
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-xs text-gray-400 bg-gray-50/80 rounded-xl border border-dashed border-gray-200">
-                        No Tasks created under this Epic yet.
-                      </div>
-                    )}
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
+                                isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                'bg-gray-100 text-gray-700 border-gray-200'
+                              }`}>
+                                {taskStatusLabel}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Uncreated Task Slots */}
+                      {Array.from({ length: Math.max(0, targetTasksCount - linkedTasks.length) }).map((_, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
+                          <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toast.info(`Task creation for ${viewingEpicDetails.epicCode} initiated`);
+                            }}
+                            className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Modal Footer */}
-            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end shrink-0">
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR EPIC DELETION (ADMIN ONLY) */}
+      {showDeleteEpicConfirm && viewingEpicDetails && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Feature Epic</h3>
+                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to permanently delete epic{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                {viewingEpicDetails.epicCode}
+              </span>{' '}
+              "{viewingEpicDetails.title}"? This will permanently delete all associated sprints and tasks.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setViewingEpicDetails(null)}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                onClick={() => setShowDeleteEpicConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
-                Close View Mode
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingEpic}
+                onClick={async () => {
+                  try {
+                    setIsDeletingEpic(true);
+                    await fetchApi(`/api/epics/${viewingEpicDetails.id}`, { method: 'DELETE' });
+                    toast.success(`Epic ${viewingEpicDetails.epicCode} deleted successfully!`);
+                    setShowDeleteEpicConfirm(false);
+                    setViewingEpicDetails(null);
+                    loadData();
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to delete epic');
+                  } finally {
+                    setIsDeletingEpic(false);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                {isDeletingEpic ? 'Deleting...' : 'Delete Epic'}
               </button>
             </div>
           </div>
@@ -10023,6 +10862,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         isOpen={!!selectedTaskToView}
         task={selectedTaskToView}
         onClose={() => setSelectedTaskToView(null)}
+        onDelete={(deletedId) => {
+          setAllTasks(prev => prev.filter(t => t.id !== deletedId));
+          setSelectedTaskToView(null);
+        }}
         isReadOnly={true}
       />
     </div>
@@ -10031,7 +10874,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/MarkAttendanceModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/MarkAttendanceModal.tsx`
 
 ```tsx
 import React, { useState } from 'react';
@@ -10318,7 +11163,9 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/MarkdownViewer.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/MarkdownViewer.tsx`
 
 ```tsx
 import React from 'react';
@@ -10436,10 +11283,12 @@ export const MarkdownViewer: React.FC<Props> = ({ content, className = '' }) => 
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/Navbar.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/Navbar.tsx`
 
 ```tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
@@ -10472,6 +11321,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(3);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -10492,6 +11342,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   useEffect(() => {
     loadNotifications();
   }, []);
+
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target as Node)) {
+        setShowNotificationsDropdown(false);
+      }
+    };
+
+    if (showNotificationsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotificationsDropdown]);
 
   const handleMarkAllRead = async () => {
     try {
@@ -10567,7 +11433,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Notifications Dropdown Container */}
-          <div className="relative">
+          <div className="relative" ref={notifDropdownRef}>
             <button
               onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
               className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all relative flex items-center justify-center cursor-pointer"
@@ -10668,7 +11534,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ProfileModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ProfileModal.tsx`
 
 ```tsx
 import React from 'react';
@@ -10790,7 +11658,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ProjectSummaryTable.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ProjectSummaryTable.tsx`
 
 ```tsx
 import React from 'react';
@@ -10898,7 +11768,9 @@ export const ProjectSummaryTable: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/RevenueChart.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/RevenueChart.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -11111,7 +11983,9 @@ export const RevenueChart: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/RichTextEditor.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/RichTextEditor.tsx`
 
 ```tsx
 import React, { useRef } from 'react';
@@ -11275,7 +12149,9 @@ export const RichTextEditor: React.FC<Props> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/RolePreviewBanner.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/RolePreviewBanner.tsx`
 
 ```tsx
 import React from 'react';
@@ -11314,7 +12190,9 @@ export const RolePreviewBanner: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ScheduleMeetingModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ScheduleMeetingModal.tsx`
 
 ```tsx
 import React, { useState } from 'react';
@@ -11551,7 +12429,9 @@ export const ScheduleMeetingModal: React.FC<ScheduleMeetingModalProps> = ({ isOp
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/ScheduleWidget.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/ScheduleWidget.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -11679,7 +12559,9 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/SearchModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/SearchModal.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -11801,7 +12683,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/Sidebar.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/Sidebar.tsx`
 
 ```tsx
 import React from 'react';
@@ -11941,7 +12825,9 @@ export const Sidebar: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/SprintsSubView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/SprintsSubView.tsx`
 
 ```tsx
 import React, { useState, useEffect, useRef } from 'react';
@@ -12339,10 +13225,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
         priority: task.priority || 'P3',
         description: task.description || task.notes || '',
-        checklists: task.checklists || [
-          { id: `c-${Date.now()}-1`, itemText: 'Requirement Analysis & Solution Design', isCompleted: false },
-          { id: `c-${Date.now()}-2`, itemText: 'Implementation & Module Integration', isCompleted: false },
-          { id: `c-${Date.now()}-3`, itemText: 'QA Validation & Code Review Sign-off', isCompleted: false },
+        checklists: (task.checklists && task.checklists.length > 0) ? task.checklists : [
+          { id: `c-${Date.now()}-1`, itemText: 'Checkpoint 1', isCompleted: false },
+          { id: `c-${Date.now()}-2`, itemText: 'Checkpoint 2', isCompleted: false },
+          { id: `c-${Date.now()}-3`, itemText: 'Checkpoint 3', isCompleted: false },
         ],
         comments: task.comments || [],
         newChecklistText: '',
@@ -12357,10 +13243,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
         task,
         deliverableUrl: task.deliverableUrl || task.outputUrl || '',
         notes: task.description || task.notes || '',
-        checklists: task.checklists || [
-          { id: `c-${Date.now()}-1`, itemText: 'Requirement Analysis & Solution Design', isCompleted: true },
-          { id: `c-${Date.now()}-2`, itemText: 'Implementation & Module Integration', isCompleted: true },
-          { id: `c-${Date.now()}-3`, itemText: 'QA Validation & Code Review Sign-off', isCompleted: true },
+        checklists: (task.checklists && task.checklists.length > 0) ? task.checklists : [
+          { id: `c-${Date.now()}-1`, itemText: 'Checkpoint 1', isCompleted: true },
+          { id: `c-${Date.now()}-2`, itemText: 'Checkpoint 2', isCompleted: true },
+          { id: `c-${Date.now()}-3`, itemText: 'Checkpoint 3', isCompleted: true },
         ],
         comments: task.comments || [],
         newChecklistText: '',
@@ -12635,14 +13521,6 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   };
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
-    let nextStatus = 'IN_PROGRESS';
-    if (updated.status === 'Done') nextStatus = 'DONE';
-    else if (updated.status === 'To Review') nextStatus = 'IN_REVIEW';
-    else if (updated.status === 'Planned') nextStatus = 'PLANNED';
-    else if (updated.status === 'Backlog') nextStatus = 'BACKLOG';
-    else if (updated.status === 'Delayed') nextStatus = 'DELAYED';
-    else if (updated.status === 'Blocked') nextStatus = 'BLOCKED';
-
     try {
       await fetchApi<any>(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
@@ -12653,7 +13531,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           assigneeId: updated.assigneeId,
           reviewingLead: updated.reviewingLead,
           reviewingLeadId: updated.reviewingLeadId,
-          status: nextStatus,
+          status: updated.status,
           deliverableUrl: updated.outputUrl,
           description: updated.notes,
           dueDate: updated.dueDate,
@@ -12662,32 +13540,12 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           waitingOn: updated.waitingOn,
         }),
       });
-      toast.success(`Task ${updated.taskId} updated successfully!`);
-      loadData();
-    } catch (err) {
-      toast.success(`Task ${updated.taskId} updated locally!`);
-      setAllTasks(prev =>
-        prev.map(t =>
-          t.id === updated.id
-            ? {
-                ...t,
-                title: updated.title,
-                entity: updated.entity,
-                assigneeName: updated.assignee,
-                assigneeId: updated.assigneeId || t.assigneeId,
-                reviewingLead: updated.reviewingLead,
-                reviewingLeadId: updated.reviewingLeadId || t.reviewingLeadId,
-                status: nextStatus,
-                deliverableUrl: updated.outputUrl,
-                description: updated.notes,
-                dueDate: updated.dueDate,
-                sprintWeek: updated.targetWeek,
-                priority: updated.priority,
-                waitingOn: updated.waitingOn,
-              }
-            : t
-        )
-      );
+      toast.success(`Task ${updated.taskId} updated & saved to live database!`);
+      await loadData();
+    } catch (err: any) {
+      console.error('[SPRINTS TASK PATCH ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task update');
+      throw err;
     }
   };
 
@@ -14388,6 +15246,10 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
           onClose={() => setSelectedTaskToUpdate(null)}
           onSave={handleSaveTaskUpdate}
           onClone={handleCloneTask}
+          onDelete={(deletedId) => {
+            setAllTasks(prev => prev.filter(t => t.id !== deletedId));
+            setSelectedTaskToUpdate(null);
+          }}
           isReadOnly={isModalReadOnly}
         />
       )}
@@ -14397,7 +15259,9 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/StatCard.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/StatCard.tsx`
 
 ```tsx
 import React from 'react';
@@ -14447,7 +15311,9 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, label, trend, 
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -14750,7 +15616,9 @@ export const TaskAnalyticsPanel: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskAssignModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/TaskAssignModal.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -14843,8 +15711,9 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
       setPriority(found.priority as any);
       setDescription(found.desc);
       setChecklists([
-        { id: 'c-1', itemText: 'Verify requirements and specifications', isCompleted: false },
-        { id: 'c-2', itemText: 'Initial setup & integration tests', isCompleted: false },
+        { id: 'c-1', itemText: 'Checkpoint 1', isCompleted: false },
+        { id: 'c-2', itemText: 'Checkpoint 2', isCompleted: false },
+        { id: 'c-3', itemText: 'Checkpoint 3', isCompleted: false },
       ]);
       setComments([
         { id: 'cm-1', authorName: 'System', content: `Cloned template: ${found.title}`, createdAt: new Date().toISOString(), isSystemLog: true },
@@ -15126,10 +15995,10 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                   onChange={(e) => setPriority(e.target.value as any)}
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                 >
-                  <option value="URGENT">P1 (Top Priority) 🔴</option>
-                  <option value="HIGH">P2 (High Priority) 🟠</option>
-                  <option value="MEDIUM">P3 (Medium Priority) 🟡</option>
-                  <option value="LOW">P4 (Low Priority) ⚪</option>
+                  <option value="URGENT">P1 - Critical / Urgent 🔥</option>
+                  <option value="HIGH">P2 - High Priority ⚡</option>
+                  <option value="MEDIUM">P3 - Medium Priority 📌</option>
+                  <option value="LOW">P4 - Low Priority 📝</option>
                 </select>
               </div>
             </div>
@@ -15409,7 +16278,9 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskCloneModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/TaskCloneModal.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -15574,12 +16445,12 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-semibold text-gray-900"
+                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white font-semibold text-gray-900 cursor-pointer"
               >
-                <option value="LOW">P4 (Low Priority)</option>
-                <option value="MEDIUM">P3 (Medium Priority)</option>
-                <option value="HIGH">P2 (High Priority)</option>
-                <option value="URGENT">P1 (Top Priority)</option>
+                <option value="URGENT">P1 - Critical / Urgent 🔥</option>
+                <option value="HIGH">P2 - High Priority ⚡</option>
+                <option value="MEDIUM">P3 - Medium Priority 📌</option>
+                <option value="LOW">P4 - Low Priority 📝</option>
               </select>
             </div>
           </div>
@@ -15619,7 +16490,9 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskProgressSprintAnalytics.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/TaskProgressSprintAnalytics.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -15832,11 +16705,13 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/components/TaskUpdateModal.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/components/TaskUpdateModal.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
-import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy } from 'lucide-react';
+import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
@@ -15885,8 +16760,48 @@ interface TaskUpdateModalProps {
   onClose: () => void;
   onSave?: (updatedTask: TaskItem) => void;
   onClone?: (sourceTask: TaskItem, importChecklistAndLinks: boolean) => void;
+  onDelete?: (taskId: string) => void;
   isReadOnly?: boolean;
 }
+
+const normalizePriorityCode = (p: string | undefined): 'P1' | 'P2' | 'P3' | 'P4' => {
+  if (!p) return 'P3';
+  const val = String(p).toUpperCase().trim();
+  if (val === 'URGENT' || val === 'CRITICAL' || val === 'P1' || val === '1') return 'P1';
+  if (val === 'HIGH' || val === 'P2' || val === '2') return 'P2';
+  if (val === 'MEDIUM' || val === 'MED' || val === 'P3' || val === '3') return 'P3';
+  if (val === 'LOW' || val === 'P4' || val === '4') return 'P4';
+  return 'P3';
+};
+
+const formatPriorityLabel = (p: string | undefined): string => {
+  const code = normalizePriorityCode(p);
+  if (code === 'P1') return 'P1 - Critical / Urgent 🔥';
+  if (code === 'P2') return 'P2 - High Priority ⚡';
+  if (code === 'P3') return 'P3 - Medium Priority 📌';
+  if (code === 'P4') return 'P4 - Low Priority 📝';
+  return 'P3 - Medium Priority 📌';
+};
+
+const parseDateForInput = (d: string | undefined | null): string => {
+  if (!d) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(d).trim())) {
+    return String(d).trim();
+  }
+  const parsed = new Date(d);
+  if (isNaN(parsed.getTime())) return '';
+  const yyyy = parsed.getFullYear();
+  const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+  const dd = String(parsed.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const formatDueDateDisplay = (d: string | undefined | null): string => {
+  if (!d) return 'Not set';
+  const parsed = new Date(d);
+  if (isNaN(parsed.getTime())) return String(d);
+  return parsed.toLocaleDateString();
+};
 
 export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   isOpen,
@@ -15894,9 +16809,11 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   onClose,
   onSave,
   onClone,
+  onDelete,
   isReadOnly,
 }) => {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
   const isEmployee = user?.role === 'EMPLOYEE';
   const isAssignee = isEmployee
@@ -15911,6 +16828,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   const [showCloneConfirmModal, setShowCloneConfirmModal] = useState(false);
   const [importChecklistAndLinks, setImportChecklistAndLinks] = useState(true);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   const [employeesList, setEmployeesList] = useState<{ id: string; name: string; designation: string }[]>([]);
   const [entity, setEntity] = useState('EHM');
@@ -15933,6 +16852,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [newChecklistText, setNewChecklistText] = useState('');
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
+  const [isSavingTask, setIsSavingTask] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -15970,17 +16890,22 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setEntity(task.entity || 'EHM');
       setParentTaskId(task.taskId || 'TSK-001');
       setTaskName(task.title || '');
-      setAssignee(task.assignee || 'Unassigned');
+      
+      const cleanAssignee = (task.assignee || 'Unassigned').replace(/\(.*?\)/g, '').trim();
+      setAssignee(cleanAssignee);
       setAssigneeId(task.assigneeId || '');
-      setReviewingLead(task.reviewingLead || 'Manager Lead');
+
+      const cleanLead = (task.reviewingLead || 'Manager Lead').replace(/\(.*?\)/g, '').trim();
+      setReviewingLead(cleanLead);
       setReviewingLeadId(task.reviewingLeadId || '');
+
       setOutputUrl(task.outputUrl || '');
       setStatus(task.status || 'In Progress');
       setWaitingOn(task.waitingOn || 'None (Self)');
       setNotes(task.notes || '');
       setTargetWeek(task.targetWeek || 'Week 1 (Days 1–7)');
-      setPriority(task.priority || 'P3');
-      setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
+      setPriority(normalizePriorityCode(task.priority));
+      setDueDate(parseDateForInput(task.dueDate));
       loadTaskData();
     }
   }, [task]);
@@ -16040,32 +16965,41 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnlyMode) {
       onClose();
       return;
     }
     if (onSave) {
-      onSave({
-        ...task,
-        title: taskName,
-        entity,
-        assignee,
-        assigneeId,
-        reviewingLead,
-        reviewingLeadId,
-        targetWeek,
-        priority,
-        dueDate,
-        status,
-        outputUrl,
-        waitingOn,
-        notes,
-      });
+      try {
+        setIsSavingTask(true);
+        await onSave({
+          ...task,
+          title: taskName,
+          entity,
+          assignee,
+          assigneeId,
+          reviewingLead,
+          reviewingLeadId,
+          targetWeek,
+          priority,
+          dueDate,
+          status,
+          outputUrl,
+          waitingOn,
+          notes,
+        });
+        onClose();
+      } catch (err: any) {
+        console.error('[MODAL SAVE ERROR]:', err);
+        toast.error(err?.message || 'Failed to save changes to database');
+      } finally {
+        setIsSavingTask(false);
+      }
+    } else {
+      onClose();
     }
-    toast.success(`Task ${parentTaskId} updated & synced with Reviewing Lead (${reviewingLead})!`);
-    onClose();
   };
 
   const completedChecklistCount = checklists.filter((c) => c.isCompleted).length;
@@ -16087,6 +17021,17 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirmModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Delete Task (Admin Only)"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                <span>Delete Task</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShowCloneConfirmModal(true)}
@@ -16104,6 +17049,62 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal Popup */}
+        {showDeleteConfirmModal && task && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+            <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-200 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
+              <div className="flex items-center gap-3 text-red-700">
+                <div className="p-2 bg-red-100 rounded-xl">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-gray-900">Delete Task Confirmation</h4>
+                  <p className="text-xs text-gray-500 font-medium">Permanent Admin Action</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-red-50/50 rounded-xl border border-red-200 text-xs font-semibold text-gray-800 space-y-2">
+                <div>Are you sure you want to permanently delete task <span className="font-mono text-red-700 font-bold">[{parentTaskId}]</span> "{taskName}"?</div>
+                <p className="text-[11px] text-red-600 font-medium">This will permanently remove this task, all checklist items, and comment logs.</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirmModal(false)}
+                  className="px-3.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingTask}
+                  onClick={async () => {
+                    try {
+                      setIsDeletingTask(true);
+                      await fetchApi(`/api/tasks/${task.id}`, { method: 'DELETE' });
+                      toast.success(`Task ${parentTaskId} deleted successfully!`);
+                      setShowDeleteConfirmModal(false);
+                      if (onDelete) {
+                        onDelete(task.id);
+                      }
+                      onClose();
+                    } catch (err: any) {
+                      toast.error(err?.message || 'Failed to delete task');
+                    } finally {
+                      setIsDeletingTask(false);
+                    }
+                  }}
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeletingTask ? 'Deleting...' : 'Yes, Delete Task'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Clone Confirmation Modal Popup */}
         {showCloneConfirmModal && (
@@ -16242,23 +17243,23 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     />
                   ) : (
                     <select
-                      value={assignee}
+                      value={assigneeId || (employeesList.find((e) => e.name.toLowerCase() === assignee.toLowerCase())?.id || '')}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        setAssignee(val);
-                        const match = employeesList.find((emp) => emp.name === val);
-                        if (match) setAssigneeId(match.id);
+                        const targetId = e.target.value;
+                        setAssigneeId(targetId);
+                        const match = employeesList.find((emp) => emp.id === targetId);
+                        if (match) setAssignee(match.name);
                       }}
                       className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
                       <option value="">Select Assignee...</option>
                       {employeesList.map((emp) => (
-                        <option key={emp.id} value={emp.name}>
+                        <option key={emp.id} value={emp.id}>
                           {emp.name} ({emp.designation})
                         </option>
                       ))}
-                      {assignee && !employeesList.some((e) => e.name === assignee) && (
-                        <option value={assignee}>{assignee}</option>
+                      {assignee && !employeesList.some((e) => e.name.toLowerCase() === assignee.toLowerCase() || e.id === assigneeId) && (
+                        <option value={assigneeId || assignee}>{assignee}</option>
                       )}
                     </select>
                   )}
@@ -16275,23 +17276,23 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     />
                   ) : (
                     <select
-                      value={reviewingLead}
+                      value={reviewingLeadId || (employeesList.find((e) => e.name.toLowerCase() === reviewingLead.toLowerCase())?.id || '')}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        setReviewingLead(val);
-                        const match = employeesList.find((emp) => emp.name === val);
-                        if (match) setReviewingLeadId(match.id);
+                        const targetId = e.target.value;
+                        setReviewingLeadId(targetId);
+                        const match = employeesList.find((emp) => emp.id === targetId);
+                        if (match) setReviewingLead(match.name);
                       }}
                       className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
                       <option value="">Select Reviewing Lead...</option>
                       {employeesList.map((emp) => (
-                        <option key={emp.id} value={emp.name}>
+                        <option key={emp.id} value={emp.id}>
                           {emp.name} ({emp.designation})
                         </option>
                       ))}
-                      {reviewingLead && !employeesList.some((e) => e.name === reviewingLead) && (
-                        <option value={reviewingLead}>{reviewingLead}</option>
+                      {reviewingLead && !employeesList.some((e) => e.name.toLowerCase() === reviewingLead.toLowerCase() || e.id === reviewingLeadId) && (
+                        <option value={reviewingLeadId || reviewingLead}>{reviewingLead}</option>
                       )}
                     </select>
                   )}
@@ -16329,12 +17330,12 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     <input
                       type="text"
                       disabled
-                      value={priority}
-                      className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                      value={formatPriorityLabel(priority)}
+                      className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 outline-none"
                     />
                   ) : (
                     <select
-                      value={priority}
+                      value={normalizePriorityCode(priority)}
                       onChange={(e) => setPriority(e.target.value)}
                       className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
@@ -16352,7 +17353,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     <input
                       type="text"
                       disabled
-                      value={dueDate || 'Not set'}
+                      value={formatDueDateDisplay(dueDate)}
                       className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                     />
                   ) : (
@@ -16498,10 +17499,11 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     </button>
                     <button
                       type="submit"
-                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                      disabled={isSavingTask}
+                      className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
-                      <span>Save Changes</span>
+                      <span>{isSavingTask ? 'Saving to Database...' : 'Save Changes'}</span>
                     </button>
                   </>
                 )}
@@ -16647,7 +17649,9 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/contexts/AuthContext.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/contexts/AuthContext.tsx`
 
 ```tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -16876,7 +17880,9 @@ export const useAuth = () => useContext(AuthContext);
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/contexts/EntityContext.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/contexts/EntityContext.tsx`
 
 ```tsx
 import React, { createContext, useContext, useState } from 'react';
@@ -16907,7 +17913,9 @@ export const useEntity = () => useContext(EntityContext);
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/index.css
+---
+
+### File: `artifacts/hr-dashboard/src/index.css`
 
 ```css
 @import "tailwindcss";
@@ -16991,7 +17999,9 @@ export const useEntity = () => useContext(EntityContext);
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/main.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/main.tsx`
 
 ```tsx
 import React from 'react';
@@ -17007,7 +18017,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/AcceptInviteView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/AcceptInviteView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -17239,7 +18251,9 @@ export const AcceptInviteView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/AnnouncementsView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -17478,7 +18492,9 @@ export const AnnouncementsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/ApplicationsView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/ApplicationsView.tsx`
 
 ```tsx
 import React, { useState } from 'react';
@@ -19162,7 +20178,9 @@ export const ApplicationsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/AttendanceView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/AttendanceView.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -19435,7 +20453,9 @@ export const AttendanceView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/DashboardView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/DashboardView.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -20040,7 +21060,9 @@ export const DashboardView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/LoginView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/LoginView.tsx`
 
 ```tsx
 import React, { useState } from 'react';
@@ -20048,6 +21070,7 @@ import { useLocation } from 'wouter';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 
 export const LoginView: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -20057,6 +21080,7 @@ export const LoginView: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -20162,9 +21186,13 @@ export const LoginView: React.FC = () => {
               />
               <span>Remember me</span>
             </label>
-            <a href="#forgot" onClick={(e) => { e.preventDefault(); toast.info('Password reset feature ready.'); }} className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+            <button
+              type="button"
+              onClick={() => setIsForgotPasswordOpen(true)}
+              className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors focus:outline-none"
+            >
               Forgot Password?
-            </a>
+            </button>
           </div>
 
           {/* Primary Action Button */}
@@ -20184,13 +21212,23 @@ export const LoginView: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={email}
+      />
     </div>
   );
 };
 
+
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/MeetingsView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/MeetingsView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -20767,20 +21805,6 @@ export const MeetingsView: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {availability.length > 0 && (
-            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
-              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Sync Calendar Availability Windows</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {availability.map((emp) => (
-                  <div key={emp.employeeId} className="border border-gray-200/80 rounded-xl p-3.5 space-y-1 bg-gray-50/50">
-                    <h5 className="text-xs font-bold text-gray-900">{emp.name}</h5>
-                    <span className="text-[10px] text-gray-400 font-medium block">{emp.designation || 'Team Member'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -20795,11 +21819,13 @@ export const MeetingsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/NotificationsView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/NotificationsView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText } from 'lucide-react';
 import { formatDateTime } from '../utils/dateUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -20888,17 +21914,35 @@ export const NotificationsView: React.FC = () => {
       return {
         icon: CheckCircle2,
         iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-        title: `Task Completed & Signed Off: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: payload.message || `Deliverable task successfully completed and marked Done.`,
+        title: notif.title || `Task Completed & Signed Off: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: notif.message || payload.message || `Deliverable task successfully completed and marked Done.`,
       };
     }
 
-    if (type === 'REVIEW_ASSIGNED') {
+    if (type === 'TASK_REVIEW_SUBMITTED' || type === 'REVIEW_ASSIGNED') {
       return {
-        icon: User,
+        icon: FileText,
         iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-        title: `Review Assigned to Lead: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: payload.message || `Task submitted for manager lead review & sign-off.`,
+        title: notif.title || `Review Pending: [${payload.taskCode || 'TASK'}] ${payload.taskTitle || payload.title || ''}`,
+        desc: notif.message || payload.message || `Task submitted for manager lead review & sign-off.`,
+      };
+    }
+
+    if (type === 'TASK_COMMENT') {
+      return {
+        icon: MessageSquare,
+        iconBg: 'bg-blue-50 text-blue-600 border-blue-200',
+        title: notif.title || `Task Discussion: [${payload.taskCode || 'TASK'}]`,
+        desc: notif.message || payload.message || `New comment posted on task discussion thread.`,
+      };
+    }
+
+    if (type === 'TASK_CHECKLIST_COMPLETE') {
+      return {
+        icon: CheckCheck,
+        iconBg: 'bg-teal-50 text-teal-600 border-teal-200',
+        title: notif.title || `Checklist Completed: [${payload.taskCode || 'TASK'}]`,
+        desc: notif.message || payload.message || `All checklist items have been checked off.`,
       };
     }
 
@@ -20916,7 +21960,7 @@ export const NotificationsView: React.FC = () => {
         icon: Clock,
         iconBg: 'bg-amber-50 text-amber-600 border-amber-200',
         title: `Delay Extension Submitted: [${payload.taskCode || 'TASK'}]`,
-        desc: `Your extension request for ${payload.title || 'Task'} is pending Lead approval.`,
+        desc: notif.message || `Your extension request for ${payload.title || 'Task'} is pending Lead approval.`,
       };
     }
 
@@ -20924,16 +21968,16 @@ export const NotificationsView: React.FC = () => {
       return {
         icon: CheckSquare,
         iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-        title: `Task Assigned: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: payload.message || `Assigned deliverable in Sprint cycle.`,
+        title: notif.title || `Task Assigned: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
+        desc: notif.message || payload.message || `Assigned deliverable in Sprint cycle.`,
       };
     }
 
     return {
       icon: Bell,
       iconBg: 'bg-gray-50 text-gray-600 border-gray-200',
-      title: payload.title || 'System Notification',
-      desc: payload.message || 'Notification alert received',
+      title: notif.title || payload.title || 'System Notification',
+      desc: notif.message || payload.message || 'Notification alert received',
     };
   };
 
@@ -21035,7 +22079,9 @@ export const NotificationsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/OfficeTodayView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/OfficeTodayView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -21247,7 +22293,9 @@ export const OfficeTodayView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/PerformanceView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/PerformanceView.tsx`
 
 ```tsx
 import React, { useEffect, useState } from 'react';
@@ -21716,7 +22764,9 @@ export const PerformanceView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/ReportsView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/ReportsView.tsx`
 
 ```tsx
 import React, { useState } from 'react';
@@ -21781,7 +22831,9 @@ export const ReportsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/SalaryView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/SalaryView.tsx`
 
 ```tsx
 import React from 'react';
@@ -21856,7 +22908,9 @@ export const SalaryView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/SettingsView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/SettingsView.tsx`
 
 ```tsx
 import React from 'react';
@@ -21909,7 +22963,9 @@ export const SettingsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/SprintsView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/SprintsView.tsx`
 
 ```tsx
 import React from 'react';
@@ -21936,11 +22992,13 @@ export const SprintsView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/TasksView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/TasksView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users } from 'lucide-react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
@@ -21960,6 +23018,7 @@ type TabType = 'INITIATIVES' | 'EPICS' | 'TASKS';
 export const TasksView: React.FC = () => {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const { selectedEntity } = useEntity();
 
   const isEmployee = user?.role === 'EMPLOYEE';
@@ -21987,6 +23046,8 @@ export const TasksView: React.FC = () => {
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
   const [isModalReadOnly, setIsModalReadOnly] = useState<boolean>(false);
   const [viewingEpicInTasks, setViewingEpicInTasks] = useState<any | null>(null);
+  const [showDeleteEpicConfirm, setShowDeleteEpicConfirm] = useState(false);
+  const [isDeletingEpic, setIsDeletingEpic] = useState(false);
   const [rawEpics, setRawEpics] = useState<any[]>([]);
   const [initiatives, setInitiatives] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -22060,6 +23121,19 @@ export const TasksView: React.FC = () => {
           ? `${matchedAssignee.firstName || ''} ${matchedAssignee.lastName || ''}`.trim()
           : t.assigneeName || t.assigneeEmail || 'Assignee';
 
+        const matchedLead = (employeesData || []).find((e: any) =>
+          e.id === t.reviewingLeadId ||
+          e.employeeId === t.reviewingLeadId
+        );
+        const realLeadName = matchedLead
+          ? `${matchedLead.firstName || ''} ${matchedLead.lastName || ''}`.trim()
+          : t.reviewingLead || 'Manager Lead';
+
+        const pRaw = (t.priority || '').toUpperCase();
+        const pNormalized = (pRaw === 'URGENT' || pRaw === 'CRITICAL' || pRaw === 'P1' || pRaw === '1') ? 'P1'
+          : (pRaw === 'HIGH' || pRaw === 'P2' || pRaw === '2') ? 'P2'
+          : (pRaw === 'LOW' || pRaw === 'P4' || pRaw === '4') ? 'P4' : 'P3';
+
         return {
           id: t.id,
           taskCode,
@@ -22076,13 +23150,15 @@ export const TasksView: React.FC = () => {
           assigneeEmail: t.assigneeEmail,
           assigneeIds: t.assigneeIds,
           assigneeName: realAssigneeName,
-          reviewingLead: 'Manager Lead',
+          reviewingLead: realLeadName,
+          reviewingLeadId: t.reviewingLeadId || matchedLead?.id || '',
           status: t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : t.status === 'PLANNED' ? 'PLANNED' : 'BACKLOG',
-          priority: t.priority || 'MEDIUM',
-          dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '2026-09-02',
+          priority: pNormalized,
+          dueDate: t.dueDate ? String(t.dueDate).split('T')[0] : '2026-09-02',
           notesCount: 1,
           outputUrl: t.deliverableUrl || '',
           notes: t.description || '',
+          waitingOn: t.waitingOn || 'None (Self)',
           createdAt: t.createdAt,
         };
       });
@@ -22115,7 +23191,13 @@ export const TasksView: React.FC = () => {
 
   const filteredTasks = tasks.filter(t => {
     const matchesEntity = matchesEntityFilter(t, selectedEntity);
-    const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
+    const matchesPriority = priorityFilter === 'ALL' || (() => {
+      const p = (t.priority || '').toUpperCase();
+      const code = (p === 'URGENT' || p === 'CRITICAL' || p === 'P1' || p === '1') ? 'P1'
+        : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2'
+        : (p === 'LOW' || p === 'P4' || p === '4') ? 'P4' : 'P3';
+      return code === priorityFilter || p === priorityFilter;
+    })();
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
     const matchesSearch = !searchQuery.trim() ||
       t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -22180,6 +23262,10 @@ export const TasksView: React.FC = () => {
       toast.error('You can only edit tasks assigned to you.');
     }
 
+    const pCode = (task.priority === 'URGENT' || task.priority === 'CRITICAL' || task.priority === 'P1' || task.priority === '1') ? 'P1'
+      : (task.priority === 'HIGH' || task.priority === 'P2' || task.priority === '2') ? 'P2'
+      : (task.priority === 'LOW' || task.priority === 'P4' || task.priority === '4') ? 'P4' : 'P3';
+
     setIsModalReadOnly(readOnly);
     setSelectedTaskToUpdate({
       id: task.id,
@@ -22197,22 +23283,14 @@ export const TasksView: React.FC = () => {
       outputUrl: task.outputUrl || task.deliverableUrl || '',
       waitingOn: task.waitingOn || 'None (Self)',
       notes: task.notes || task.description || '',
-      dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+      dueDate: task.dueDate ? (String(task.dueDate).includes('T') ? String(task.dueDate).split('T')[0] : String(task.dueDate)) : '',
       targetWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
-      priority: task.priority || 'P3',
+      priority: pCode,
       createdAt: task.createdAt,
     });
   };
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
-    let nextStatus = 'IN_PROGRESS';
-    if (updated.status === 'Done') nextStatus = 'DONE';
-    else if (updated.status === 'To Review') nextStatus = 'IN_REVIEW';
-    else if (updated.status === 'Planned') nextStatus = 'PLANNED';
-    else if (updated.status === 'Backlog') nextStatus = 'BACKLOG';
-    else if (updated.status === 'Delayed') nextStatus = 'DELAYED';
-    else if (updated.status === 'Blocked') nextStatus = 'BLOCKED';
-
     try {
       await fetchApi(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
@@ -22223,7 +23301,7 @@ export const TasksView: React.FC = () => {
           assigneeId: updated.assigneeId,
           reviewingLead: updated.reviewingLead,
           reviewingLeadId: updated.reviewingLeadId,
-          status: nextStatus,
+          status: updated.status,
           deliverableUrl: updated.outputUrl || '',
           description: updated.notes || '',
           dueDate: updated.dueDate,
@@ -22232,11 +23310,12 @@ export const TasksView: React.FC = () => {
           waitingOn: updated.waitingOn,
         }),
       });
-      toast.success('Task updated successfully in database!');
-      loadTasks();
+      toast.success(`Task ${updated.taskId} updated & saved to live database!`);
+      await loadTasks();
     } catch (err: any) {
       console.error('[TASK PATCH ERROR]:', err);
-      toast.success('Task updated locally!');
+      toast.error(err?.message || 'Failed to update task in database');
+      throw err;
     }
   };
   const handleCloneTask = async (sourceTaskItem: TaskItem, importChecklistAndLinks: boolean) => {
@@ -22477,9 +23556,10 @@ export const TasksView: React.FC = () => {
                   className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
                   <option value="ALL">All Priorities</option>
-                  <option value="URGENT">Urgent 🔴</option>
-                  <option value="HIGH">High 🟠</option>
-                  <option value="MEDIUM">Medium 🟡</option>
+                  <option value="P1">P1 - Critical / Urgent 🔥</option>
+                  <option value="P2">P2 - High Priority ⚡</option>
+                  <option value="P3">P3 - Medium Priority 📌</option>
+                  <option value="P4">P4 - Low Priority 📝</option>
                 </select>
               </div>
 
@@ -22696,197 +23776,307 @@ export const TasksView: React.FC = () => {
         onClose={() => setSelectedTaskToUpdate(null)}
         onSave={handleSaveTaskUpdate}
         onClone={handleCloneTask}
+        onDelete={(deletedId) => {
+          setTasks(prev => prev.filter(t => t.id !== deletedId));
+          setSelectedTaskToUpdate(null);
+        }}
         isReadOnly={isModalReadOnly}
       />
 
-      {/* Feature Epic Details Pop-up Modal (Exact Image 2 Layout) */}
+      {/* Feature Epic Details Pop-up Modal (Exact Image 1 Unified Design) */}
       {viewingEpicInTasks && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto select-none">
-          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-gray-900">
-                    Feature Epic Details
-                  </h3>
-                  <p className="text-[11px] text-gray-400 font-semibold">
-                    Full breakdown of goal, metadata, and linked tasks
-                  </p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Top Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0 bg-white">
+              <span className="text-sm font-bold text-gray-700">Epic</span>
 
-              <button
-                onClick={() => setViewingEpicInTasks(null)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteEpicConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                    title="Delete Epic (Admin Only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const epicId = viewingEpicInTasks.id;
+                      setViewingEpicInTasks(null);
+                      setActiveTab('EPICS');
+                      setSelectedEpicToViewId(epicId);
+                    }}
+                    className="px-3.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewingEpicInTasks(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Modal Body Content */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-left">
-              {/* 1. Epic Title */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Epic Title
-                </span>
-                <h2 className="text-xl font-black text-gray-900 tracking-tight leading-snug">
-                  {viewingEpicInTasks.title}
-                </h2>
-              </div>
-
-              {/* 2. Metadata Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Epic Code
-                  </span>
-                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                    {viewingEpicInTasks.epicCode}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Entity / Brand
-                  </span>
-                  <span className="text-xs font-bold text-blue-700 font-mono">
-                    {(viewingEpicInTasks.epicCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Target Date / Week
-                  </span>
-                  <span className="text-xs font-bold text-purple-700">
-                    {viewingEpicInTasks.targetWeek || viewingEpicInTasks.targetDate || 'Week 1 (Days 1–7)'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                    Status
-                  </span>
-                  <span className="text-xs font-extrabold px-2.5 py-0.5 rounded uppercase border bg-blue-100 text-blue-800 border-blue-300 inline-block">
-                    {viewingEpicInTasks.status || 'IN_PROGRESS'}
-                  </span>
-                </div>
-              </div>
-
-              {/* 3. Parent Initiative Link Box */}
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+              {/* Breadcrumb & Badges */}
               {(() => {
                 const parentInit = (initiatives || []).find((i: any) => i.id === viewingEpicInTasks.initiativeId || i.initiativeCode === viewingEpicInTasks.initiativeId);
-                const parentCode = parentInit?.initiativeCode || (viewingEpicInTasks.epicCode?.startsWith('CAG') ? 'CAG-INIT-001' : 'EHM-INIT-001');
-                const parentTitle = parentInit?.title || 'Climagro Analytics Platform & Carbon Engine';
+                const parentTitle = parentInit?.title || 'Initiative';
+                const isCAG = (viewingEpicInTasks.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const rawStatus = viewingEpicInTasks.status || 'PLANNED';
+                const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
                 return (
-                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
-                      <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Parent Initiative Code:</span>
-                      <span className="font-mono text-emerald-800 font-extrabold bg-white px-3 py-1 rounded-lg border border-emerald-300 shadow-2xs text-sm">
-                        {parentCode}
-                      </span>
+                  <div className="space-y-3">
+                    {/* Breadcrumb */}
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                      {parentInit ? (
+                        <span 
+                          onClick={() => {
+                            setViewingEpicInTasks(null);
+                            setActiveTab('INITIATIVES');
+                            setSelectedInitiativeToViewId(parentInit.id);
+                          }}
+                          className="text-blue-600 hover:underline cursor-pointer font-semibold"
+                        >
+                          {parentTitle}
+                        </span>
+                      ) : (
+                        <span className="text-blue-600 font-semibold">{parentTitle}</span>
+                      )}
+                      <span>&gt;</span>
+                      <span className="text-gray-400">this epic</span>
                     </div>
-                    <div className="text-sm font-bold text-emerald-900 pl-6">
-                      Parent Initiative Title: <span className="font-semibold text-gray-800">{parentTitle}</span>
+
+                    {/* Badges line */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                        {viewingEpicInTasks.epicCode}
+                      </span>
+                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
+                        {isCAG ? 'Climagro' : 'EHM'}
+                      </span>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                        {statusLabel}
+                      </span>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* Posting Date & Time */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Posting Creation Date & Time
-                </span>
-                <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{formatDateTime(viewingEpicInTasks.createdAt)}</span>
-                </span>
-              </div>
-
-              {/* 4. Description */}
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">
-                  Epic Description
-                </span>
-                {viewingEpicInTasks.description ? (
-                  <MarkdownViewer content={viewingEpicInTasks.description} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-sm text-gray-800" />
-                ) : (
-                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs text-gray-400 italic">
-                    No epic description provided.
-                  </div>
+              {/* Epic Title & Description */}
+              <div className="space-y-1.5">
+                <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-snug">
+                  {viewingEpicInTasks.title}
+                </h2>
+                {viewingEpicInTasks.description && (
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                    {viewingEpicInTasks.description}
+                  </p>
                 )}
               </div>
 
-              {/* 5. Hanging Tasks Linked Under Epic */}
+              {/* Success Metric Box (Dark Theme Banner - Only shown if filled) */}
+              {viewingEpicInTasks.targetDeliverableMetric ? (
+                <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                    <Target className="w-4 h-4 text-emerald-400" />
+                    <span>Success metric</span>
+                  </div>
+                  <p className="text-sm font-bold text-white pl-6">
+                    {viewingEpicInTasks.targetDeliverableMetric}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* 3-Column Metadata Grid */}
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Target week</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingEpicInTasks.targetWeek || viewingEpicInTasks.targetDate || 'Week 1 • days 1–7'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {(() => {
+                      const parentInit = (initiatives || []).find((i: any) => i.id === viewingEpicInTasks.initiativeId || i.initiativeCode === viewingEpicInTasks.initiativeId);
+                      const dept = viewingEpicInTasks.department || parentInit?.departmentName;
+                      if (!dept || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Product and tech';
+                      }
+                      return dept;
+                    })()}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingEpicInTasks.createdAt ? new Date(viewingEpicInTasks.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Linked Tasks Section with Progress Bar */}
               {(() => {
+                const isEpicCAG = (viewingEpicInTasks.epicCode || '').startsWith('CAG');
                 const linkedTasks = tasks.filter((t: any) => t.epicId === viewingEpicInTasks.id || t.parentEpicCode === viewingEpicInTasks.epicCode);
+                const targetTasksCount = Math.max(linkedTasks.length, 3);
+                const doneCount = linkedTasks.filter((t: any) => t.status === 'DONE' || t.status === 'Done' || t.status === 'COMPLETED').length;
 
                 return (
-                  <div className="space-y-3 pt-2">
-                    <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <ListTodo className="w-4 h-4 text-emerald-600 animate-pulse" />
-                        <span>Hanging Tasks Linked Under Epic ({linkedTasks.length})</span>
-                      </span>
-                      {linkedTasks.length > 0 && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 animate-pulse">
-                          ● Live Connected
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    {/* Header line & Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-gray-900">Linked tasks</h4>
+                        <span className="text-xs font-medium text-gray-500">
+                          {doneCount} of {linkedTasks.length} done
                         </span>
-                      )}
-                    </h4>
+                      </div>
+                      <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round((doneCount / Math.max(1, linkedTasks.length)) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
 
-                    {linkedTasks.length > 0 ? (
-                      <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-emerald-400 before:via-purple-400 before:to-emerald-200">
-                        {linkedTasks.map((taskItem: any) => (
+                    {/* Tasks List */}
+                    <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+                      {linkedTasks.map((taskItem: any, idx: number) => {
+                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
+                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
+                          : (taskItem.taskCode || 'TSK-001');
+
+                        const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
+                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
+
+                        const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'Done' || taskItem.status === 'COMPLETED';
+                        const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'In Progress' || taskItem.status === 'ACTIVE';
+                        const p = (taskItem.priority || '').toUpperCase();
+                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (p === 'URGENT' || p === 'HIGH' || p === 'P1' || p === '1') ? 'P1' : 'Planned';
+
+                        return (
                           <div
-                            key={taskItem.id}
-                            className="bg-white p-3.5 rounded-2xl border border-gray-200 hover:border-emerald-400 hover:shadow-md transition-all space-y-1.5 text-left"
+                            key={taskItem.id || idx}
+                            onClick={() => handleTaskClick(taskItem, false)}
+                            className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors cursor-pointer group"
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                {taskItem.taskCode}
-                              </span>
-                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase border bg-blue-100 text-blue-800 border-blue-300">
-                                {taskItem.status}
-                              </span>
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <h5 className="font-bold text-xs text-gray-900 group-hover:text-emerald-700 transition-colors">
+                                {taskItem.title}
+                              </h5>
+                              <p className="text-[11px] text-gray-400 font-medium">
+                                {displayTaskCode} • {assigneeStr} • {dateStr}
+                              </p>
                             </div>
-                            <h5 className="text-xs font-bold text-gray-900">{taskItem.title}</h5>
-                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
-                              <span>Assignee: {taskItem.assigneeName || 'admin@example.com'}</span>
-                              <span className="flex items-center gap-1 text-emerald-700 font-bold">
-                                <Calendar className="w-3 h-3 text-emerald-600" />
-                                {taskItem.dueDate ? new Date(taskItem.dueDate).toLocaleDateString() : '9/18/2026'}
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
+                                isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                'bg-gray-100 text-gray-700 border-gray-200'
+                              }`}>
+                                {taskStatusLabel}
                               </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-xs text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                        No hanging tasks linked under this Epic yet.
-                      </div>
-                    )}
+                        );
+                      })}
+
+                      {/* Uncreated Task Slots */}
+                      {Array.from({ length: Math.max(0, targetTasksCount - linkedTasks.length) }).map((_, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
+                          <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAssignModalOpen(true);
+                            }}
+                            className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end">
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR EPIC DELETION IN TASKS (ADMIN ONLY) */}
+      {showDeleteEpicConfirm && viewingEpicInTasks && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Feature Epic</h3>
+                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
+              Are you sure you want to permanently delete epic{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                {viewingEpicInTasks.epicCode}
+              </span>{' '}
+              "{viewingEpicInTasks.title}"? This will permanently delete all associated sprints and tasks.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setViewingEpicInTasks(null)}
-                className="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-6 py-2.5 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                onClick={() => setShowDeleteEpicConfirm(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
-                Close View Mode
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingEpic}
+                onClick={async () => {
+                  try {
+                    setIsDeletingEpic(true);
+                    await fetchApi(`/api/epics/${viewingEpicInTasks.id}`, { method: 'DELETE' });
+                    toast.success(`Epic ${viewingEpicInTasks.epicCode} deleted successfully!`);
+                    setShowDeleteEpicConfirm(false);
+                    const deletedId = viewingEpicInTasks.id;
+                    setViewingEpicInTasks(null);
+                    setRawEpics(prev => prev.filter(e => e.id !== deletedId));
+                    setTasks(prev => prev.filter(t => t.epicId !== deletedId));
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to delete epic');
+                  } finally {
+                    setIsDeletingEpic(false);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                {isDeletingEpic ? 'Deleting...' : 'Delete Epic'}
               </button>
             </div>
           </div>
@@ -22898,7 +24088,9 @@ export const TasksView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx`
 
 ```tsx
 import React, { useState, useEffect } from 'react';
@@ -22924,7 +24116,6 @@ export const TeamDirectoryView: React.FC = () => {
   // Add Form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [personalEmail, setPersonalEmail] = useState('');
   const [role, setRole] = useState<'EMPLOYEE' | 'MANAGER'>('EMPLOYEE');
   const [position, setPosition] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -22988,8 +24179,8 @@ export const TeamDirectoryView: React.FC = () => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!email.trim() && !personalEmail.trim()) {
-      toast.error('Please provide at least a Work Email or Personal Email.');
+    if (!email.trim()) {
+      toast.error('Please provide an email address.');
       return;
     }
 
@@ -23000,7 +24191,7 @@ export const TeamDirectoryView: React.FC = () => {
       const firstName = parts[0] || fullName;
       const lastName = parts.slice(1).join(' ') || '';
 
-      const targetMail = (email.trim() || personalEmail.trim()).toLowerCase();
+      const targetMail = email.trim().toLowerCase();
       const roleToAssign = user?.role === 'ADMIN' ? role : 'EMPLOYEE';
 
       await fetchApi<any>('/api/employees', {
@@ -23008,8 +24199,8 @@ export const TeamDirectoryView: React.FC = () => {
         body: JSON.stringify({
           firstName,
           lastName,
-          email: email.trim(),
-          personalEmail: personalEmail.trim(),
+          email: targetMail,
+          phone: phoneNumber.trim() || undefined,
           role: roleToAssign,
           designation: position || 'Specialist',
           entityCode: entity,
@@ -23024,7 +24215,6 @@ export const TeamDirectoryView: React.FC = () => {
 
       setFullName('');
       setEmail('');
-      setPersonalEmail('');
       setRole('EMPLOYEE');
       setPosition('');
       setPhoneNumber('');
@@ -23295,36 +24485,13 @@ export const TeamDirectoryView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Personal email</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email address</label>
                   <input
                     type="email"
-                    placeholder="tarul.personal@gmail.com"
-                    value={personalEmail}
-                    onChange={e => setPersonalEmail(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Work email (optional)</label>
-                  <input
-                    type="email"
-                    placeholder="tarul@ehmconsultancy.com"
+                    placeholder="name@company.com"
+                    required
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Position</label>
-                  <input
-                    type="text"
-                    placeholder="Senior systems engineer"
-                    value={position}
-                    onChange={e => setPosition(e.target.value)}
                     className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
                   />
                 </div>
@@ -23343,6 +24510,17 @@ export const TeamDirectoryView: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Position</label>
+                  <input
+                    type="text"
+                    placeholder="Senior systems engineer"
+                    value={position}
+                    onChange={e => setPosition(e.target.value)}
+                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 placeholder-gray-400"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">Department</label>
                   <select
                     value={department}
@@ -23355,19 +24533,19 @@ export const TeamDirectoryView: React.FC = () => {
                     <option value="Operations & Delivery">Operations & Delivery</option>
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
-                  <select
-                    value={entity}
-                    onChange={e => setEntity(e.target.value as any)}
-                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold"
-                  >
-                    <option value="EHM">EHM</option>
-                    <option value="CAG">CLIMAGRO</option>
-                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
+                <select
+                  value={entity}
+                  onChange={e => setEntity(e.target.value as any)}
+                  className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold"
+                >
+                  <option value="EHM">EHM</option>
+                  <option value="CAG">CLIMAGRO</option>
+                  <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
@@ -23517,7 +24695,9 @@ export const TeamDirectoryView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/pages/TeamTasksView.tsx
+---
+
+### File: `artifacts/hr-dashboard/src/pages/TeamTasksView.tsx`
 
 ```tsx
 import React, { useState } from 'react';
@@ -23698,7 +24878,9 @@ export const TeamTasksView: React.FC = () => {
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/utils/avatars.ts
+---
+
+### File: `artifacts/hr-dashboard/src/utils/avatars.ts`
 
 ```typescript
 // Vector SVG Logo Avatars (No real photos — clean vector icon logos)
@@ -23722,7 +24904,9 @@ export function getAvatarByName(name?: string, gender?: 'male' | 'female'): stri
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/utils/dateUtils.ts
+---
+
+### File: `artifacts/hr-dashboard/src/utils/dateUtils.ts`
 
 ```typescript
 export const formatDateTime = (dateInput?: string | Date | null): string => {
@@ -23774,7 +24958,9 @@ export const formatDateShortWithTime = (dateInput?: string | Date | null): strin
 
 ```
 
-## FILE: artifacts/hr-dashboard/src/utils/entityUtils.ts
+---
+
+### File: `artifacts/hr-dashboard/src/utils/entityUtils.ts`
 
 ```typescript
 /**
@@ -23866,7 +25052,9 @@ export function matchesEntityFilter(item: any, selectedEntity: string): boolean 
 
 ```
 
-## FILE: artifacts/hr-dashboard/tsconfig.json
+---
+
+### File: `artifacts/hr-dashboard/tsconfig.json`
 
 ```json
 {
@@ -23893,7 +25081,9 @@ export function matchesEntityFilter(item: any, selectedEntity: string): boolean 
 
 ```
 
-## FILE: artifacts/hr-dashboard/vite.config.ts
+---
+
+### File: `artifacts/hr-dashboard/vite.config.ts`
 
 ```typescript
 import { defineConfig } from 'vite';
@@ -23921,197 +25111,9 @@ export default defineConfig({
 
 ```
 
-## FILE: chatdiscussion.md
-
-```markdown
-# HROS (Human Resource Operating System) — Complete Chat & System Architecture Reference
-
-> **File:** `chatdiscussion.md`  
-> **Repository:** EHM-Climagro OS (`c:\hrdashboard`)  
-> **Last Updated:** September 11, 2026  
-
 ---
 
-## 1. Executive Summary & Overview
-
-**EHM-Climagro OS** (HROS) is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, Agile Milestone, and Meeting Management platform designed for cross-entity collaboration between **ehmconsultancy** and **climagroanalytics**.
-
-This document serves as a comprehensive reference of all user requests, architectural decisions, technical fixes, database schema updates, API integrations, and UI enhancements implemented during this development trajectory.
-
----
-
-## 2. Full Chronological History of User Requests & Solutions
-
-### Phase 1: Frontend-to-Backend Connection & Core Wiring
-* **User Directive**: Connect the disconnected frontend mock arrays to the real Node.js/Express API server.
-* **Fixes Applied**:
-  - `AuthContext.tsx`: Replaced mock `setTimeout` login with real `POST /api/auth/login` via `@workspace/api-client-react`. Restored JWT session from `localStorage.getItem('hros_token')`.
-  - `LoginView.tsx`: Integrated real authentication flow with error toast alerts.
-  - Connected `EmployeeDashboardView`, `TasksView`, `MeetingsView`, `AnnouncementsView`, `AttendanceView`, and `TeamDirectoryView` to live Express API endpoints.
-
----
-
-### Phase 2: Supabase PostgreSQL Schema & Enum Fixes
-* **Issue Reported**: Toast error `column "status" of relation "meetings" does not exist` when creating meetings or running Google Calendar sync.
-* **Root Cause**: Local Drizzle migration files (`0002_silky_onslaught.sql`, `0003_fair_sue_storm.sql`) were generated locally but had not been executed on the live Supabase database.
-* **Solution**:
-  - Created `lib/db/src/apply-db-schema.ts` DDL execution script.
-  - Applied the following PostgreSQL DDL schema updates directly to Supabase:
-    - Added `DELAYED` and `BLOCKED` values to `task_status` enum.
-    - Created `meeting_status` enum (`SCHEDULED`, `CANCELLED`).
-    - Added `GOOGLE_CALENDAR_IMPORTED` value to `meeting_source` enum.
-    - Added `status` column to `meetings` table (`DEFAULT 'SCHEDULED' NOT NULL`).
-  - Added robust environment variable fallback paths in `lib/db/src/index.ts` to ensure database connections succeed regardless of package execution directory.
-
----
-
-### Phase 3: Real Two-Way Google Calendar Sync & Google Meet Integration
-* **Issues Reported**:
-  1. Google Calendar sync was returning 0 imported events.
-  2. Clicking "Join Google Meet" opened `https://meet.google.com/hros-1234` which gave Google Meet error: `"Invalid video call name."`.
-  3. Events created on Google Calendar secondary calendars (e.g. `ehm testing`) were not appearing in HROS.
-  4. Timezone offset mismatch when creating meetings.
-* **Root Causes & Solutions**:
-  - **OAuth Requirement**: Without a connected Google OAuth token in `google_tokens` table, mock links were generated. Added validation in `routes/meetings.ts` requiring connected Google OAuth before meeting creation.
-  - **Real Meet Links**: Integrated Google Calendar REST API (`POST /v3/calendars/primary/events?conferenceDataVersion=1`) to automatically generate working Google Meet video room codes (e.g. `https://meet.google.com/abc-defg-hij`).
-  - **Timezone Support**: Added `userTimeZone` resolution (`Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'`) to `start` and `end` event objects in Google Calendar API payloads.
-  - **Multi-Calendar Sync**: Updated `services/calendar-sync.ts` to query `users/me/calendarList` API first, discovering **ALL primary and secondary calendars owned by the user**, importing events across all calendars.
-  - **Expanded Sync Window**: Expanded sync window from 30 days past to 60 days future (`timeMin` / `timeMax`).
-
----
-
-### Phase 4: Meetings Feed UX & Filtering Improvements
-* **User Directives**:
-  1. Add top filter toolbar for Today's, Tomorrow's, Past 7 Days, and Recurring meetings.
-  2. Prevent automatic sync toasts from popping up on page load/navigation.
-  3. Don't show repeating series cards cluttering "All Meetings".
-* **Solutions Implemented**:
-  - **UX Loading Feedback**: Added `isSyncing` and `isConnecting` state handlers with spinning icons (`<RefreshCw className="animate-spin" />`) and disabled button states to prevent double-clicking.
-  - **Silent Auto-Fetch**: Removed `handleSync()` toast trigger from `useEffect` mount. Page opens run silent background sync without popping up UI toasts.
-  - **5 Meeting Filter Rules**:
-    1. **All Meetings (`ALL`)**: Shows all distinct single meetings, but **deduplicates repeating series meetings** (showing 1 representative card per title).
-    2. **Today's Meetings (`TODAY`)**: Shows all meetings starting today (`YYYY-MM-DD`).
-    3. **Tomorrow's Meetings (`TOMORROW`)**: Shows all meetings starting tomorrow.
-    4. **Past 7 Days (`PAST`)**: Shows meetings that ended in the last 7 days.
-    5. **Recurring / Series (`RECURRING`)**: Shows all occurrences of repeating series meetings (like all instances of "Company Call").
-
----
-
-### Phase 5: Employee Invitations & Setup Link System
-* **User Directive**: Ensure an invitation email goes to new employees with the dashboard setup URL upon addition.
-* **Solutions Implemented**:
-  - `routes/employees.ts`: `POST /api/employees` returns `{ employee, inviteToken, inviteLink: ${appUrl}/accept-invite?token=${inviteToken} }`.
-  - `TeamDirectoryView.tsx`: Displays an **Invitation Link Modal** upon employee creation featuring a **"Copy Link"** button for sharing via WhatsApp, Slack, or Email.
-  - `services/email.ts`: Dispatches Resend onboarding email (`from: 'HROS <onboarding@resend.dev>'`) and logs the full invitation URL in bold green server logs.
-
----
-
-### Phase 6: Vector SVG Male & Female Avatar System
-* **User Directive**: Replace all external photo URLs (Unsplash) with clean vector SVG logo avatars for Male and Female.
-* **Solution Implemented**:
-  - Created `src/utils/avatars.ts` with Data URI SVG vector logo avatars (`MALE_AVATAR` and `FEMALE_AVATAR`).
-  - Implemented `getAvatarByName(name)` helper to automatically map names to vector avatars.
-  - Updated `TeamDirectoryView.tsx`, `OfficeTodayView.tsx`, `TeamTasksView.tsx`, `Navbar.tsx`, `ProfileModal.tsx`, and `ScheduleWidget.tsx`.
-
----
-
-### Phase 7: Full Agile Hierarchy & Product Backlog System
-* **User Directives & Requirements**:
-  1. **Strategic Initiatives Form & View (`InitiativesSubView.tsx`)**:
-     - Form fields: Title, Brand/Entity (`ehmconsultancy`, `climagroanalytics`), Department (`Marketing`, `Sales`, `Product & Tech`, `Operations & Delivery`, `Grants & Governance`), Sub-Department/Track, Target Deliverable Metric, Target Month (`Month 1`, `Month 2`, `Month 3`), Epics division count (`1` to `8`).
-     - Default View: Closed/collapsed by default (`expandedId = null`).
-     - Status confirmation popup dialog before updating status (`PLANNED`, `IN_PROGRESS` ➔ `ACTIVE`, `DONE` ➔ `DONE`).
-     - **Archive Mode & Auto-Archiving**: Marking an initiative as `DONE` automatically moves it to **Archive Mode** (`Archive (N)` toggle button).
-     - **Explicit Brand / Entity Badge**: Displays `🏢 climagroanalytics` / `🏢 ehmconsultancy` badge on each initiative card.
-     - **Dynamic Adaptive Epics Sizing**: 1-6 epics scale adaptively across 1 row (`grid-cols-1` to `grid-cols-6`), 7+ epics wrap to row 2.
-
-  2. **Feature Epics Form & View (`EpicsSubView.tsx`)**:
-     - Parent Initiative dropdown sorted alphabetically (`[CAG-INIT-001] Title`).
-     - Form fields: Parent Initiative, Epic Title, Department, Target Week, Description, Target Sprints Count.
-     - Compact Card Layout & Ordering:
-       - Top Bar: Parent Initiative Badge `⚡ [CAG-INIT-001] Make a full application for cityadapt.ai` on left, Status Badge (`PLANNED`, `IN_PROGRESS`, `DONE`), Eye Button (`👁️`), and Edit Button (`✏️`) on top right.
-       - Second Line: Epic Code Badge `CAG-EPIC-001` and Epic Title `Frontend`.
-       - Third Line: Department (`Product & Tech`) and Target Week (`Week 1 (Days 1–7)`).
-     - **Hanging TASKS Clothesline UI**: Animated hanging clothespin stringer displaying assigned **Hanging TASKS** (`[CAG-EPIC-001-TSK-01] Initial Setup`).
-     - **Middle Pop Card Details Modal**: Clicking Eye button (`👁️`) opens a centered middle pop card displaying all epic details, linked tasks, and an embedded **`✏️ Edit Epic`** button.
-     - **Scalable Toolbar for 50+ Epics**: Real-time Search Bar, Status Filter Pills (`All`, `Planned`, `In Progress`, `Done`), and `Cards` vs `Compact Table` view switcher.
-
-  3. **Standalone Sprints Page (`SprintsView.tsx` & `SprintsSubView.tsx`)**:
-     - Main left Sidebar under **WORK**: Renamed **Tasks** ➔ **`Product Backlog`** (`/tasks`), added standalone **`Sprints`** (`/sprints`).
-     - Parent Epic dropdown sorted alphabetically (`[CAG-EPIC-001] Title`).
-     - Form fields: Parent Epic, Sprint Title, Target Week, Department, Assigned To employee, Reviewing Lead, Description / Goal.
-
-  4. **Product Backlog Tasks (`TasksView.tsx` & `TaskAssignModal.tsx`)**:
-     - Product Backlog top segmented tab switcher contains 3 tabs: `🎯 Initiatives`, `⚡ Epics`, and `📋 Tasks` (Sprints tab removed from `/tasks`).
-     - Parent Sprint dropdown sorted alphabetically (`[CAG-SPR-001] Name`).
-     - Form fields: Parent Sprint, Task Title, Department, Assigned To employee, Target Date, Description, Reviewing Lead.
-
----
-
-## 3. Database Schema Overview (`@workspace/db`)
-
-| Table Name | Description | Key Enums & Columns |
-| :--- | :--- | :--- |
-| `users` | User credentials & session tokens | `role` (`ADMIN`, `MANAGER`, `EMPLOYEE`), `employeeId` |
-| `employees` | Employee roster & details | `employeeCode` (`EHM-EMP01`), `entityId`, `departmentId`, `designation` |
-| `initiatives` | Level 1 Strategic Initiatives | `initiativeCode` (`CAG-INIT-001`), `entityId`, `departmentId`, `subDepartment`, `targetMonth`, `epicsCountTarget`, `targetDeliverableMetric`, `status` (`PLANNED`, `ACTIVE`, `DONE`) |
-| `epics` | Level 2 Feature Epics | `epicCode` (`CAG-EPIC-001`), `initiativeId`, `department`, `targetWeek`, `sprintsCountTarget`, `status` |
-| `sprints` | Level 3 Agile Sprints | `sprintCode` (`EHM-EMP01-SPR-01`), `epicId`, `reviewingLeadId`, `department`, `targetWeek` |
-| `tasks` | Level 4 Backlog Tasks | `taskCode` (`EHM-EMP01-001`), `sprintId`, `reviewingLeadId`, `department`, `status` (`TODO`, `IN_PROGRESS`, `UNDER_REVIEW`, `COMPLETED`, `DELAYED`, `BLOCKED`) |
-| `entity_counters` | Atomic sequence counters | `entityId`, `nextInitiativeSeq`, `nextEpicSeq` |
-| `meetings` | Scheduled & imported meetings | `status` (`SCHEDULED`, `CANCELLED`), `source` (`GOOGLE_CALENDAR`, `GOOGLE_CALENDAR_IMPORTED`), `googleMeetUrl`, `googleEventId` |
-| `google_tokens` | User Google OAuth 2.0 tokens | `accessToken`, `refreshToken`, `expiresAt` |
-| `invites` | Pending account setup invites | `token`, `role`, `status` (`PENDING`, `ACCEPTED`), `expiresAt` |
-
-### Phase 8: Add Employee Modal Enhancements & Supabase Admin Invite Integration
-* **User Directives**:
-  1. Add Personal Email field (`personalEmail`) and make Work Email (`email`) optional in the Add Employee modal.
-  2. Add Role dropdown (`EMPLOYEE` / `MANAGER`) to the Add Employee modal.
-  3. Replace native Resend email dispatcher with Supabase Admin SDK (`supabaseAdmin.auth.admin.inviteUserByEmail`).
-* **Solutions Implemented**:
-  - `TeamDirectoryView.tsx`: Added `personalEmail` state and `role` state (`EMPLOYEE` | `MANAGER`). Updated form inputs so Work Email is optional, validating that at least one email (Personal or Work) is provided.
-  - `routes/employees.ts`: Updated `POST /api/employees` to compute `targetEmail = (email || personalEmail).toLowerCase().trim()`, store target email in `employees` and `invites` tables, and assign the selected `role`.
-  - `services/supabase-admin.ts`: Created Supabase Admin client initialized with `@supabase/supabase-js` using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
-  - Replaced `sendInviteEmail` call in `routes/employees.ts` with `supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, { redirectTo: `${appUrl}/accept-invite?token=${inviteToken}` })`.
-
----
-
-## 4. Environment Configuration (`artifacts/api-server/.env`)
-
-```env
-# Supabase PostgreSQL Database Connection
-DATABASE_URL="postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
-
-# Server Configuration
-PORT=5000
-APP_URL="http://localhost:5173"
-
-# JWT & Security Secrets
-JWT_SECRET="hros_jwt_super_secret_key_2026"
-TOKEN_ENCRYPTION_KEY="hros_token_encryption_secret_key_32bytes!"
-
-# Third-Party Integrations
-RESEND_API_KEY="re_123456789_your_resend_key"
-GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
-GOOGLE_REDIRECT_URI="http://localhost:5000/api/auth/google/callback"
-```
-
----
-
-## 5. Verification & Monorepo Build Command
-
-To verify complete TypeScript & Vite compilation across all workspace packages:
-
-```bash
-pnpm build
-```
-
-**Result:** `PASSED (0 errors across all 5 workspace projects)`.
-
-```
-
-## FILE: drizzle.config.ts
+### File: `drizzle.config.ts`
 
 ```typescript
 import { defineConfig } from 'drizzle-kit';
@@ -24125,13 +25127,15 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres',
+    url: process.env.DATABASE_URL!,
   },
 });
 
 ```
 
-## FILE: lib/api-client-react/package.json
+---
+
+### File: `lib/api-client-react/package.json`
 
 ```json
 {
@@ -24158,7 +25162,9 @@ export default defineConfig({
 
 ```
 
-## FILE: lib/api-client-react/src/index.ts
+---
+
+### File: `lib/api-client-react/src/index.ts`
 
 ```typescript
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24239,7 +25245,9 @@ export function useEmployees(entityCode?: string) {
 
 ```
 
-## FILE: lib/api-client-react/tsconfig.json
+---
+
+### File: `lib/api-client-react/tsconfig.json`
 
 ```json
 {
@@ -24260,7 +25268,9 @@ export function useEmployees(entityCode?: string) {
 
 ```
 
-## FILE: lib/api-zod/package.json
+---
+
+### File: `lib/api-zod/package.json`
 
 ```json
 {
@@ -24282,7 +25292,9 @@ export function useEmployees(entityCode?: string) {
 
 ```
 
-## FILE: lib/api-zod/src/index.ts
+---
+
+### File: `lib/api-zod/src/index.ts`
 
 ```typescript
 import { z } from 'zod';
@@ -24360,7 +25372,9 @@ export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>;
 
 ```
 
-## FILE: lib/api-zod/tsconfig.json
+---
+
+### File: `lib/api-zod/tsconfig.json`
 
 ```json
 {
@@ -24380,7 +25394,9 @@ export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>;
 
 ```
 
-## FILE: lib/db/apply_0005_migration.mjs
+---
+
+### File: `lib/db/apply_0005_migration.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -24408,7 +25424,9 @@ try {
 
 ```
 
-## FILE: lib/db/apply_migration.mjs
+---
+
+### File: `lib/db/apply_migration.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -24442,7 +25460,9 @@ try {
 
 ```
 
-## FILE: lib/db/audit_epics.mjs
+---
+
+### File: `lib/db/audit_epics.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -24491,7 +25511,9 @@ try {
 
 ```
 
-## FILE: lib/db/backfill.mjs
+---
+
+### File: `lib/db/backfill.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -24616,7 +25638,9 @@ try {
 
 ```
 
-## FILE: lib/db/check_tasks.mjs
+---
+
+### File: `lib/db/check_tasks.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -24647,7 +25671,9 @@ try {
 
 ```
 
-## FILE: lib/db/drizzle.config.ts
+---
+
+### File: `lib/db/drizzle.config.ts`
 
 ```typescript
 import { defineConfig } from 'drizzle-kit';
@@ -24661,13 +25687,15 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres',
+    url: process.env.DATABASE_URL!,
   },
 });
 
 ```
 
-## FILE: lib/db/drizzle/0000_soft_cerebro.sql
+---
+
+### File: `lib/db/drizzle/0000_soft_cerebro.sql`
 
 ```sql
 CREATE TYPE "public"."employee_status" AS ENUM('ACTIVE', 'TERMINATED');--> statement-breakpoint
@@ -24950,20 +25978,26 @@ ALTER TABLE "sprints" ADD CONSTRAINT "sprints_entity_id_entities_id_fk" FOREIGN 
 ALTER TABLE "sprints" ADD CONSTRAINT "sprints_department_id_departments_id_fk" FOREIGN KEY ("department_id") REFERENCES "public"."departments"("id") ON DELETE no action ON UPDATE no action;
 ```
 
-## FILE: lib/db/drizzle/0001_blue_cerise.sql
+---
+
+### File: `lib/db/drizzle/0001_blue_cerise.sql`
 
 ```sql
 ALTER TABLE "tasks" ALTER COLUMN "sprint_week" DROP NOT NULL;
 ```
 
-## FILE: lib/db/drizzle/0002_silky_onslaught.sql
+---
+
+### File: `lib/db/drizzle/0002_silky_onslaught.sql`
 
 ```sql
 ALTER TYPE "public"."task_status" ADD VALUE 'DELAYED';--> statement-breakpoint
 ALTER TYPE "public"."task_status" ADD VALUE 'BLOCKED';
 ```
 
-## FILE: lib/db/drizzle/0003_fair_sue_storm.sql
+---
+
+### File: `lib/db/drizzle/0003_fair_sue_storm.sql`
 
 ```sql
 CREATE TYPE "public"."meeting_status" AS ENUM('SCHEDULED', 'CANCELLED');--> statement-breakpoint
@@ -24971,7 +26005,9 @@ ALTER TYPE "public"."meeting_source" ADD VALUE 'GOOGLE_CALENDAR_IMPORTED';--> st
 ALTER TABLE "meetings" ADD COLUMN "status" "meeting_status" DEFAULT 'SCHEDULED' NOT NULL;
 ```
 
-## FILE: lib/db/drizzle/0004_agile_schema_alignment.sql
+---
+
+### File: `lib/db/drizzle/0004_agile_schema_alignment.sql`
 
 ```sql
 -- 0004_agile_schema_alignment.sql
@@ -25074,7 +26110,9 @@ ALTER TABLE "meetings" ADD COLUMN IF NOT EXISTS "status" "public"."meeting_statu
 
 ```
 
-## FILE: lib/db/drizzle/0005_task_checklists_and_comments.sql
+---
+
+### File: `lib/db/drizzle/0005_task_checklists_and_comments.sql`
 
 ```sql
 -- 0005_task_checklists_and_comments.sql
@@ -25096,7 +26134,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 
 ```
 
-## FILE: lib/db/drizzle/meta/0000_snapshot.json
+---
+
+### File: `lib/db/drizzle/meta/0000_snapshot.json`
 
 ```json
 {
@@ -27085,7 +28125,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/0001_snapshot.json
+---
+
+### File: `lib/db/drizzle/meta/0001_snapshot.json`
 
 ```json
 {
@@ -29074,7 +30116,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/0002_snapshot.json
+---
+
+### File: `lib/db/drizzle/meta/0002_snapshot.json`
 
 ```json
 {
@@ -31065,7 +32109,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/0003_snapshot.json
+---
+
+### File: `lib/db/drizzle/meta/0003_snapshot.json`
 
 ```json
 {
@@ -33073,7 +34119,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/drizzle/meta/_journal.json
+---
+
+### File: `lib/db/drizzle/meta/_journal.json`
 
 ```json
 {
@@ -33112,7 +34160,9 @@ CREATE TABLE IF NOT EXISTS "task_comments" (
 }
 ```
 
-## FILE: lib/db/fix_sprint_codes.mjs
+---
+
+### File: `lib/db/fix_sprint_codes.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -33159,7 +34209,9 @@ try {
 
 ```
 
-## FILE: lib/db/package.json
+---
+
+### File: `lib/db/package.json`
 
 ```json
 {
@@ -33185,7 +34237,9 @@ try {
 
 ```
 
-## FILE: lib/db/src/index.ts
+---
+
+### File: `lib/db/src/index.ts`
 
 ```typescript
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -33220,9 +34274,14 @@ export * from './schema/notifications.js';
 export * from './schema/initiatives.js';
 export * from './schema/epics.js';
 export * from './schema/sprints.js';
+export * from './schema/password_reset_otps.js';
 
-const DEFAULT_DB_URL = 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
-const connectionString = process.env.DATABASE_URL || DEFAULT_DB_URL;
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('[FATAL CONFIG ERROR]: DATABASE_URL environment variable is required.');
+}
+
 const isRemoteDb = !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1');
 
 const pool = new pg.Pool({
@@ -33234,7 +34293,9 @@ export const db = drizzle(pool);
 
 ```
 
-## FILE: lib/db/src/schema/announcements.ts
+---
+
+### File: `lib/db/src/schema/announcements.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, boolean, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
@@ -33257,7 +34318,9 @@ export const announcements = pgTable('announcements', {
 
 ```
 
-## FILE: lib/db/src/schema/applications.ts
+---
+
+### File: `lib/db/src/schema/applications.ts`
 
 ```typescript
 import { pgTable, uuid, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
@@ -33279,7 +34342,9 @@ export const applications = pgTable('applications', {
 
 ```
 
-## FILE: lib/db/src/schema/attendance.ts
+---
+
+### File: `lib/db/src/schema/attendance.ts`
 
 ```typescript
 import { pgTable, uuid, date, timestamp, decimal, pgEnum } from 'drizzle-orm/pg-core';
@@ -33302,7 +34367,9 @@ export const attendance = pgTable('attendance', {
 
 ```
 
-## FILE: lib/db/src/schema/audit_logs.ts
+---
+
+### File: `lib/db/src/schema/audit_logs.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, jsonb, timestamp } from 'drizzle-orm/pg-core';
@@ -33317,7 +34384,9 @@ export const auditLogs = pgTable('audit_logs', {
 
 ```
 
-## FILE: lib/db/src/schema/departments.ts
+---
+
+### File: `lib/db/src/schema/departments.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp } from 'drizzle-orm/pg-core';
@@ -33333,7 +34402,9 @@ export const departments = pgTable('departments', {
 
 ```
 
-## FILE: lib/db/src/schema/employees.ts
+---
+
+### File: `lib/db/src/schema/employees.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, decimal, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -33362,7 +34433,9 @@ export const employees = pgTable('employees', {
 
 ```
 
-## FILE: lib/db/src/schema/entities.ts
+---
+
+### File: `lib/db/src/schema/entities.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp } from 'drizzle-orm/pg-core';
@@ -33376,7 +34449,9 @@ export const entities = pgTable('entities', {
 
 ```
 
-## FILE: lib/db/src/schema/entity_counters.ts
+---
+
+### File: `lib/db/src/schema/entity_counters.ts`
 
 ```typescript
 import { pgTable, uuid, integer } from 'drizzle-orm/pg-core';
@@ -33393,7 +34468,9 @@ export const entityCounters = pgTable('entity_counters', {
 
 ```
 
-## FILE: lib/db/src/schema/epics.ts
+---
+
+### File: `lib/db/src/schema/epics.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -33422,7 +34499,9 @@ export const epics = pgTable('epics', {
 
 ```
 
-## FILE: lib/db/src/schema/google_tokens.ts
+---
+
+### File: `lib/db/src/schema/google_tokens.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp } from 'drizzle-orm/pg-core';
@@ -33440,7 +34519,9 @@ export const googleTokens = pgTable('google_tokens', {
 
 ```
 
-## FILE: lib/db/src/schema/initiatives.ts
+---
+
+### File: `lib/db/src/schema/initiatives.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -33469,7 +34550,9 @@ export const initiatives = pgTable('initiatives', {
 
 ```
 
-## FILE: lib/db/src/schema/invites.ts
+---
+
+### File: `lib/db/src/schema/invites.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
@@ -33491,7 +34574,9 @@ export const invites = pgTable('invites', {
 
 ```
 
-## FILE: lib/db/src/schema/meeting_attendees.ts
+---
+
+### File: `lib/db/src/schema/meeting_attendees.ts`
 
 ```typescript
 import { pgTable, uuid, timestamp, pgEnum } from 'drizzle-orm/pg-core';
@@ -33510,7 +34595,9 @@ export const meetingAttendees = pgTable('meeting_attendees', {
 
 ```
 
-## FILE: lib/db/src/schema/meetings.ts
+---
+
+### File: `lib/db/src/schema/meetings.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
@@ -33537,7 +34624,9 @@ export const meetings = pgTable('meetings', {
 
 ```
 
-## FILE: lib/db/src/schema/notifications.ts
+---
+
+### File: `lib/db/src/schema/notifications.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, jsonb, timestamp } from 'drizzle-orm/pg-core';
@@ -33555,7 +34644,35 @@ export const notifications = pgTable('notifications', {
 
 ```
 
-## FILE: lib/db/src/schema/sprints.ts
+---
+
+### File: `lib/db/src/schema/password_reset_otps.ts`
+
+```typescript
+import { pgTable, uuid, varchar, integer, boolean, timestamp, index } from 'drizzle-orm/pg-core';
+
+export const passwordResetOtps = pgTable(
+  'password_reset_otps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: varchar('email', { length: 255 }).notNull(),
+    otpHash: varchar('otp_hash', { length: 255 }).notNull(),
+    attempts: integer('attempts').default(0).notNull(),
+    verified: boolean('verified').default(false).notNull(),
+    resetToken: varchar('reset_token', { length: 255 }),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_password_reset_otps_email').on(table.email),
+  ]
+);
+
+```
+
+---
+
+### File: `lib/db/src/schema/sprints.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -33587,7 +34704,9 @@ export const sprints = pgTable('sprints', {
 
 ```
 
-## FILE: lib/db/src/schema/task_checklists.ts
+---
+
+### File: `lib/db/src/schema/task_checklists.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, boolean, integer, timestamp } from 'drizzle-orm/pg-core';
@@ -33607,7 +34726,9 @@ export const taskChecklists = pgTable('task_checklists', {
 
 ```
 
-## FILE: lib/db/src/schema/task_comments.ts
+---
+
+### File: `lib/db/src/schema/task_comments.ts`
 
 ```typescript
 import { pgTable, uuid, text, timestamp, boolean } from 'drizzle-orm/pg-core';
@@ -33626,7 +34747,9 @@ export const taskComments = pgTable('task_comments', {
 
 ```
 
-## FILE: lib/db/src/schema/task_notes.ts
+---
+
+### File: `lib/db/src/schema/task_notes.ts`
 
 ```typescript
 import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
@@ -33643,7 +34766,9 @@ export const taskNotes = pgTable('task_notes', {
 
 ```
 
-## FILE: lib/db/src/schema/task_templates.ts
+---
+
+### File: `lib/db/src/schema/task_templates.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, jsonb, timestamp } from 'drizzle-orm/pg-core';
@@ -33666,7 +34791,9 @@ export const taskTemplates = pgTable('task_templates', {
 
 ```
 
-## FILE: lib/db/src/schema/tasks.ts
+---
+
+### File: `lib/db/src/schema/tasks.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
@@ -33704,13 +34831,16 @@ export const tasks = pgTable('tasks', {
   priority: taskPriorityEnum('priority').default('MEDIUM').notNull(),
   dueDate: timestamp('due_date').notNull(),
   dependencyTaskId: uuid('dependency_task_id'),
+  waitingOn: varchar('waiting_on', { length: 255 }).default('None (Self)'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 ```
 
-## FILE: lib/db/src/schema/users.ts
+---
+
+### File: `lib/db/src/schema/users.ts`
 
 ```typescript
 import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
@@ -33733,7 +34863,9 @@ export const users = pgTable('users', {
 
 ```
 
-## FILE: lib/db/tsconfig.json
+---
+
+### File: `lib/db/tsconfig.json`
 
 ```json
 {
@@ -33753,7 +34885,9 @@ export const users = pgTable('users', {
 
 ```
 
-## FILE: lib/db/verify_all_tests.mjs
+---
+
+### File: `lib/db/verify_all_tests.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -33932,7 +35066,9 @@ runTestScript()
 
 ```
 
-## FILE: lib/db/verify_overdue_dual_notif.mjs
+---
+
+### File: `lib/db/verify_overdue_dual_notif.mjs`
 
 ```javascript
 import pg from 'pg';
@@ -34060,7 +35196,9 @@ verifyDualOverdueNotifications()
 
 ```
 
-## FILE: package.json
+---
+
+### File: `package.json`
 
 ```json
 {
@@ -34079,14 +35217,5 @@ verifyDualOverdueNotifications()
 
 ```
 
-## FILE: pnpm-workspace.yaml
-
-```yaml
-packages:
-  - "artifacts/*"
-  - "lib/*"
-allowBuilds:
-  esbuild: true
-
-```
+---
 

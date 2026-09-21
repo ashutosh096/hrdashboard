@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db, users, invites, googleTokens, employees, eq, sql } from '@workspace/db';
+import crypto from 'crypto';
+import { db, users, invites, googleTokens, employees, passwordResetOtps, eq, and, sql } from '@workspace/db';
 import { JWT_SECRET } from '../config/jwt.js';
+import { sendPasswordResetOtpEmail } from '../services/email.js';
 
 const router = Router();
 
@@ -408,6 +410,228 @@ router.get('/google/callback', async (req, res) => {
   } catch (err) {
     console.error('[GOOGLE CALLBACK ERROR]:', err);
     res.status(500).send('OAuth Callback Error');
+  }
+});
+
+// Request Password Reset OTP Route
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ message: 'Valid email is required' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    // Check if user exists in database
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`TRIM(LOWER(${users.email})) = ${normalizedEmail}`);
+
+    // Rate-limiting check: check if an OTP was created less than 45 seconds ago
+    const [existingOtp] = await db
+      .select()
+      .from(passwordResetOtps)
+      .where(sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`);
+
+    const now = Date.now();
+    if (existingOtp && existingOtp.createdAt) {
+      const timeSinceCreation = now - new Date(existingOtp.createdAt).getTime();
+      if (timeSinceCreation < 45000) {
+        // Enforce 45s cooldown: do not generate new OTP, return generic message without error
+        return res.json({ message: 'If that email is registered, a verification code has been sent.' });
+      }
+    }
+
+    if (user) {
+      // Find employee name if available
+      let userName = 'Team Member';
+      if (user.employeeId) {
+        const [emp] = await db.select().from(employees).where(eq(employees.id, user.employeeId));
+        if (emp) {
+          const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+          if (fullName) userName = fullName;
+        }
+      }
+
+      // Generate 6-digit cryptographically secure numeric OTP
+      const otp = crypto.randomInt(100000, 1000000).toString();
+      const otpHash = await bcrypt.hash(otp, 10);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+      // Enforce single active row per email: delete any existing row for this email
+      await db
+        .delete(passwordResetOtps)
+        .where(sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`);
+
+      // Insert fresh OTP row
+      await db.insert(passwordResetOtps).values({
+        email: normalizedEmail,
+        otpHash,
+        attempts: 0,
+        verified: false,
+        resetToken: null,
+        expiresAt,
+      });
+
+      // Dispatch OTP email asynchronously / securely
+      sendPasswordResetOtpEmail(normalizedEmail, otp, userName).catch(err => {
+        console.error('[FORGOT-PASSWORD EMAIL ERROR]:', err);
+      });
+    }
+
+    // Always return generic response to prevent email enumeration / timing attacks
+    return res.json({ message: 'If that email is registered, a verification code has been sent.' });
+  } catch (err) {
+    console.error('[FORGOT-PASSWORD ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to process password reset request' });
+  }
+});
+
+// Verify OTP Route
+router.post('/verify-otp', async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ message: 'Email and verification code are required' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const cleanOtp = String(otp).trim();
+
+  try {
+    const [otpRow] = await db
+      .select()
+      .from(passwordResetOtps)
+      .where(sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`);
+
+    if (!otpRow) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    // Check expiry
+    if (new Date(otpRow.expiresAt) < new Date()) {
+      await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+      return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
+    }
+
+    // Check brute-force attempts
+    if (otpRow.attempts >= 5) {
+      await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+      return res.status(400).json({ message: 'Too many failed attempts. Please request a new verification code.' });
+    }
+
+    // Compare bcrypt hash
+    const isValid = await bcrypt.compare(cleanOtp, otpRow.otpHash);
+    if (!isValid) {
+      const newAttempts = otpRow.attempts + 1;
+      if (newAttempts >= 5) {
+        await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+        return res.status(400).json({ message: 'Too many failed attempts. Please request a new verification code.' });
+      } else {
+        await db
+          .update(passwordResetOtps)
+          .set({ attempts: newAttempts })
+          .where(eq(passwordResetOtps.id, otpRow.id));
+        return res.status(400).json({ message: `Invalid verification code. ${5 - newAttempts} attempt(s) remaining.` });
+      }
+    }
+
+    // OTP is valid: generate 32-byte hex reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    await db
+      .update(passwordResetOtps)
+      .set({
+        verified: true,
+        resetToken: resetToken,
+      })
+      .where(eq(passwordResetOtps.id, otpRow.id));
+
+    return res.json({ resetToken, message: 'Code verified successfully' });
+  } catch (err) {
+    console.error('[VERIFY-OTP ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to verify verification code' });
+  }
+});
+
+// Reset Password Route
+router.post('/reset-password', async (req, res) => {
+  const { email, resetToken, newPassword } = req.body;
+
+  if (!email || !resetToken || !newPassword) {
+    return res.status(400).json({ message: 'Email, reset token, and new password are required' });
+  }
+
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    const [otpRow] = await db
+      .select()
+      .from(passwordResetOtps)
+      .where(
+        and(
+          sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`,
+          eq(passwordResetOtps.resetToken, resetToken),
+          eq(passwordResetOtps.verified, true)
+        )
+      );
+
+    if (!otpRow) {
+      return res.status(400).json({ message: 'Invalid or expired password reset session. Please request a new code.' });
+    }
+
+    if (new Date(otpRow.expiresAt) < new Date()) {
+      await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+      return res.status(400).json({ message: 'Password reset session has expired. Please request a new code.' });
+    }
+
+    // Find the user
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`TRIM(LOWER(${users.email})) = ${normalizedEmail}`);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User account not found' });
+    }
+
+    // Hash new password and update user
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        status: 'ACTIVE',
+      })
+      .where(eq(users.id, user.id));
+
+    // Delete used OTP row immediately to prevent replay attacks
+    await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
+
+    // Generate fresh JWT token for seamless auto-login
+    const userPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      employeeId: user.employeeId || undefined,
+      managedTeamId: user.managedTeamId || undefined,
+    };
+
+    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '365d' });
+
+    console.log(`[PASSWORD RESET SUCCESS] User ${user.email} updated password and auto-logged in`);
+    return res.json({
+      message: 'Password has been reset successfully',
+      token,
+      user: userPayload,
+    });
+  } catch (err) {
+    console.error('[RESET-PASSWORD ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to reset password' });
   }
 });
 

@@ -88,8 +88,9 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
       setPriority(found.priority as any);
       setDescription(found.desc);
       setChecklists([
-        { id: 'c-1', itemText: 'Verify requirements and specifications', isCompleted: false },
-        { id: 'c-2', itemText: 'Initial setup & integration tests', isCompleted: false },
+        { id: 'c-1', itemText: 'Checkpoint 1', isCompleted: false },
+        { id: 'c-2', itemText: 'Checkpoint 2', isCompleted: false },
+        { id: 'c-3', itemText: 'Checkpoint 3', isCompleted: false },
       ]);
       setComments([
         { id: 'cm-1', authorName: 'System', content: `Cloned template: ${found.title}`, createdAt: new Date().toISOString(), isSystemLog: true },
@@ -371,10 +372,10 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                   onChange={(e) => setPriority(e.target.value as any)}
                   className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                 >
-                  <option value="URGENT">P1 (Top Priority) 🔴</option>
-                  <option value="HIGH">P2 (High Priority) 🟠</option>
-                  <option value="MEDIUM">P3 (Medium Priority) 🟡</option>
-                  <option value="LOW">P4 (Low Priority) ⚪</option>
+                  <option value="URGENT">P1 - Critical / Urgent 🔥</option>
+                  <option value="HIGH">P2 - High Priority ⚡</option>
+                  <option value="MEDIUM">P3 - Medium Priority 📌</option>
+                  <option value="LOW">P4 - Low Priority 📝</option>
                 </select>
               </div>
             </div>

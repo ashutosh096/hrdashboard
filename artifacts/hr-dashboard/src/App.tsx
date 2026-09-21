@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Route, Switch, useLocation } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
+import { fetchApi } from '@workspace/api-client-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { EntityProvider } from './contexts/EntityContext';
 import { Sidebar } from './components/Sidebar';
@@ -44,6 +45,20 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
+  const handleAssignTaskSubmit = async (taskData: any) => {
+    try {
+      const created = await fetchApi<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify(taskData),
+      });
+      toast.success(`Task ${created?.taskCode || 'created'} saved to live database!`);
+      queryClient.invalidateQueries();
+    } catch (err: any) {
+      console.error('[TASK ASSIGN MODAL SUBMIT ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task to database');
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
@@ -61,7 +76,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       </div>
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <TaskAssignModal isOpen={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} onSubmit={() => {}} />
+      <TaskAssignModal isOpen={isTaskModalOpen} onClose={() => setIsTaskModalOpen(false)} onSubmit={handleAssignTaskSubmit} />
       <ClockInModal isOpen={isClockModalOpen} onClose={() => setIsClockModalOpen(false)} />
       <ExportReportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
     </div>

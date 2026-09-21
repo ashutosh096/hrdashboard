@@ -254,38 +254,43 @@ export const EmployeeDashboardView: React.FC = () => {
   const activeEmpCode = activeEmployee?.employeeCode || (user?.employeeId ? `EMP-${user.employeeId.slice(0, 4)}` : 'EHM-E01');
   const activeEmpDesignation = activeEmployee?.designation || 'Senior Team Member';
 
-  const handleCreatePersonalTask = (e: React.FormEvent) => {
+  const handleCreatePersonalTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
       toast.error('Please enter a task deliverable title.');
       return;
     }
 
-    const newTask: EmployeeDeliverableTask = {
-      id: `emp-t-${Date.now()}`,
-      taskId: `${activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM'}-EMP01-00${myTasks.length + 1}`,
-      title: newTitle,
-      dept: newDept,
-      entity: activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM',
-      priority: newPriority,
-      lead: newLead,
-      assigneeName: activeEmpName,
-      status: 'In Progress',
-      dueDate: newDueDate,
-      outputUrl: newOutputUrl,
-      waitingOn: 'None (Self)',
-      notes: newNotes,
-      delayRequested: false,
-      sprintWeek: newSprintWeek,
-      completionPct: 10,
-    };
+    const entityCode = activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM';
+    const targetEmpId = activeEmployee?.id || user?.employeeId || user?.id;
 
-    setMyTasks([newTask, ...myTasks]);
-    toast.success(`Task "${newTitle}" created for ${activeEmpName}!`);
-    setIsCreateModalOpen(false);
-    setNewTitle('');
-    setNewNotes('');
-    setNewOutputUrl('');
+    try {
+      const createdTask = await fetchApi<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          description: newNotes.trim() || undefined,
+          priority: newPriority,
+          dueDate: newDueDate,
+          deliverableUrl: newOutputUrl.trim() || undefined,
+          assigneeId: targetEmpId,
+          entityCode: entityCode,
+          entity: entityCode,
+          sprintWeek: newSprintWeek,
+          status: 'IN_PROGRESS',
+        }),
+      });
+
+      toast.success(`Task "${newTitle}" created and saved to live database!`);
+      setIsCreateModalOpen(false);
+      setNewTitle('');
+      setNewNotes('');
+      setNewOutputUrl('');
+      await loadData();
+    } catch (err: any) {
+      console.error('[CREATE PERSONAL TASK ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task to database');
+    }
   };
 
   // Standup Log State
@@ -326,30 +331,37 @@ export const EmployeeDashboardView: React.FC = () => {
 
             return matchesAssignment;
           })
-          .map((t) => ({
-            id: t.id,
-            taskId: t.taskCode || t.id,
-            title: t.title,
-            dept: currentTargetEmp?.departmentName || 'Product & Tech',
-            entity: t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM',
-            priority: t.priority || 'MEDIUM',
-            lead: t.reviewingLead || 'Dr. Harshit Mishra',
-            assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Employee'),
-            status: (t.status === 'DONE'
-              ? 'Done'
-              : t.status === 'BLOCKED'
-                ? 'Blocked'
-                : t.status === 'DELAYED'
-                  ? 'Delayed'
-                  : 'In Progress') as any,
-            dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-18',
-            outputUrl: t.deliverableUrl || '',
-            waitingOn: 'None (Self)',
-            notes: t.description || '',
-            delayRequested: false,
-            sprintWeek: t.sprintWeek || 'Sprint 35 (Current)',
-            completionPct: t.status === 'DONE' ? 100 : 65,
-          }));
+          .map((t) => {
+            const matchedLeadEmp = (empData || []).find((e: any) => e.id === t.reviewingLeadId || e.employeeId === t.reviewingLeadId);
+            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Dr. Harshit Mishra');
+
+            return {
+              id: t.id,
+              taskId: t.taskCode || t.id,
+              title: t.title,
+              dept: currentTargetEmp?.departmentName || 'Product & Tech',
+              entity: t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM',
+              priority: t.priority || 'MEDIUM',
+              lead: leadName,
+              reviewingLeadId: t.reviewingLeadId || matchedLeadEmp?.id,
+              assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Employee'),
+              assigneeId: t.assigneeId,
+              status: (t.status === 'DONE'
+                ? 'Done'
+                : t.status === 'BLOCKED'
+                  ? 'Blocked'
+                  : t.status === 'DELAYED'
+                    ? 'Delayed'
+                    : 'In Progress') as any,
+              dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-18',
+              outputUrl: t.deliverableUrl || '',
+              waitingOn: t.waitingOn || 'None (Self)',
+              notes: t.description || '',
+              delayRequested: false,
+              sprintWeek: t.sprintWeek || 'Sprint 35 (Current)',
+              completionPct: t.status === 'DONE' ? 100 : 65,
+            };
+          });
 
         setMyTasks(filteredTasks);
       }
@@ -431,22 +443,39 @@ export const EmployeeDashboardView: React.FC = () => {
     });
   };
 
-  const handleSaveTaskUpdate = (updated: TaskItem) => {
-    setMyTasks(
-      myTasks.map((t) =>
-        t.id === updated.id
-          ? {
-            ...t,
-            status: updated.status,
-            outputUrl: updated.outputUrl || '',
-            waitingOn: updated.waitingOn || 'None (Self)',
-            notes: updated.notes || '',
-            completionPct: updated.status === 'Done' ? 100 : t.completionPct,
-          }
-          : t
-      )
-    );
-    toast.success(`Personal task ${updated.taskId} updated successfully!`);
+  const handleSaveTaskUpdate = async (updated: TaskItem) => {
+    try {
+      await fetchApi(`/api/tasks/${updated.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: updated.status,
+          deliverableUrl: updated.outputUrl || '',
+          description: updated.notes || '',
+          waitingOn: updated.waitingOn,
+          priority: updated.priority,
+          dueDate: updated.dueDate,
+        }),
+      });
+      setMyTasks(
+        myTasks.map((t) =>
+          t.id === updated.id
+            ? {
+              ...t,
+              status: updated.status,
+              outputUrl: updated.outputUrl || '',
+              waitingOn: updated.waitingOn || 'None (Self)',
+              notes: updated.notes || '',
+              completionPct: updated.status === 'Done' ? 100 : t.completionPct,
+            }
+            : t
+        )
+      );
+      toast.success(`Personal task ${updated.taskId} updated & saved to live database!`);
+    } catch (err: any) {
+      console.error('[EMPLOYEE DASH TASK UPDATE ERROR]:', err);
+      toast.error(err?.message || 'Failed to save task update to database');
+      throw err;
+    }
   };
 
   const handleSendDelayRequest = async (taskId: string, taskCode: string) => {
@@ -1381,6 +1410,10 @@ export const EmployeeDashboardView: React.FC = () => {
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
         onSave={handleSaveTaskUpdate}
+        onDelete={(deletedId) => {
+          setMyTasks((prev: EmployeeDeliverableTask[]) => prev.filter((t: EmployeeDeliverableTask) => t.id !== deletedId));
+          setSelectedTask(null);
+        }}
         isReadOnly={false}
       />
 
