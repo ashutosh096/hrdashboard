@@ -348,6 +348,28 @@ router.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response
         await tx.delete(tasks).where(inArray(tasks.id, taskIds));
       }
 
+      // 3. Clean up sprints owned or reviewed by this employee
+      const empSprints = await tx
+        .select({ id: sprints.id })
+        .from(sprints)
+        .where(or(eq(sprints.employeeId, id), eq(sprints.reviewingLeadId, id)));
+      const sprintIds = empSprints.map((s) => s.id);
+      if (sprintIds.length > 0) {
+        const sprintTasks = await tx.select({ id: tasks.id }).from(tasks).where(inArray(tasks.sprintId, sprintIds));
+        const sprintTaskIds = sprintTasks.map((t) => t.id);
+        if (sprintTaskIds.length > 0) {
+          await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, sprintTaskIds));
+          await tx.delete(taskComments).where(inArray(taskComments.taskId, sprintTaskIds));
+          await tx.delete(taskNotes).where(inArray(taskNotes.taskId, sprintTaskIds));
+          await tx.delete(tasks).where(inArray(tasks.id, sprintTaskIds));
+        }
+        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
+      }
+
+      // 4. Unset ownership in epics and initiatives
+      await tx.update(epics).set({ ownerId: null }).where(eq(epics.ownerId, id));
+      await tx.update(initiatives).set({ ownerId: null }).where(eq(initiatives.ownerId, id));
+
       await tx.delete(taskTemplates).where(eq(taskTemplates.createdBy, id));
       await tx.delete(applications).where(or(eq(applications.employeeId, id), eq(applications.reviewedBy, id)));
       await tx.delete(meetingAttendees).where(eq(meetingAttendees.employeeId, id));
