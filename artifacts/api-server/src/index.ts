@@ -105,7 +105,6 @@ if (fs.existsSync(frontendDistPath)) {
 startSyncCron();
 startDigestCron();
 startOverdueCheckCron();
-runSeed().catch(console.error);
 
 app.listen(PORT, () => {
   console.log(`🚀 [HROS API SERVER] Express server running on http://localhost:${PORT}`);

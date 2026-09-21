@@ -1,6 +1,6 @@
 # EHM-Climagro OS — Unabridged Full Codebase Repository
 
-> **Generated Date**: 2026-09-20T12:13:46.008Z  
+> **Generated Date**: 2026-09-21T05:17:17.834Z  
 > **Production Target**: `https://hrdashboard-3s1m.onrender.com`  
 > **Repository**: `ashutosh096/hrdashboard`  
 
@@ -99,20 +99,6 @@ export async function runSeed() {
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   try {
-    // 0. Clean up / Purge all dummy operational data (Child tables first!)
-    await db.delete(taskChecklists);
-    await db.delete(taskComments);
-    await db.delete(meetingAttendees);
-    await db.delete(meetings);
-    await db.delete(attendance);
-    await db.delete(tasks);
-    await db.delete(sprints);
-    await db.delete(epics);
-    await db.delete(initiatives);
-    await db.delete(googleTokens);
-    await db.delete(notifications);
-    console.log('[SEED] Purged dummy tasks, epics, initiatives, sprints, meetings, attendance, googleTokens, and notifications.');
-
     // 1. Seed / Upsert Entities (EHM & CAG)
     const entitiesList = [
       { code: 'EHM', name: 'EHM' },
@@ -396,7 +382,6 @@ if (fs.existsSync(frontendDistPath)) {
 startSyncCron();
 startDigestCron();
 startOverdueCheckCron();
-runSeed().catch(console.error);
 
 app.listen(PORT, () => {
   console.log(`🚀 [HROS API SERVER] Express server running on http://localhost:${PORT}`);
