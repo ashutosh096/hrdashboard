@@ -23,7 +23,6 @@ import sprintsRouter from './routes/sprints.js';
 import { startSyncCron } from './jobs/sync-cron.js';
 import { startDigestCron } from './jobs/digest-cron.js';
 import { startOverdueCheckCron } from './jobs/overdue-check-cron.js';
-import { runSeed } from './db/seed.js';
 
 import notificationsRouter from './routes/notifications.js';
 

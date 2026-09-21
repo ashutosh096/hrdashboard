@@ -2,9 +2,9 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db, users, invites, googleTokens, employees, eq, sql } from '@workspace/db';
+import { JWT_SECRET } from '../config/jwt.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
 
 // Refresh Access Token helper function for Google Calendar API calls
 export async function refreshAccessToken(userId: string): Promise<string | null> {

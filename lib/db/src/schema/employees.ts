@@ -14,7 +14,7 @@ export const employees = pgTable('employees', {
   entityId: uuid('entity_id').references(() => entities.id).notNull(),
   departmentId: uuid('department_id').references(() => departments.id).notNull(),
   designation: varchar('designation', { length: 255 }).notNull(),
-  salary: decimal('salary', { precision: 12, scale: 2 }).notNull(),
+  salary: decimal('salary', { precision: 12, scale: 2 }),
   joiningDate: timestamp('joining_date').notNull(),
   status: employeeStatusEnum('status').default('ACTIVE').notNull(),
   avatarUrl: varchar('avatar_url', { length: 500 }),

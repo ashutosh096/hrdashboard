@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'hros_jwt_super_secret_key_2026';
+import { JWT_SECRET } from '../config/jwt.js';
 
 export interface AuthenticatedUser {
   id: string;

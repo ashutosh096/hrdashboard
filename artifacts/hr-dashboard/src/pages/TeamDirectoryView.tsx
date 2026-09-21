@@ -109,7 +109,6 @@ export const TeamDirectoryView: React.FC = () => {
           personalEmail: personalEmail.trim(),
           role: roleToAssign,
           designation: position || 'Specialist',
-          salary: 85000,
           entityCode: entity,
           departmentName: department,
         }),

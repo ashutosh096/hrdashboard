@@ -138,20 +138,25 @@ export async function runSeed() {
         .where(eq(users.email, secondaryEmail));
     }
 
-    // Purge non-admin users & invites before deleting employee records to honor foreign key constraints
-    await db.delete(invites);
-    await db.delete(users).where(ne(users.role, 'ADMIN'));
-    console.log('[SEED] Purged all non-admin user accounts and invites.');
+    const allowDestructive = process.env.ALLOW_DESTRUCTIVE_SEED === 'true';
 
-    // Delete non-admin employees AFTER deleting dependent user/invite records
-    await db.delete(employees).where(ne(employees.id, adminEmp.id));
-    console.log('[SEED] Purged all dummy non-admin employee profiles.');
+    if (allowDestructive) {
+      console.log('[SEED] ALLOW_DESTRUCTIVE_SEED=true confirmed. Purging non-admin users, invites, and employee profiles...');
+      // Purge non-admin users & invites before deleting employee records to honor foreign key constraints
+      await db.delete(invites);
+      await db.delete(users).where(ne(users.role, 'ADMIN'));
+      console.log('[SEED] Purged all non-admin user accounts and invites.');
 
-    console.log('✅ [SEED COMPLETE]: All dummy data deleted! Workspace reset to zero with Admin account preserved.');
+      // Delete non-admin employees AFTER deleting dependent user/invite records
+      await db.delete(employees).where(ne(employees.id, adminEmp.id));
+      console.log('[SEED] Purged all dummy non-admin employee profiles.');
+    } else {
+      console.warn('⚠️ [SEED SAFEGUARD ACTIVE]: Destructive delete skipped! To enable destructive database resets, set ALLOW_DESTRUCTIVE_SEED=true.');
+    }
+
+    console.log('✅ [SEED COMPLETE]: Idempotent seed completed safely.');
   } catch (err) {
-    console.error('[SEED ERROR]: Failed to seed/reset database:', err);
+    console.error('[SEED ERROR]: Failed to seed database:', err);
   }
 }
 
-// Automatically execute runSeed when running seed.ts
-runSeed().catch(console.error);

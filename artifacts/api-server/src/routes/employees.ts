@@ -77,18 +77,30 @@ router.get('/', async (req, res) => {
               designation: item.designation,
               entityId: firstEntity.id,
               departmentId: firstDept.id,
-              salary: '85000.00',
+              salary: null,
               joiningDate: new Date(),
             })
             .returning();
 
           if (newEmp) {
-            const passwordHash = await bcrypt.hash('Employee@123', 10);
+            const inviteToken = crypto.randomBytes(32).toString('hex');
+            const expiresAt = new Date(Date.now() + 7 * 86400000);
+            await db.insert(invites).values({
+              email: mailLower,
+              token: inviteToken,
+              role: item.role as any,
+              employeeId: newEmp.id,
+              status: 'PENDING',
+              expiresAt,
+            });
+
+            const randomSecret = crypto.randomBytes(32).toString('hex');
+            const passwordHash = await bcrypt.hash(randomSecret, 10);
             await db.insert(users).values({
               email: mailLower,
               passwordHash,
               role: item.role as any,
-              status: 'ACTIVE',
+              status: 'PENDING',
               employeeId: newEmp.id,
             });
             seededCount++;
@@ -165,6 +177,17 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     return res.status(400).json({ message: 'At least one email (Work or Personal) is required.' });
   }
 
+  const requestedRole = (role as string || 'EMPLOYEE').toUpperCase();
+  const callerRole = ((req as any).user?.role || '').toUpperCase();
+
+  if (requestedRole === 'ADMIN') {
+    return res.status(403).json({ message: 'Admin accounts cannot be created via the employee creation endpoint' });
+  }
+
+  if (callerRole === 'MANAGER' && requestedRole !== 'EMPLOYEE') {
+    return res.status(403).json({ message: 'Managers can only create employee accounts' });
+  }
+
   // Pre-validate if employee with targetEmail already exists in database
   const [existingEmp] = await db
     .select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName })
@@ -233,7 +256,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           entityId: targetEntityId,
           departmentId: targetDeptId,
           designation: designation || 'Specialist',
-          salary: String(salary || 85000),
+          salary: salary ? String(salary) : null,
           joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
           avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
         })
@@ -259,12 +282,13 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .where(eq(users.email, targetEmail));
 
       if (!existingUser) {
-        const passwordHash = await bcrypt.hash('Employee@123', 10);
+        const randomSecret = crypto.randomBytes(32).toString('hex');
+        const passwordHash = await bcrypt.hash(randomSecret, 10);
         await tx.insert(users).values({
           email: targetEmail,
           passwordHash,
           role: (role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
-          status: 'ACTIVE',
+          status: 'PENDING',
           employeeId: newEmployee.id,
         });
       } else {
