@@ -1,7 +1,7 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-21T20:21:40.651Z
-> Total Source Files Included: 144
+> Generated on: 2026-09-21T20:30:22.491Z
+> Total Source Files Included: 146
 
 ## Table of Contents
 
@@ -15,10 +15,12 @@
 - [artifacts/api-server/src/exhaustive_audit.ts](#file-artifacts-api-server-src-exhaustive_audit-ts)
 - [artifacts/api-server/src/generate_unabridged_codebase.ts](#file-artifacts-api-server-src-generate_unabridged_codebase-ts)
 - [artifacts/api-server/src/index.ts](#file-artifacts-api-server-src-index-ts)
+- [artifacts/api-server/src/inspect_users.ts](#file-artifacts-api-server-src-inspect_users-ts)
 - [artifacts/api-server/src/jobs/digest-cron.ts](#file-artifacts-api-server-src-jobs-digest-cron-ts)
 - [artifacts/api-server/src/jobs/overdue-check-cron.ts](#file-artifacts-api-server-src-jobs-overdue-check-cron-ts)
 - [artifacts/api-server/src/jobs/sync-cron.ts](#file-artifacts-api-server-src-jobs-sync-cron-ts)
 - [artifacts/api-server/src/middleware/auth.ts](#file-artifacts-api-server-src-middleware-auth-ts)
+- [artifacts/api-server/src/purge_dummy_users.ts](#file-artifacts-api-server-src-purge_dummy_users-ts)
 - [artifacts/api-server/src/routes/announcements.ts](#file-artifacts-api-server-src-routes-announcements-ts)
 - [artifacts/api-server/src/routes/applications.ts](#file-artifacts-api-server-src-routes-applications-ts)
 - [artifacts/api-server/src/routes/attendance.ts](#file-artifacts-api-server-src-routes-attendance-ts)
@@ -297,19 +299,19 @@ async function setupCleanProductionData() {
     {
       code: 'EHM-ADM01',
       firstName: 'Ashutosh',
-      lastName: '',
-      email: 'admin@example.com',
+      lastName: 'Mishra',
+      email: 'ashutosh@ehmconsultancy.com',
       role: 'ADMIN' as const,
-      designation: 'Founder & CEO',
+      designation: 'System Administrator & VP Tech',
       entityId: ehmEntity.id,
       departmentId: techDept.id,
-      password: 'admin123',
+      password: 'password123',
     },
     {
       code: 'EHM-MGR01',
       firstName: 'Pranshu',
-      lastName: '',
-      email: 'pranshu@example.com',
+      lastName: 'Dubey',
+      email: 'dubey.pranshu@gmail.com',
       role: 'MANAGER' as const,
       designation: 'Product & Operations Lead',
       entityId: ehmEntity.id,
@@ -317,12 +319,23 @@ async function setupCleanProductionData() {
       password: 'password123',
     },
     {
-      code: 'EHM-EMP01',
+      code: 'EHM-MGR08',
       firstName: 'Harshit',
-      lastName: '',
-      email: 'harshit@example.com',
-      role: 'EMPLOYEE' as const,
-      designation: 'Full Stack Engineer',
+      lastName: 'Mishra',
+      email: 'harshit@ehmconsultancy.com',
+      role: 'MANAGER' as const,
+      designation: 'Lead Engineer',
+      entityId: ehmEntity.id,
+      departmentId: techDept.id,
+      password: 'password123',
+    },
+    {
+      code: 'EHM-MGR06',
+      firstName: 'Utsav',
+      lastName: 'Mishra',
+      email: 'utsav@ehmconsultancy.co.in',
+      role: 'MANAGER' as const,
+      designation: 'Operations Specialist',
       entityId: ehmEntity.id,
       departmentId: techDept.id,
       password: 'password123',
@@ -331,7 +344,7 @@ async function setupCleanProductionData() {
       code: 'CAG-EMP01',
       firstName: 'Eustace',
       lastName: '',
-      email: 'eustace@example.com',
+      email: 'eustace@climagro.com',
       role: 'EMPLOYEE' as const,
       designation: 'Frontend & UI Specialist',
       entityId: cagEntity.id,
@@ -1582,6 +1595,31 @@ export default app;
 
 ---
 
+### File: `artifacts/api-server/src/inspect_users.ts`
+
+```typescript
+import { db, users, employees, invites } from '@workspace/db';
+
+async function inspect() {
+  const u = await db.select().from(users);
+  console.log('=== USERS TABLE ===');
+  u.forEach(x => console.log(`ID: ${x.id} | Email: ${x.email} | Role: ${x.role} | EmpId: ${x.employeeId}`));
+
+  const e = await db.select().from(employees);
+  console.log('\n=== EMPLOYEES TABLE ===');
+  e.forEach(x => console.log(`ID: ${x.id} | Code: ${x.employeeCode} | Name: ${x.firstName} ${x.lastName} | Email: ${x.email}`));
+
+  const inv = await db.select().from(invites);
+  console.log('\n=== INVITES TABLE ===');
+  inv.forEach(x => console.log(`Email: ${x.email} | Role: ${x.role} | EmpId: ${x.employeeId}`));
+}
+
+inspect().catch(console.error).finally(() => process.exit(0));
+
+```
+
+---
+
 ### File: `artifacts/api-server/src/jobs/digest-cron.ts`
 
 ```typescript
@@ -1848,6 +1886,23 @@ export function requireTeamScope(req: Request, res: Response, next: NextFunction
   }
   next();
 }
+
+```
+
+---
+
+### File: `artifacts/api-server/src/purge_dummy_users.ts`
+
+```typescript
+import { db, users, invites, sql } from '@workspace/db';
+
+async function clean() {
+  await db.delete(users).where(sql`email LIKE '%@example.com'`);
+  await db.delete(invites);
+  console.log('Cleaned dummy example.com user and invite rows.');
+}
+
+clean().catch(console.error).finally(() => process.exit(0));
 
 ```
 
@@ -5831,11 +5886,22 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
     </div>
   `;
 
-  // Priority 2: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
+  // Priority 1: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
   const smtpResult = await attemptSmtpSend(toEmail, htmlContent, 'You have been invited to EHM-Climagro OS — Accept Invite');
-  if (smtpResult) {
-    if (smtpResult.sent) return smtpResult;
-    console.warn('[SMTP DELIVERY FAILED, FALLING BACK TO RESEND/NOTICE]:', smtpResult.error);
+  if (smtpResult && smtpResult.sent) {
+    return smtpResult;
+  }
+  if (smtpResult && !smtpResult.sent) {
+    console.warn('[SMTP DELIVERY FAILED, FALLING BACK TO SUPABASE/RESEND]:', smtpResult.error);
+  }
+
+  // Priority 2: Supabase Auth Built-in Invite Mailer (as shown in Gmail screenshot)
+  const supabaseResult = await attemptSupabaseInviteSend(toEmail, name, inviteLink);
+  if (supabaseResult && supabaseResult.sent) {
+    return supabaseResult;
+  }
+  if (supabaseResult && !supabaseResult.sent) {
+    console.warn('[SUPABASE INVITE FAILED/THROTTLED, FALLING BACK TO RESEND]:', supabaseResult.error);
   }
 
   // Priority 3: Resend API if configured

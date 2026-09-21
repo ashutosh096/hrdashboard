@@ -114,11 +114,22 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
     </div>
   `;
 
-  // Priority 2: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
+  // Priority 1: Fast Dual-Port SMTP (Gmail / Custom SMTP) if configured
   const smtpResult = await attemptSmtpSend(toEmail, htmlContent, 'You have been invited to EHM-Climagro OS — Accept Invite');
-  if (smtpResult) {
-    if (smtpResult.sent) return smtpResult;
-    console.warn('[SMTP DELIVERY FAILED, FALLING BACK TO RESEND/NOTICE]:', smtpResult.error);
+  if (smtpResult && smtpResult.sent) {
+    return smtpResult;
+  }
+  if (smtpResult && !smtpResult.sent) {
+    console.warn('[SMTP DELIVERY FAILED, FALLING BACK TO SUPABASE/RESEND]:', smtpResult.error);
+  }
+
+  // Priority 2: Supabase Auth Built-in Invite Mailer (as shown in Gmail screenshot)
+  const supabaseResult = await attemptSupabaseInviteSend(toEmail, name, inviteLink);
+  if (supabaseResult && supabaseResult.sent) {
+    return supabaseResult;
+  }
+  if (supabaseResult && !supabaseResult.sent) {
+    console.warn('[SUPABASE INVITE FAILED/THROTTLED, FALLING BACK TO RESEND]:', supabaseResult.error);
   }
 
   // Priority 3: Resend API if configured
