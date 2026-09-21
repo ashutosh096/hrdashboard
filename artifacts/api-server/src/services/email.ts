@@ -90,22 +90,10 @@ async function attemptSmtpSend(
 }
 
 export async function sendInviteEmail(toEmail: string, inviteToken: string, name: string) {
-  const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
-    ? process.env.APP_URL
-    : 'https://hrdashboard-3s1m.onrender.com';
+  const appUrl = process.env.APP_URL || 'http://localhost:5173';
   const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-  console.log(`\n======================================================`);
-  console.log(`[INVITATION EMAIL ATTEMPT] To: ${toEmail} (${name})`);
-  console.log(`[INVITATION LINK]: ${inviteLink}`);
-  console.log(`======================================================\n`);
-
-  // Priority 1: Supabase Auth Admin Invite Email
-  const supabaseResult = await attemptSupabaseInviteSend(toEmail, name, inviteLink);
-  if (supabaseResult && supabaseResult.sent) {
-    return supabaseResult;
-  }
-  console.warn('[SUPABASE INVITE FAILED, FALLING BACK TO SMTP/RESEND]:', supabaseResult?.error);
+  console.log(`[INVITATION EMAIL] Preparing invitation for: ${toEmail} (${name})`);
 
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #E5E7EB; border-radius: 16px; background-color: #ffffff;">
@@ -164,10 +152,7 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
 }
 
 export async function sendPasswordResetOtpEmail(toEmail: string, otp: string, name: string = 'User') {
-  console.log(`\n======================================================`);
-  console.log(`[PASSWORD RESET OTP ATTEMPT] To: ${toEmail} (${name})`);
-  console.log(`[OTP CODE]: ${otp} (Valid for 10 minutes)`);
-  console.log(`======================================================\n`);
+  console.log(`[PASSWORD RESET OTP] Dispatched verification code to ${toEmail}`);
 
   const subject = `Your EHM-Climagro OS Password Reset Code: ${otp}`;
   const htmlContent = `

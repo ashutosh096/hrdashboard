@@ -59,7 +59,7 @@ export const AcceptInviteView: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await fetchApi<{ token: string; user: any }>('/api/auth/set-password', {
+      const res = await fetchApi<{ token: string; user: any }>('/api/auth/accept-invite', {
         method: 'POST',
         body: JSON.stringify({ token, email: email.trim(), password }),
       });

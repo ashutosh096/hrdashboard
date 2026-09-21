@@ -28,15 +28,18 @@ function normalizeTaskPriority(priority: any): 'LOW' | 'MEDIUM' | 'HIGH' | 'URGE
   return 'MEDIUM';
 }
 
-function normalizeTaskStatus(status: any): 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'DONE' | 'DELAYED' | 'BLOCKED' {
+function normalizeTaskStatus(status: any): 'PLANNED' | 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'TO_REVIEW' | 'DONE' | 'DELAYED' | 'BLOCKED' | 'CANCELLED' {
   if (!status) return 'TODO';
   const s = String(status).toUpperCase().trim();
   if (s === 'DONE' || s.includes('APPROV') || s === 'APPROVED' || s === 'COMPLETED') return 'DONE';
-  if (s === 'IN_PROGRESS' || s === 'IN PROGRESS' || s === 'IN_REVIEW' || s === 'TO REVIEW' || s === 'REVIEW') return 'IN_PROGRESS';
-  if (s === 'TODO' || s === 'PLANNED') return 'TODO';
+  if (s === 'TO_REVIEW' || s === 'TO REVIEW' || s === 'IN_REVIEW' || s === 'REVIEW') return 'TO_REVIEW';
+  if (s === 'IN_PROGRESS' || s === 'IN PROGRESS') return 'IN_PROGRESS';
+  if (s === 'PLANNED') return 'PLANNED';
+  if (s === 'TODO' || s === 'TO DO' || s === 'TO-DO') return 'TODO';
   if (s === 'BACKLOG') return 'BACKLOG';
   if (s === 'DELAYED') return 'DELAYED';
   if (s === 'BLOCKED') return 'BLOCKED';
+  if (s === 'CANCELLED') return 'CANCELLED';
   return 'TODO';
 }
 
@@ -244,8 +247,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         }
 
         // 4. Resolve Creator & Reviewing Lead
-        const targetCreatorId = creatorId || assignee.id;
-        const targetReviewingLeadId = reviewingLeadId || targetCreatorId;
+        const targetCreatorId = creatorId || req.user?.employeeId || assignee.id;
+        const targetReviewingLeadId = reviewingLeadId || (req.user?.employeeId && req.user.employeeId !== assignee.id ? req.user.employeeId : null);
 
         // 5. Insert Task
         const dueDateVal = dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000);
@@ -352,9 +355,18 @@ const handleTaskUpdate = async (req: any, res: any) => {
 
     const updatedTask = await db.transaction(async (tx) => {
       const updateData: any = { updatedAt: new Date() };
-
       if (status !== undefined) {
-        updateData.status = normalizeTaskStatus(status);
+        const nextStatus = normalizeTaskStatus(status);
+        if (nextStatus === 'DONE' && (req as any).user?.role === 'EMPLOYEE') {
+          const callerEmpId = (req as any).user?.employeeId;
+          if (existingTaskCheck.reviewingLeadId !== callerEmpId && existingTaskCheck.creatorId !== callerEmpId) {
+            updateData.status = 'TO_REVIEW';
+          } else {
+            updateData.status = nextStatus;
+          }
+        } else {
+          updateData.status = nextStatus;
+        }
       }
       if (deliverableUrl !== undefined || outputUrl !== undefined) {
         updateData.deliverableUrl = deliverableUrl !== undefined ? deliverableUrl : outputUrl;
@@ -567,7 +579,12 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(403).json({ message: 'Only managers and leads can mark tasks as DELAYED or BLOCKED' });
     }
 
-    const normalizedStatus = normalizeTaskStatus(status);
+    let normalizedStatus = normalizeTaskStatus(status);
+    if (normalizedStatus === 'DONE' && req.user?.role === 'EMPLOYEE') {
+      if (targetTask.reviewingLeadId !== req.user.employeeId && targetTask.creatorId !== req.user.employeeId) {
+        normalizedStatus = 'TO_REVIEW';
+      }
+    }
     const [updatedTask] = await db
       .update(tasks)
       .set({ status: normalizedStatus, updatedAt: new Date() })

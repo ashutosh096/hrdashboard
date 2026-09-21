@@ -18,7 +18,7 @@ interface AuthContextType {
   token: string | null;
   actualRole: UserRole | null;
   previewRole: UserRole | null;
-  login: (email: string, pass: string) => Promise<void>;
+  login: (email: string, pass: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   setUserSession: (user: User, token: string) => void;
   setPreviewRole: (role: UserRole) => void;
@@ -160,12 +160,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string, rememberMe: boolean = false) => {
     setIsLoading(true);
     try {
       const res = await fetchApi<{ token: string; user: User }>('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password: pass }),
+        body: JSON.stringify({ email, password: pass, rememberMe }),
       });
 
       localStorage.removeItem('hros_preview_role');

@@ -27,7 +27,7 @@ export const LoginView: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       toast.success('Login successful!');
       setLocation('/');
     } catch (err: any) {

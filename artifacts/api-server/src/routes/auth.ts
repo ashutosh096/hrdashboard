@@ -1,14 +1,36 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { db, users, invites, googleTokens, employees, passwordResetOtps, eq, and, sql } from '@workspace/db';
+import { db, users, invites, googleTokens, employees, passwordResetOtps, auditLogs, eq, and, sql } from '@workspace/db';
 import { JWT_SECRET } from '../config/jwt.js';
 import { sendPasswordResetOtpEmail } from '../services/email.js';
 
 const router = Router();
 
-// Refresh Access Token helper function for Google Calendar API calls
+const REFRESH_SECRET = process.env.REFRESH_SECRET || `${JWT_SECRET}_refresh_v2`;
+
+export function generateTokens(userPayload: any, rememberMe: boolean = false) {
+  const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
+  const refreshExpiresIn = rememberMe ? '30d' : '1d';
+  const refreshToken = jwt.sign({ id: userPayload.id, email: userPayload.email }, REFRESH_SECRET, {
+    expiresIn: refreshExpiresIn,
+  });
+  return { accessToken, refreshToken };
+}
+
+export function setRefreshTokenCookie(res: Response, refreshToken: string, rememberMe: boolean = false) {
+  const maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge,
+    path: '/',
+  });
+}
+
+// Refresh Google Access Token helper for Calendar API
 export async function refreshAccessToken(userId: string): Promise<string | null> {
   try {
     const [tokenRow] = await db
@@ -18,7 +40,6 @@ export async function refreshAccessToken(userId: string): Promise<string | null>
 
     if (!tokenRow) return null;
 
-    // Return current access token if it hasn't expired yet (with 5 min buffer)
     const now = new Date(Date.now() + 5 * 60 * 1000);
     if (tokenRow.expiry && new Date(tokenRow.expiry) > now) {
       return tokenRow.accessToken;
@@ -26,7 +47,6 @@ export async function refreshAccessToken(userId: string): Promise<string | null>
 
     if (!tokenRow.refreshToken) return tokenRow.accessToken;
 
-    // Refresh access token via Google OAuth token endpoint
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -59,26 +79,25 @@ export async function refreshAccessToken(userId: string): Promise<string | null>
   }
 }
 
-// Secure Login Route
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+// POST /api/auth/login
+router.post('/login', async (req: Request, res: Response) => {
+  const { email, password, rememberMe } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password required' });
+    return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, email.toLowerCase().trim()));
+      .where(sql`TRIM(LOWER(${users.email})) = ${email.toLowerCase().trim()}`);
 
     if (!user || !user.passwordHash) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -91,20 +110,59 @@ router.post('/login', async (req, res) => {
       managedTeamId: user.managedTeamId || undefined,
     };
 
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '365d' });
-    return res.json({ token, user: userPayload });
+    const { accessToken, refreshToken } = generateTokens(userPayload, !!rememberMe);
+    setRefreshTokenCookie(res, refreshToken, !!rememberMe);
+
+    return res.json({
+      token: accessToken,
+      refreshToken,
+      user: userPayload,
+    });
   } catch (err: any) {
     console.error('[AUTH ROUTE ERROR] Login failed:', err);
-    let detail = err?.message || String(err);
-    if (err?.errors && Array.isArray(err.errors)) {
-      detail = err.errors.map((e: any) => e.message || String(e)).join('; ');
-    }
-    return res.status(500).json({ message: `Server login failed: ${detail}` });
+    return res.status(500).json({ message: 'Server login failed' });
   }
 });
 
-// Verify Current User Session Route
-router.get('/me', async (req, res) => {
+// POST /api/auth/refresh
+router.post('/refresh', async (req: Request, res: Response) => {
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'Refresh token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, REFRESH_SECRET) as any;
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.id));
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    const userPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      employeeId: user.employeeId || undefined,
+      managedTeamId: user.managedTeamId || undefined,
+    };
+
+    const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
+    return res.json({ token: accessToken, user: userPayload });
+  } catch {
+    return res.status(401).json({ message: 'Invalid or expired refresh token' });
+  }
+});
+
+// POST /api/auth/logout
+router.post('/logout', (req: Request, res: Response) => {
+  res.clearCookie('refreshToken', { path: '/' });
+  return res.json({ message: 'Logged out successfully' });
+});
+
+// GET /api/auth/me
+router.get('/me', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Unauthorized' });
@@ -131,62 +189,39 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// Secure Set Password Route via Invite Token or Email Activation
-router.post('/set-password', async (req, res) => {
-  const { token, password, email } = req.body;
-  if (!password) {
-    return res.status(400).json({ message: 'Password is required' });
+// POST /api/auth/accept-invite (Strictly requires valid cryptographic invite token)
+router.post('/accept-invite', async (req: Request, res: Response) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ message: 'Valid invite token and new password are required' });
   }
 
-  if (!token && !email) {
-    return res.status(400).json({ message: 'Either invite token or registered email address is required' });
+  if (typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
   }
 
   try {
-    const targetEmail = email ? email.toLowerCase().trim() : '';
+    const [invite] = await db
+      .select()
+      .from(invites)
+      .where(and(eq(invites.token, token), eq(invites.status, 'PENDING')));
 
-    let invite: any = null;
-    if (token) {
-      [invite] = await db
-        .select()
-        .from(invites)
-        .where(eq(invites.token, token));
+    if (!invite) {
+      return res.status(400).json({ message: 'Invalid or expired invitation token.' });
     }
 
-    if (!invite && targetEmail) {
-      [invite] = await db
-        .select()
-        .from(invites)
-        .where(sql`TRIM(LOWER(${invites.email})) = ${targetEmail}`);
+    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+      return res.status(400).json({ message: 'This invitation has expired. Please ask your administrator to reinvite you.' });
     }
 
-    // Fallback: Check if an employee profile exists for targetEmail
-    let empRecord: any = null;
-    if (targetEmail) {
-      [empRecord] = await db
-        .select()
-        .from(employees)
-        .where(sql`TRIM(LOWER(${employees.email})) = ${targetEmail}`);
-    }
-
-    // Check if user already exists
-    const searchEmail = targetEmail || (invite ? invite.email.toLowerCase().trim() : '');
-    const [existingUser] = searchEmail
-      ? await db.select().from(users).where(sql`TRIM(LOWER(${users.email})) = ${searchEmail}`)
-      : [null];
-
-    if (!invite && !empRecord && !existingUser) {
-      return res.status(400).json({ message: `No active invitation record found for this token or email address.` });
-    }
-
-    if (invite && targetEmail && invite.email && targetEmail !== invite.email.toLowerCase().trim()) {
-      return res.status(400).json({ message: `Entered email (${email}) does not match invitation recipient (${invite.email})` });
-    }
-
+    const targetEmail = invite.email.toLowerCase().trim();
     const passwordHash = await bcrypt.hash(password, 10);
-    const finalEmail = searchEmail;
-    const employeeId = empRecord ? empRecord.id : (invite ? invite.employeeId : (existingUser ? existingUser.employeeId : undefined));
-    const userRole = existingUser?.role || (invite ? invite.role : 'EMPLOYEE');
+
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(sql`TRIM(LOWER(${users.email})) = ${targetEmail}`);
 
     let userId: string;
 
@@ -197,105 +232,78 @@ router.post('/set-password', async (req, res) => {
         .set({
           passwordHash,
           status: 'ACTIVE',
-          role: userRole,
-          employeeId: employeeId || existingUser.employeeId,
+          role: invite.role || existingUser.role,
+          employeeId: invite.employeeId || existingUser.employeeId,
         })
         .where(eq(users.id, existingUser.id));
     } else {
       const [newUser] = await db
         .insert(users)
         .values({
-          email: finalEmail,
+          email: targetEmail,
           passwordHash,
-          role: userRole,
+          role: invite.role || 'EMPLOYEE',
           status: 'ACTIVE',
-          employeeId: employeeId,
+          employeeId: invite.employeeId,
         })
         .returning();
-      userId = newUser ? newUser.id : 'user-' + Date.now();
+      userId = newUser.id;
     }
 
-    if (invite) {
-      await db
-        .update(invites)
-        .set({ status: 'ACCEPTED' })
-        .where(eq(invites.id, invite.id));
-    }
+    await db
+      .update(invites)
+      .set({ status: 'ACCEPTED' })
+      .where(eq(invites.id, invite.id));
 
     const userPayload = {
       id: userId,
-      email: finalEmail,
-      role: userRole,
-      employeeId,
+      email: targetEmail,
+      role: invite.role || 'EMPLOYEE',
+      employeeId: invite.employeeId || undefined,
     };
 
-    const authToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
-    return res.json({ message: 'Password set successfully', token: authToken, user: userPayload });
+    const { accessToken, refreshToken } = generateTokens(userPayload, true);
+    setRefreshTokenCookie(res, refreshToken, true);
+
+    return res.json({
+      message: 'Account activated successfully',
+      token: accessToken,
+      refreshToken,
+      user: userPayload,
+    });
   } catch (err) {
-    console.error('[SET-PASSWORD ERROR]:', err);
-    return res.status(500).json({ message: 'Failed to set password' });
+    console.error('[ACCEPT-INVITE ERROR]:', err);
+    return res.status(500).json({ message: 'Failed to activate account' });
   }
 });
 
-// Google OAuth URL generation route
-router.get('/google', async (req, res) => {
-  let userId = (req.query.userId as string) || '';
-  const inviteToken = (req.query.inviteToken as string) || '';
+// GET /api/auth/google
+router.get('/google', async (req: Request, res: Response) => {
+  const userId = (req.query.userId as string) || '';
   const returnPath = (req.query.returnPath as string) || '/meetings';
-
-  if (!userId && inviteToken) {
-    try {
-      const [inviteRow] = await db
-        .select()
-        .from(invites)
-        .where(eq(invites.token, inviteToken));
-
-      if (inviteRow) {
-        const inviteEmail = inviteRow.email.toLowerCase().trim();
-        let [userRow] = await db
-          .select({ id: users.id, role: users.role, employeeId: users.employeeId })
-          .from(users)
-          .where(eq(users.email, inviteEmail));
-
-        // Create user row if brand-new invitee clicks Google button first
-        if (!userRow) {
-          const [newUser] = await db
-            .insert(users)
-            .values({
-              email: inviteEmail,
-              passwordHash: '',
-              role: inviteRow.role || 'EMPLOYEE',
-              status: 'ACTIVE',
-              employeeId: inviteRow.employeeId,
-            })
-            .returning();
-          userRow = newUser;
-          console.log(`[GOOGLE OAUTH INVITE] Automatically created user account ${newUser.id} for invited employee ${inviteEmail}`);
-        }
-
-        if (userRow) {
-          userId = userRow.id;
-        }
-      }
-    } catch (err) {
-      console.error('[GOOGLE OAUTH INVITE LOOKUP ERROR]:', err);
-    }
-  }
 
   const reqHost = req.get('host') || 'localhost:5000';
   const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'http';
   const apiServerUrl = `${proto}://${reqHost}`;
+  const clientOrigin = process.env.APP_URL || (proto === 'https' ? `https://${reqHost}` : 'http://localhost:5173');
 
-  const clientOrigin = (req.headers.referer ? new URL(req.headers.referer).origin : null) || process.env.APP_URL || (proto === 'https' ? `https://${reqHost}` : 'http://localhost:5173');
+  const statePayload = {
+    userId,
+    returnPath,
+    appUrl: clientOrigin,
+    apiServerUrl,
+    timestamp: Date.now(),
+  };
 
-  const state = Buffer.from(JSON.stringify({ userId, inviteToken, returnPath, appUrl: clientOrigin, apiServerUrl })).toString('base64');
+  const state = Buffer.from(JSON.stringify(statePayload)).toString('base64');
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${apiServerUrl}/api/auth/google/callback`;
 
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+  const googleAuthUrl =
+    `https://accounts.google.com/o/oauth2/v2/auth?` +
     `response_type=code` +
     `&client_id=${encodeURIComponent(process.env.GOOGLE_CLIENT_ID || '')}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar.events')}` +
+    `&scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email')}` +
     `&access_type=offline` +
     `&prompt=consent` +
     `&state=${encodeURIComponent(state)}`;
@@ -303,8 +311,8 @@ router.get('/google', async (req, res) => {
   res.redirect(googleAuthUrl);
 });
 
-// Google OAuth Callback route
-router.get('/google/callback', async (req, res) => {
+// GET /api/auth/google/callback
+router.get('/google/callback', async (req: Request, res: Response) => {
   const { code, state } = req.query;
 
   if (!code) {
@@ -312,28 +320,21 @@ router.get('/google/callback', async (req, res) => {
   }
 
   try {
-    let userId: string | null = null;
-    let inviteToken: string | null = null;
     let returnPath = '/meetings';
     let appUrl = process.env.APP_URL || 'http://localhost:5173';
     let apiServerUrl = '';
+    let stateUserId: string | null = null;
 
     if (state && typeof state === 'string') {
       try {
         const parsedState = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
-        userId = parsedState.userId || null;
-        inviteToken = parsedState.inviteToken || null;
         if (parsedState.returnPath) returnPath = parsedState.returnPath;
         if (parsedState.appUrl) appUrl = parsedState.appUrl;
         if (parsedState.apiServerUrl) apiServerUrl = parsedState.apiServerUrl;
+        if (parsedState.userId) stateUserId = parsedState.userId;
       } catch {
-        userId = state;
+        // Fallback
       }
-    }
-
-    const isUuid = (str: string | null) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-    if (!userId || !isUuid(userId)) {
-      return res.status(400).json({ message: 'Invalid or missing session state' });
     }
 
     const reqHost = req.get('host') || 'localhost:5000';
@@ -341,6 +342,7 @@ router.get('/google/callback', async (req, res) => {
     const currentApiUrl = apiServerUrl || `${proto}://${reqHost}`;
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${currentApiUrl}/api/auth/google/callback`;
 
+    // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -354,7 +356,6 @@ router.get('/google/callback', async (req, res) => {
     });
 
     const tokenData = await tokenResponse.json();
-
     if (!tokenResponse.ok) {
       console.error('[GOOGLE OAUTH ERROR] Token exchange failed:', tokenData);
       return res.status(400).json({ message: 'Google OAuth token exchange failed', error: tokenData });
@@ -362,49 +363,72 @@ router.get('/google/callback', async (req, res) => {
 
     const { access_token, refresh_token, expires_in } = tokenData;
 
-    const [targetUser] = await db.select().from(users).where(eq(users.id, userId));
-    if (!targetUser) {
-      return res.status(400).json({ message: 'Invalid or missing session state' });
+    // Fetch verified Google User Profile to match email accurately
+    const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    const userinfo = await userinfoRes.json();
+    const googleEmail = (userinfo.email || '').toLowerCase().trim();
+
+    if (!googleEmail) {
+      return res.status(400).json({ message: 'Could not retrieve email from Google OAuth' });
     }
 
-    const userPayload = {
-      id: targetUser.id,
-      email: targetUser.email,
-      role: targetUser.role,
-      employeeId: targetUser.employeeId || undefined,
-    };
-    const authTokenToSend = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
+    // Match or find user by verified Google email
+    let [matchedUser] = await db
+      .select()
+      .from(users)
+      .where(sql`TRIM(LOWER(${users.email})) = ${googleEmail}`);
+
+    // If not found by email, check stateUserId if provided and verified
+    if (!matchedUser && stateUserId) {
+      const [userById] = await db.select().from(users).where(eq(users.id, stateUserId));
+      if (userById) matchedUser = userById;
+    }
+
+    if (!matchedUser) {
+      return res.status(403).json({
+        message: `No account exists with email ${googleEmail}. Please request an invite first.`,
+      });
+    }
 
     const expiry = new Date(Date.now() + (expires_in || 3600) * 1000);
-    const [existingToken] = await db.select().from(googleTokens).where(eq(googleTokens.userId, userId));
+    const [existingToken] = await db
+      .select()
+      .from(googleTokens)
+      .where(eq(googleTokens.userId, matchedUser.id));
 
     if (existingToken) {
-      await db.update(googleTokens)
+      await db
+        .update(googleTokens)
         .set({
           accessToken: access_token,
           refreshToken: refresh_token || existingToken.refreshToken,
           expiry,
           updatedAt: new Date(),
         })
-        .where(eq(googleTokens.userId, userId));
+        .where(eq(googleTokens.userId, matchedUser.id));
     } else {
       await db.insert(googleTokens).values({
-        userId,
+        userId: matchedUser.id,
         accessToken: access_token,
         refreshToken: refresh_token || '',
         expiry,
       });
     }
 
-    if (inviteToken) {
-      await db
-        .update(invites)
-        .set({ status: 'ACCEPTED' })
-        .where(eq(invites.token, inviteToken));
-    }
+    const userPayload = {
+      id: matchedUser.id,
+      email: matchedUser.email,
+      role: matchedUser.role,
+      employeeId: matchedUser.employeeId || undefined,
+    };
+
+    const { accessToken, refreshToken: authRefreshToken } = generateTokens(userPayload, true);
+    setRefreshTokenCookie(res, authRefreshToken, true);
 
     const targetUrl = returnPath.startsWith('/') ? returnPath : `/${returnPath}`;
-    const redirectUrl = `${appUrl}${targetUrl}?token=${authTokenToSend}&calendarConnected=true`;
+    const redirectUrl = `${appUrl}${targetUrl}?token=${accessToken}&calendarConnected=true`;
 
     res.redirect(redirectUrl);
   } catch (err) {
@@ -413,8 +437,8 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
-// Request Password Reset OTP Route
-router.post('/forgot-password', async (req, res) => {
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req: Request, res: Response) => {
   const { email } = req.body;
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ message: 'Valid email is required' });
@@ -423,13 +447,11 @@ router.post('/forgot-password', async (req, res) => {
   const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    // Check if user exists in database
     const [user] = await db
       .select()
       .from(users)
       .where(sql`TRIM(LOWER(${users.email})) = ${normalizedEmail}`);
 
-    // Rate-limiting check: check if an OTP was created less than 45 seconds ago
     const [existingOtp] = await db
       .select()
       .from(passwordResetOtps)
@@ -439,13 +461,11 @@ router.post('/forgot-password', async (req, res) => {
     if (existingOtp && existingOtp.createdAt) {
       const timeSinceCreation = now - new Date(existingOtp.createdAt).getTime();
       if (timeSinceCreation < 45000) {
-        // Enforce 45s cooldown: do not generate new OTP, return generic message without error
         return res.json({ message: 'If that email is registered, a verification code has been sent.' });
       }
     }
 
     if (user) {
-      // Find employee name if available
       let userName = 'Team Member';
       if (user.employeeId) {
         const [emp] = await db.select().from(employees).where(eq(employees.id, user.employeeId));
@@ -455,17 +475,14 @@ router.post('/forgot-password', async (req, res) => {
         }
       }
 
-      // Generate 6-digit cryptographically secure numeric OTP
       const otp = crypto.randomInt(100000, 1000000).toString();
       const otpHash = await bcrypt.hash(otp, 10);
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-      // Enforce single active row per email: delete any existing row for this email
       await db
         .delete(passwordResetOtps)
         .where(sql`TRIM(LOWER(${passwordResetOtps.email})) = ${normalizedEmail}`);
 
-      // Insert fresh OTP row
       await db.insert(passwordResetOtps).values({
         email: normalizedEmail,
         otpHash,
@@ -475,13 +492,11 @@ router.post('/forgot-password', async (req, res) => {
         expiresAt,
       });
 
-      // Dispatch OTP email asynchronously / securely
       sendPasswordResetOtpEmail(normalizedEmail, otp, userName).catch(err => {
         console.error('[FORGOT-PASSWORD EMAIL ERROR]:', err);
       });
     }
 
-    // Always return generic response to prevent email enumeration / timing attacks
     return res.json({ message: 'If that email is registered, a verification code has been sent.' });
   } catch (err) {
     console.error('[FORGOT-PASSWORD ERROR]:', err);
@@ -489,8 +504,8 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// Verify OTP Route
-router.post('/verify-otp', async (req, res) => {
+// POST /api/auth/verify-otp
+router.post('/verify-otp', async (req: Request, res: Response) => {
   const { email, otp } = req.body;
   if (!email || !otp) {
     return res.status(400).json({ message: 'Email and verification code are required' });
@@ -509,19 +524,16 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
 
-    // Check expiry
     if (new Date(otpRow.expiresAt) < new Date()) {
       await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
       return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
     }
 
-    // Check brute-force attempts
     if (otpRow.attempts >= 5) {
       await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
       return res.status(400).json({ message: 'Too many failed attempts. Please request a new verification code.' });
     }
 
-    // Compare bcrypt hash
     const isValid = await bcrypt.compare(cleanOtp, otpRow.otpHash);
     if (!isValid) {
       const newAttempts = otpRow.attempts + 1;
@@ -537,7 +549,6 @@ router.post('/verify-otp', async (req, res) => {
       }
     }
 
-    // OTP is valid: generate 32-byte hex reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     await db
       .update(passwordResetOtps)
@@ -554,8 +565,8 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-// Reset Password Route
-router.post('/reset-password', async (req, res) => {
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req: Request, res: Response) => {
   const { email, resetToken, newPassword } = req.body;
 
   if (!email || !resetToken || !newPassword) {
@@ -589,7 +600,6 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Password reset session has expired. Please request a new code.' });
     }
 
-    // Find the user
     const [user] = await db
       .select()
       .from(users)
@@ -599,7 +609,6 @@ router.post('/reset-password', async (req, res) => {
       return res.status(404).json({ message: 'User account not found' });
     }
 
-    // Hash new password and update user
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await db
       .update(users)
@@ -609,10 +618,8 @@ router.post('/reset-password', async (req, res) => {
       })
       .where(eq(users.id, user.id));
 
-    // Delete used OTP row immediately to prevent replay attacks
     await db.delete(passwordResetOtps).where(eq(passwordResetOtps.id, otpRow.id));
 
-    // Generate fresh JWT token for seamless auto-login
     const userPayload = {
       id: user.id,
       email: user.email,
@@ -621,12 +628,13 @@ router.post('/reset-password', async (req, res) => {
       managedTeamId: user.managedTeamId || undefined,
     };
 
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '365d' });
+    const { accessToken, refreshToken } = generateTokens(userPayload, true);
+    setRefreshTokenCookie(res, refreshToken, true);
 
-    console.log(`[PASSWORD RESET SUCCESS] User ${user.email} updated password and auto-logged in`);
     return res.json({
       message: 'Password has been reset successfully',
-      token,
+      token: accessToken,
+      refreshToken,
       user: userPayload,
     });
   } catch (err) {

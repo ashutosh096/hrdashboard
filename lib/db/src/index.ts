@@ -32,7 +32,7 @@ export * from './schema/epics.js';
 export * from './schema/sprints.js';
 export * from './schema/password_reset_otps.js';
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DB_URL;
 
 if (!connectionString) {
   throw new Error('[FATAL CONFIG ERROR]: DATABASE_URL environment variable is required.');

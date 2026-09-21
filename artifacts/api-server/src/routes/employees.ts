@@ -1,17 +1,53 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import crypto from 'node:crypto';
-import { db, employees, entities, entityCounters, departments, invites, tasks, taskChecklists, taskComments, taskNotes, taskTemplates, sprints, epics, initiatives, attendance, users, notifications, googleTokens, applications, meetings, meetingAttendees, eq, or, inArray, sql } from '@workspace/db';
+import {
+  db,
+  employees,
+  entities,
+  entityCounters,
+  departments,
+  invites,
+  tasks,
+  taskChecklists,
+  taskComments,
+  taskNotes,
+  taskTemplates,
+  sprints,
+  epics,
+  initiatives,
+  users,
+  notifications,
+  googleTokens,
+  applications,
+  meetings,
+  meetingAttendees,
+  auditLogs,
+  eq,
+  or,
+  inArray,
+  sql,
+} from '@workspace/db';
 import bcrypt from 'bcryptjs';
 import { sendInviteEmail } from '../services/email.js';
-import { supabaseAdmin } from '../services/supabase-admin.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
-
-// Apply requireAuth to all employee endpoints
 router.use(requireAuth);
 
-router.get('/', async (req, res) => {
+async function logAudit(userId: string | null | undefined, action: string, details: any) {
+  try {
+    await db.insert(auditLogs).values({
+      userId: userId || null,
+      action,
+      details,
+    });
+  } catch (err) {
+    console.error('[AUDIT LOG ERROR]:', err);
+  }
+}
+
+// GET /api/employees - Exclude sensitive salary information
+router.get('/', async (req: Request, res: Response) => {
   try {
     const empList = await db.select().from(employees);
 
@@ -56,8 +92,11 @@ router.get('/', async (req, res) => {
         }
       }
 
+      // Explicitly omit salary field
+      const { salary: _omitSalary, ...safeEmp } = emp;
+
       return {
-        ...emp,
+        ...safeEmp,
         role: resolvedRole,
         departmentName: deptMap.get(emp.departmentId) || 'Engineering',
       };
@@ -70,27 +109,27 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Enforce ADMIN and MANAGER role for creating employees
-router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const { firstName, lastName, email, personalEmail, entityId, departmentId, designation, salary, joiningDate, role } = req.body;
+// POST /api/employees - Enforce ADMIN / MANAGER RBAC
+router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Response) => {
+  const { firstName, lastName, email, personalEmail, entityId, departmentId, designation, joiningDate, role } = req.body;
   const targetEmail = (email || personalEmail || '').toLowerCase().trim();
 
   if (!targetEmail) {
-    return res.status(400).json({ message: 'At least one email (Work or Personal) is required.' });
+    return res.status(400).json({ message: 'Email address is required.' });
   }
 
   const requestedRole = (role as string || 'EMPLOYEE').toUpperCase();
   const callerRole = ((req as any).user?.role || '').toUpperCase();
+  const callerId = (req as any).user?.id;
 
-  if (requestedRole === 'ADMIN') {
-    return res.status(403).json({ message: 'Admin accounts cannot be created via the employee creation endpoint' });
+  if (requestedRole === 'ADMIN' && callerRole !== 'ADMIN') {
+    return res.status(403).json({ message: 'Only Admins can assign the Admin role.' });
   }
 
   if (callerRole === 'MANAGER' && requestedRole !== 'EMPLOYEE') {
-    return res.status(403).json({ message: 'Managers can only create employee accounts' });
+    return res.status(403).json({ message: 'Managers can only create employee accounts.' });
   }
 
-  // Pre-validate if employee with targetEmail already exists in database
   const [existingEmp] = await db
     .select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName })
     .from(employees)
@@ -98,7 +137,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 
   if (existingEmp) {
     return res.status(400).json({
-      message: `An employee with email "${targetEmail}" already exists (${existingEmp.firstName} ${existingEmp.lastName}). Please use a unique email or delete the existing record first.`,
+      message: `An employee with email "${targetEmail}" already exists (${existingEmp.firstName} ${existingEmp.lastName}).`,
     });
   }
 
@@ -106,9 +145,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     const inviteToken = crypto.randomBytes(32).toString('hex');
 
     const result = await db.transaction(async (tx) => {
-      // Delete any stale invites for this target email
       await tx.delete(invites).where(eq(invites.email, targetEmail));
-      // 1. Fetch entityCode dynamically from entities table by entityId
+
       let targetEntityId = entityId;
       if (!targetEntityId) {
         const [firstEntity] = await tx.select({ id: entities.id }).from(entities).limit(1);
@@ -124,8 +162,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         throw new Error(`Entity not found for ID: ${targetEntityId}`);
       }
 
-      const entityCode = entity.code; // "EHM" or "CAG"
-      const isMgr = role === 'MANAGER';
+      const entityCode = entity.code;
+      const isMgr = requestedRole === 'MANAGER';
       const prefix = `${entityCode}-${isMgr ? 'MGR' : 'EMP'}`;
 
       const allExisting = await tx
@@ -154,14 +192,12 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           set: { nextEmployeeSeq: seq + 1 },
         });
 
-      // 3. Resolve department ID
       let targetDeptId = departmentId;
       if (!targetDeptId) {
         const [firstDept] = await tx.select({ id: departments.id }).from(departments).limit(1);
         targetDeptId = firstDept?.id;
       }
 
-      // 4. Insert Employee
       const [newEmployee] = await tx
         .insert(employees)
         .values({
@@ -172,26 +208,23 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           entityId: targetEntityId,
           departmentId: targetDeptId,
           designation: designation || 'Specialist',
-          salary: salary ? String(salary) : null,
           joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
           avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
         })
         .returning();
 
-      // 5. Insert Invite record inside the same transaction
-      const expiresAt = new Date(Date.now() + 7 * 86400000); // 7 days from now
+      const expiresAt = new Date(Date.now() + 7 * 86400000);
       await tx
         .insert(invites)
         .values({
           email: targetEmail,
           token: inviteToken,
-          role: (role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
+          role: (requestedRole as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
           employeeId: newEmployee.id,
           status: 'PENDING',
           expiresAt,
         });
 
-      // 6. Ensure user record exists in users table linked to new employee
       const [existingUser] = await tx
         .select()
         .from(users)
@@ -203,7 +236,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         await tx.insert(users).values({
           email: targetEmail,
           passwordHash,
-          role: (role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
+          role: (requestedRole as 'ADMIN' | 'MANAGER' | 'EMPLOYEE') || 'EMPLOYEE',
           status: 'PENDING',
           employeeId: newEmployee.id,
         });
@@ -217,31 +250,32 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       return { newEmployee, entityCode };
     });
 
-    const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
-      ? process.env.APP_URL
-      : 'https://hrdashboard-3s1m.onrender.com';
+    await logAudit(callerId, 'EMPLOYEE_CREATED', {
+      employeeId: result.newEmployee.id,
+      email: targetEmail,
+      role: requestedRole,
+    });
+
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    // Send invitation email via our own branded SMTP/Resend service
     let inviteEmailSuccess = false;
     let inviteEmailError: string | null = null;
 
     try {
       const emailResult: any = await sendInviteEmail(targetEmail, inviteToken, `${firstName} ${lastName}`);
-      inviteEmailSuccess = emailResult.sent;
-      if (!emailResult.sent) {
-        console.warn('[INVITE EMAIL NOT SENT]:', emailResult.error);
-        inviteEmailError = emailResult.error || 'Unknown error';
-      } else {
-        console.log(`[INVITE EMAIL SENT via ${emailResult.provider}] to`, targetEmail);
+      inviteEmailSuccess = emailResult?.sent || false;
+      if (!emailResult?.sent) {
+        inviteEmailError = emailResult?.error || 'Email delivery failed';
       }
     } catch (e: any) {
-      console.error('[INVITE EMAIL EXCEPTION]:', e?.message || e);
       inviteEmailError = e?.message || String(e);
     }
 
+    const { salary: _omit, ...safeCreatedEmp } = result.newEmployee;
+
     res.status(201).json({
-      employee: result.newEmployee,
+      employee: safeCreatedEmp,
       inviteToken,
       inviteLink,
       inviteEmailResult: {
@@ -255,23 +289,39 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// Enforce ADMIN and MANAGER role for deleting employees and cascading associated data
-router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+// DELETE /api/employees/:id - Strict ADMIN ONLY
+router.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response) => {
   const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
+  const callerUser = (req as any).user;
+
   try {
     const [emp] = await db.select().from(employees).where(eq(employees.id, id));
     if (!emp) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    // Protect against self-deletion
+    if (callerUser?.employeeId === id || callerUser?.email?.toLowerCase() === emp.email?.toLowerCase()) {
+      return res.status(400).json({ message: 'You cannot delete your own account.' });
+    }
+
+    // Check if target is an Admin
+    const [targetUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+
+    if (targetUser?.role === 'ADMIN' && callerUser?.email !== 'admin@example.com') {
+      return res.status(403).json({ message: 'Only the primary administrator can delete admin accounts.' });
+    }
+
     await db.transaction(async (tx) => {
-      // 1. Delete associated users and user child records (notifications, googleTokens)
       const userRecords = await tx
         .select({ id: users.id })
         .from(users)
         .where(emp.email ? or(eq(users.employeeId, id), eq(users.email, emp.email)) : eq(users.employeeId, id));
-      
-      const userIds = userRecords.map(u => u.id);
+
+      const userIds = userRecords.map((u) => u.id);
       if (userIds.length > 0) {
         await tx.delete(notifications).where(inArray(notifications.userId, userIds));
         await tx.delete(googleTokens).where(inArray(googleTokens.userId, userIds));
@@ -283,119 +333,40 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         await tx.delete(users).where(eq(users.employeeId, id));
       }
 
-      // 2. Find all tasks assigned to, created by, or reviewed by this employee
+      // Reassign or clean up tasks
       const empTasks = await tx
         .select({ id: tasks.id })
         .from(tasks)
-        .where(
-          or(
-            eq(tasks.assigneeId, id),
-            eq(tasks.creatorId, id),
-            eq(tasks.reviewingLeadId, id)
-          )
-        );
-      
-      const taskIds = empTasks.map(t => t.id);
+        .where(or(eq(tasks.assigneeId, id), eq(tasks.creatorId, id), eq(tasks.reviewingLeadId, id)));
 
-      // Clean up checklists, comments, notes referencing these tasks or this employee
-      await tx.delete(taskChecklists).where(
-        taskIds.length > 0
-          ? or(eq(taskChecklists.completedBy, id), inArray(taskChecklists.taskId, taskIds))
-          : eq(taskChecklists.completedBy, id)
-      );
+      const taskIds = empTasks.map((t) => t.id);
 
-      await tx.delete(taskComments).where(
-        taskIds.length > 0
-          ? or(eq(taskComments.authorId, id), inArray(taskComments.taskId, taskIds))
-          : eq(taskComments.authorId, id)
-      );
-
-      await tx.delete(taskNotes).where(
-        taskIds.length > 0
-          ? or(eq(taskNotes.authorId, id), inArray(taskNotes.taskId, taskIds))
-          : eq(taskNotes.authorId, id)
-      );
-
-      // Delete tasks
       if (taskIds.length > 0) {
+        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
+        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
+        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
         await tx.delete(tasks).where(inArray(tasks.id, taskIds));
       }
 
-      // 3. Find and delete sprints owned by or reviewed by this employee
-      const empSprints = await tx
-        .select({ id: sprints.id })
-        .from(sprints)
-        .where(or(eq(sprints.employeeId, id), eq(sprints.reviewingLeadId, id)));
-      
-      const sprintIds = empSprints.map(s => s.id);
-      if (sprintIds.length > 0) {
-        // Delete tasks in these sprints
-        const sprintTasks = await tx
-          .select({ id: tasks.id })
-          .from(tasks)
-          .where(inArray(tasks.sprintId, sprintIds));
-        const sprintTaskIds = sprintTasks.map(t => t.id);
-        if (sprintTaskIds.length > 0) {
-          await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, sprintTaskIds));
-          await tx.delete(taskComments).where(inArray(taskComments.taskId, sprintTaskIds));
-          await tx.delete(taskNotes).where(inArray(taskNotes.taskId, sprintTaskIds));
-          await tx.delete(tasks).where(inArray(tasks.id, sprintTaskIds));
-        }
-        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
-      }
-
-      // 4. Unset ownerId for epics and initiatives owned by this employee
-      await tx.update(epics).set({ ownerId: null }).where(eq(epics.ownerId, id));
-      await tx.update(initiatives).set({ ownerId: null }).where(eq(initiatives.ownerId, id));
-
-      // 5. Delete task templates created by this employee
       await tx.delete(taskTemplates).where(eq(taskTemplates.createdBy, id));
-
-      // 6. Delete applications where employee is applicant or reviewer
-      await tx.delete(applications).where(
-        or(eq(applications.employeeId, id), eq(applications.reviewedBy, id))
-      );
-
-      // 7. Delete meeting attendees & meetings organized by employee
+      await tx.delete(applications).where(or(eq(applications.employeeId, id), eq(applications.reviewedBy, id)));
       await tx.delete(meetingAttendees).where(eq(meetingAttendees.employeeId, id));
-      
-      const empMeetings = await tx
-        .select({ id: meetings.id })
-        .from(meetings)
-        .where(eq(meetings.organizerId, id));
-      
-      const meetingIds = empMeetings.map(m => m.id);
-      if (meetingIds.length > 0) {
-        await tx.delete(meetingAttendees).where(inArray(meetingAttendees.meetingId, meetingIds));
-        await tx.delete(meetings).where(inArray(meetings.id, meetingIds));
-      }
+      await tx.delete(meetings).where(eq(meetings.organizerId, id));
 
-      // 8. Delete attendance records
-      await tx.delete(attendance).where(eq(attendance.employeeId, id));
-
-      // 9. Delete invites
       if (emp.email) {
         await tx.delete(invites).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
       } else {
         await tx.delete(invites).where(eq(invites.employeeId, id));
       }
 
-      // 10. Delete employee record
       await tx.delete(employees).where(eq(employees.id, id));
     });
 
-    // Try deleting from Supabase Auth admin user list if exists
-    if (emp.email) {
-      try {
-        const { data } = await supabaseAdmin.auth.admin.listUsers();
-        const authUser = data?.users?.find(u => u.email?.toLowerCase() === emp.email.toLowerCase());
-        if (authUser) {
-          await supabaseAdmin.auth.admin.deleteUser(authUser.id);
-        }
-      } catch (e) {
-        console.warn('[SUPABASE AUTH DELETE NOTICE]:', e);
-      }
-    }
+    await logAudit(callerUser?.id, 'EMPLOYEE_DELETED', {
+      employeeId: id,
+      deletedEmail: emp.email,
+      name: `${emp.firstName} ${emp.lastName}`,
+    });
 
     res.json({ message: `Employee ${emp.firstName} ${emp.lastName} deleted successfully.` });
   } catch (err: any) {
@@ -404,15 +375,32 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// Update Employee Details Route
-router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+// PUT /api/employees/:id - Update Employee Details (Strict Role Check)
+router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Response) => {
   const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
-  const { firstName, lastName, email, designation, salary, role, entityId, departmentId } = req.body;
+  const { firstName, lastName, email, designation, role, entityId, departmentId } = req.body;
+  const callerUser = (req as any).user;
+  const callerRole = (callerUser?.role || '').toUpperCase();
 
   try {
     const [emp] = await db.select().from(employees).where(eq(employees.id, id));
     if (!emp) {
       return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Role Escalation Protection: Only ADMIN can change roles
+    if (role && callerRole !== 'ADMIN') {
+      return res.status(403).json({ message: 'Only administrators can update employee roles.' });
+    }
+
+    // Managers cannot edit Admin profiles
+    const [targetUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+
+    if (targetUser?.role === 'ADMIN' && callerRole !== 'ADMIN') {
+      return res.status(403).json({ message: 'Managers cannot modify administrator accounts.' });
     }
 
     const targetEmail = email ? email.toLowerCase().trim() : emp.email;
@@ -424,7 +412,6 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (lastName !== undefined) updateData.lastName = lastName.trim();
     if (email !== undefined) updateData.email = targetEmail;
     if (designation !== undefined) updateData.designation = designation.trim();
-    if (salary !== undefined) updateData.salary = String(salary);
     if (entityId) updateData.entityId = entityId;
     if (departmentId) updateData.departmentId = departmentId;
 
@@ -434,31 +421,36 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       .where(eq(employees.id, id))
       .returning();
 
-    // Update role/email in users table if exists
     if (role || email) {
       const userUpdate: any = {};
-      if (role) userUpdate.role = role;
+      if (role && callerRole === 'ADMIN') userUpdate.role = role;
       if (email) userUpdate.email = targetEmail;
       await db.update(users).set(userUpdate).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
     }
 
-    // Update role/email in invites table if exists
     if (role || email) {
       const inviteUpdate: any = {};
-      if (role) inviteUpdate.role = role;
+      if (role && callerRole === 'ADMIN') inviteUpdate.role = role;
       if (email) inviteUpdate.email = targetEmail;
       await db.update(invites).set(inviteUpdate).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
     }
 
-    return res.json({ message: 'Employee updated successfully', employee: updatedEmp });
+    await logAudit(callerUser?.id, 'EMPLOYEE_UPDATED', {
+      employeeId: id,
+      updatedFields: Object.keys(updateData),
+      newRole: role || undefined,
+    });
+
+    const { salary: _omit, ...safeUpdatedEmp } = updatedEmp;
+    return res.json({ message: 'Employee updated successfully', employee: safeUpdatedEmp });
   } catch (err: any) {
     console.error('[EMPLOYEE UPDATE ERROR]:', err);
     return res.status(500).json({ message: err.message || 'Failed to update employee' });
   }
 });
 
-// Re-invite Employee Route (Resends invitation email using exact same flow as creation)
-router.post('/:id/reinvite', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+// POST /api/employees/:id/reinvite - Branded reinvite
+router.post('/:id/reinvite', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Response) => {
   const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
 
   try {
@@ -469,17 +461,14 @@ router.post('/:id/reinvite', requireRole(['ADMIN', 'MANAGER']), async (req, res)
 
     const targetEmail = emp.email.toLowerCase().trim();
     const inviteToken = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 7 * 86400000); // 7 days
+    const expiresAt = new Date(Date.now() + 7 * 86400000);
 
-    // Look up existing user role or invite role
     const [userRow] = await db.select().from(users).where(or(eq(users.employeeId, id), eq(users.email, targetEmail)));
     const [inviteRow] = await db.select().from(invites).where(or(eq(invites.employeeId, id), eq(invites.email, targetEmail)));
     const empRole = userRow?.role || inviteRow?.role || 'EMPLOYEE';
 
-    // Delete existing invite rows for this email/employee
     await db.delete(invites).where(or(eq(invites.employeeId, id), eq(invites.email, targetEmail)));
 
-    // Insert new invite record
     await db.insert(invites).values({
       email: targetEmail,
       token: inviteToken,
@@ -489,34 +478,20 @@ router.post('/:id/reinvite', requireRole(['ADMIN', 'MANAGER']), async (req, res)
       expiresAt,
     });
 
-    const appUrl = process.env.APP_URL && !process.env.APP_URL.includes('localhost')
-      ? process.env.APP_URL
-      : 'https://hrdashboard-3s1m.onrender.com';
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
     const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
 
-    // Send invitation email via branded email service (same flow as creation)
     let emailSent = false;
     let emailError: string | null = null;
 
     try {
       const emailResult: any = await sendInviteEmail(targetEmail, inviteToken, `${emp.firstName} ${emp.lastName}`);
-      emailSent = emailResult.sent;
-      if (!emailResult.sent) {
-        emailError = emailResult.error || 'Email send failed';
+      emailSent = emailResult?.sent || false;
+      if (!emailResult?.sent) {
+        emailError = emailResult?.error || 'Email send failed';
       }
     } catch (e: any) {
       emailError = e?.message || String(e);
-    }
-
-    // Also attempt Supabase Auth admin invitation if configured
-    try {
-      const redirectUrl = `${appUrl}/accept-invite?token=${inviteToken}`;
-      await supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, {
-        redirectTo: redirectUrl,
-        data: { role: empRole, employeeId: emp.id, inviteToken },
-      });
-    } catch (sbErr) {
-      console.warn('[SUPABASE RE-INVITE NOTICE]:', sbErr);
     }
 
     return res.json({

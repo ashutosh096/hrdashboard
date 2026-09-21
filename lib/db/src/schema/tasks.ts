@@ -7,7 +7,7 @@ import { initiatives } from './initiatives.js';
 import { epics } from './epics.js';
 
 export const taskPriorityEnum = pgEnum('task_priority', ['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
-export const taskStatusEnum = pgEnum('task_status', ['BACKLOG', 'TODO', 'IN_PROGRESS', 'DONE', 'DELAYED', 'BLOCKED']);
+export const taskStatusEnum = pgEnum('task_status', ['PLANNED', 'BACKLOG', 'TODO', 'IN_PROGRESS', 'TO_REVIEW', 'DONE', 'DELAYED', 'BLOCKED', 'CANCELLED']);
 export const taskTypeEnum = pgEnum('task_type', ['SPRINT_TASK', 'EPIC_TASK', 'BACKLOG']);
 
 export const tasks = pgTable('tasks', {
