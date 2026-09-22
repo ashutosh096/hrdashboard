@@ -676,44 +676,25 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-gray-500">
                       <span className="text-gray-400 font-medium">Parent Initiative:</span>
                       {parentInit ? (
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setViewingInitiativeInEpics(parentInit);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg border border-blue-200 transition-all cursor-pointer shadow-2xs group"
-                            title="Open Initiative in Pop-up Modal (Epic remains open in background)"
-                          >
-                            <Target className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
-                            <span className="font-mono">{parentCode}</span>
-                            <span className="text-gray-600 font-semibold truncate max-w-[200px] sm:max-w-xs">
-                              • {parentTitle}
-                            </span>
-                          </button>
-
-                          {onSelectInitiative && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (onClearSelectedEpic) onClearSelectedEpic();
-                                setViewingEpic(null);
-                                onSelectInitiative(parentInit.id);
-                              }}
-                              className="text-[11px] text-gray-400 hover:text-emerald-700 hover:underline cursor-pointer font-semibold ml-1"
-                              title="Redirect to Initiatives Tab"
-                            >
-                              (Go to tab)
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewingInitiativeInEpics(parentInit);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                          title="Open Initiative in Pop-up Modal (Epic remains open in background)"
+                        >
+                          <Target className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                          <span className="font-mono">{parentCode}</span>
+                          <span className="text-gray-600 font-semibold truncate max-w-[240px] sm:max-w-md">
+                            • {parentTitle}
+                          </span>
+                        </button>
                       ) : (
                         <span className="font-mono font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                           {parentCode}
                         </span>
                       )}
-                      <span className="text-gray-300">&gt;</span>
-                      <span className="text-gray-500 font-semibold">this epic</span>
                     </div>
 
                     {/* Badges line */}
