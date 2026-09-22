@@ -404,7 +404,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                   <option value="">Select Employee...</option>
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>
-                      [{emp.employeeCode}] {emp.firstName} {emp.lastName}
+                      {emp.firstName} {emp.lastName}
                     </option>
                   ))}
                 </select>
@@ -421,7 +421,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                   <option value="">Select Lead / Manager...</option>
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>
-                      [{emp.employeeCode}] {emp.firstName} {emp.lastName} — {emp.designation}
+                      {emp.firstName} {emp.lastName}
                     </option>
                   ))}
                 </select>

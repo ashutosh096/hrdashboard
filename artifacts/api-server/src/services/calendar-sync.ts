@@ -82,8 +82,23 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
 
           if (!startStr || !endStr) continue;
 
-          const startTime = new Date(startStr);
-          const endTime = new Date(endStr);
+          let startTime: Date;
+          let endTime: Date;
+
+          if (event.start?.date && !event.start?.dateTime) {
+            // All-day event in Indian Standard Time (Asia/Kolkata)
+            startTime = new Date(`${event.start.date}T00:00:00+05:30`);
+            const endDateStr = event.end?.date || event.start.date;
+            endTime = new Date(`${endDateStr}T23:59:59+05:30`);
+          } else {
+            startTime = new Date(startStr);
+            endTime = new Date(endStr);
+          }
+
+          if (endTime.getTime() <= startTime.getTime()) {
+            endTime = new Date(startTime.getTime() + 30 * 60000);
+          }
+
           const googleMeetUrl = event.hangoutLink || event.htmlLink || null;
 
           // Extract all attendees from Google Calendar event

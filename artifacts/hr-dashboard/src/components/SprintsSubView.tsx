@@ -1054,7 +1054,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
               )}
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>
-                  [{emp.employeeCode}] {emp.firstName} {emp.lastName}
+                  {emp.firstName} {emp.lastName}
                 </option>
               ))}
             </select>
@@ -1462,7 +1462,6 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                             />
                             <span>{emp.firstName} {emp.lastName}</span>
                           </div>
-                          <span className="text-[10px] font-mono text-gray-400">{emp.employeeCode}</span>
                         </label>
                       );
                     })}
@@ -1483,7 +1482,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                     <option value="">Unassigned Lead (Optional)...</option>
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.id}>
-                        {emp.firstName} {emp.lastName} ({emp.designation})
+                        {emp.firstName} {emp.lastName}
                       </option>
                     ))}
                   </select>
@@ -1863,7 +1862,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                   >
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.id}>
-                        [{emp.employeeCode}] {emp.firstName} {emp.lastName} — {emp.designation}
+                        {emp.firstName} {emp.lastName} — {emp.designation}
                       </option>
                     ))}
                   </select>
@@ -1878,7 +1877,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                   >
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.id}>
-                        {emp.firstName} {emp.lastName} ({emp.designation})
+                        {emp.firstName} {emp.lastName}
                       </option>
                     ))}
                   </select>

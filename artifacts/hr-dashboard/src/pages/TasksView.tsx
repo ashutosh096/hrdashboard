@@ -544,7 +544,7 @@ export const TasksView: React.FC = () => {
                   <option value="ALL">All Employees ({employees.length || 10} Team Members)</option>
                   {employees.map((emp: any) => (
                     <option key={emp.id} value={emp.id}>
-                      [{emp.employeeCode || 'EMP'}] {emp.firstName} {emp.lastName}
+                      {emp.firstName} {emp.lastName}
                     </option>
                   ))}
                 </select>

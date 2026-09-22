@@ -6,12 +6,37 @@ import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
+const formatISTTime = (d: Date | string): string => {
+  if (!d) return '';
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  if (isNaN(dateObj.getTime())) return '';
+  return dateObj.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const getKolkataDateString = (d: Date): string => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(d);
+  } catch {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+};
+
 const isSameDay = (d1: Date, d2: Date): boolean => {
-  return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
-  );
+  return getKolkataDateString(d1) === getKolkataDateString(d2);
 };
 
 export const OfficeTodayView: React.FC = () => {
@@ -67,9 +92,17 @@ export const OfficeTodayView: React.FC = () => {
       const empDateFilter = cardDateFilters[emp.id] || dateFilter;
       const targetDate = getTargetDate(empDateFilter);
 
-      // Filter slots strictly matching target day
+      // Filter slots strictly matching target day, excluding full-day status notes (like 24h "Office" entries)
       const targetSlots = availBusySlots.filter((slot: any) => {
         const slotStart = new Date(slot.start || slot.startTime);
+        let slotEnd = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(slotStart.getTime() + 30 * 60000);
+        if (slotEnd.getTime() <= slotStart.getTime()) slotEnd = new Date(slotStart.getTime() + 30 * 60000);
+
+        const durationHours = (slotEnd.getTime() - slotStart.getTime()) / 3600000;
+        const titleLower = (slot.meetingTitle || slot.title || '').toLowerCase();
+        const isAllDayStatus = slot.isAllDay || durationHours >= 12 || titleLower === 'office' || titleLower === 'wfh';
+
+        if (isAllDayStatus) return false;
         return !isNaN(slotStart.getTime()) && isSameDay(slotStart, targetDate);
       });
 
@@ -82,7 +115,11 @@ export const OfficeTodayView: React.FC = () => {
 
       const dayMeetings = targetSlots.map((slot: any, sIdx: number) => {
         const start = new Date(slot.start || slot.startTime);
-        const end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        let end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        if (end.getTime() <= start.getTime()) {
+          end = new Date(start.getTime() + 30 * 60000);
+        }
+
         const active = isSameDay(now, targetDate) && now >= start && now <= end;
 
         const displayTitle = isSelf || !slot.isPrivate
@@ -92,7 +129,7 @@ export const OfficeTodayView: React.FC = () => {
         return {
           title: displayTitle,
           isPrivate: !isSelf && slot.isPrivate,
-          time: `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          time: `${formatISTTime(start)} - ${formatISTTime(end)}`,
           active,
           rawStart: start,
         };
@@ -101,11 +138,22 @@ export const OfficeTodayView: React.FC = () => {
       // Live presence is checked against TODAY
       const todaySlots = availBusySlots.filter((slot: any) => {
         const slotStart = new Date(slot.start || slot.startTime);
+        let slotEnd = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(slotStart.getTime() + 30 * 60000);
+        if (slotEnd.getTime() <= slotStart.getTime()) slotEnd = new Date(slotStart.getTime() + 30 * 60000);
+
+        const durationHours = (slotEnd.getTime() - slotStart.getTime()) / 3600000;
+        const titleLower = (slot.meetingTitle || slot.title || '').toLowerCase();
+        const isAllDayStatus = slot.isAllDay || durationHours >= 12 || titleLower === 'office' || titleLower === 'wfh';
+
+        if (isAllDayStatus) return false;
         return !isNaN(slotStart.getTime()) && isSameDay(slotStart, now);
       });
       const isCurrentlyInMeeting = todaySlots.some((slot: any) => {
         const start = new Date(slot.start || slot.startTime);
-        const end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        let end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        if (end.getTime() <= start.getTime()) {
+          end = new Date(start.getTime() + 30 * 60000);
+        }
         return now >= start && now <= end;
       });
 

@@ -1405,7 +1405,7 @@ export const EmployeeDashboardView: React.FC = () => {
                   >
                     {dbEmployees.map((e) => (
                       <option key={e.id} value={`${e.firstName} ${e.lastName}`}>
-                        [{e.employeeCode || 'EMP'}] {e.firstName} {e.lastName} ({e.designation || 'Lead'})
+                        {e.firstName} {e.lastName}
                       </option>
                     ))}
                     {dbEmployees.length === 0 && (

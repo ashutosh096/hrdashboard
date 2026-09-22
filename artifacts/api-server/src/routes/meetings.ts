@@ -171,9 +171,14 @@ router.get('/availability', async (req: Request, res: Response) => {
       });
 
 
-      const isBusyRightNow = busy.some(
-        (b) => now >= new Date(b.start) && now <= new Date(b.end)
-      );
+      const isBusyRightNow = busy.some((b) => {
+        const s = new Date(b.start);
+        let e = new Date(b.end);
+        if (e.getTime() <= s.getTime()) e = new Date(s.getTime() + 30 * 60000);
+        const isAllDay = (e.getTime() - s.getTime() >= 23 * 3600000);
+        if (isAllDay) return false;
+        return now >= s && now <= e;
+      });
 
       return {
         employeeId: emp.id,

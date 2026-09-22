@@ -104,6 +104,27 @@ export const ApplicationsView: React.FC = () => {
       .catch(() => {});
   }, []);
 
+  const fallbackTeamList = [
+    { id: 'emp-1', name: 'Ashutosh Mishra', code: 'EMP-001' },
+    { id: 'emp-2', name: 'Pranshu Dubey', code: 'EMP-002' },
+    { id: 'emp-3', name: 'Priyanka Sharma', code: 'EMP-003' },
+    { id: 'emp-4', name: 'Utkarsh Mishra', code: 'EMP-004' },
+    { id: 'emp-5', name: 'Prerna Shukla', code: 'EMP-005' },
+    { id: 'emp-6', name: 'Shreyansh Siladar', code: 'EMP-006' },
+    { id: 'emp-7', name: 'Dr. Harshit Mishra', code: 'EMP-007' },
+    { id: 'emp-8', name: 'Neha Shukla', code: 'EMP-008' },
+    { id: 'emp-9', name: 'Dr. Utsav Mishra', code: 'EMP-009' },
+    { id: 'emp-10', name: 'Himanshu Tiwari', code: 'EMP-010' },
+  ];
+
+  const availableTeamMembers = dbEmployees.length > 0
+    ? dbEmployees.map((emp) => ({
+        id: emp.id || emp.employeeCode || emp.email,
+        name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name || emp.email,
+        code: emp.employeeCode || emp.code || 'EMP',
+      }))
+    : fallbackTeamList;
+
   // Add Application Form State
   const [title, setTitle] = useState('');
   const [urlLink, setUrlLink] = useState('');
@@ -964,7 +985,7 @@ export const ApplicationsView: React.FC = () => {
                     Assign Team Members * (Multi-Select Enabled)
                   </label>
                   <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 space-y-1.5">
-                    {TEAM_MEMBERS_LIST.map((emp) => {
+                    {availableTeamMembers.map((emp) => {
                       const isChecked = selectedTeamMemberNames.includes(emp.name);
                       return (
                         <label
@@ -988,7 +1009,6 @@ export const ApplicationsView: React.FC = () => {
                             />
                             <span>{emp.name}</span>
                           </div>
-                          <span className="text-[10px] font-mono text-gray-400">{emp.code}</span>
                         </label>
                       );
                     })}
@@ -1005,14 +1025,13 @@ export const ApplicationsView: React.FC = () => {
                     className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
                   >
                     {dbEmployees.length === 0 ? (
-                      <option value="Ashutosh Mishra">Ashutosh Mishra (Admin Lead)</option>
+                      <option value="Ashutosh Mishra">Ashutosh Mishra</option>
                     ) : (
                       dbEmployees.map((emp) => {
                         const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
-                        const designation = emp.designation || 'Lead';
                         return (
                           <option key={emp.id} value={name}>
-                            {name} ({designation})
+                            {name}
                           </option>
                         );
                       })

@@ -557,7 +557,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       <option value="">Select Assignee...</option>
                       {employeesList.map((emp) => (
                         <option key={emp.id} value={emp.id}>
-                          {emp.name} ({emp.designation})
+                          {emp.name}
                         </option>
                       ))}
                       {assignee && !employeesList.some((e) => e.name.toLowerCase() === assignee.toLowerCase() || e.id === assigneeId) && (
@@ -590,7 +590,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       <option value="">Select Reviewing Lead...</option>
                       {employeesList.map((emp) => (
                         <option key={emp.id} value={emp.id}>
-                          {emp.name} ({emp.designation})
+                          {emp.name}
                         </option>
                       ))}
                       {reviewingLead && !employeesList.some((e) => e.name.toLowerCase() === reviewingLead.toLowerCase() || e.id === reviewingLeadId) && (

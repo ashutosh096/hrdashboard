@@ -388,19 +388,53 @@ export const MeetingsView: React.FC = () => {
     setCurrentDate(new Date());
   };
 
+  const formatISTTime = (d: Date | string): string => {
+    if (!d) return '';
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatISTTimeShort = (d: Date | string): string => {
+    if (!d) return '';
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).toLowerCase().replace(' ', '');
+  };
+
+  const getKolkataDateString = (d: Date): string => {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return formatter.format(d);
+    } catch {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  };
+
   const isSameCalendarDay = (d1: Date, d2: Date): boolean => {
-    return (
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate()
-    );
+    return getKolkataDateString(d1) === getKolkataDateString(d2);
   };
 
   const formatLocalDateString = (d: Date): string => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return getKolkataDateString(d);
   };
 
   const [miniNavMonth, setMiniNavMonth] = useState<Date>(() => {
@@ -536,9 +570,25 @@ export const MeetingsView: React.FC = () => {
       const empDateFilter = cardDateFilters[emp.id] || availDateFilter;
       const targetDate = getAvailTargetDate(empDateFilter);
 
-      // Filter slots strictly matching target day
+      // Determine if employee has an all-day Office or WFH status
+      const hasOfficeStatus = availBusySlots.some((slot: any) => {
+        const slotStart = new Date(slot.start || slot.startTime);
+        const titleLower = (slot.meetingTitle || slot.title || '').toLowerCase();
+        return isSameCalendarDay(slotStart, now) && (titleLower.includes('office') || titleLower.includes('present'));
+      });
+
+      // Filter slots strictly matching target day, excluding full-day status notes (like 24h "Office" entries)
       const dateSlots = availBusySlots.filter((slot: any) => {
         const slotStart = new Date(slot.start || slot.startTime);
+        let slotEnd = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(slotStart.getTime() + 30 * 60000);
+        if (slotEnd.getTime() <= slotStart.getTime()) slotEnd = new Date(slotStart.getTime() + 30 * 60000);
+
+        const durationHours = (slotEnd.getTime() - slotStart.getTime()) / 3600000;
+        const titleLower = (slot.meetingTitle || slot.title || '').toLowerCase();
+        const isAllDayStatus = slot.isAllDay || durationHours >= 12 || titleLower === 'office' || titleLower === 'wfh';
+
+        // Exclude full-day status notes from actual meeting list
+        if (isAllDayStatus) return false;
         return !isNaN(slotStart.getTime()) && isSameCalendarDay(slotStart, targetDate);
       });
 
@@ -551,7 +601,11 @@ export const MeetingsView: React.FC = () => {
 
       const dayMeetings = dateSlots.map((slot: any, sIdx: number) => {
         const start = new Date(slot.start || slot.startTime);
-        const end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        let end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        if (end.getTime() <= start.getTime()) {
+          end = new Date(start.getTime() + 30 * 60000);
+        }
+
         const active = isSameCalendarDay(now, targetDate) && now >= start && now <= end;
 
         // Anonymize title in correct chronological number order (Meeting 1, Meeting 2, Meeting 3...)
@@ -562,20 +616,31 @@ export const MeetingsView: React.FC = () => {
         return {
           title: displayTitle,
           isPrivate: !isSelf && slot.isPrivate,
-          time: `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          time: `${formatISTTime(start)} - ${formatISTTime(end)}`,
           active,
           rawStart: start,
         };
       });
 
-      // Live presence is checked against TODAY
+      // Live presence is checked against real active meetings TODAY
       const todaySlots = availBusySlots.filter((slot: any) => {
         const slotStart = new Date(slot.start || slot.startTime);
+        let slotEnd = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(slotStart.getTime() + 30 * 60000);
+        if (slotEnd.getTime() <= slotStart.getTime()) slotEnd = new Date(slotStart.getTime() + 30 * 60000);
+
+        const durationHours = (slotEnd.getTime() - slotStart.getTime()) / 3600000;
+        const titleLower = (slot.meetingTitle || slot.title || '').toLowerCase();
+        const isAllDayStatus = slot.isAllDay || durationHours >= 12 || titleLower === 'office' || titleLower === 'wfh';
+
+        if (isAllDayStatus) return false;
         return !isNaN(slotStart.getTime()) && isSameCalendarDay(slotStart, now);
       });
       const isCurrentlyInMeeting = todaySlots.some((slot: any) => {
         const start = new Date(slot.start || slot.startTime);
-        const end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        let end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        if (end.getTime() <= start.getTime()) {
+          end = new Date(start.getTime() + 30 * 60000);
+        }
         return now >= start && now <= end;
       });
 
@@ -961,7 +1026,7 @@ export const MeetingsView: React.FC = () => {
                           const topPx = (topMinutes / 60) * 44;
                           const heightPx = Math.max(22, durationHours * 44 - 3);
 
-                          const timeFormatted = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '');
+                          const timeFormatted = formatISTTimeShort(start);
 
                           const isSolidCard = m.title?.toLowerCase().includes('discovery');
 
@@ -981,7 +1046,7 @@ export const MeetingsView: React.FC = () => {
                                   ? 'bg-[#e09800] text-white border border-[#c68a00] font-semibold'
                                   : 'bg-white hover:bg-amber-50/50 text-[#b07200] border border-[#c68a00] hover:border-[#a35e00]'
                               }`}
-                              title={`${m.title} (${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+                              title={`${m.title} (${formatISTTime(start)} - ${formatISTTime(end)})`}
                             >
                               <div className="truncate font-semibold text-[11px] leading-tight">
                                 {m.title}, {timeFormatted}
@@ -1087,8 +1152,7 @@ export const MeetingsView: React.FC = () => {
                         <div className="space-y-1">
                           <h4 className="text-sm font-bold text-gray-900">{m.title}</h4>
                           <p className="text-xs text-gray-500 font-medium">
-                            {new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
-                            {new Date(m.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatISTTime(m.startTime)} – {formatISTTime(m.endTime)}
                           </p>
                         </div>
                         {m.googleMeetUrl && (
@@ -1611,20 +1675,13 @@ export const MeetingsView: React.FC = () => {
                   </div>
                   <div className="text-xs text-gray-600 font-medium">
                     {selectedMeeting.startTime
-                      ? `${new Date(selectedMeeting.startTime).toLocaleDateString([], {
+                      ? `${new Date(selectedMeeting.startTime).toLocaleDateString('en-IN', {
+                          timeZone: 'Asia/Kolkata',
                           weekday: 'long',
                           month: 'long',
                           day: 'numeric',
-                        })} • ${new Date(selectedMeeting.startTime).toLocaleTimeString([], {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })} – ${
-                          selectedMeeting.endTime
-                            ? new Date(selectedMeeting.endTime).toLocaleTimeString([], {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              })
-                            : ''
+                        })} • ${formatISTTime(selectedMeeting.startTime)} – ${
+                          selectedMeeting.endTime ? formatISTTime(selectedMeeting.endTime) : ''
                         } (IST)`
                       : 'Scheduled'}
                   </div>
