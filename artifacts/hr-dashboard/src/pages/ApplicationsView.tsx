@@ -30,6 +30,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { matchesEntityFilter } from '../utils/entityUtils';
+import { fetchApi } from '@workspace/api-client-react';
 
 export interface ApplicationItem {
   id: string;

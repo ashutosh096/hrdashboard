@@ -1,6 +1,6 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T07:04:34.940Z
+> Generated on: 2026-09-22T07:08:30.600Z
 > Total Source Files Included: 150
 
 ## Table of Contents
@@ -20865,7 +20865,7 @@ export const AnnouncementsView: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/pages/ApplicationsView.tsx`
 
 ```tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Briefcase,
   Plus,
@@ -20897,6 +20897,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { matchesEntityFilter } from '../utils/entityUtils';
+import { fetchApi } from '@workspace/api-client-react';
 
 export interface ApplicationItem {
   id: string;
