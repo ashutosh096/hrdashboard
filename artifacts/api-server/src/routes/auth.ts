@@ -336,11 +336,14 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
     const { accessToken, refreshToken } = generateTokens(userPayload, true);
     setRefreshTokenCookie(res, refreshToken, true);
 
+    const isPasswordUpdate = existingUser && existingUser.status === 'ACTIVE';
+
     return res.json({
-      message: 'Account activated successfully',
+      message: isPasswordUpdate ? 'Password updated successfully! Welcome back to HROS.' : 'Account activated successfully! Welcome to HROS.',
       token: accessToken,
       refreshToken,
       user: userPayload,
+      isPasswordUpdate,
     });
   } catch (err) {
     console.error('[ACCEPT-INVITE ERROR]:', err);

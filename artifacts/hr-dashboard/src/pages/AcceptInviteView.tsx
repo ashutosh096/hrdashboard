@@ -59,13 +59,13 @@ export const AcceptInviteView: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await fetchApi<{ token: string; user: any }>('/api/auth/accept-invite', {
+      const res = await fetchApi<{ token: string; user: any; message?: string; isPasswordUpdate?: boolean }>('/api/auth/accept-invite', {
         method: 'POST',
         body: JSON.stringify({ token, email: email.trim(), password }),
       });
 
       setUserSession(res.user, res.token);
-      toast.success('Account activated & password set successfully! Welcome to HROS.');
+      toast.success(res.message || 'Password saved & account activated successfully!');
       setLocation('/');
     } catch (err: any) {
       console.error('[SET-PASSWORD ERROR]:', err);
@@ -189,6 +189,14 @@ export const AcceptInviteView: React.FC = () => {
             )}
           </div>
 
+          {/* Security & Password Overwrite Clarification Note */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-300 leading-relaxed flex items-start gap-2">
+            <span className="text-emerald-400 font-bold shrink-0">💡 Note:</span>
+            <span>
+              If you have already created a password previously, submitting this form will <strong>update your password</strong>. Your old password will stop working, and your new password will be active immediately.
+            </span>
+          </div>
+
           {/* Submit Button */}
           <button
             type="submit"
@@ -196,11 +204,11 @@ export const AcceptInviteView: React.FC = () => {
             className="w-full py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-50"
           >
             {isSubmitting ? (
-              <span>Activating Account & Setting Password...</span>
+              <span>Saving New Password & Logging In...</span>
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4" />
-                <span>Activate Account & Proceed</span>
+                <span>Save Password & Continue</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
