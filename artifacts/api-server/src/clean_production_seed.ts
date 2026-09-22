@@ -211,6 +211,25 @@ async function setupCleanProductionData() {
     }
   }
 
+  // Ensure Ashutosh alias account (ashutoshmishraup78@gmail.com) exists as ADMIN
+  const ashutoshEmp = memberMap['Ashutosh'];
+  if (ashutoshEmp) {
+    const aliasEmail = 'ashutoshmishraup78@gmail.com';
+    const [aliasUser] = await db.select().from(users).where(eq(users.email, aliasEmail));
+    const hash = await bcrypt.hash('password123', 10);
+    if (!aliasUser) {
+      await db.insert(users).values({
+        email: aliasEmail,
+        passwordHash: hash,
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        employeeId: ashutoshEmp.id,
+      });
+    } else {
+      await db.update(users).set({ passwordHash: hash, role: 'ADMIN', status: 'ACTIVE', employeeId: ashutoshEmp.id }).where(eq(users.id, aliasUser.id));
+    }
+  }
+
   // Delete any other dummy employees not in our 4-person list
   const allowedEmails = targetMembers.map(m => m.email.toLowerCase());
   const allCurrentEmps = await db.select().from(employees);

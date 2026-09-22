@@ -432,10 +432,12 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setDepartment(e.target.value)}
                     className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
+                    <option value="Engineering & Product">Engineering & Product</option>
                     <option value="Marketing">Marketing</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Product & Tech">Product & Tech</option>
                     <option value="Operations & Delivery">Operations & Delivery</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Human Resources">Human Resources</option>
+                    <option value="Finance">Finance</option>
                   </select>
                 </div>
               </div>
@@ -551,10 +553,12 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setEditDepartment(e.target.value)}
                     className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
+                    <option value="Engineering & Product">Engineering & Product</option>
                     <option value="Marketing">Marketing</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Product & Tech">Product & Tech</option>
                     <option value="Operations & Delivery">Operations & Delivery</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Human Resources">Human Resources</option>
+                    <option value="Finance">Finance</option>
                   </select>
                 </div>
               </div>

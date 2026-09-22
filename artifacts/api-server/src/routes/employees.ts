@@ -111,7 +111,7 @@ router.get('/', async (req: Request, res: Response) => {
 
 // POST /api/employees - Enforce ADMIN / MANAGER RBAC
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Response) => {
-  const { firstName, lastName, email, personalEmail, entityId, departmentId, designation, joiningDate, role } = req.body;
+  const { firstName, lastName, email, personalEmail, entityId, entityCode, departmentId, departmentName, designation, joiningDate, role } = req.body;
   const targetEmail = (email || personalEmail || '').toLowerCase().trim();
 
   if (!targetEmail) {
@@ -148,6 +148,11 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
       await tx.delete(invites).where(eq(invites.email, targetEmail));
 
       let targetEntityId = entityId;
+      if (!targetEntityId && entityCode) {
+        const allEnts = await tx.select().from(entities);
+        const matchedEnt = allEnts.find(e => e.code.toUpperCase() === entityCode.toUpperCase() || e.name.toLowerCase().includes(entityCode.toLowerCase()));
+        targetEntityId = matchedEnt?.id;
+      }
       if (!targetEntityId) {
         const [firstEntity] = await tx.select({ id: entities.id }).from(entities).limit(1);
         targetEntityId = firstEntity?.id;
@@ -162,9 +167,9 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
         throw new Error(`Entity not found for ID: ${targetEntityId}`);
       }
 
-      const entityCode = entity.code;
+      const resEntityCode = entity.code;
       const isMgr = requestedRole === 'MANAGER';
-      const prefix = `${entityCode}-${isMgr ? 'MGR' : 'EMP'}`;
+      const prefix = `${resEntityCode}-${isMgr ? 'MGR' : 'EMP'}`;
 
       const allExisting = await tx
         .select({ employeeCode: employees.employeeCode })
@@ -193,7 +198,32 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
         });
 
       let targetDeptId = departmentId;
-      if (!targetDeptId) {
+      if (!targetDeptId && departmentName) {
+        const allDepts = await tx.select().from(departments);
+        const cleanName = departmentName.toLowerCase().trim();
+        const matched = allDepts.find(d =>
+          d.name.toLowerCase().trim() === cleanName ||
+          (cleanName.includes('market') && d.name.toLowerCase().includes('market')) ||
+          (cleanName.includes('product') && d.name.toLowerCase().includes('product')) ||
+          (cleanName.includes('tech') && d.name.toLowerCase().includes('tech')) ||
+          (cleanName.includes('eng') && d.name.toLowerCase().includes('eng')) ||
+          (cleanName.includes('operat') && d.name.toLowerCase().includes('operat')) ||
+          (cleanName.includes('sale') && d.name.toLowerCase().includes('sale')) ||
+          (cleanName.includes('hr') && d.name.toLowerCase().includes('human')) ||
+          (cleanName.includes('finan') && d.name.toLowerCase().includes('finan'))
+        );
+        if (matched) {
+          targetDeptId = matched.id;
+        } else {
+          const deptCode = (departmentName.trim().slice(0, 3) || 'GEN').toUpperCase();
+          const [newDept] = await tx.insert(departments).values({
+            name: departmentName.trim(),
+            code: deptCode,
+            entityId: targetEntityId,
+          }).returning();
+          targetDeptId = newDept.id;
+        }
+      } else if (!targetDeptId) {
         const [firstDept] = await tx.select({ id: departments.id }).from(departments).limit(1);
         targetDeptId = firstDept?.id;
       }
@@ -400,7 +430,7 @@ router.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response
 // PUT /api/employees/:id - Update Employee Details (Strict Role Check)
 router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Response) => {
   const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
-  const { firstName, lastName, email, designation, role, entityId, departmentId } = req.body;
+  const { firstName, lastName, email, designation, role, entityId, entityCode, departmentId, departmentName } = req.body;
   const callerUser = (req as any).user;
   const callerRole = (callerUser?.role || '').toUpperCase();
 
@@ -434,8 +464,44 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     if (lastName !== undefined) updateData.lastName = lastName.trim();
     if (email !== undefined) updateData.email = targetEmail;
     if (designation !== undefined) updateData.designation = designation.trim();
-    if (entityId) updateData.entityId = entityId;
-    if (departmentId) updateData.departmentId = departmentId;
+
+    let targetEntityId = entityId;
+    if (!targetEntityId && entityCode) {
+      const allEnts = await db.select().from(entities);
+      const matchedEnt = allEnts.find(e => e.code.toUpperCase() === entityCode.toUpperCase() || e.name.toLowerCase().includes(entityCode.toLowerCase()));
+      if (matchedEnt) targetEntityId = matchedEnt.id;
+    }
+    if (targetEntityId) updateData.entityId = targetEntityId;
+
+    let targetDeptId = departmentId;
+    if (!targetDeptId && departmentName) {
+      const allDepts = await db.select().from(departments);
+      const cleanName = departmentName.toLowerCase().trim();
+      const matched = allDepts.find(d =>
+        d.name.toLowerCase().trim() === cleanName ||
+        (cleanName.includes('market') && d.name.toLowerCase().includes('market')) ||
+        (cleanName.includes('product') && d.name.toLowerCase().includes('product')) ||
+        (cleanName.includes('tech') && d.name.toLowerCase().includes('tech')) ||
+        (cleanName.includes('eng') && d.name.toLowerCase().includes('eng')) ||
+        (cleanName.includes('operat') && d.name.toLowerCase().includes('operat')) ||
+        (cleanName.includes('sale') && d.name.toLowerCase().includes('sale')) ||
+        (cleanName.includes('hr') && d.name.toLowerCase().includes('human')) ||
+        (cleanName.includes('finan') && d.name.toLowerCase().includes('finan'))
+      );
+      if (matched) {
+        targetDeptId = matched.id;
+      } else {
+        const deptCode = (departmentName.trim().slice(0, 3) || 'GEN').toUpperCase();
+        const targetEntity = targetEntityId || emp.entityId;
+        const [newDept] = await db.insert(departments).values({
+          name: departmentName.trim(),
+          code: deptCode,
+          entityId: targetEntity,
+        }).returning();
+        targetDeptId = newDept.id;
+      }
+    }
+    if (targetDeptId) updateData.departmentId = targetDeptId;
 
     const [updatedEmp] = await db
       .update(employees)
