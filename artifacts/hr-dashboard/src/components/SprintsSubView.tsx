@@ -87,7 +87,11 @@ const KANBAN_COLUMNS = [
   { id: 'DONE', label: 'Done', color: 'bg-emerald-50/80 border-emerald-200 text-emerald-800', badgeColor: 'bg-emerald-100 text-emerald-800' },
 ];
 
-export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
+interface SprintsSubViewProps {
+  isManager?: boolean;
+}
+
+export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [sprints, setSprints] = useState<SprintItem[]>(() => (getCachedApi<SprintItem[]>('/api/sprints') || []));

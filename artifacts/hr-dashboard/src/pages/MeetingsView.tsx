@@ -41,7 +41,7 @@ import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
-type CalendarViewMode = 'WEEK' | 'DAY' | 'MONTH';
+type CalendarViewMode = 'WEEK' | 'DAY' | 'MONTH' | 'SCHEDULE';
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 8 AM to 9 PM (8..21)
 
