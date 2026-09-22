@@ -103,7 +103,7 @@ export const AttendanceView: React.FC = () => {
       employeeName: `${emp.firstName} ${emp.lastName}`,
       email: emp.email,
       role: emp.designation || 'Specialist',
-      dept: emp.departmentName || 'Engineering & Operations',
+      dept: emp.departmentName || 'Product & Tech',
       entity,
       avatar: idx % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR,
       totalWorkingDays,

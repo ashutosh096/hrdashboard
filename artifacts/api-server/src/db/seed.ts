@@ -45,11 +45,13 @@ export async function runSeed() {
         });
     }
 
-    // 2. Seed / Upsert Departments (MAR, DEV, OPS)
+    // 2. Seed / Upsert Departments (MAR, SAL, TEC, OPS, GOV)
     const departmentsData = [
       { code: 'MAR', name: 'Marketing' },
-      { code: 'DEV', name: 'Engineering & Product' },
-      { code: 'OPS', name: 'Operations' },
+      { code: 'SAL', name: 'Sales' },
+      { code: 'TEC', name: 'Product & Tech' },
+      { code: 'OPS', name: 'Operations & Delivery' },
+      { code: 'GOV', name: 'Grants & Governance' },
     ];
 
     const seededDepts: Record<string, string> = {};

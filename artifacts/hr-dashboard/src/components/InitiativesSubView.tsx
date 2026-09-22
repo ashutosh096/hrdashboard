@@ -694,7 +694,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
                       if (!dept) return 'Product & Tech';
                       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                        return 'Engineering & Product';
+                        return 'Product & Tech';
                       }
                       return dept;
                     })()}
@@ -1306,7 +1306,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     {(() => {
                       const dept = viewingEpicDetails.department || (viewingInitiative as any)?.departmentName;
                       if (!dept || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                        return 'Engineering & Product';
+                        return 'Product & Tech';
                       }
                       return dept;
                     })()}

@@ -1,7 +1,7 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T05:40:41.062Z
-> Total Source Files Included: 144
+> Generated on: 2026-09-22T06:00:22.686Z
+> Total Source Files Included: 147
 
 ## Table of Contents
 
@@ -10,8 +10,11 @@
 - [artifacts/api-server/src/clean_production_seed.ts](#file-artifacts-api-server-src-clean_production_seed-ts)
 - [artifacts/api-server/src/comprehensive_e2e_test.ts](#file-artifacts-api-server-src-comprehensive_e2e_test-ts)
 - [artifacts/api-server/src/config/jwt.ts](#file-artifacts-api-server-src-config-jwt-ts)
+- [artifacts/api-server/src/db/clean_team_codes.ts](#file-artifacts-api-server-src-db-clean_team_codes-ts)
 - [artifacts/api-server/src/db/fix_constraint.ts](#file-artifacts-api-server-src-db-fix_constraint-ts)
 - [artifacts/api-server/src/db/seed.ts](#file-artifacts-api-server-src-db-seed-ts)
+- [artifacts/api-server/src/db/sync_departments.ts](#file-artifacts-api-server-src-db-sync_departments-ts)
+- [artifacts/api-server/src/db/test_employee_updates.ts](#file-artifacts-api-server-src-db-test_employee_updates-ts)
 - [artifacts/api-server/src/db/verify.ts](#file-artifacts-api-server-src-db-verify-ts)
 - [artifacts/api-server/src/exhaustive_audit.ts](#file-artifacts-api-server-src-exhaustive_audit-ts)
 - [artifacts/api-server/src/generate_unabridged_codebase.ts](#file-artifacts-api-server-src-generate_unabridged_codebase-ts)
@@ -1037,6 +1040,74 @@ export const JWT_SECRET = jwtSecret;
 
 ---
 
+### File: `artifacts/api-server/src/db/clean_team_codes.ts`
+
+```typescript
+import { db, users, employees, departments, entities, eq, and } from '@workspace/db';
+
+async function cleanTeam() {
+  console.log('--- Cleaning Core Team Employee Codes & Entities ---');
+
+  const [ehmEntity] = await db.select().from(entities).where(eq(entities.code, 'EHM'));
+  const [cagEntity] = await db.select().from(entities).where(eq(entities.code, 'CAG'));
+  const [techDept] = await db.select().from(departments).where(and(eq(departments.entityId, ehmEntity.id), eq(departments.name, 'Product & Tech')));
+  const [cagTechDept] = await db.select().from(departments).where(and(eq(departments.entityId, cagEntity.id), eq(departments.name, 'Product & Tech')));
+
+  // Ashutosh: EHM, Product & Tech, ADMIN, EHM-ADM01
+  await db.update(employees).set({
+    employeeCode: 'EHM-ADM01',
+    entityId: ehmEntity.id,
+    departmentId: techDept?.id || undefined,
+    designation: 'System Administrator & VP Tech'
+  }).where(eq(employees.email, 'ashutosh@ehmconsultancy.com'));
+
+  // Pranshu: EHM, Product & Tech, MANAGER, EHM-MGR01
+  await db.update(employees).set({
+    employeeCode: 'EHM-MGR01',
+    entityId: ehmEntity.id,
+    departmentId: techDept?.id || undefined,
+    designation: 'Engineering Lead'
+  }).where(eq(employees.email, 'dubey.pranshu@gmail.com'));
+
+  // Harshit: EHM, Product & Tech, MANAGER, EHM-MGR02
+  await db.update(employees).set({
+    employeeCode: 'EHM-MGR02',
+    entityId: ehmEntity.id,
+    departmentId: techDept?.id || undefined,
+    designation: 'Lead Engineer'
+  }).where(eq(employees.email, 'harshit@ehmconsultancy.com'));
+
+  // Utsav: EHM, Product & Tech, MANAGER, EHM-MGR03
+  await db.update(employees).set({
+    employeeCode: 'EHM-MGR03',
+    entityId: ehmEntity.id,
+    departmentId: techDept?.id || undefined,
+    designation: 'Technical Architect'
+  }).where(eq(employees.email, 'utsav@ehmconsultancy.co.in'));
+
+  // Eustace: CAG, Product & Tech, MANAGER/EMPLOYEE, CAG-EMP01
+  await db.update(employees).set({
+    employeeCode: 'CAG-EMP01',
+    entityId: cagEntity.id,
+    departmentId: cagTechDept?.id || undefined,
+    designation: 'Operations Lead'
+  }).where(eq(employees.email, 'eustace@climagro.com'));
+
+  const emps = await db.select().from(employees);
+  console.log('Cleaned employees:');
+  emps.forEach(e => console.log(`[${e.employeeCode}] ${e.firstName} ${e.lastName} (${e.email})`));
+  process.exit(0);
+}
+
+cleanTeam().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
+
+```
+
+---
+
 ### File: `artifacts/api-server/src/db/fix_constraint.ts`
 
 ```typescript
@@ -1119,11 +1190,13 @@ export async function runSeed() {
         });
     }
 
-    // 2. Seed / Upsert Departments (MAR, DEV, OPS)
+    // 2. Seed / Upsert Departments (MAR, SAL, TEC, OPS, GOV)
     const departmentsData = [
       { code: 'MAR', name: 'Marketing' },
-      { code: 'DEV', name: 'Engineering & Product' },
-      { code: 'OPS', name: 'Operations' },
+      { code: 'SAL', name: 'Sales' },
+      { code: 'TEC', name: 'Product & Tech' },
+      { code: 'OPS', name: 'Operations & Delivery' },
+      { code: 'GOV', name: 'Grants & Governance' },
     ];
 
     const seededDepts: Record<string, string> = {};
@@ -1234,6 +1307,199 @@ export async function runSeed() {
   }
 }
 
+
+```
+
+---
+
+### File: `artifacts/api-server/src/db/sync_departments.ts`
+
+```typescript
+import { db, entities, departments, employees, eq, and } from '@workspace/db';
+
+async function syncDepartments() {
+  console.log('[SYNC DEPARTMENTS] Starting sync...');
+  
+  const allEntities = await db.select().from(entities);
+  console.log(`[SYNC DEPARTMENTS] Found ${allEntities.length} entities.`);
+
+  const departmentsData = [
+    { code: 'MAR', name: 'Marketing' },
+    { code: 'SAL', name: 'Sales' },
+    { code: 'TEC', name: 'Product & Tech' },
+    { code: 'OPS', name: 'Operations & Delivery' },
+    { code: 'GOV', name: 'Grants & Governance' },
+  ];
+
+  for (const ent of allEntities) {
+    for (const d of departmentsData) {
+      let [existing] = await db
+        .select()
+        .from(departments)
+        .where(and(eq(departments.entityId, ent.id), eq(departments.name, d.name)));
+
+      if (!existing) {
+        // Also check by code
+        [existing] = await db
+          .select()
+          .from(departments)
+          .where(and(eq(departments.entityId, ent.id), eq(departments.code, d.code)));
+      }
+
+      if (!existing) {
+        const [inserted] = await db
+          .insert(departments)
+          .values({
+            entityId: ent.id,
+            code: d.code,
+            name: d.name,
+          })
+          .returning();
+        console.log(`[SYNC DEPARTMENTS] Inserted department: ${d.name} (${d.code}) for entity ${ent.name}`);
+      } else {
+        await db
+          .update(departments)
+          .set({ name: d.name, code: d.code })
+          .where(eq(departments.id, existing.id));
+        console.log(`[SYNC DEPARTMENTS] Updated department: ${d.name} (${d.code}) for entity ${ent.name}`);
+      }
+    }
+  }
+
+  // Update legacy "DEV" or "Engineering & Product" departments to "Product & Tech"
+  const legacyDepts = await db.select().from(departments);
+  for (const dept of legacyDepts) {
+    if (dept.name.includes('Engineering') || dept.code === 'DEV') {
+      await db.update(departments).set({ name: 'Product & Tech', code: 'TEC' }).where(eq(departments.id, dept.id));
+      console.log(`[SYNC DEPARTMENTS] Migrated legacy department ${dept.id} to "Product & Tech"`);
+    }
+  }
+
+  console.log('[SYNC DEPARTMENTS] Sync completed successfully!');
+  process.exit(0);
+}
+
+syncDepartments().catch(err => {
+  console.error('[SYNC DEPARTMENTS ERROR]:', err);
+  process.exit(1);
+});
+
+```
+
+---
+
+### File: `artifacts/api-server/src/db/test_employee_updates.ts`
+
+```typescript
+import { db, users, employees, departments, entities, eq } from '@workspace/db';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_production_123456';
+
+async function testEmployeeUpdates() {
+  console.log('--- 1. Testing Employee Role & Code & Entity Updates ---');
+  
+  // Find Ashutosh (admin)
+  const [adminUser] = await db.select().from(users).where(eq(users.email, 'ashutosh@ehmconsultancy.com'));
+  if (!adminUser) {
+    throw new Error('Admin user not found');
+  }
+
+  const token = jwt.sign(
+    {
+      id: adminUser.id,
+      email: adminUser.email,
+      role: 'ADMIN',
+      employeeId: adminUser.employeeId,
+    },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+  // 1. Fetch current employees
+  const fetchRes = await fetch('http://localhost:5000/api/employees', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const emps = await fetchRes.json();
+  console.log(`Fetched ${emps.length} employees:`);
+  emps.forEach((e: any) => {
+    console.log(`- [${e.employeeCode}] ${e.firstName} ${e.lastName} | Role: ${e.role} | Dept: ${e.departmentName} | Entity: ${e.entityCode}`);
+  });
+
+  // Verify all departments are valid among the 5
+  const validDepts = ['Marketing', 'Sales', 'Product & Tech', 'Operations & Delivery', 'Grants & Governance'];
+  for (const e of emps) {
+    if (!validDepts.includes(e.departmentName)) {
+      console.warn(`WARNING: Employee ${e.firstName} has non-standard department "${e.departmentName}"`);
+    }
+  }
+
+  console.log('\n--- 2. Testing Update on Employee ---');
+  // Find a test employee or non-admin employee
+  const target = emps.find((e: any) => e.email === 'utsav@ehmconsultancy.co.in' || e.email === 'harshit@ehmconsultancy.com') || emps[1];
+  if (target) {
+    console.log(`Updating employee ${target.firstName} (${target.id}) to department "Grants & Governance" and entity "CAG"...`);
+    
+    const updateRes = await fetch(`http://localhost:5000/api/employees/${target.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        firstName: target.firstName,
+        lastName: target.lastName,
+        email: target.email,
+        designation: target.designation,
+        role: target.role,
+        departmentName: 'Grants & Governance',
+        entityCode: 'CAG'
+      })
+    });
+
+    const updateData = await updateRes.json();
+    console.log('Update response status:', updateRes.status);
+    console.log('Updated employee data:', updateData.employee);
+
+    if (updateData.employee?.employeeCode?.startsWith('CAG')) {
+      console.log('✅ PASS: Employee code updated to CAG prefix successfully!');
+    } else {
+      console.log('⚠️ Code check:', updateData.employee?.employeeCode);
+    }
+
+    // Revert back to EHM and Product & Tech
+    console.log(`Reverting employee ${target.firstName} back to EHM...`);
+    const revertRes = await fetch(`http://localhost:5000/api/employees/${target.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        firstName: target.firstName,
+        lastName: target.lastName,
+        email: target.email,
+        designation: target.designation,
+        role: target.role,
+        departmentName: 'Product & Tech',
+        entityCode: 'EHM'
+      })
+    });
+    const revertData = await revertRes.json();
+    console.log('Reverted employee code:', revertData.employee?.employeeCode, '| Dept:', revertData.employee?.departmentName);
+    if (revertData.employee?.employeeCode?.startsWith('EHM')) {
+      console.log('✅ PASS: Employee successfully reverted to EHM prefix!');
+    }
+  }
+
+  console.log('\n--- ALL EMPLOYEE VERIFICATION TESTS COMPLETED SUCCESSFULLY ---');
+  process.exit(0);
+}
+
+testEmployeeUpdates().catch(err => {
+  console.error('[TEST ERROR]:', err);
+  process.exit(1);
+});
 
 ```
 
@@ -3575,10 +3841,11 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const empList = await db.select().from(employees);
 
-    const [userList, inviteList, deptList] = await Promise.all([
+    const [userList, inviteList, deptList, entityList] = await Promise.all([
       db.select({ email: users.email, role: users.role, employeeId: users.employeeId }).from(users),
       db.select({ email: invites.email, role: invites.role, employeeId: invites.employeeId }).from(invites),
       db.select().from(departments),
+      db.select().from(entities),
     ]);
 
     const userMapByEmpId = new Map<string, string>();
@@ -3600,6 +3867,11 @@ router.get('/', async (req: Request, res: Response) => {
       deptMap.set(d.id, d.name);
     });
 
+    const entityMap = new Map<string, { code: string; name: string }>();
+    entityList.forEach((e) => {
+      entityMap.set(e.id, { code: e.code, name: e.name });
+    });
+
     const result = empList.map((emp) => {
       const emailLower = (emp.email || '').toLowerCase().trim();
       const userRole = userMapByEmpId.get(emp.id) || userMapByEmail.get(emailLower);
@@ -3608,6 +3880,8 @@ router.get('/', async (req: Request, res: Response) => {
       let resolvedRole = userRole || inviteRole;
       if (!resolvedRole) {
         if (emailLower === 'admin@example.com' || emailLower.startsWith('admin@')) {
+          resolvedRole = 'ADMIN';
+        } else if (emp.employeeCode && (emp.employeeCode.includes('-ADM') || emp.employeeCode.includes('ADM'))) {
           resolvedRole = 'ADMIN';
         } else if (emp.employeeCode && (emp.employeeCode.includes('-MGR') || emp.employeeCode.includes('MGR'))) {
           resolvedRole = 'MANAGER';
@@ -3619,10 +3893,15 @@ router.get('/', async (req: Request, res: Response) => {
       // Explicitly omit salary field
       const { salary: _omitSalary, ...safeEmp } = emp;
 
+      const ent = entityMap.get(emp.entityId);
+      const entityCode = ent ? ent.code : (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
+
       return {
         ...safeEmp,
         role: resolvedRole,
-        departmentName: deptMap.get(emp.departmentId) || 'Engineering',
+        entityCode,
+        entityName: ent?.name,
+        departmentName: deptMap.get(emp.departmentId) || 'Product & Tech',
       };
     });
 
@@ -3997,6 +4276,32 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     }
     if (targetEntityId) updateData.entityId = targetEntityId;
 
+    const finalEntityId = targetEntityId || emp.entityId;
+    const [finalEntity] = await db.select().from(entities).where(eq(entities.id, finalEntityId));
+    const finalEntityCode = finalEntity?.code || (entityCode?.toUpperCase() === 'CAG' ? 'CAG' : 'EHM');
+
+    const effectiveRole = ((role || targetUser?.role || 'EMPLOYEE') as string).toUpperCase();
+    const roleCode = effectiveRole === 'ADMIN' ? 'ADM' : effectiveRole === 'MANAGER' ? 'MGR' : 'EMP';
+    const expectedPrefix = `${finalEntityCode}-${roleCode}`;
+
+    if (!emp.employeeCode || !emp.employeeCode.startsWith(expectedPrefix)) {
+      const allExisting = await db
+        .select({ employeeCode: employees.employeeCode })
+        .from(employees)
+        .where(eq(employees.entityId, finalEntityId));
+      let maxNum = 0;
+      for (const e of allExisting) {
+        if (e.employeeCode && e.employeeCode.startsWith(expectedPrefix)) {
+          const numPart = parseInt(e.employeeCode.slice(expectedPrefix.length), 10);
+          if (!isNaN(numPart) && numPart > maxNum) {
+            maxNum = numPart;
+          }
+        }
+      }
+      const seq = maxNum + 1;
+      updateData.employeeCode = `${expectedPrefix}${String(seq).padStart(2, '0')}`;
+    }
+
     let targetDeptId = departmentId;
     if (!targetDeptId && departmentName) {
       const allDepts = await db.select().from(departments);
@@ -4004,23 +4309,21 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
       const matched = allDepts.find(d =>
         d.name.toLowerCase().trim() === cleanName ||
         (cleanName.includes('market') && d.name.toLowerCase().includes('market')) ||
-        (cleanName.includes('product') && d.name.toLowerCase().includes('product')) ||
-        (cleanName.includes('tech') && d.name.toLowerCase().includes('tech')) ||
-        (cleanName.includes('eng') && d.name.toLowerCase().includes('eng')) ||
-        (cleanName.includes('operat') && d.name.toLowerCase().includes('operat')) ||
         (cleanName.includes('sale') && d.name.toLowerCase().includes('sale')) ||
-        (cleanName.includes('hr') && d.name.toLowerCase().includes('human')) ||
-        (cleanName.includes('finan') && d.name.toLowerCase().includes('finan'))
+        (cleanName.includes('tech') && d.name.toLowerCase().includes('tech')) ||
+        (cleanName.includes('product') && d.name.toLowerCase().includes('product')) ||
+        (cleanName.includes('operat') && d.name.toLowerCase().includes('operat')) ||
+        (cleanName.includes('grant') && d.name.toLowerCase().includes('grant')) ||
+        (cleanName.includes('govern') && d.name.toLowerCase().includes('govern'))
       );
       if (matched) {
         targetDeptId = matched.id;
       } else {
         const deptCode = (departmentName.trim().slice(0, 3) || 'GEN').toUpperCase();
-        const targetEntity = targetEntityId || emp.entityId;
         const [newDept] = await db.insert(departments).values({
           name: departmentName.trim(),
           code: deptCode,
-          entityId: targetEntity,
+          entityId: finalEntityId,
         }).returning();
         targetDeptId = newDept.id;
       }
@@ -4033,28 +4336,33 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
       .where(eq(employees.id, id))
       .returning();
 
-    if (role || email) {
-      const userUpdate: any = {};
-      if (role && callerRole === 'ADMIN') userUpdate.role = role;
-      if (email) userUpdate.email = targetEmail;
-      await db.update(users).set(userUpdate).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+    if (role && callerRole === 'ADMIN') {
+      await db.update(users).set({ role: effectiveRole as any }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+      await db.update(invites).set({ role: effectiveRole as any }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
     }
 
-    if (role || email) {
-      const inviteUpdate: any = {};
-      if (role && callerRole === 'ADMIN') inviteUpdate.role = role;
-      if (email) inviteUpdate.email = targetEmail;
-      await db.update(invites).set(inviteUpdate).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
+    if (email && email.toLowerCase().trim() !== emp.email?.toLowerCase().trim()) {
+      await db.update(users).set({ email: targetEmail }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+      await db.update(invites).set({ email: targetEmail }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
     }
 
     await logAudit(callerUser?.id, 'EMPLOYEE_UPDATED', {
       employeeId: id,
       updatedFields: Object.keys(updateData),
       newRole: role || undefined,
+      newCode: updateData.employeeCode || undefined,
     });
 
     const { salary: _omit, ...safeUpdatedEmp } = updatedEmp;
-    return res.json({ message: 'Employee updated successfully', employee: safeUpdatedEmp });
+    return res.json({
+      message: 'Employee updated successfully',
+      employee: {
+        ...safeUpdatedEmp,
+        role: effectiveRole,
+        entityCode: finalEntityCode,
+        departmentName: departmentName || undefined,
+      },
+    });
   } catch (err: any) {
     console.error('[EMPLOYEE UPDATE ERROR]:', err);
     return res.status(500).json({ message: err.message || 'Failed to update employee' });
@@ -7949,7 +8257,7 @@ export const EmployeeDashboardView: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Role:</span>
             <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-xs rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/25 shadow-2xs">
-              {user?.role === 'EMPLOYEE' ? 'Employee' : 'Manager'}
+              {user?.role === 'ADMIN' ? 'ADMIN' : user?.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'}
             </span>
           </div>
         </div>
@@ -10213,7 +10521,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       const dept = viewingInitiativeInEpics.departmentName || viewingInitiativeInEpics.subDepartment || viewingInitiativeInEpics.department || viewingInitiativeInEpics.departmentId;
                       if (!dept) return 'Product & Tech';
                       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                        return 'Engineering & Product';
+                        return 'Product & Tech';
                       }
                       return dept;
                     })()}
@@ -11773,7 +12081,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
                       if (!dept) return 'Product & Tech';
                       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                        return 'Engineering & Product';
+                        return 'Product & Tech';
                       }
                       return dept;
                     })()}
@@ -12385,7 +12693,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     {(() => {
                       const dept = viewingEpicDetails.department || (viewingInitiative as any)?.departmentName;
                       if (!dept || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                        return 'Engineering & Product';
+                        return 'Product & Tech';
                       }
                       return dept;
                     })()}
@@ -21983,7 +22291,7 @@ export const AttendanceView: React.FC = () => {
       employeeName: `${emp.firstName} ${emp.lastName}`,
       email: emp.email,
       role: emp.designation || 'Specialist',
-      dept: emp.departmentName || 'Engineering & Operations',
+      dept: emp.departmentName || 'Product & Tech',
       entity,
       avatar: idx % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR,
       totalWorkingDays,
@@ -22367,7 +22675,7 @@ export const DashboardView: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Role:</span>
             <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-xs rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/25 shadow-2xs">
-              {user?.role === 'ADMIN' || user?.role === 'MANAGER' ? 'Manager' : 'Employee'}
+              {user?.role === 'ADMIN' ? 'ADMIN' : user?.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'}
             </span>
           </div>
         </div>
@@ -25797,6 +26105,14 @@ import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
+const DEPARTMENT_OPTIONS = [
+  'Marketing',
+  'Sales',
+  'Product & Tech',
+  'Operations & Delivery',
+  'Grants & Governance',
+];
+
 export const TeamDirectoryView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
@@ -25837,7 +26153,11 @@ export const TeamDirectoryView: React.FC = () => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
           const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
           const roleType = (emp.role || 'EMPLOYEE').toUpperCase();
-          const defaultCode = roleType === 'MANAGER' ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-MGR01` : `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-EMP01`;
+          const defaultCode = roleType === 'ADMIN'
+            ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-ADM01`
+            : roleType === 'MANAGER'
+              ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-MGR01`
+              : `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-EMP01`;
 
           return {
             id: emp.id,
@@ -25848,7 +26168,7 @@ export const TeamDirectoryView: React.FC = () => {
             email: emp.email,
             phone: emp.phone && emp.phone.trim() ? emp.phone.trim() : null,
             entity: rawEntity,
-            dept: emp.departmentName || 'Engineering',
+            dept: emp.departmentName || 'Product & Tech',
             role: emp.designation || 'Specialist',
             roleType,
             avatar: getAvatarByName(empName),
@@ -26222,12 +26542,9 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setDepartment(e.target.value)}
                     className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
-                    <option value="Engineering & Product">Engineering & Product</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Operations & Delivery">Operations & Delivery</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Finance">Finance</option>
+                    {DEPARTMENT_OPTIONS.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -26343,12 +26660,9 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setEditDepartment(e.target.value)}
                     className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
-                    <option value="Engineering & Product">Engineering & Product</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Operations & Delivery">Operations & Delivery</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Finance">Finance</option>
+                    {DEPARTMENT_OPTIONS.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
                 </div>
               </div>

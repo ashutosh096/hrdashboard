@@ -1303,7 +1303,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       const dept = viewingInitiativeInEpics.departmentName || viewingInitiativeInEpics.subDepartment || viewingInitiativeInEpics.department || viewingInitiativeInEpics.departmentId;
                       if (!dept) return 'Product & Tech';
                       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                        return 'Engineering & Product';
+                        return 'Product & Tech';
                       }
                       return dept;
                     })()}

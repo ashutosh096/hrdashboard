@@ -51,10 +51,11 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const empList = await db.select().from(employees);
 
-    const [userList, inviteList, deptList] = await Promise.all([
+    const [userList, inviteList, deptList, entityList] = await Promise.all([
       db.select({ email: users.email, role: users.role, employeeId: users.employeeId }).from(users),
       db.select({ email: invites.email, role: invites.role, employeeId: invites.employeeId }).from(invites),
       db.select().from(departments),
+      db.select().from(entities),
     ]);
 
     const userMapByEmpId = new Map<string, string>();
@@ -76,6 +77,11 @@ router.get('/', async (req: Request, res: Response) => {
       deptMap.set(d.id, d.name);
     });
 
+    const entityMap = new Map<string, { code: string; name: string }>();
+    entityList.forEach((e) => {
+      entityMap.set(e.id, { code: e.code, name: e.name });
+    });
+
     const result = empList.map((emp) => {
       const emailLower = (emp.email || '').toLowerCase().trim();
       const userRole = userMapByEmpId.get(emp.id) || userMapByEmail.get(emailLower);
@@ -84,6 +90,8 @@ router.get('/', async (req: Request, res: Response) => {
       let resolvedRole = userRole || inviteRole;
       if (!resolvedRole) {
         if (emailLower === 'admin@example.com' || emailLower.startsWith('admin@')) {
+          resolvedRole = 'ADMIN';
+        } else if (emp.employeeCode && (emp.employeeCode.includes('-ADM') || emp.employeeCode.includes('ADM'))) {
           resolvedRole = 'ADMIN';
         } else if (emp.employeeCode && (emp.employeeCode.includes('-MGR') || emp.employeeCode.includes('MGR'))) {
           resolvedRole = 'MANAGER';
@@ -95,10 +103,15 @@ router.get('/', async (req: Request, res: Response) => {
       // Explicitly omit salary field
       const { salary: _omitSalary, ...safeEmp } = emp;
 
+      const ent = entityMap.get(emp.entityId);
+      const entityCode = ent ? ent.code : (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
+
       return {
         ...safeEmp,
         role: resolvedRole,
-        departmentName: deptMap.get(emp.departmentId) || 'Engineering',
+        entityCode,
+        entityName: ent?.name,
+        departmentName: deptMap.get(emp.departmentId) || 'Product & Tech',
       };
     });
 
@@ -473,6 +486,32 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     }
     if (targetEntityId) updateData.entityId = targetEntityId;
 
+    const finalEntityId = targetEntityId || emp.entityId;
+    const [finalEntity] = await db.select().from(entities).where(eq(entities.id, finalEntityId));
+    const finalEntityCode = finalEntity?.code || (entityCode?.toUpperCase() === 'CAG' ? 'CAG' : 'EHM');
+
+    const effectiveRole = ((role || targetUser?.role || 'EMPLOYEE') as string).toUpperCase();
+    const roleCode = effectiveRole === 'ADMIN' ? 'ADM' : effectiveRole === 'MANAGER' ? 'MGR' : 'EMP';
+    const expectedPrefix = `${finalEntityCode}-${roleCode}`;
+
+    if (!emp.employeeCode || !emp.employeeCode.startsWith(expectedPrefix)) {
+      const allExisting = await db
+        .select({ employeeCode: employees.employeeCode })
+        .from(employees)
+        .where(eq(employees.entityId, finalEntityId));
+      let maxNum = 0;
+      for (const e of allExisting) {
+        if (e.employeeCode && e.employeeCode.startsWith(expectedPrefix)) {
+          const numPart = parseInt(e.employeeCode.slice(expectedPrefix.length), 10);
+          if (!isNaN(numPart) && numPart > maxNum) {
+            maxNum = numPart;
+          }
+        }
+      }
+      const seq = maxNum + 1;
+      updateData.employeeCode = `${expectedPrefix}${String(seq).padStart(2, '0')}`;
+    }
+
     let targetDeptId = departmentId;
     if (!targetDeptId && departmentName) {
       const allDepts = await db.select().from(departments);
@@ -480,23 +519,21 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
       const matched = allDepts.find(d =>
         d.name.toLowerCase().trim() === cleanName ||
         (cleanName.includes('market') && d.name.toLowerCase().includes('market')) ||
-        (cleanName.includes('product') && d.name.toLowerCase().includes('product')) ||
-        (cleanName.includes('tech') && d.name.toLowerCase().includes('tech')) ||
-        (cleanName.includes('eng') && d.name.toLowerCase().includes('eng')) ||
-        (cleanName.includes('operat') && d.name.toLowerCase().includes('operat')) ||
         (cleanName.includes('sale') && d.name.toLowerCase().includes('sale')) ||
-        (cleanName.includes('hr') && d.name.toLowerCase().includes('human')) ||
-        (cleanName.includes('finan') && d.name.toLowerCase().includes('finan'))
+        (cleanName.includes('tech') && d.name.toLowerCase().includes('tech')) ||
+        (cleanName.includes('product') && d.name.toLowerCase().includes('product')) ||
+        (cleanName.includes('operat') && d.name.toLowerCase().includes('operat')) ||
+        (cleanName.includes('grant') && d.name.toLowerCase().includes('grant')) ||
+        (cleanName.includes('govern') && d.name.toLowerCase().includes('govern'))
       );
       if (matched) {
         targetDeptId = matched.id;
       } else {
         const deptCode = (departmentName.trim().slice(0, 3) || 'GEN').toUpperCase();
-        const targetEntity = targetEntityId || emp.entityId;
         const [newDept] = await db.insert(departments).values({
           name: departmentName.trim(),
           code: deptCode,
-          entityId: targetEntity,
+          entityId: finalEntityId,
         }).returning();
         targetDeptId = newDept.id;
       }
@@ -509,28 +546,33 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
       .where(eq(employees.id, id))
       .returning();
 
-    if (role || email) {
-      const userUpdate: any = {};
-      if (role && callerRole === 'ADMIN') userUpdate.role = role;
-      if (email) userUpdate.email = targetEmail;
-      await db.update(users).set(userUpdate).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+    if (role && callerRole === 'ADMIN') {
+      await db.update(users).set({ role: effectiveRole as any }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+      await db.update(invites).set({ role: effectiveRole as any }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
     }
 
-    if (role || email) {
-      const inviteUpdate: any = {};
-      if (role && callerRole === 'ADMIN') inviteUpdate.role = role;
-      if (email) inviteUpdate.email = targetEmail;
-      await db.update(invites).set(inviteUpdate).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
+    if (email && email.toLowerCase().trim() !== emp.email?.toLowerCase().trim()) {
+      await db.update(users).set({ email: targetEmail }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+      await db.update(invites).set({ email: targetEmail }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
     }
 
     await logAudit(callerUser?.id, 'EMPLOYEE_UPDATED', {
       employeeId: id,
       updatedFields: Object.keys(updateData),
       newRole: role || undefined,
+      newCode: updateData.employeeCode || undefined,
     });
 
     const { salary: _omit, ...safeUpdatedEmp } = updatedEmp;
-    return res.json({ message: 'Employee updated successfully', employee: safeUpdatedEmp });
+    return res.json({
+      message: 'Employee updated successfully',
+      employee: {
+        ...safeUpdatedEmp,
+        role: effectiveRole,
+        entityCode: finalEntityCode,
+        departmentName: departmentName || undefined,
+      },
+    });
   } catch (err: any) {
     console.error('[EMPLOYEE UPDATE ERROR]:', err);
     return res.status(500).json({ message: err.message || 'Failed to update employee' });

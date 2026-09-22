@@ -7,6 +7,14 @@ import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
+const DEPARTMENT_OPTIONS = [
+  'Marketing',
+  'Sales',
+  'Product & Tech',
+  'Operations & Delivery',
+  'Grants & Governance',
+];
+
 export const TeamDirectoryView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
@@ -47,7 +55,11 @@ export const TeamDirectoryView: React.FC = () => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
           const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
           const roleType = (emp.role || 'EMPLOYEE').toUpperCase();
-          const defaultCode = roleType === 'MANAGER' ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-MGR01` : `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-EMP01`;
+          const defaultCode = roleType === 'ADMIN'
+            ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-ADM01`
+            : roleType === 'MANAGER'
+              ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-MGR01`
+              : `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-EMP01`;
 
           return {
             id: emp.id,
@@ -58,7 +70,7 @@ export const TeamDirectoryView: React.FC = () => {
             email: emp.email,
             phone: emp.phone && emp.phone.trim() ? emp.phone.trim() : null,
             entity: rawEntity,
-            dept: emp.departmentName || 'Engineering',
+            dept: emp.departmentName || 'Product & Tech',
             role: emp.designation || 'Specialist',
             roleType,
             avatar: getAvatarByName(empName),
@@ -432,12 +444,9 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setDepartment(e.target.value)}
                     className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
-                    <option value="Engineering & Product">Engineering & Product</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Operations & Delivery">Operations & Delivery</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Finance">Finance</option>
+                    {DEPARTMENT_OPTIONS.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -553,12 +562,9 @@ export const TeamDirectoryView: React.FC = () => {
                     onChange={e => setEditDepartment(e.target.value)}
                     className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
                   >
-                    <option value="Engineering & Product">Engineering & Product</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Operations & Delivery">Operations & Delivery</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Finance">Finance</option>
+                    {DEPARTMENT_OPTIONS.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
                 </div>
               </div>

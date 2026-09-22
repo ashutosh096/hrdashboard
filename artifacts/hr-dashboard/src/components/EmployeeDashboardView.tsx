@@ -610,7 +610,7 @@ export const EmployeeDashboardView: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Role:</span>
             <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-xs rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/25 shadow-2xs">
-              {user?.role === 'EMPLOYEE' ? 'Employee' : 'Manager'}
+              {user?.role === 'ADMIN' ? 'ADMIN' : user?.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'}
             </span>
           </div>
         </div>
