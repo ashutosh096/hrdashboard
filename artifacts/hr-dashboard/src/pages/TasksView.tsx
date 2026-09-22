@@ -8,7 +8,7 @@ import { EpicsSubView } from '../components/EpicsSubView';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { formatDateTime } from '../utils/dateUtils';
@@ -49,10 +49,10 @@ export const TasksView: React.FC = () => {
   const [viewingEpicInTasks, setViewingEpicInTasks] = useState<any | null>(null);
   const [showDeleteEpicConfirm, setShowDeleteEpicConfirm] = useState(false);
   const [isDeletingEpic, setIsDeletingEpic] = useState(false);
-  const [rawEpics, setRawEpics] = useState<any[]>([]);
-  const [initiatives, setInitiatives] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [rawEpics, setRawEpics] = useState<any[]>(() => (getCachedApi<any[]>('/api/epics') || []));
+  const [initiatives, setInitiatives] = useState<any[]>(() => (getCachedApi<any[]>('/api/initiatives') || []));
+  const [tasks, setTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
+  const [employees, setEmployees] = useState<any[]>(() => (getCachedApi<any[]>('/api/employees') || []));
   const [employeeFilter, setEmployeeFilter] = useState<string>(() => {
     if (user?.role === 'EMPLOYEE') {
       return user.employeeId || user.id || 'ALL';
@@ -69,7 +69,7 @@ export const TasksView: React.FC = () => {
     }
   }, [user?.role, user?.employeeId, user?.id]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/tasks') && getCachedApi('/api/epics')));
 
   // Scalable Filtering & Pagination States for 100s of Tasks
   const [searchQuery, setSearchQuery] = useState('');

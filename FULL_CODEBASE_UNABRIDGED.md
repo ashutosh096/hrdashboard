@@ -1,6 +1,6 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T07:08:30.600Z
+> Generated on: 2026-09-22T07:14:14.739Z
 > Total Source Files Included: 150
 
 ## Table of Contents
@@ -7733,6 +7733,23 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
+  // Background instant-warmup cache pre-fetcher for 0ms tab switching
+  React.useEffect(() => {
+    const prefetchRoutes = [
+      '/api/employees',
+      '/api/tasks',
+      '/api/sprints',
+      '/api/initiatives',
+      '/api/epics',
+      '/api/meetings',
+      '/api/attendance',
+      '/api/announcements',
+    ];
+    prefetchRoutes.forEach((route) => {
+      fetchApi(route).catch(() => {});
+    });
+  }, []);
+
   const handleAssignTaskSubmit = async (taskData: any) => {
     try {
       const created = await fetchApi<any>('/api/tasks', {
@@ -15192,7 +15209,7 @@ export const Sidebar: React.FC = () => {
 ```tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send } from 'lucide-react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
@@ -15272,11 +15289,11 @@ const KANBAN_COLUMNS = [
 export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
-  const [sprints, setSprints] = useState<SprintItem[]>([]);
-  const [allTasks, setAllTasks] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  const [epics, setEpics] = useState<EpicOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sprints, setSprints] = useState<SprintItem[]>(() => (getCachedApi<SprintItem[]>('/api/sprints') || []));
+  const [allTasks, setAllTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
+  const [employees, setEmployees] = useState<EmployeeOption[]>(() => (getCachedApi<EmployeeOption[]>('/api/employees') || []));
+  const [epics, setEpics] = useState<EpicOption[]>(() => (getCachedApi<EpicOption[]>('/api/epics') || []));
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/sprints') && getCachedApi('/api/tasks')));
 
   // Scalable View Controls & Filters
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
@@ -22882,30 +22899,35 @@ import { TaskProgressSprintAnalytics } from '../components/TaskProgressSprintAna
 import { EmployeeDashboardView } from '../components/EmployeeDashboardView';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface EmployeeRecord {
   id: string;
   firstName: string;
   lastName: string;
-  employeeCode: string;
-  designation: string;
-  departmentId: string;
-  entityId: string;
+  email: string;
+  role: string;
+  entityId?: string;
+  entityCode?: string;
+  departmentName?: string;
+  departmentId?: string;
+  designation?: string;
+  employeeCode?: string;
 }
 
 interface TaskRecord {
   id: string;
-  taskCode: string;
   title: string;
-  assigneeId: string;
   status: string;
   priority: string;
   dueDate: string;
-  createdAt: string;
-  deliverableUrl?: string;
-  description?: string;
+  assigneeId: string;
+  sprintId?: string;
+  entityCode?: string;
+  entityId?: string;
+  taskCode?: string;
+  completionPercentage?: number;
 }
 
 const PRIORITY_PIPELINE_DATA = [
@@ -22916,20 +22938,19 @@ const PRIORITY_PIPELINE_DATA = [
 ];
 
 export const DashboardView: React.FC = () => {
-  const { user } = useAuth();
   const { selectedEntity } = useEntity();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
   const [timeRange, setTimeRange] = useState<'WEEK1' | 'WEEK2' | 'MONTH' | 'QUARTER'>('WEEK1');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [tasks, setTasks] = useState<TaskRecord[]>([]);
-  const [initiatives, setInitiatives] = useState<any[]>([]);
-  const [sprints, setSprints] = useState<any[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>(() => (getCachedApi<EmployeeRecord[]>('/api/employees') || []));
+  const [tasks, setTasks] = useState<TaskRecord[]>(() => (getCachedApi<TaskRecord[]>('/api/tasks') || []));
+  const [initiatives, setInitiatives] = useState<any[]>(() => (getCachedApi<any[]>('/api/initiatives') || []));
+  const [sprints, setSprints] = useState<any[]>(() => (getCachedApi<any[]>('/api/sprints') || []));
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>(() => (getCachedApi<any[]>('/api/attendance') || []));
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/employees') && getCachedApi('/api/tasks')));
   const [searchTeamTerm, setSearchTeamTerm] = useState('');
 
   // Responsive Modal Detail View State for Tiles
@@ -25505,7 +25526,7 @@ import { EpicsSubView } from '../components/EpicsSubView';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { formatDateTime } from '../utils/dateUtils';
@@ -25546,10 +25567,10 @@ export const TasksView: React.FC = () => {
   const [viewingEpicInTasks, setViewingEpicInTasks] = useState<any | null>(null);
   const [showDeleteEpicConfirm, setShowDeleteEpicConfirm] = useState(false);
   const [isDeletingEpic, setIsDeletingEpic] = useState(false);
-  const [rawEpics, setRawEpics] = useState<any[]>([]);
-  const [initiatives, setInitiatives] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [rawEpics, setRawEpics] = useState<any[]>(() => (getCachedApi<any[]>('/api/epics') || []));
+  const [initiatives, setInitiatives] = useState<any[]>(() => (getCachedApi<any[]>('/api/initiatives') || []));
+  const [tasks, setTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
+  const [employees, setEmployees] = useState<any[]>(() => (getCachedApi<any[]>('/api/employees') || []));
   const [employeeFilter, setEmployeeFilter] = useState<string>(() => {
     if (user?.role === 'EMPLOYEE') {
       return user.employeeId || user.id || 'ALL';
@@ -25566,7 +25587,7 @@ export const TasksView: React.FC = () => {
     }
   }, [user?.role, user?.employeeId, user?.id]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/tasks') && getCachedApi('/api/epics')));
 
   // Scalable Filtering & Pagination States for 100s of Tasks
   const [searchQuery, setSearchQuery] = useState('');
@@ -27724,8 +27745,39 @@ export default defineConfig({
 ```typescript
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+// High-Speed In-Memory Client Cache for Instant Tab Switching (0ms latency)
+const apiCache = new Map<string, { data: any; timestamp: number }>();
+const inFlightRequests = new Map<string, Promise<any>>();
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds fresh cache
+
+export function getCachedApi<T = any>(endpoint: string): T | null {
+  const entry = apiCache.get(endpoint);
+  if (entry) {
+    return entry.data as T;
+  }
+  return null;
+}
+
+export function setCachedApi<T = any>(endpoint: string, data: T) {
+  apiCache.set(endpoint, { data, timestamp: Date.now() });
+}
+
+export function clearApiCache(prefix?: string) {
+  if (!prefix) {
+    apiCache.clear();
+    return;
+  }
+  for (const key of apiCache.keys()) {
+    if (key.startsWith(prefix) || key.includes(prefix)) {
+      apiCache.delete(key);
+    }
+  }
+}
+
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('hros_token');
+  const method = (options.method || 'GET').toUpperCase();
+  const token = typeof window !== 'undefined' ? localStorage.getItem('hros_token') : null;
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -27734,24 +27786,55 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(endpoint, { ...options, headers });
-  if (!res.ok) {
-    if (res.status === 401) {
-      localStorage.removeItem('hros_token');
-      localStorage.removeItem('hros_active_role');
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        if (!(window as any).__redirecting_to_login) {
-          (window as any).__redirecting_to_login = true;
-          setTimeout(() => {
-            window.location.href = '/login?expired=true';
-          }, 300);
+  // Check if we can return from memory cache for GET requests
+  const isGet = method === 'GET';
+  if (isGet) {
+    // In-flight request deduplication
+    if (inFlightRequests.has(endpoint)) {
+      return inFlightRequests.get(endpoint) as Promise<T>;
+    }
+  } else {
+    // If mutation (POST/PUT/DELETE), invalidate relevant cache entries
+    const rootPath = endpoint.split('?')[0].split('/').slice(0, 3).join('/');
+    clearApiCache(rootPath);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch(endpoint, { ...options, headers });
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('hros_token');
+          localStorage.removeItem('hros_active_role');
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/accept-invite')) {
+            if (!(window as any).__redirecting_to_login) {
+              (window as any).__redirecting_to_login = true;
+              setTimeout(() => {
+                window.location.href = '/login?expired=true';
+              }, 300);
+            }
+          }
         }
+        const errorData = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(errorData.message || 'API request failed');
+      }
+      const data = await res.json();
+      if (isGet) {
+        apiCache.set(endpoint, { data, timestamp: Date.now() });
+      }
+      return data as T;
+    } finally {
+      if (isGet) {
+        inFlightRequests.delete(endpoint);
       }
     }
-    const errorData = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(errorData.message || 'API request failed');
+  })();
+
+  if (isGet) {
+    inFlightRequests.set(endpoint, fetchPromise);
   }
-  return res.json();
+
+  return fetchPromise;
 }
 
 export function useDashboardData(entityCode?: string) {
@@ -27763,6 +27846,7 @@ export function useDashboardData(entityCode?: string) {
       sprintSummary: Array<any>;
       crossEntityComparison?: any;
     }>(`/api/dashboard?entity=${entityCode || 'ALL'}`),
+    staleTime: 60 * 1000,
   });
 }
 
@@ -27770,6 +27854,7 @@ export function useTasks(entityCode?: string) {
   return useQuery({
     queryKey: ['tasks', entityCode],
     queryFn: () => fetchApi<Array<any>>(`/api/tasks?entity=${entityCode || 'ALL'}`),
+    staleTime: 60 * 1000,
   });
 }
 
@@ -27778,6 +27863,8 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: (newTask: any) => fetchApi('/api/tasks', { method: 'POST', body: JSON.stringify(newTask) }),
     onSuccess: () => {
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/dashboard');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -27788,6 +27875,7 @@ export function useMeetings() {
   return useQuery({
     queryKey: ['meetings'],
     queryFn: () => fetchApi<Array<any>>('/api/meetings'),
+    staleTime: 60 * 1000,
   });
 }
 
@@ -27795,6 +27883,7 @@ export function useEmployees(entityCode?: string) {
   return useQuery({
     queryKey: ['employees', entityCode],
     queryFn: () => fetchApi<Array<any>>(`/api/employees?entity=${entityCode || 'ALL'}`),
+    staleTime: 60 * 1000,
   });
 }
 

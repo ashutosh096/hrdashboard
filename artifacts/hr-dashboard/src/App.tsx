@@ -45,6 +45,23 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
+  // Background instant-warmup cache pre-fetcher for 0ms tab switching
+  React.useEffect(() => {
+    const prefetchRoutes = [
+      '/api/employees',
+      '/api/tasks',
+      '/api/sprints',
+      '/api/initiatives',
+      '/api/epics',
+      '/api/meetings',
+      '/api/attendance',
+      '/api/announcements',
+    ];
+    prefetchRoutes.forEach((route) => {
+      fetchApi(route).catch(() => {});
+    });
+  }, []);
+
   const handleAssignTaskSubmit = async (taskData: any) => {
     try {
       const created = await fetchApi<any>('/api/tasks', {

@@ -43,30 +43,35 @@ import { TaskProgressSprintAnalytics } from '../components/TaskProgressSprintAna
 import { EmployeeDashboardView } from '../components/EmployeeDashboardView';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface EmployeeRecord {
   id: string;
   firstName: string;
   lastName: string;
-  employeeCode: string;
-  designation: string;
-  departmentId: string;
-  entityId: string;
+  email: string;
+  role: string;
+  entityId?: string;
+  entityCode?: string;
+  departmentName?: string;
+  departmentId?: string;
+  designation?: string;
+  employeeCode?: string;
 }
 
 interface TaskRecord {
   id: string;
-  taskCode: string;
   title: string;
-  assigneeId: string;
   status: string;
   priority: string;
   dueDate: string;
-  createdAt: string;
-  deliverableUrl?: string;
-  description?: string;
+  assigneeId: string;
+  sprintId?: string;
+  entityCode?: string;
+  entityId?: string;
+  taskCode?: string;
+  completionPercentage?: number;
 }
 
 const PRIORITY_PIPELINE_DATA = [
@@ -77,20 +82,19 @@ const PRIORITY_PIPELINE_DATA = [
 ];
 
 export const DashboardView: React.FC = () => {
-  const { user } = useAuth();
   const { selectedEntity } = useEntity();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
   const [timeRange, setTimeRange] = useState<'WEEK1' | 'WEEK2' | 'MONTH' | 'QUARTER'>('WEEK1');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [tasks, setTasks] = useState<TaskRecord[]>([]);
-  const [initiatives, setInitiatives] = useState<any[]>([]);
-  const [sprints, setSprints] = useState<any[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>(() => (getCachedApi<EmployeeRecord[]>('/api/employees') || []));
+  const [tasks, setTasks] = useState<TaskRecord[]>(() => (getCachedApi<TaskRecord[]>('/api/tasks') || []));
+  const [initiatives, setInitiatives] = useState<any[]>(() => (getCachedApi<any[]>('/api/initiatives') || []));
+  const [sprints, setSprints] = useState<any[]>(() => (getCachedApi<any[]>('/api/sprints') || []));
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>(() => (getCachedApi<any[]>('/api/attendance') || []));
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/employees') && getCachedApi('/api/tasks')));
   const [searchTeamTerm, setSearchTeamTerm] = useState('');
 
   // Responsive Modal Detail View State for Tiles

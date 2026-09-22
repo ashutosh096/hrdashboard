@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send } from 'lucide-react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
@@ -80,11 +80,11 @@ const KANBAN_COLUMNS = [
 export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
-  const [sprints, setSprints] = useState<SprintItem[]>([]);
-  const [allTasks, setAllTasks] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  const [epics, setEpics] = useState<EpicOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sprints, setSprints] = useState<SprintItem[]>(() => (getCachedApi<SprintItem[]>('/api/sprints') || []));
+  const [allTasks, setAllTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
+  const [employees, setEmployees] = useState<EmployeeOption[]>(() => (getCachedApi<EmployeeOption[]>('/api/employees') || []));
+  const [epics, setEpics] = useState<EpicOption[]>(() => (getCachedApi<EpicOption[]>('/api/epics') || []));
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/sprints') && getCachedApi('/api/tasks')));
 
   // Scalable View Controls & Filters
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
