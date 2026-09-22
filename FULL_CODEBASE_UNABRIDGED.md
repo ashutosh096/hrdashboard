@@ -1,6 +1,6 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T07:18:30.852Z
+> Generated on: 2026-09-22T07:25:23.100Z
 > Total Source Files Included: 150
 
 ## Table of Contents
@@ -26705,7 +26705,7 @@ export const TeamDirectoryView: React.FC = () => {
   // Add Form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'EMPLOYEE' | 'MANAGER'>('EMPLOYEE');
+  const [role, setRole] = useState<'EMPLOYEE' | 'MANAGER' | 'ADMIN'>('EMPLOYEE');
   const [position, setPosition] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [department, setDepartment] = useState('Marketing');
@@ -27101,13 +27101,14 @@ export const TeamDirectoryView: React.FC = () => {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">Role</label>
                   <select
-                    value={user?.role === 'ADMIN' ? role : 'EMPLOYEE'}
-                    onChange={e => setRole(e.target.value as 'EMPLOYEE' | 'MANAGER')}
+                    value={role}
+                    onChange={e => setRole(e.target.value as 'EMPLOYEE' | 'MANAGER' | 'ADMIN')}
                     disabled={user?.role !== 'ADMIN'}
                     className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="EMPLOYEE">Employee</option>
-                    {user?.role === 'ADMIN' && <option value="MANAGER">Manager</option>}
+                    <option value="MANAGER">Manager</option>
+                    {user?.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
                   </select>
                 </div>
               </div>
