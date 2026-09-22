@@ -663,35 +663,62 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
               {/* Breadcrumb & Badges */}
               {(() => {
-                const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId);
+                const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId || i.initiativeCode === viewingEpic.initiativeId);
                 const parentTitle = parentInit?.title || 'Initiative';
-                const isCAG = (viewingEpic.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const parentCode = parentInit?.initiativeCode || (viewingEpic.epicCode ? viewingEpic.epicCode.split('-').slice(0, 2).join('-') : 'INIT');
+                const isCAG = (viewingEpic.epicCode || '').startsWith('CAG') || (parentInit?.initiativeCode || '').startsWith('CAG');
                 const rawStatus = viewingEpic.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
                 return (
                   <div className="space-y-3">
-                    {/* Breadcrumb */}
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                    {/* Breadcrumb with Linkable Parent Initiative Code & Title */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-gray-500">
+                      <span className="text-gray-400 font-medium">Parent Initiative:</span>
                       {parentInit ? (
-                        <span 
-                          onClick={() => {
-                            setViewingInitiativeInEpics(parentInit);
-                          }}
-                          className="text-blue-600 hover:underline cursor-pointer font-semibold"
-                        >
-                          {parentTitle}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewingInitiativeInEpics(parentInit);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                            title="Open Initiative in Pop-up Modal (Epic remains open in background)"
+                          >
+                            <Target className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                            <span className="font-mono">{parentCode}</span>
+                            <span className="text-gray-600 font-semibold truncate max-w-[200px] sm:max-w-xs">
+                              • {parentTitle}
+                            </span>
+                          </button>
+
+                          {onSelectInitiative && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onClearSelectedEpic) onClearSelectedEpic();
+                                setViewingEpic(null);
+                                onSelectInitiative(parentInit.id);
+                              }}
+                              className="text-[11px] text-gray-400 hover:text-emerald-700 hover:underline cursor-pointer font-semibold ml-1"
+                              title="Redirect to Initiatives Tab"
+                            >
+                              (Go to tab)
+                            </button>
+                          )}
+                        </div>
                       ) : (
-                        <span className="text-blue-600 font-semibold">{parentTitle}</span>
+                        <span className="font-mono font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                          {parentCode}
+                        </span>
                       )}
-                      <span>&gt;</span>
-                      <span className="text-gray-400">this epic</span>
+                      <span className="text-gray-300">&gt;</span>
+                      <span className="text-gray-500 font-semibold">this epic</span>
                     </div>
 
                     {/* Badges line */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                      <span className="text-xs font-mono font-bold text-gray-700 bg-gray-100 px-2.5 py-0.5 rounded-lg border border-gray-200">
                         {viewingEpic.epicCode}
                       </span>
                       <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
@@ -1311,9 +1338,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         isReadOnly={true}
       />
 
-      {/* 🚀 BIG VIEW MODE MODAL FOR STRATEGIC INITIATIVE (EXACT IMAGE 1 DESIGN) */}
+      {/* 🚀 BIG VIEW MODE MODAL FOR STRATEGIC INITIATIVE (POPS UP IN FRONT OVER EPIC MODAL) */}
       {viewingInitiativeInEpics && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Top Header */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0 bg-white">
@@ -1534,7 +1561,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
       {/* ⚠️ CONFIRMATION POPUP MODAL FOR INITIATIVE DELETION (ADMIN ONLY) */}
       {showDeleteInitiativeConfirm && viewingInitiativeInEpics && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-900/50 backdrop-blur-xs p-4 select-none">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
             <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
               <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
