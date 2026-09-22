@@ -20,8 +20,8 @@ export const OfficeTodayView: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [availability, setAvailability] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<'YESTERDAY' | 'TODAY' | 'TOMORROW'>('TODAY');
-  const [cardDateFilters, setCardDateFilters] = useState<Record<string, 'YESTERDAY' | 'TODAY' | 'TOMORROW'>>({});
+  const [dateFilter, setDateFilter] = useState<'TODAY' | 'TOMORROW'>('TODAY');
+  const [cardDateFilters, setCardDateFilters] = useState<Record<string, 'TODAY' | 'TOMORROW'>>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -42,10 +42,9 @@ export const OfficeTodayView: React.FC = () => {
     loadData();
   }, []);
 
-  const getTargetDate = (filter: 'YESTERDAY' | 'TODAY' | 'TOMORROW') => {
+  const getTargetDate = (filter: 'TODAY' | 'TOMORROW') => {
     const d = new Date();
-    if (filter === 'YESTERDAY') d.setDate(d.getDate() - 1);
-    else if (filter === 'TOMORROW') d.setDate(d.getDate() + 1);
+    if (filter === 'TOMORROW') d.setDate(d.getDate() + 1);
     return d;
   };
 
@@ -136,12 +135,11 @@ export const OfficeTodayView: React.FC = () => {
     item => matchesEntityFilter(item, selectedEntity)
   );
 
-  const handleSetCardFilter = (empId: string, filter: 'YESTERDAY' | 'TODAY' | 'TOMORROW') => {
+  const handleSetCardFilter = (empId: string, filter: 'TODAY' | 'TOMORROW') => {
     setCardDateFilters(prev => ({ ...prev, [empId]: filter }));
   };
 
-  const dateFilterLabel = (filter: 'YESTERDAY' | 'TODAY' | 'TOMORROW') => {
-    if (filter === 'YESTERDAY') return "Yesterday's";
+  const dateFilterLabel = (filter: 'TODAY' | 'TOMORROW') => {
     if (filter === 'TOMORROW') return "Tomorrow's";
     return "Today's";
   };
@@ -157,7 +155,7 @@ export const OfficeTodayView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           {/* Global Date Filter Selector */}
           <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80">
-            {(['YESTERDAY', 'TODAY', 'TOMORROW'] as const).map((filterOpt) => (
+            {(['TODAY', 'TOMORROW'] as const).map((filterOpt) => (
               <button
                 key={filterOpt}
                 onClick={() => {
@@ -263,7 +261,7 @@ export const OfficeTodayView: React.FC = () => {
 
                   {/* Per-Card Quick Date Filter Switcher */}
                   <div className="flex items-center bg-gray-50 p-0.5 rounded-lg border border-gray-200/60 text-[10px] font-bold">
-                    {(['YESTERDAY', 'TODAY', 'TOMORROW'] as const).map((filterOpt) => (
+                    {(['TODAY', 'TOMORROW'] as const).map((filterOpt) => (
                       <button
                         key={filterOpt}
                         onClick={() => handleSetCardFilter(item.id, filterOpt)}
@@ -273,7 +271,7 @@ export const OfficeTodayView: React.FC = () => {
                             : 'text-gray-400 hover:text-gray-700'
                         }`}
                       >
-                        {filterOpt === 'YESTERDAY' ? 'Yest' : filterOpt === 'TODAY' ? 'Today' : 'Tmrw'}
+                        {filterOpt === 'TODAY' ? 'Today' : 'Tomorrow'}
                       </button>
                     ))}
                   </div>

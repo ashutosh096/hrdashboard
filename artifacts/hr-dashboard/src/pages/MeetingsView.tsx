@@ -487,21 +487,20 @@ export const MeetingsView: React.FC = () => {
   // Month View Days for main Month grid
   const monthViewDays = miniCalendarDays;
 
-  const [availDateFilter, setAvailDateFilter] = useState<'YESTERDAY' | 'TODAY' | 'TOMORROW'>('TODAY');
-  const [cardDateFilters, setCardDateFilters] = useState<Record<string, 'YESTERDAY' | 'TODAY' | 'TOMORROW'>>({});
+  const [availDateFilter, setAvailDateFilter] = useState<'TODAY' | 'TOMORROW'>('TODAY');
+  const [cardDateFilters, setCardDateFilters] = useState<Record<string, 'TODAY' | 'TOMORROW'>>({});
 
-  const getAvailTargetDate = (filter: 'YESTERDAY' | 'TODAY' | 'TOMORROW') => {
+  const getAvailTargetDate = (filter: 'TODAY' | 'TOMORROW') => {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
-    if (filter === 'YESTERDAY') d.setDate(d.getDate() - 1);
-    else if (filter === 'TOMORROW') d.setDate(d.getDate() + 1);
+    if (filter === 'TOMORROW') d.setDate(d.getDate() + 1);
     return d;
   };
 
   // Selected date for availability tab
   const availTargetDate = useMemo(() => getAvailTargetDate(availDateFilter), [availDateFilter]);
   const availTargetDateStr = formatLocalDateString(availTargetDate);
-  const availDateLabel = availDateFilter === 'YESTERDAY' ? "Yesterday's" : availDateFilter === 'TOMORROW' ? "Tomorrow's" : "Today's";
+  const availDateLabel = availDateFilter === 'TOMORROW' ? "Tomorrow's" : "Today's";
 
   // Map meetings by date string
   const meetingsByDate = useMemo(() => {
@@ -621,7 +620,7 @@ export const MeetingsView: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-70px)] bg-white select-none overflow-hidden font-sans">
       {/* 1. TOP GOOGLE CALENDAR NAVBAR (Matches Image 2) */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-white shrink-0 z-20">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-white shrink-0 relative z-40">
         {/* Left Section: Logo + Today + Navigation + Month */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5 mr-2">
@@ -710,18 +709,21 @@ export const MeetingsView: React.FC = () => {
             <span>{isSyncing ? 'Syncing...' : 'Sync Calendar'}</span>
           </button>
 
-          {/* View Mode Dropdown (Day / Week / Month - Schedule Removed!) */}
+          {/* View Mode Dropdown (Day / Week / Month) */}
           <div className="relative">
             <button
-              onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
-              className="flex items-center gap-2 px-3.5 py-1.5 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewDropdownOpen(!viewDropdownOpen);
+              }}
+              className="flex items-center gap-2 px-3.5 py-1.5 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl cursor-pointer bg-white"
             >
               <span className="capitalize">{viewMode.toLowerCase()}</span>
               <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
             </button>
 
             {viewDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 mt-1.5 w-32 bg-white border border-gray-200 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-150">
                 {(['DAY', 'WEEK', 'MONTH'] as CalendarViewMode[]).map((mode) => (
                   <button
                     key={mode}
@@ -729,7 +731,7 @@ export const MeetingsView: React.FC = () => {
                       setViewMode(mode);
                       setViewDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2 text-xs font-semibold capitalize hover:bg-gray-100 ${
+                    className={`w-full text-left px-3.5 py-2 text-xs font-semibold capitalize hover:bg-gray-100 cursor-pointer ${
                       viewMode === mode ? 'text-blue-600 bg-blue-50/50 font-bold' : 'text-gray-700'
                     }`}
                   >
@@ -1152,23 +1154,23 @@ export const MeetingsView: React.FC = () => {
               <p className="text-xs text-gray-500 font-medium">Real-time status and chronological meeting slots (Morning → Noon → Evening). Colleague private details are securely anonymized.</p>
             </div>
 
-            {/* Date Filter Pills: Yesterday / Today / Tomorrow */}
+            {/* Date Filter Pills: Today / Tomorrow */}
             <div className="flex items-center gap-3">
               <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-2xs">
-                {(['YESTERDAY', 'TODAY', 'TOMORROW'] as const).map((filterOpt) => (
+                {(['TODAY', 'TOMORROW'] as const).map((filterOpt) => (
                   <button
                     key={filterOpt}
                     onClick={() => {
                       setAvailDateFilter(filterOpt);
                       setCardDateFilters({});
                     }}
-                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${
+                    className={`px-4 py-1.5 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${
                       availDateFilter === filterOpt
                         ? 'bg-blue-600 text-white shadow-xs font-black'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    {filterOpt.toLowerCase()}
+                    {filterOpt === 'TODAY' ? 'Today' : 'Tomorrow'}
                   </button>
                 ))}
               </div>
@@ -1186,7 +1188,7 @@ export const MeetingsView: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {livePresenceList.map((item) => {
-              const cardLabel = item.currentFilter === 'YESTERDAY' ? "Yesterday's" : item.currentFilter === 'TOMORROW' ? "Tomorrow's" : "Today's";
+              const cardLabel = item.currentFilter === 'TOMORROW' ? "Tomorrow's" : "Today's";
               return (
                 <div
                   key={item.id}
@@ -1253,7 +1255,7 @@ export const MeetingsView: React.FC = () => {
 
                       {/* Per-Card Quick Date Filter Switcher */}
                       <div className="flex items-center bg-gray-50 p-0.5 rounded-lg border border-gray-200/60 text-[10px] font-bold">
-                        {(['YESTERDAY', 'TODAY', 'TOMORROW'] as const).map((filterOpt) => (
+                        {(['TODAY', 'TOMORROW'] as const).map((filterOpt) => (
                           <button
                             key={filterOpt}
                             onClick={() => setCardDateFilters(prev => ({ ...prev, [item.id]: filterOpt }))}
@@ -1263,7 +1265,7 @@ export const MeetingsView: React.FC = () => {
                                 : 'text-gray-400 hover:text-gray-700'
                             }`}
                           >
-                            {filterOpt === 'YESTERDAY' ? 'Yest' : filterOpt === 'TODAY' ? 'Today' : 'Tmrw'}
+                            {filterOpt === 'TODAY' ? 'Today' : 'Tomorrow'}
                           </button>
                         ))}
                       </div>
