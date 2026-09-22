@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { RichTextEditor } from './RichTextEditor';
+import { CalendarPicker } from './CalendarPicker';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter } from '../utils/entityUtils';
@@ -45,9 +46,18 @@ interface EpicOption {
   title: string;
 }
 
-interface Props {
-  isManager: boolean;
-}
+const formatAuthorDisplayName = (name?: string | null): string => {
+  if (!name) return 'User';
+  if (name.includes('@')) {
+    const raw = name.split('@')[0].replace(/[._-]/g, ' ');
+    return raw
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+  return name;
+};
 
 const DEPARTMENT_OPTIONS = [
   'Marketing',
@@ -1480,9 +1490,9 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                 </div>
 
                 {/* Entity & Department & Target Sprint Week */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between">
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between min-h-[18px]">
                       <span>Entity / Brand *</span>
                       <span className="text-[10px] font-mono text-emerald-700 font-extrabold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                         {sprintEntity}
@@ -1491,19 +1501,21 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                     <select
                       value={sprintEntity}
                       onChange={(e) => setSprintEntity(e.target.value as 'EHM' | 'CAG')}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-extrabold text-gray-900 cursor-pointer"
+                      className="w-full px-3 py-2 h-[38px] text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-extrabold text-gray-900 cursor-pointer"
                     >
-                      <option value="EHM">EHM Consultancy (EHM)</option>
-                      <option value="CAG">Climagro Analytics (CAG / CLIMAGRO)</option>
+                      <option value="EHM">EHM</option>
+                      <option value="CAG">CLIMAGRO</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Department</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider min-h-[18px] flex items-center">
+                      Department
+                    </label>
                     <select
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
+                      className="w-full px-3 py-2 h-[38px] text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
                     >
                       {DEPARTMENT_OPTIONS.map(d => (
                         <option key={d} value={d}>{d}</option>
@@ -1512,30 +1524,15 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Sprint Week</label>
-                    <select
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider min-h-[18px] flex items-center whitespace-nowrap truncate" title="Target Week / Date">
+                      Target Week / Date
+                    </label>
+                    <CalendarPicker
                       value={targetWeek}
-                      onChange={(e) => setTargetWeek(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
-                    >
-                      {(() => {
-                        const day = new Date().getDate();
-                        const curWeekIdx = day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : 4;
-                        return [
-                          { val: 'Week 1 (Days 1–7)', idx: 1 },
-                          { val: 'Week 2 (Days 8–14)', idx: 2 },
-                          { val: 'Week 3 (Days 15–21)', idx: 3 },
-                          { val: 'Week 4 (Days 22–28)', idx: 4 },
-                        ].map(w => {
-                          const tag = w.idx === curWeekIdx ? 'Present ⭐' : w.idx < curWeekIdx ? 'Past ⏱️' : 'Future 🚀';
-                          return (
-                            <option key={w.val} value={w.val}>
-                              {w.val} • {tag}
-                            </option>
-                          );
-                        });
-                      })()}
-                    </select>
+                      onChange={(formatted) => setTargetWeek(formatted)}
+                      placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
+                      formatMode="date"
+                    />
                   </div>
                 </div>
 
@@ -1714,7 +1711,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                           >
                             <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
                               <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
-                                {c.authorName || 'User'}
+                                {formatAuthorDisplayName(c.authorName)}
                               </span>
                               <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
@@ -2055,7 +2052,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                       assignTaskModal.comments.map(c => (
                         <div key={c.id} className="p-2 rounded-xl bg-white border border-gray-200 text-xs space-y-1">
                           <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
-                            <span>{c.authorName}</span>
+                            <span>{formatAuthorDisplayName(c.authorName)}</span>
                             <span className="text-gray-400">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <p className="text-gray-800 font-medium">{c.content}</p>
@@ -2332,7 +2329,7 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                       confirmDoneModal.comments.map(c => (
                         <div key={c.id} className="p-2 rounded-xl bg-white border border-gray-200 text-xs space-y-1">
                           <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
-                            <span>{c.authorName}</span>
+                            <span>{formatAuthorDisplayName(c.authorName)}</span>
                             <span className="text-gray-400">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <p className="text-gray-800 font-medium">{c.content}</p>

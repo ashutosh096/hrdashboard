@@ -14,7 +14,13 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
     }
 
     const [userRow] = await db.select().from(users).where(eq(users.id, userId));
+    const userEmail = (userRow?.email || '').toLowerCase();
     let organizerEmployeeId = userRow?.employeeId;
+
+    if (!organizerEmployeeId && userEmail) {
+      const [matchedEmp] = await db.select().from(employees).where(eq(employees.email, userEmail));
+      if (matchedEmp) organizerEmployeeId = matchedEmp.id;
+    }
 
     if (!organizerEmployeeId) {
       const [firstEmp] = await db.select().from(employees).limit(1);
@@ -80,18 +86,41 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
           const endTime = new Date(endStr);
           const googleMeetUrl = event.hangoutLink || event.htmlLink || null;
 
+          // Extract all attendees from Google Calendar event
+          const attendeesList: string[] = Array.isArray(event.attendees)
+            ? event.attendees.map((a: any) => a.email || a.displayName || a.id).filter(Boolean)
+            : [];
+
+          // Always ensure syncing user is in invitees so event is strictly visible to them
+          if (userEmail && !attendeesList.some((a) => a.toLowerCase() === userEmail)) {
+            attendeesList.push(userEmail);
+          }
+          if (userRow?.id && !attendeesList.includes(userRow.id)) {
+            attendeesList.push(userRow.id);
+          }
+          if (organizerEmployeeId && !attendeesList.includes(organizerEmployeeId)) {
+            attendeesList.push(organizerEmployeeId);
+          }
+
           const [existingMeeting] = await db
             .select()
             .from(meetings)
             .where(eq(meetings.googleEventId, event.id));
 
           if (existingMeeting) {
+            const existingInvitees: string[] = Array.isArray(existingMeeting.invitees) ? (existingMeeting.invitees as string[]) : [];
+            const mergedInvitees = Array.from(new Set([...existingInvitees, ...attendeesList]));
+            const inviteesChanged =
+              mergedInvitees.length !== existingInvitees.length ||
+              !mergedInvitees.every((x) => existingInvitees.includes(x));
+
             const hasChanged =
               existingMeeting.title !== title ||
               existingMeeting.description !== description ||
               new Date(existingMeeting.startTime).getTime() !== startTime.getTime() ||
               new Date(existingMeeting.endTime).getTime() !== endTime.getTime() ||
               existingMeeting.status !== 'SCHEDULED' ||
+              inviteesChanged ||
               (googleMeetUrl && existingMeeting.googleMeetUrl !== googleMeetUrl);
 
             if (hasChanged) {
@@ -102,6 +131,7 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
                   description,
                   startTime,
                   endTime,
+                  invitees: mergedInvitees,
                   googleMeetUrl: googleMeetUrl || existingMeeting.googleMeetUrl,
                   status: 'SCHEDULED',
                 })
@@ -117,17 +147,20 @@ export async function pullGoogleCalendarEvents(userId: string): Promise<{ create
               location: 'Google Meet',
               googleMeetUrl,
               organizerId: organizerEmployeeId,
+              invitees: attendeesList,
               googleEventId: event.id,
               source: 'GOOGLE_CALENDAR_IMPORTED',
               status: 'SCHEDULED',
             });
             created++;
           }
+
         }
       } catch (calErr) {
         console.error(`[CALENDAR EVENT FETCH ERROR] Failed for calendar ${calId}:`, calErr);
       }
     }
+
 
     // Mark missing previously-synced events as CANCELLED within query window
     const syncedMeetings = await db

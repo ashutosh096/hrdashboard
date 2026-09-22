@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { RichTextEditor } from './RichTextEditor';
 import { MarkdownViewer } from './MarkdownViewer';
+import { CalendarPicker } from './CalendarPicker';
 import { formatDateTime } from '../utils/dateUtils';
 
 export interface TaskItem {
@@ -89,6 +90,19 @@ const formatDueDateDisplay = (d: string | undefined | null): string => {
   const parsed = new Date(d);
   if (isNaN(parsed.getTime())) return String(d);
   return parsed.toLocaleDateString();
+};
+
+export const formatAuthorDisplayName = (name?: string | null): string => {
+  if (!name) return 'User';
+  if (name.includes('@')) {
+    const raw = name.split('@')[0].replace(/[._-]/g, ' ');
+    return raw
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+  return name;
 };
 
 export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
@@ -470,8 +484,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       onChange={(e) => setEntity(e.target.value)}
                       className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value="EHM">EHM Consultancy (EHM)</option>
-                      <option value="CLIMAGRO">Climagro Analytics (CAG)</option>
+                      <option value="EHM">EHM</option>
+                      <option value="CLIMAGRO">CLIMAGRO</option>
                     </select>
                   )}
                 </div>
@@ -588,7 +602,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
               </div>
 
               {/* Target Week, Priority & Due Date Row */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Week</label>
                   {readOnlyMode ? (
@@ -599,16 +613,12 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                     />
                   ) : (
-                    <select
+                    <CalendarPicker
                       value={targetWeek}
-                      onChange={(e) => setTargetWeek(e.target.value)}
-                      className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    >
-                      <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
-                      <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
-                      <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
-                      <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
-                    </select>
+                      onChange={(formatted) => setTargetWeek(formatted)}
+                      placeholder="e.g. Week 1 (Days 1–7)"
+                      formatMode="date"
+                    />
                   )}
                 </div>
 
@@ -645,11 +655,20 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                     />
                   ) : (
-                    <input
-                      type="date"
+                    <CalendarPicker
                       value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500"
+                      onChange={(formatted, rawDate) => {
+                        if (rawDate) {
+                          const yyyy = rawDate.getFullYear();
+                          const mm = String(rawDate.getMonth() + 1).padStart(2, '0');
+                          const dd = String(rawDate.getDate()).padStart(2, '0');
+                          setDueDate(`${yyyy}-${mm}-${dd}`);
+                        } else {
+                          setDueDate(formatted);
+                        }
+                      }}
+                      placeholder="Select Due Date..."
+                      formatMode="date"
                     />
                   )}
                 </div>
@@ -896,7 +915,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   >
                     <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
                       <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
-                        {c.authorName || 'System'}
+                        {formatAuthorDisplayName(c.authorName)}
                       </span>
                       <span className="flex items-center gap-1 font-semibold text-gray-400">
                         <Clock className="w-3 h-3 text-emerald-600" />

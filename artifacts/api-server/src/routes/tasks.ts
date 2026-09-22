@@ -797,6 +797,17 @@ router.patch('/checklists/:checklistId', async (req, res) => {
   }
 });
 
+// Helper to extract clean username or full name
+function formatDisplayNameFromEmail(email: string): string {
+  if (!email || !email.includes('@')) return email || 'User';
+  const raw = email.split('@')[0].replace(/[._-]/g, ' ');
+  return raw
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 // GET /api/tasks/:id/comments (Always ORDER BY created_at ASC)
 router.get('/:id/comments', async (req, res) => {
   const { id } = req.params;
@@ -806,7 +817,41 @@ router.get('/:id/comments', async (req, res) => {
       .from(taskComments)
       .where(eq(taskComments.taskId, id))
       .orderBy(asc(taskComments.createdAt));
-    res.json(comments);
+
+    const allEmployees = await db.select().from(employees);
+
+    const enriched = comments.map((c) => {
+      let displayName = c.authorName;
+
+      // Try lookup by authorId
+      if (c.authorId) {
+        const emp = allEmployees.find((e) => e.id === c.authorId);
+        if (emp) {
+          const empFullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+          if (empFullName) displayName = empFullName;
+        }
+      }
+
+      // If displayName still contains an email or is empty
+      if (!displayName || displayName.includes('@')) {
+        const matchEmp = allEmployees.find(
+          (e) => (e.email || '').toLowerCase() === (displayName || '').toLowerCase()
+        );
+        if (matchEmp) {
+          const fullName = `${matchEmp.firstName || ''} ${matchEmp.lastName || ''}`.trim();
+          if (fullName) displayName = fullName;
+        } else if (displayName && displayName.includes('@')) {
+          displayName = formatDisplayNameFromEmail(displayName);
+        }
+      }
+
+      return {
+        ...c,
+        authorName: displayName || 'User',
+      };
+    });
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch task comments' });
   }
@@ -825,13 +870,31 @@ router.post('/:id/comments', async (req, res) => {
     if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
       return res.status(403).json({ message: 'You can only update tasks assigned to you' });
     }
-    const authorName = req.user?.email || 'User';
+
+    // Resolve author real name / username
+    let authorName = 'User';
+    if (req.user?.employeeId) {
+      const [emp] = await db.select().from(employees).where(eq(employees.id, req.user.employeeId));
+      if (emp) {
+        authorName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.employeeCode || '';
+      }
+    }
+    if ((!authorName || authorName === 'User') && req.user?.email) {
+      // Check if employee exists by email
+      const [emp] = await db.select().from(employees).where(eq(employees.email, req.user.email));
+      if (emp) {
+        authorName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+      } else {
+        authorName = formatDisplayNameFromEmail(req.user.email);
+      }
+    }
+
     const [newComment] = await db
       .insert(taskComments)
       .values({
         taskId: id,
         authorId: req.user?.employeeId || null,
-        authorName,
+        authorName: authorName || 'User',
         content,
         isSystemLog: Boolean(isSystemLog),
       })

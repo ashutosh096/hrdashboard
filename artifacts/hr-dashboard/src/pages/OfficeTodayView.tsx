@@ -1,26 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Video, Calendar, Clock, Building2, Laptop, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
+const isSameDay = (d1: Date, d2: Date): boolean => {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+};
+
 export const OfficeTodayView: React.FC = () => {
+  const { user } = useAuth();
   const { selectedEntity } = useEntity();
-  const [meetings, setMeetings] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [availability, setAvailability] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<'YESTERDAY' | 'TODAY' | 'TOMORROW'>('TODAY');
+  const [cardDateFilters, setCardDateFilters] = useState<Record<string, 'YESTERDAY' | 'TODAY' | 'TOMORROW'>>({});
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [meetingsData, employeesData] = await Promise.all([
-          fetchApi<any[]>('/api/meetings'),
+        const [employeesData, availabilityData] = await Promise.all([
           fetchApi<any[]>('/api/employees'),
+          fetchApi<any[]>('/api/meetings/availability').catch(() => []),
         ]);
-        setMeetings(Array.isArray(meetingsData) ? meetingsData : []);
         setEmployees(Array.isArray(employeesData) ? employeesData : []);
+        setAvailability(Array.isArray(availabilityData) ? availabilityData : []);
       } catch (err) {
         console.error('[OFFICE TODAY FETCH ERROR]:', err);
       } finally {
@@ -30,104 +42,147 @@ export const OfficeTodayView: React.FC = () => {
     loadData();
   }, []);
 
-  const presenceList = (employees.length > 0 ? employees : []).map((emp, idx) => {
-    const entity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM');
-    const entityName = entity === 'CAG' ? 'Climagro Analytics' : entity === 'COMMON' ? 'EHM & CLIMAGRO' : 'EHM Consultancy';
-    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+  const getTargetDate = (filter: 'YESTERDAY' | 'TODAY' | 'TOMORROW') => {
+    const d = new Date();
+    if (filter === 'YESTERDAY') d.setDate(d.getDate() - 1);
+    else if (filter === 'TOMORROW') d.setDate(d.getDate() + 1);
+    return d;
+  };
 
-    const empMeetings = meetings.filter((m) => {
-      const isCalendarSynced =
-        m.source === 'GOOGLE_CALENDAR' ||
-        m.source === 'GOOGLE_CALENDAR_IMPORTED' ||
-        Boolean(m.googleEventId) ||
-        Boolean(m.googleMeetUrl) ||
-        Boolean(m.isGoogleCalendar);
-      if (!isCalendarSynced) return false;
-
-      const start = m.startTime ? new Date(m.startTime) : new Date();
-      const end = m.endTime ? new Date(m.endTime) : start;
-      if (end < sevenDaysAgo && start < sevenDaysAgo) return false;
-
-      const isOrganizer = m.organizerId === emp.id;
-      const isInvitee = Array.isArray(m.invitees) && m.invitees.includes(emp.id);
-      return isOrganizer || isInvitee;
-    });
-
+  const presenceList = useMemo(() => {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
 
-    const todaysEmpMeetings = empMeetings.filter((m) => {
-      if (!m.startTime) return false;
-      const mDate = new Date(m.startTime);
-      return !isNaN(mDate.getTime()) && mDate.toISOString().split('T')[0] === todayStr;
-    });
+    return (employees.length > 0 ? employees : []).map((emp, idx) => {
+      const entity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM');
+      const entityName = entity === 'CAG' ? 'CLIMAGRO' : entity === 'COMMON' ? 'EHM & CLIMAGRO' : 'EHM';
 
-    const seenTitles = new Set<string>();
-    const todayMeetings = todaysEmpMeetings
-      .filter((m) => {
-        const key = `${(m.title || '').toLowerCase().trim()}_${new Date(m.startTime).getTime()}`;
-        if (seenTitles.has(key)) return false;
-        seenTitles.add(key);
-        return true;
-      })
-      .map((m) => {
-        const start = m.startTime ? new Date(m.startTime) : new Date();
-        const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
-        const active = now >= start && now <= end;
+      const isSelf =
+        (user?.employeeId && emp.id === user.employeeId) ||
+        (user?.id && emp.id === user.id) ||
+        (user?.email && (emp.email || '').toLowerCase() === user.email.toLowerCase());
+
+      const empAvail = availability.find((a: any) => a.employeeId === emp.id || (a.email && a.email.toLowerCase() === (emp.email || '').toLowerCase()));
+      const availBusySlots = empAvail?.busySlots || empAvail?.busy || [];
+
+      // Determine active date filter for this employee (individual override or global)
+      const empDateFilter = cardDateFilters[emp.id] || dateFilter;
+      const targetDate = getTargetDate(empDateFilter);
+
+      // Filter slots strictly matching target day
+      const targetSlots = availBusySlots.filter((slot: any) => {
+        const slotStart = new Date(slot.start || slot.startTime);
+        return !isNaN(slotStart.getTime()) && isSameDay(slotStart, targetDate);
+      });
+
+      // Sort chronologically ascending: Morning (e.g. 9 AM) -> Noon (12 PM) -> Evening (4 PM)
+      targetSlots.sort((a: any, b: any) => {
+        const timeA = new Date(a.start || a.startTime).getTime();
+        const timeB = new Date(b.start || b.startTime).getTime();
+        return timeA - timeB;
+      });
+
+      const dayMeetings = targetSlots.map((slot: any, sIdx: number) => {
+        const start = new Date(slot.start || slot.startTime);
+        const end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        const active = isSameDay(now, targetDate) && now >= start && now <= end;
+
+        const displayTitle = isSelf || !slot.isPrivate
+          ? (slot.meetingTitle || slot.title || `Meeting ${sIdx + 1}`)
+          : `Meeting ${sIdx + 1}`;
+
         return {
-          title: m.title,
+          title: displayTitle,
+          isPrivate: !isSelf && slot.isPrivate,
           time: `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
           active,
+          rawStart: start,
         };
       });
 
-    const isMeeting = todaysEmpMeetings.some((m) => {
-      const start = m.startTime ? new Date(m.startTime) : new Date();
-      const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
-      return now >= start && now <= end;
+      // Live presence is checked against TODAY
+      const todaySlots = availBusySlots.filter((slot: any) => {
+        const slotStart = new Date(slot.start || slot.startTime);
+        return !isNaN(slotStart.getTime()) && isSameDay(slotStart, now);
+      });
+      const isCurrentlyInMeeting = todaySlots.some((slot: any) => {
+        const start = new Date(slot.start || slot.startTime);
+        const end = slot.end || slot.endTime ? new Date(slot.end || slot.endTime) : new Date(start.getTime() + 30 * 60000);
+        return now >= start && now <= end;
+      });
+
+      const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
+
+      return {
+        id: emp.id,
+        name: empName,
+        employeeCode: emp.employeeCode || `EHM-EMP0${idx + 1}`,
+        entity,
+        entityCode: entity,
+        entityId: emp.entityId,
+        entityName,
+        dept: emp.departmentName || 'Product & Tech',
+        role: emp.designation || 'Team Specialist',
+        avatar: getAvatarByName(empName),
+        status: isCurrentlyInMeeting ? 'Busy in Meeting' : 'In Office (Present)',
+        isMeeting: isCurrentlyInMeeting,
+        workMode: 'IN_OFFICE',
+        dayMeetings,
+        currentFilter: empDateFilter,
+      };
     });
-
-    const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
-
-    return {
-      id: emp.id,
-      name: empName,
-      employeeCode: emp.employeeCode || `EHM-EMP0${idx + 1}`,
-      entity,
-      entityCode: entity,
-      entityId: emp.entityId,
-      entityName,
-      dept: emp.departmentName || 'Product & Tech',
-      role: emp.designation || 'Team Specialist',
-      avatar: getAvatarByName(empName),
-      status: isMeeting ? 'Busy in Meeting' : 'In Office (Present)',
-      isMeeting,
-      workMode: 'IN_OFFICE',
-      todayMeetings,
-    };
-  });
+  }, [employees, availability, user, dateFilter, cardDateFilters]);
 
   const filteredPresence = presenceList.filter(
     item => matchesEntityFilter(item, selectedEntity)
   );
+
+  const handleSetCardFilter = (empId: string, filter: 'YESTERDAY' | 'TODAY' | 'TOMORROW') => {
+    setCardDateFilters(prev => ({ ...prev, [empId]: filter }));
+  };
+
+  const dateFilterLabel = (filter: 'YESTERDAY' | 'TODAY' | 'TOMORROW') => {
+    if (filter === 'YESTERDAY') return "Yesterday's";
+    if (filter === 'TOMORROW') return "Tomorrow's";
+    return "Today's";
+  };
 
   return (
     <div className="p-6 space-y-6 select-none">
       <div className="bg-white border border-gray-200/80 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Office Today & Live Presence</h2>
-          <p className="text-xs text-gray-500 font-medium">Real-time presence, active meeting status, and today's calendar schedule for each team member.</p>
+          <p className="text-xs text-gray-500 font-medium">Real-time presence, active meeting status, and calendar schedules ordered morning to evening.</p>
         </div>
-        <div className="flex items-center gap-3 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> In Office
-          </span>
-          <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> In Meeting
-          </span>
-          <span className="flex items-center gap-1.5 text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span> Remote
-          </span>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Global Date Filter Selector */}
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80">
+            {(['YESTERDAY', 'TODAY', 'TOMORROW'] as const).map((filterOpt) => (
+              <button
+                key={filterOpt}
+                onClick={() => {
+                  setDateFilter(filterOpt);
+                  setCardDateFilters({}); // reset individual card overrides when global changes
+                }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${
+                  dateFilter === filterOpt
+                    ? 'bg-emerald-600 text-white shadow-xs font-black'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {filterOpt.toLowerCase()}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> In Office
+            </span>
+            <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> In Meeting
+            </span>
+          </div>
         </div>
       </div>
 
@@ -175,29 +230,20 @@ export const OfficeTodayView: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Status Badge */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                      item.isMeeting
-                        ? 'bg-amber-50 text-amber-800 border-amber-200'
-                        : item.workMode === 'REMOTE'
-                        ? 'bg-blue-50 text-blue-800 border-blue-200'
-                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                {/* Single Clean Presence Status Badge */}
+                <div
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                    item.isMeeting
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      item.isMeeting ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'
                     }`}
-                  >
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'
-                      }`}
-                    />
-                    <span className="truncate">{item.status}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-50 border border-gray-200/80 text-gray-700">
-                    {item.workMode === 'REMOTE' ? <Laptop className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                    <span className="truncate">{item.workMode === 'REMOTE' ? 'Remote' : 'In Office'}</span>
-                  </div>
+                  />
+                  <span className="truncate">{item.status}</span>
                 </div>
 
                 {/* Department Tag */}
@@ -206,22 +252,39 @@ export const OfficeTodayView: React.FC = () => {
                   <span className="font-bold text-gray-800">{item.dept}</span>
                 </div>
 
-                {/* Today's Meetings Timeline Schedule */}
+                {/* Meetings Timeline Schedule with Individual Day Filter */}
                 <div className="space-y-2 pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-emerald-600" /> Today's Meetings
+                      <Calendar className="w-3 h-3 text-emerald-600" /> {dateFilterLabel(item.currentFilter)} Meetings
                     </span>
-                    <span>({item.todayMeetings.length})</span>
+                    <span className="text-emerald-700 font-extrabold">({item.dayMeetings.length})</span>
                   </div>
 
-                  {item.todayMeetings.length === 0 ? (
+                  {/* Per-Card Quick Date Filter Switcher */}
+                  <div className="flex items-center bg-gray-50 p-0.5 rounded-lg border border-gray-200/60 text-[10px] font-bold">
+                    {(['YESTERDAY', 'TODAY', 'TOMORROW'] as const).map((filterOpt) => (
+                      <button
+                        key={filterOpt}
+                        onClick={() => handleSetCardFilter(item.id, filterOpt)}
+                        className={`flex-1 py-1 rounded text-center transition-all cursor-pointer ${
+                          item.currentFilter === filterOpt
+                            ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/50'
+                            : 'text-gray-400 hover:text-gray-700'
+                        }`}
+                      >
+                        {filterOpt === 'YESTERDAY' ? 'Yest' : filterOpt === 'TODAY' ? 'Today' : 'Tmrw'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {item.dayMeetings.length === 0 ? (
                     <div className="p-2.5 rounded-xl border border-dashed border-gray-200 text-center text-[11px] font-medium text-gray-400 bg-gray-50/50">
-                      No meetings scheduled today. Available for focus work.
+                      No meetings scheduled for this day. Available for focus work.
                     </div>
                   ) : (
                     <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                      {item.todayMeetings.map((m: any, mIdx: number) => (
+                      {item.dayMeetings.map((m: any, mIdx: number) => (
                         <div
                           key={m.title + mIdx}
                           className={`p-2.5 rounded-xl border text-xs space-y-1 transition-all ${
@@ -255,3 +318,4 @@ export const OfficeTodayView: React.FC = () => {
     </div>
   );
 };
+

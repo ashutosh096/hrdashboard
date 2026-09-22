@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Copy, Calendar, Layers, CheckCircle2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { RichTextEditor } from './RichTextEditor';
+import { CalendarPicker } from './CalendarPicker';
 
 interface TaskCloneModalProps {
   isOpen: boolean;
@@ -146,12 +147,20 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Target Due Date *</label>
-              <input
-                type="date"
-                required
+              <CalendarPicker
                 value={newDueDate}
-                onChange={(e) => setNewDueDate(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                onChange={(formatted, rawDate) => {
+                  if (rawDate) {
+                    const yyyy = rawDate.getFullYear();
+                    const mm = String(rawDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(rawDate.getDate()).padStart(2, '0');
+                    setNewDueDate(`${yyyy}-${mm}-${dd}`);
+                  } else {
+                    setNewDueDate(formatted);
+                  }
+                }}
+                placeholder="Select Due Date..."
+                formatMode="date"
               />
             </div>
 

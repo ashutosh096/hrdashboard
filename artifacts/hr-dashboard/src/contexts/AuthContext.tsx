@@ -10,6 +10,13 @@ export interface User {
   employeeId?: string;
   managedTeamId?: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  employeeCode?: string;
+  designation?: string;
+  entityName?: string;
+  entityCode?: string;
   avatarUrl?: string;
 }
 
@@ -22,6 +29,7 @@ interface AuthContextType {
   logout: () => void;
   setUserSession: (user: User, token: string) => void;
   setPreviewRole: (role: UserRole) => void;
+  updateProfile: (data: { name?: string; phone?: string; firstName?: string; lastName?: string }) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -34,6 +42,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   setUserSession: () => {},
   setPreviewRole: () => {},
+  updateProfile: async () => {},
   isLoading: false,
 });
 
@@ -245,6 +254,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser((prev) => (prev ? { ...prev, role: newRole } : null));
   };
 
+  const updateProfile = async (data: { name?: string; phone?: string; firstName?: string; lastName?: string }) => {
+    const res = await fetchApi<{ message: string; user: User }>('/api/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    if (res && res.user) {
+      setUser((prev) => (prev ? { ...prev, ...res.user } : res.user));
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('hros_token');
     localStorage.removeItem('hros_preview_role');
@@ -263,6 +282,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         setUserSession,
         setPreviewRole,
+        updateProfile,
         isLoading,
       }}
     >

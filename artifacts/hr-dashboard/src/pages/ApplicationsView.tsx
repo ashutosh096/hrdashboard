@@ -31,6 +31,7 @@ import { useEntity } from '../contexts/EntityContext';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { matchesEntityFilter } from '../utils/entityUtils';
 import { fetchApi } from '@workspace/api-client-react';
+import { formatAuthorDisplayName } from '../components/TaskUpdateModal';
 
 export interface ApplicationItem {
   id: string;
@@ -1028,8 +1029,8 @@ export const ApplicationsView: React.FC = () => {
                       onChange={(e) => setProjectEntity(e.target.value as any)}
                       className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
                     >
-                      <option value="EHM">EHM (EHM Consultancy)</option>
-                      <option value="CAG">CLIMAGRO (CliAgro Systems)</option>
+                      <option value="EHM">EHM</option>
+                      <option value="CAG">CLIMAGRO</option>
                     </select>
                   </div>
 
@@ -1290,7 +1291,7 @@ export const ApplicationsView: React.FC = () => {
                           >
                             <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
                               <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
-                                {c.authorName || 'User'}
+                                {formatAuthorDisplayName(c.authorName)}
                               </span>
                               <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>

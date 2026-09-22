@@ -11,6 +11,7 @@ export const employees = pgTable('employees', {
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
+  phone: varchar('phone', { length: 50 }),
   entityId: uuid('entity_id').references(() => entities.id).notNull(),
   departmentId: uuid('department_id').references(() => departments.id).notNull(),
   designation: varchar('designation', { length: 255 }).notNull(),

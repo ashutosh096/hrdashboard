@@ -3,6 +3,8 @@ import { X, User, Calendar, Layers, Clock, Copy, Plus, CheckCircle, ShieldCheck,
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { RichTextEditor } from './RichTextEditor';
+import { CalendarPicker } from './CalendarPicker';
+import { formatAuthorDisplayName } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
 
 interface TaskAssignModalProps {
@@ -130,54 +132,63 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
     setNewCommentText('');
   };
 
+  const loadOptions = async () => {
+    setLoading(true);
+    try {
+      const [epicsData, sprintsData, empsData] = await Promise.all([
+        fetchApi<any[]>('/api/epics'),
+        fetchApi<any[]>('/api/sprints'),
+        fetchApi<any[]>('/api/employees'),
+      ]);
+
+      const sortedEpics = [...epicsData].sort((a, b) =>
+        (a.epicCode || a.title || '').localeCompare(b.epicCode || b.title || '')
+      );
+      setEpics(sortedEpics);
+
+      const sortedSprints = [...sprintsData].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '')
+      );
+      setSprints(sortedSprints);
+      if (sortedSprints.length > 0 && !selectedSprintId) {
+        setSelectedSprintId(sortedSprints[0].id);
+      }
+
+      const formattedEmps = empsData.map(e => ({
+        id: e.id,
+        firstName: e.firstName,
+        lastName: e.lastName,
+        employeeCode: e.employeeCode,
+        designation: e.designation || 'Team Member',
+      }));
+      setEmployees(formattedEmps);
+      if (formattedEmps.length > 0 && !assigneeId) {
+        setAssigneeId(formattedEmps[0].id);
+        setReviewingLeadId(formattedEmps[0].id);
+      }
+    } catch (err) {
+      console.error('[TASK MODAL OPTIONS FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
+    loadOptions();
 
-    const loadOptions = async () => {
-      setLoading(true);
-      try {
-        const [epicsData, sprintsData, empsData] = await Promise.all([
-          fetchApi<any[]>('/api/epics'),
-          fetchApi<any[]>('/api/sprints'),
-          fetchApi<any[]>('/api/employees'),
-        ]);
-
-        const sortedEpics = [...epicsData].sort((a, b) =>
-          (a.title || '').localeCompare(b.title || '')
-        );
-        setEpics(sortedEpics);
-        if (sortedEpics.length > 0) {
-          setSelectedEpicId(sortedEpics[0].id);
-        }
-
-        const sortedSprints = [...sprintsData].sort((a, b) =>
-          (a.name || '').localeCompare(b.name || '')
-        );
-        setSprints(sortedSprints);
-        if (sortedSprints.length > 0) {
-          setSelectedSprintId(sortedSprints[0].id);
-        }
-
-        const formattedEmps = empsData.map(e => ({
-          id: e.id,
-          firstName: e.firstName,
-          lastName: e.lastName,
-          employeeCode: e.employeeCode,
-          designation: e.designation || 'Team Member',
-        }));
-        setEmployees(formattedEmps);
-        if (formattedEmps.length > 0) {
-          setAssigneeId(formattedEmps[0].id);
-          setReviewingLeadId(formattedEmps[0].id);
-        }
-      } catch (err) {
-        console.error('[TASK MODAL OPTIONS FETCH ERROR]:', err);
-      } finally {
-        setLoading(false);
-      }
+    const handleSync = () => {
+      loadOptions();
     };
 
-    loadOptions();
+    window.addEventListener('epics-updated', handleSync);
+    window.addEventListener('initiatives-updated', handleSync);
+    window.addEventListener('sprints-updated', handleSync);
+    return () => {
+      window.removeEventListener('epics-updated', handleSync);
+      window.removeEventListener('initiatives-updated', handleSync);
+      window.removeEventListener('sprints-updated', handleSync);
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -261,8 +272,8 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                   onChange={(e) => setSelectedEntityId(e.target.value as 'EHM' | 'CAG')}
                   className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                 >
-                  <option value="EHM">EHM (EHM Consultancy)</option>
-                  <option value="CAG">CLIMAGRO (Climagro Analytics)</option>
+                  <option value="EHM">EHM</option>
+                  <option value="CAG">CLIMAGRO</option>
                 </select>
               </div>
 
@@ -420,12 +431,20 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
             {/* Target Date / Due Date */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Date / Due Date *</label>
-              <input
-                type="date"
-                required
+              <CalendarPicker
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                onChange={(formatted, rawDate) => {
+                  if (rawDate) {
+                    const yyyy = rawDate.getFullYear();
+                    const mm = String(rawDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(rawDate.getDate()).padStart(2, '0');
+                    setDueDate(`${yyyy}-${mm}-${dd}`);
+                  } else {
+                    setDueDate(formatted);
+                  }
+                }}
+                placeholder="Select Due Date..."
+                formatMode="date"
               />
             </div>
 
@@ -585,7 +604,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                       >
                         <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
                           <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
-                            {c.authorName || 'User'}
+                            {formatAuthorDisplayName(c.authorName)}
                           </span>
                           <span className="flex items-center gap-1 font-semibold text-gray-400">
                             <Clock className="w-3 h-3 text-emerald-600" />

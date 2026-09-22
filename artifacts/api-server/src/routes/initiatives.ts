@@ -171,6 +171,54 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
+// PATCH /api/initiatives/:id - Update initiative status & details
+router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const initId = req.params.id as string;
+  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric, subDepartment, entityId } = req.body;
+
+  let mappedStatus: 'PLANNED' | 'ACTIVE' | 'DONE' | undefined = undefined;
+  if (status === 'IN_PROGRESS' || status === 'ACTIVE') mappedStatus = 'ACTIVE';
+  else if (status === 'COMPLETED' || status === 'DONE') mappedStatus = 'DONE';
+  else if (status === 'PLANNED') mappedStatus = 'PLANNED';
+
+  try {
+    const updatePayload: any = {};
+    if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
+    if (title !== undefined) updatePayload.title = title;
+    if (description !== undefined) updatePayload.description = description;
+    if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth;
+    if (epicsCountTarget !== undefined) updatePayload.epicsCountTarget = Number(epicsCountTarget);
+    if (targetDeliverableMetric !== undefined) updatePayload.targetDeliverableMetric = targetDeliverableMetric;
+    if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
+
+    if (entityId !== undefined) {
+      const allEntities = await db.select().from(entities);
+      let entity = allEntities.find(e =>
+        e.id === entityId ||
+        e.code.toLowerCase() === (entityId || '').toLowerCase() ||
+        ((entityId || '').toLowerCase().includes('ehm') && e.code === 'EHM') ||
+        ((entityId || '').toLowerCase().includes('climagro') && e.code === 'CAG')
+      );
+      if (entity) updatePayload.entityId = entity.id;
+    }
+
+    const [updated] = await db
+      .update(initiatives)
+      .set(updatePayload)
+      .where(eq(initiatives.id, initId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Initiative not found' });
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[PATCH INITIATIVE ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to update initiative' });
+  }
+});
+
 // DELETE /api/initiatives/:id - Admin protected initiative deletion
 router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
   const initId = req.params.id as string;

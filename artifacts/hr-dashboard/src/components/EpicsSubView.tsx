@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
+import { CalendarPicker } from './CalendarPicker';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -83,7 +84,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [description, setDescription] = useState('');
   const [department, setDepartment] = useState('Product & Tech');
   const [targetWeek, setTargetWeek] = useState('Week 1 (Days 1–7)');
-  const [sprintsCountTarget, setSprintsCountTarget] = useState(2);
+  const [sprintsCountTarget, setSprintsCountTarget] = useState<number>(0);
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +98,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [editInitiativeId, setEditInitiativeId] = useState('');
   const [editDepartment, setEditDepartment] = useState('');
   const [editTargetWeek, setEditTargetWeek] = useState('');
-  const [editSprintsCountTarget, setEditSprintsCountTarget] = useState(2);
+  const [editSprintsCountTarget, setEditSprintsCountTarget] = useState<number>(0);
   const [editStatus, setEditStatus] = useState('PLANNED');
   const [selectedTaskToView, setSelectedTaskToView] = useState<TaskItem | null>(null);
 
@@ -115,6 +116,23 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       waitingOn: 'None (Self)',
       notes: taskItem.description || taskItem.notes || '',
     });
+  };
+
+  const handleAdjustTasksCount = async (newTarget: number) => {
+    if (!viewingEpic) return;
+    const target = Math.max(0, newTarget);
+    try {
+      await fetchApi(`/api/epics/${viewingEpic.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ sprintsCountTarget: target }),
+      });
+      setViewingEpic(prev => prev ? { ...prev, sprintsCountTarget: target } : null);
+      setEditSprintsCountTarget(target);
+      toast.success(`Target tasks count updated to ${target === 0 ? 'Flexible' : target}`);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update target tasks count');
+    }
   };
 
   const loadData = async () => {
@@ -142,7 +160,34 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   useEffect(() => {
     loadData();
+    const handleInitsUpdate = () => {
+      fetchApi<InitiativeOption[]>('/api/initiatives').then((initsData) => {
+        if (initsData && initsData.length > 0) {
+          const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+          setInitiatives(sortedInits);
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener('initiatives-updated', handleInitsUpdate);
+    return () => {
+      window.removeEventListener('initiatives-updated', handleInitsUpdate);
+    };
   }, []);
+
+  // When Create or Edit modal opens, always fetch freshest initiatives list
+  useEffect(() => {
+    if (isModalOpen || editingEpic) {
+      fetchApi<InitiativeOption[]>('/api/initiatives').then((initsData) => {
+        if (initsData && initsData.length > 0) {
+          const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+          setInitiatives(sortedInits);
+          if (!selectedInitiativeId && sortedInits[0]) {
+            setSelectedInitiativeId(sortedInits[0].id);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [isModalOpen, editingEpic]);
 
   // Auto-open epic view modal when navigated via selectedEpicIdToView
   useEffect(() => {
@@ -169,13 +214,15 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           initiativeId: selectedInitiativeId,
           department,
           targetWeek,
-          sprintsCountTarget,
+          sprintsCountTarget: sprintsCountTarget > 0 ? sprintsCountTarget : undefined,
         }),
       });
       toast.success(`Epic ${created.epicCode} created successfully!`);
       setTitle('');
       setDescription('');
+      setSprintsCountTarget(0);
       setIsModalOpen(false);
+      window.dispatchEvent(new CustomEvent('epics-updated'));
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create epic');
@@ -191,7 +238,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     setEditInitiativeId(epic.initiativeId);
     setEditDepartment(epic.department || 'Product & Tech');
     setEditTargetWeek(epic.targetWeek || 'Week 1 (Days 1–7)');
-    setEditSprintsCountTarget(epic.sprintsCountTarget || 2);
+    setEditSprintsCountTarget(epic.sprintsCountTarget || 0);
     setEditStatus(epic.status === 'COMPLETED' ? 'DONE' : (epic.status || 'PLANNED'));
   };
 
@@ -211,7 +258,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           initiativeId: editInitiativeId,
           department: editDepartment,
           targetWeek: editTargetWeek,
-          sprintsCountTarget: editSprintsCountTarget,
+          sprintsCountTarget: editSprintsCountTarget > 0 ? editSprintsCountTarget : 0,
           status: apiStatus,
         }),
       });
@@ -742,19 +789,48 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   ...allTasks.filter((t: any) => t.epicId === viewingEpic.id || t.parentEpicCode === viewingEpic.epicCode)
                 ];
                 const linkedTasks = Array.from(new Map(combined.map((t: any) => [t.id || t.taskCode, t])).values());
-                const targetTasksCount = Math.max(linkedTasks.length, 3);
+                const configuredTarget = (viewingEpic.sprintsCountTarget && viewingEpic.sprintsCountTarget > 0)
+                  ? viewingEpic.sprintsCountTarget
+                  : 0;
                 const doneCount = linkedTasks.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
 
                 return (
                   <div className="space-y-4 pt-4 border-t border-gray-100">
-                    {/* Header line & Progress Bar */}
+                    {/* Header line & Progress Bar & Quick Adjust Stepper */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-gray-900">Linked tasks</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900">Linked tasks</h4>
+                          {(isAdmin || isManager) && (
+                            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                              <button
+                                type="button"
+                                onClick={() => handleAdjustTasksCount(Math.max(0, (viewingEpic.sprintsCountTarget || linkedTasks.length) - 1))}
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-colors"
+                                title="Decrease Target Tasks Count"
+                              >
+                                -
+                              </button>
+                              <span className="text-[11px] font-bold text-gray-700 px-1 font-mono">
+                                {configuredTarget > 0 ? `${configuredTarget} planned` : 'Flexible'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleAdjustTasksCount((viewingEpic.sprintsCountTarget || linkedTasks.length) + 1)}
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-emerald-700 hover:bg-emerald-100/70 rounded transition-colors"
+                                title="Increase Target Tasks Count"
+                              >
+                                +
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         <span className="text-xs font-medium text-gray-500">
-                          {doneCount} of {linkedTasks.length} done
+                          {configuredTarget > 0 ? `${doneCount} of ${linkedTasks.length} done (Target: ${configuredTarget})` : `${doneCount} of ${linkedTasks.length} done`}
                         </span>
                       </div>
+
                       <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-emerald-500 rounded-full transition-all duration-500"
@@ -807,8 +883,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                         );
                       })}
 
-                      {/* Uncreated Task Slots */}
-                      {Array.from({ length: Math.max(0, targetTasksCount - linkedTasks.length) }).map((_, idx) => (
+                      {/* Uncreated Task Slots if configured target > linked tasks */}
+                      {configuredTarget > linkedTasks.length && Array.from({ length: configuredTarget - linkedTasks.length }).map((_, idx) => (
                         <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
                           <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
                           {isManager && (
@@ -969,33 +1045,64 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week *</label>
-                  <select
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                  <CalendarPicker
                     value={editTargetWeek}
-                    onChange={(e) => setEditTargetWeek(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                  >
-                    {TARGET_WEEK_OPTIONS.map((week) => (
-                      <option key={week} value={week}>
-                        {week}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(formatted) => setEditTargetWeek(formatted)}
+                    placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
+                    formatMode="date"
+                  />
                 </div>
               </div>
 
-              {/* Status */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Status *</label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                >
-                  <option value="PLANNED">PLANNED</option>
-                  <option value="IN_PROGRESS">IN PROGRESS</option>
-                  <option value="DONE">DONE</option>
-                </select>
+              {/* Target Tasks Count & Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Planned Tasks Target</label>
+                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditSprintsCountTarget(prev => Math.max(0, (prev || 0) - 1))}
+                      className="px-2.5 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl border border-gray-200 cursor-pointer transition-colors"
+                      title="Decrease Tasks Count"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      placeholder="Flexible"
+                      value={editSprintsCountTarget > 0 ? editSprintsCountTarget : ''}
+                      onChange={(e) => setEditSprintsCountTarget(e.target.value ? Number(e.target.value) : 0)}
+                      className="w-full text-center px-2 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditSprintsCountTarget(prev => (prev || 0) + 1)}
+                      className="px-2.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 cursor-pointer transition-colors"
+                      title="Increase Tasks Count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Status *</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                  >
+                    <option value="PLANNED">PLANNED</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="DONE">DONE</option>
+                  </select>
+                </div>
               </div>
 
               {/* Actions */}
@@ -1091,19 +1198,52 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week *</label>
-                  <select
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                  <CalendarPicker
                     value={targetWeek}
-                    onChange={(e) => setTargetWeek(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                  >
-                    {TARGET_WEEK_OPTIONS.map((week) => (
-                      <option key={week} value={week}>
-                        {week}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(formatted) => setTargetWeek(formatted)}
+                    placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
+                    formatMode="date"
+                  />
                 </div>
+              </div>
+
+              {/* Planned Tasks Target */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700">Planned Tasks Target</label>
+                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Optional</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSprintsCountTarget(prev => Math.max(0, (prev || 0) - 1))}
+                    className="px-2.5 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl border border-gray-200 cursor-pointer transition-colors"
+                    title="Decrease Tasks Count"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="Flexible / No limit"
+                    value={sprintsCountTarget > 0 ? sprintsCountTarget : ''}
+                    onChange={(e) => setSprintsCountTarget(e.target.value ? Number(e.target.value) : 0)}
+                    className="w-full text-center px-2 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSprintsCountTarget(prev => (prev || 0) + 1)}
+                    className="px-2.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 cursor-pointer transition-colors"
+                    title="Increase Tasks Count"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400 font-medium mt-1">
+                  {sprintsCountTarget > 0 ? `Target set to ${sprintsCountTarget} tasks.` : 'Leave blank/0 for dynamic flexible task count.'}
+                </p>
               </div>
 
               {/* Clone / Duplicate Option Checkbox */}

@@ -9,16 +9,11 @@ router.use(requireAuth);
 
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const isEmployee = (req as any).user?.role === 'EMPLOYEE';
     const userId = (req as any).user?.id;
     const empId = (req as any).user?.employeeId;
     const userEmail = ((req as any).user?.email || '').toLowerCase();
 
     const allMeetings = await db.select().from(meetings).where(ne(meetings.status, 'CANCELLED'));
-
-    if (!isEmployee) {
-      return res.json(allMeetings);
-    }
 
     const userAttendeeRecords = await db
       .select({ meetingId: meetingAttendees.meetingId })
@@ -26,21 +21,39 @@ router.get('/', async (req: Request, res: Response) => {
       .where(
         empId ? eq(meetingAttendees.employeeId, empId) : eq(meetingAttendees.employeeId, userId!)
       );
-    const attendedMeetingIds = new Set(userAttendeeRecords.map(a => a.meetingId));
+    const attendedMeetingIds = new Set(userAttendeeRecords.map((a) => a.meetingId));
 
-    const scopedMeetings = allMeetings.filter(m => {
+    // Scoped strictly to the logged-in user:
+    // 1) Meetings they organized (organizerId matches userId or employeeId)
+    // 2) Meetings where they are recorded as attendee in meeting_attendees
+    // 3) Meetings where they are invited in invitees list by userId, employeeId, or email
+    const scopedMeetings = allMeetings.filter((m) => {
       const isOrganizer = (userId && m.organizerId === userId) || (empId && m.organizerId === empId);
       const isAttendeeInTable = attendedMeetingIds.has(m.id);
-      
-      const inviteesArr = Array.isArray(m.invitees) ? (m.invitees as string[]) : [];
-      const isInvited = (
-        (userId && inviteesArr.includes(userId)) ||
-        (empId && inviteesArr.includes(empId)) ||
-        (userEmail && inviteesArr.some(inv => typeof inv === 'string' && inv.toLowerCase() === userEmail))
-      );
+
+      const inviteesArr = Array.isArray(m.invitees) ? (m.invitees as any[]) : [];
+      const isInvited = inviteesArr.some((inv) => {
+        if (!inv) return false;
+        if (typeof inv === 'string') {
+          const lower = inv.toLowerCase().trim();
+          return (
+            (userId && lower === userId.toLowerCase()) ||
+            (empId && lower === empId.toLowerCase()) ||
+            (userEmail && lower === userEmail)
+          );
+        }
+        if (typeof inv === 'object') {
+          return (
+            (inv.id && (inv.id === userId || inv.id === empId)) ||
+            (inv.email && userEmail && inv.email.toLowerCase() === userEmail)
+          );
+        }
+        return false;
+      });
 
       return isOrganizer || isAttendeeInTable || isInvited;
     });
+
 
     res.json(scopedMeetings);
   } catch (err) {
@@ -53,10 +66,21 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/availability', async (req: Request, res: Response) => {
   try {
     const now = new Date();
-    const fromQuery = req.query.from ? new Date(req.query.from as string) : now;
-    const toQuery = req.query.to ? new Date(req.query.to as string) : new Date(Date.now() + 7 * 86400000);
+    // Default to start of 7 days ago to 14 days in future so all today's past and upcoming meetings are included
+    const defaultFrom = new Date(Date.now() - 7 * 86400000);
+    defaultFrom.setHours(0, 0, 0, 0);
+    const defaultTo = new Date(Date.now() + 14 * 86400000);
+
+    const fromQuery = req.query.from ? new Date(req.query.from as string) : defaultFrom;
+    const toQuery = req.query.to ? new Date(req.query.to as string) : defaultTo;
+
+    const currentUserId = (req as any).user?.id;
+    const currentEmpId = (req as any).user?.employeeId;
+    const currentUserEmail = ((req as any).user?.email || '').toLowerCase();
 
     const allEmps = await db.select().from(employees);
+    const allUsers = await db.select().from(users);
+
     const activeMeetings = await db
       .select()
       .from(meetings)
@@ -68,21 +92,88 @@ router.get('/availability', async (req: Request, res: Response) => {
         )
       );
 
-    const result = allEmps.map(emp => {
-      const empMeetings = activeMeetings.filter(m => {
-        const isOrganizer = m.organizerId === emp.id;
-        const isInvited = Array.isArray(m.invitees) && (m.invitees as string[]).includes(emp.id);
+    const result = allEmps.map((emp) => {
+      const empEmail = (emp.email || '').toLowerCase();
+      const linkedUser = allUsers.find((u) => (u.email && u.email.toLowerCase() === empEmail) || (emp.id && u.employeeId === emp.id));
+      const empUserId = linkedUser?.id;
+
+      const isSelf =
+        (currentEmpId && emp.id === currentEmpId) ||
+        (currentUserEmail && empEmail === currentUserEmail) ||
+        (currentUserId && empUserId === currentUserId);
+
+      const empMeetings = activeMeetings.filter((m) => {
+        const isOrganizer =
+          m.organizerId === emp.id ||
+          (empUserId && m.organizerId === empUserId);
+
+        const inviteesArr = Array.isArray(m.invitees) ? (m.invitees as any[]) : [];
+        const isInvited = inviteesArr.some((inv) => {
+          if (!inv) return false;
+          if (typeof inv === 'string') {
+            const lower = inv.toLowerCase().trim();
+            return (
+              lower === emp.id.toLowerCase() ||
+              (empEmail && lower === empEmail) ||
+              (empUserId && lower === empUserId.toLowerCase())
+            );
+          }
+          if (typeof inv === 'object') {
+            return (
+              (inv.id && (inv.id === emp.id || (empUserId && inv.id === empUserId))) ||
+              (inv.email && empEmail && inv.email.toLowerCase() === empEmail)
+            );
+          }
+          return false;
+        });
+
         return isOrganizer || isInvited;
       });
 
-      const busy = empMeetings.map(m => ({
-        meetingId: m.id,
-        meetingTitle: m.title,
-        start: m.startTime,
-        end: m.endTime,
-      }));
+      // Sort meetings chronologically in ascending order (earliest/morning first, then noon, then evening)
+      empMeetings.sort(
+        (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
 
-      const isBusyRightNow = busy.some(b => now >= new Date(b.start) && now <= new Date(b.end));
+      const busy = empMeetings.map((m, idx) => {
+        const isViewerAttendee =
+          isSelf ||
+          (currentUserId && m.organizerId === currentUserId) ||
+          (currentEmpId && m.organizerId === currentEmpId) ||
+          (Array.isArray(m.invitees) &&
+            m.invitees.some((inv: any) => {
+              if (!inv) return false;
+              if (typeof inv === 'string') {
+                const lower = inv.toLowerCase().trim();
+                return (
+                  (currentEmpId && lower === currentEmpId.toLowerCase()) ||
+                  (currentUserId && lower === currentUserId.toLowerCase()) ||
+                  (currentUserEmail && lower === currentUserEmail)
+                );
+              }
+              if (typeof inv === 'object') {
+                return (
+                  (inv.id && ((currentEmpId && inv.id === currentEmpId) || (currentUserId && inv.id === currentUserId))) ||
+                  (inv.email && currentUserEmail && inv.email.toLowerCase() === currentUserEmail)
+                );
+              }
+              return false;
+            }));
+
+        return {
+          meetingId: m.id,
+          // Privacy preservation: show generic "Meeting 1", "Meeting 2" in chronological order
+          meetingTitle: isViewerAttendee ? m.title : `Meeting ${idx + 1}`,
+          isPrivate: !isViewerAttendee,
+          start: m.startTime,
+          end: m.endTime,
+        };
+      });
+
+
+      const isBusyRightNow = busy.some(
+        (b) => now >= new Date(b.start) && now <= new Date(b.end)
+      );
 
       return {
         employeeId: emp.id,
@@ -100,6 +191,7 @@ router.get('/availability', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to fetch team availability' });
   }
 });
+
 
 // GET /api/meetings/sync
 router.get('/sync', async (req: Request, res: Response) => {
@@ -137,10 +229,23 @@ router.post('/', async (req: Request, res: Response) => {
   const callerRole = (callerUser?.role || '').toUpperCase();
 
   try {
-    // Prevent organizer spoofing: Non-admins are locked to their own employeeId or userId
-    let resolvedOrganizerId = callerUser?.employeeId || callerUser?.id;
+    // Prevent organizer spoofing and ensure valid employeeId foreign key
+    let resolvedOrganizerId = callerUser?.employeeId;
+    if (!resolvedOrganizerId && callerUser?.email) {
+      const [emp] = await db
+        .select({ id: employees.id })
+        .from(employees)
+        .where(eq(employees.email, callerUser.email.toLowerCase().trim()));
+      if (emp) resolvedOrganizerId = emp.id;
+    }
+
     if (callerRole === 'ADMIN' && organizerId) {
       resolvedOrganizerId = organizerId;
+    }
+
+    if (!resolvedOrganizerId) {
+      const [firstEmp] = await db.select({ id: employees.id }).from(employees).limit(1);
+      resolvedOrganizerId = firstEmp?.id;
     }
 
     let organizerUserId = callerUser?.id || null;
@@ -257,6 +362,58 @@ router.post('/', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[MEETING CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create meeting' });
+  }
+});
+
+// PATCH /api/meetings/:id - Update meeting details / MoM (Minutes of Meeting) / description
+router.patch('/:id', async (req: Request, res: Response) => {
+  const meetingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { title, description, startTime, endTime, location } = req.body;
+
+  try {
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (startTime !== undefined) updateData.startTime = new Date(startTime);
+    if (endTime !== undefined) updateData.endTime = new Date(endTime);
+    if (location !== undefined) updateData.location = location;
+
+    const [updated] = await db
+      .update(meetings)
+      .set(updateData)
+      .where(eq(meetings.id, meetingId!))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[MEETING UPDATE ERROR]:', err);
+    res.status(500).json({ message: 'Failed to update meeting details' });
+  }
+});
+
+// DELETE /api/meetings/:id - Cancel meeting
+router.delete('/:id', async (req: Request, res: Response) => {
+  const meetingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  try {
+    const [cancelled] = await db
+      .update(meetings)
+      .set({ status: 'CANCELLED' })
+      .where(eq(meetings.id, meetingId!))
+      .returning();
+
+    if (!cancelled) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    res.json({ message: 'Meeting cancelled successfully', meeting: cancelled });
+  } catch (err: any) {
+    console.error('[MEETING DELETE ERROR]:', err);
+    res.status(500).json({ message: 'Failed to cancel meeting' });
   }
 });
 

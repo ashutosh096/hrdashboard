@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { db, users, invites, googleTokens, employees, passwordResetOtps, auditLogs, eq, and, sql } from '@workspace/db';
+import { db, users, invites, googleTokens, employees, entities, passwordResetOtps, auditLogs, eq, and, sql } from '@workspace/db';
 import { JWT_SECRET } from '../config/jwt.js';
 import { sendPasswordResetOtpEmail } from '../services/email.js';
 
@@ -194,19 +194,150 @@ router.get('/me', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({ message: 'User account no longer exists in database' });
     }
+
+    let empData: any = null;
+    let entityData: any = null;
+
+    if (user.employeeId) {
+      const [emp] = await db.select().from(employees).where(eq(employees.id, user.employeeId));
+      empData = emp;
+    } else {
+      const [emp] = await db.select().from(employees).where(eq(employees.email, user.email.toLowerCase().trim()));
+      empData = emp;
+    }
+
+    if (empData?.entityId) {
+      const [ent] = await db.select().from(entities).where(eq(entities.id, empData.entityId));
+      entityData = ent;
+    }
+
+    const fullName = empData
+      ? `${empData.firstName || ''} ${empData.lastName || ''}`.trim()
+      : (user.email.split('@')[0] || 'User');
+
     return res.json({
       user: {
         id: user.id,
         email: user.email,
         role: user.role,
-        employeeId: user.employeeId || undefined,
+        employeeId: user.employeeId || empData?.id || undefined,
         managedTeamId: user.managedTeamId || undefined,
+        name: fullName || 'User',
+        firstName: empData?.firstName || '',
+        lastName: empData?.lastName || '',
+        phone: empData?.phone || '',
+        employeeCode: empData?.employeeCode || 'EHM-EMP01',
+        designation: empData?.designation || '',
+        entityName: entityData?.name || 'EHM consultancy',
+        entityCode: entityData?.code || 'EHM',
       },
     });
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 });
+
+// PATCH /api/auth/profile - Allows any authenticated user (employee, manager, admin) to update ONLY their name and mobile/phone
+const handleProfileUpdate = async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.id));
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    const { name, firstName, lastName, phone, mobile } = req.body;
+
+    let targetFirstName = firstName;
+    let targetLastName = lastName;
+
+    if (name !== undefined && (!firstName && !lastName)) {
+      const parts = String(name).trim().split(/\s+/);
+      targetFirstName = parts[0] || 'User';
+      targetLastName = parts.slice(1).join(' ') || '';
+    }
+
+    const targetPhone = phone !== undefined ? phone : mobile;
+
+    let updatedEmployee: any = null;
+    let entityData: any = null;
+
+    if (user.employeeId) {
+      const updatePayload: any = { updatedAt: new Date() };
+      if (targetFirstName !== undefined) updatePayload.firstName = String(targetFirstName).trim();
+      if (targetLastName !== undefined) updatePayload.lastName = String(targetLastName).trim();
+      if (targetPhone !== undefined) updatePayload.phone = String(targetPhone).trim();
+
+      const [emp] = await db
+        .update(employees)
+        .set(updatePayload)
+        .where(eq(employees.id, user.employeeId))
+        .returning();
+      updatedEmployee = emp;
+    } else {
+      const [emp] = await db
+        .select()
+        .from(employees)
+        .where(eq(employees.email, user.email.toLowerCase().trim()));
+      if (emp) {
+        const updatePayload: any = { updatedAt: new Date() };
+        if (targetFirstName !== undefined) updatePayload.firstName = String(targetFirstName).trim();
+        if (targetLastName !== undefined) updatePayload.lastName = String(targetLastName).trim();
+        if (targetPhone !== undefined) updatePayload.phone = String(targetPhone).trim();
+
+        const [updated] = await db
+          .update(employees)
+          .set(updatePayload)
+          .where(eq(employees.id, emp.id))
+          .returning();
+        updatedEmployee = updated;
+        await db.update(users).set({ employeeId: emp.id }).where(eq(users.id, user.id));
+      }
+    }
+
+    if (updatedEmployee?.entityId) {
+      const [ent] = await db.select().from(entities).where(eq(entities.id, updatedEmployee.entityId));
+      entityData = ent;
+    }
+
+    const resolvedName = updatedEmployee
+      ? `${updatedEmployee.firstName || ''} ${updatedEmployee.lastName || ''}`.trim()
+      : (name || user.email.split('@')[0]);
+
+    const resolvedPhone = updatedEmployee?.phone || (targetPhone !== undefined ? targetPhone : '');
+
+    return res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        employeeId: user.employeeId || updatedEmployee?.id || undefined,
+        managedTeamId: user.managedTeamId || undefined,
+        name: resolvedName,
+        firstName: updatedEmployee?.firstName || targetFirstName || '',
+        lastName: updatedEmployee?.lastName || targetLastName || '',
+        phone: resolvedPhone,
+        employeeCode: updatedEmployee?.employeeCode || 'EHM-EMP01',
+        designation: updatedEmployee?.designation || '',
+        entityName: entityData?.name || 'EHM consultancy',
+        entityCode: entityData?.code || 'EHM',
+      },
+    });
+  } catch (err: any) {
+    console.error('[PROFILE UPDATE ERROR]:', err);
+    return res.status(500).json({ message: err.message || 'Failed to update profile' });
+  }
+};
+
+router.patch('/profile', handleProfileUpdate);
+router.put('/profile', handleProfileUpdate);
 
 // POST /api/auth/accept-invite (Supports cryptographic invite token OR direct registered email activation)
 router.post('/accept-invite', async (req: Request, res: Response) => {

@@ -142,6 +142,45 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
+// PATCH /api/epics/:id - Update Epic details
+router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const epicId = req.params.id as string;
+  const { title, description, initiativeId, department, targetWeek, sprintsCountTarget, status } = req.body;
+
+  let mappedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | undefined = undefined;
+  if (status !== undefined) {
+    const s = String(status).toUpperCase();
+    if (['DONE', 'COMPLETED', 'ARCHIVED'].includes(s)) mappedStatus = 'COMPLETED';
+    else if (['IN_PROGRESS', 'ACTIVE'].includes(s)) mappedStatus = 'IN_PROGRESS';
+    else if (s === 'PLANNED') mappedStatus = 'PLANNED';
+  }
+
+  try {
+    const [updated] = await db
+      .update(epics)
+      .set({
+        title: title !== undefined ? title : undefined,
+        description: description !== undefined ? description : undefined,
+        initiativeId: initiativeId !== undefined ? initiativeId : undefined,
+        department: department !== undefined ? department : undefined,
+        targetWeek: targetWeek !== undefined ? targetWeek : undefined,
+        sprintsCountTarget: sprintsCountTarget !== undefined ? Number(sprintsCountTarget) : undefined,
+        status: mappedStatus !== undefined ? mappedStatus : undefined,
+      })
+      .where(eq(epics.id, epicId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Epic not found' });
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[PATCH EPIC ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to update epic' });
+  }
+});
+
 // DELETE /api/epics/:id - Admin protected epic deletion
 router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
   const epicId = req.params.id as string;

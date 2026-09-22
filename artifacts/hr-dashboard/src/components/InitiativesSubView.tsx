@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
+import { CalendarPicker } from './CalendarPicker';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -104,7 +105,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
   const [departmentName, setDepartmentName] = useState('Marketing');
   const [subDepartment, setSubDepartment] = useState('');
   const [targetMonth, setTargetMonth] = useState('Month 1 (Weeks 1–4)');
-  const [epicsCountTarget, setEpicsCountTarget] = useState(3);
+  const [epicsCountTarget, setEpicsCountTarget] = useState<number>(0);
   const [targetDeliverableMetric, setTargetDeliverableMetric] = useState('');
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
@@ -167,13 +168,30 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     setEditEntityId(viewingInitiative.entityId || 'ehmconsultancy');
     setEditSubDepartment(viewingInitiative.subDepartment || '');
     setEditTargetMonth(viewingInitiative.targetMonth || 'Month 1 (Weeks 1–4)');
-    setEditEpicsCountTarget(viewingInitiative.epicsCountTarget || 3);
+    setEditEpicsCountTarget(viewingInitiative.epicsCountTarget || 0);
     setEditTargetDeliverableMetric(viewingInitiative.targetDeliverableMetric || '');
     setIsEditMode(true);
   };
 
   const cancelEditMode = () => {
     setIsEditMode(false);
+  };
+
+  const handleAdjustEpicsCount = async (newTarget: number) => {
+    if (!viewingInitiative) return;
+    const target = Math.max(0, newTarget);
+    try {
+      await fetchApi(`/api/initiatives/${viewingInitiative.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ epicsCountTarget: target }),
+      });
+      setViewingInitiative(prev => prev ? { ...prev, epicsCountTarget: target } : null);
+      setEditEpicsCountTarget(target);
+      toast.success(`Target epics count updated to ${target === 0 ? 'Flexible' : target}`);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update epics target count');
+    }
   };
 
   const handleEpicStatusChange = async (epicId: string, newStatus: string) => {
@@ -288,7 +306,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
           entityId,
           subDepartment: `${departmentName}${subDepartment ? ' - ' + subDepartment : ''}`,
           targetMonth,
-          epicsCountTarget,
+          epicsCountTarget: epicsCountTarget > 0 ? epicsCountTarget : undefined,
           targetDeliverableMetric,
         }),
       });
@@ -297,9 +315,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
       setDescription('');
       setSubDepartment('');
       setTargetMonth('Month 1 (Weeks 1–4)');
-      setEpicsCountTarget(3);
+      setEpicsCountTarget(0);
       setTargetDeliverableMetric('');
       setIsModalOpen(false);
+      window.dispatchEvent(new CustomEvent('initiatives-updated'));
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create initiative');
@@ -383,7 +402,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
           {/* Active / Archived Initiatives List */}
           {displayedInitiatives.map((item) => {
             const targetMonthStr = item.targetMonth || 'Month 1 (Weeks 1–4)';
-            const epicsDivision = item.epicsCountTarget || 3;
+            const epicsDivision = item.epicsCountTarget && item.epicsCountTarget > 0 ? item.epicsCountTarget : null;
             const isDone = item.status === 'DONE' || item.status === 'COMPLETED';
             const isInProgress = item.status === 'ACTIVE' || item.status === 'IN_PROGRESS';
             const isSelected = selectedInitiativeIdToView === item.id || selectedInitiativeIdToView === item.initiativeCode;
@@ -444,31 +463,15 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-bold text-gray-500 hidden sm:inline-block">
-                      {item.epicsCount || 0} epic{item.epicsCount !== 1 ? 's' : ''}
+                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
+                      isDone
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : isInProgress
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-gray-100 text-gray-600 border-gray-200'
+                    }`}>
+                      {item.status || 'PLANNED'}
                     </span>
-
-                    {/* Status Dropdown */}
-                    <select
-                      disabled={!isManager}
-                      value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
-                      onChange={(e) => {
-                        if (!isManager) return;
-                        openStatusConfirmModal(item, e.target.value);
-                      }}
-                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${!isManager ? 'cursor-default opacity-85' : 'cursor-pointer'} outline-none transition-all ${
-                        isDone
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : isInProgress
-                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                          : 'bg-purple-50 text-purple-700 border-purple-200'
-                      }`}
-                      title={!isManager ? "Initiative Status (View Only)" : "Change Initiative Status"}
-                    >
-                      <option value="PLANNED">Planned</option>
-                      <option value="ACTIVE">In progress</option>
-                      <option value="DONE">Done</option>
-                    </select>
 
                     <button
                       type="button"
@@ -476,29 +479,29 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                         setViewingInitiative(item);
                         setIsEditMode(false);
                       }}
-                      className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg transition-all cursor-pointer shadow-2xs"
-                      title="View Full Initiative Details"
+                      className="p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 cursor-pointer"
+                      title="View Initiative Details"
                     >
-                      <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                      <Eye className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Expanded Details Body */}
+                {/* Collapsed Body View */}
                 {!isCollapsed && (
                   <div className="p-4 space-y-3 bg-white">
                     {item.description && (
-                      <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                        {item.description}
-                      </p>
+                      <div className="text-xs text-gray-600 font-medium line-clamp-2 leading-relaxed">
+                        <MarkdownViewer content={item.description} />
+                      </div>
                     )}
 
-                    {/* Metadata Items & Progress */}
-                    <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500">
-                      <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                    {/* Metadata & Progress Summary Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100 text-xs text-gray-500">
+                      <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-gray-400" />
-                          <span>{targetMonthStr}</span>
+                          <span className="font-semibold text-gray-700">{targetMonthStr}</span>
                         </div>
 
                         {item.subDepartment && (
@@ -519,11 +522,11 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                         <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full rounded-full transition-all duration-500 bg-emerald-500"
-                            style={{ width: `${Math.min(100, Math.max(5, Math.round((item.epicsCount / epicsDivision) * 100)))}%` }}
+                            style={{ width: epicsDivision ? `${Math.min(100, Math.max(5, Math.round((item.epicsCount / epicsDivision) * 100)))}%` : `${item.epicsCount > 0 ? 100 : 0}%` }}
                           />
                         </div>
                         <span className="text-[10px] font-bold text-gray-600 whitespace-nowrap">
-                          {item.epicsCount} of {epicsDivision} epics
+                          {epicsDivision ? `${item.epicsCount} of ${epicsDivision} epics` : `${item.epicsCount} epics`}
                         </span>
                       </div>
                     </div>
@@ -583,20 +586,24 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     <span>Delete</span>
                   </button>
                 )}
-                {isManager && (
+
+                {isManager && !isEditMode && (
                   <button
                     type="button"
-                    onClick={isEditMode ? cancelEditMode : startEditMode}
-                    className="px-3.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                    onClick={startEditMode}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
                   >
-                    {isEditMode ? 'Cancel' : 'Edit'}
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit</span>
                   </button>
                 )}
+
                 <button
+                  type="button"
                   onClick={() => {
                     setViewingInitiative(null);
                     setIsEditMode(false);
-                    onClearSelectedInitiative?.();
+                    if (onClearSelectedInitiative) onClearSelectedInitiative();
                   }}
                   className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
                 >
@@ -607,25 +614,33 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
-              {/* Badges line */}
+              {/* Breadcrumb & Badges */}
               {(() => {
-                const isCAG = (viewingInitiative.entityName || viewingInitiative.initiativeCode || '').toLowerCase().includes('cag') || (viewingInitiative.entityName || '').toLowerCase().includes('climagro');
-                const isDone = viewingInitiative.status === 'DONE' || viewingInitiative.status === 'COMPLETED';
-                const isInProgress = viewingInitiative.status === 'ACTIVE' || viewingInitiative.status === 'IN_PROGRESS';
-                const statusLabel = isDone ? 'Done' : isInProgress ? 'In progress' : 'Planned';
+                const isCAG = viewingInitiative.entityId === 'climagroanalytics' || viewingInitiative.initiativeCode.startsWith('CAG');
+                const rawStatus = viewingInitiative.status || 'PLANNED';
+                const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
                 return (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
-                      {viewingInitiative.initiativeCode}
-                    </span>
-                    <span className="text-gray-300 font-bold">•</span>
-                    <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
-                      {isCAG ? 'Climagro' : 'EHM'}
-                    </span>
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
-                      {statusLabel}
-                    </span>
+                  <div className="space-y-3">
+                    {/* Breadcrumb */}
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                      <span className="text-gray-400">Initiative</span>
+                      <span>&gt;</span>
+                      <span className="text-gray-700 font-semibold">{viewingInitiative.title}</span>
+                    </div>
+
+                    {/* Badges line */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                        {viewingInitiative.initiativeCode}
+                      </span>
+                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
+                        {isCAG ? 'Climagro' : 'EHM'}
+                      </span>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                        {statusLabel}
+                      </span>
+                    </div>
                   </div>
                 );
               })()}
@@ -686,10 +701,19 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               {/* 3-Column Metadata Grid */}
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <div>
-                  <span className="text-xs text-gray-400 font-medium block mb-1">Timeline</span>
-                  <span className="text-xs font-bold text-gray-900 block">
-                    {viewingInitiative.targetMonth || 'Month 1 • weeks 1–4'}
-                  </span>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Timeline / Month</span>
+                  {isEditMode ? (
+                    <CalendarPicker
+                      value={editTargetMonth}
+                      onChange={(formatted) => setEditTargetMonth(formatted)}
+                      placeholder="e.g. October 2026"
+                      formatMode="month"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold text-gray-900 block">
+                      {viewingInitiative.targetMonth || 'Month 1 • weeks 1–4'}
+                    </span>
+                  )}
                 </div>
 
                 <div>
@@ -717,23 +741,65 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               {/* Linked Epics Section */}
               {(() => {
                 const childEpics = viewingInitiative.epics || [];
-                const targetEpicsCount = viewingInitiative.epicsCountTarget || 3;
+                const targetEpicsCount = isEditMode
+                  ? (editEpicsCountTarget || 0)
+                  : (viewingInitiative.epicsCountTarget || 0);
                 const createdCount = childEpics.length;
 
                 return (
                   <div className="space-y-4 pt-4 border-t border-gray-100">
-                    {/* Header line & Progress Bar */}
+                    {/* Header line & Progress Bar & Quick Adjust Stepper */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-gray-900">Linked epics</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900">Linked epics</h4>
+                          {/* Admin/Manager Quick Count Stepper */}
+                          {(isAdmin || isManager) && (
+                            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isEditMode) {
+                                    setEditEpicsCountTarget(prev => Math.max(0, (prev || 0) - 1));
+                                  } else {
+                                    handleAdjustEpicsCount(Math.max(0, (viewingInitiative.epicsCountTarget || createdCount) - 1));
+                                  }
+                                }}
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-colors"
+                                title="Decrease Target Epics Count"
+                              >
+                                -
+                              </button>
+                              <span className="text-[11px] font-bold text-gray-700 px-1 font-mono">
+                                {targetEpicsCount > 0 ? `${targetEpicsCount} planned` : 'Flexible'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isEditMode) {
+                                    setEditEpicsCountTarget(prev => (prev || 0) + 1);
+                                  } else {
+                                    handleAdjustEpicsCount((viewingInitiative.epicsCountTarget || createdCount) + 1);
+                                  }
+                                }}
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-emerald-700 hover:bg-emerald-100/70 rounded transition-colors"
+                                title="Increase Target Epics Count"
+                              >
+                                +
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         <span className="text-xs font-medium text-gray-500">
-                          {createdCount} of {targetEpicsCount} created
+                          {targetEpicsCount > 0 ? `${createdCount} of ${targetEpicsCount} created` : `${createdCount} created (Flexible)`}
                         </span>
                       </div>
+
                       <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, Math.round((createdCount / targetEpicsCount) * 100))}%` }}
+                          style={{ width: targetEpicsCount > 0 ? `${Math.min(100, Math.round((createdCount / targetEpicsCount) * 100))}%` : `${createdCount > 0 ? 100 : 0}%` }}
                         />
                       </div>
                     </div>
@@ -784,8 +850,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                         );
                       })}
 
-                      {/* Uncreated Epic Slots */}
-                      {Array.from({ length: Math.max(0, targetEpicsCount - createdCount) }).map((_, idx) => (
+                      {/* Uncreated Epic Slots if a target > created is configured */}
+                      {targetEpicsCount > createdCount && Array.from({ length: targetEpicsCount - createdCount }).map((_, idx) => (
                         <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
                           <span>Epic slot {createdCount + idx + 1} — not created yet</span>
                           <button
@@ -1084,37 +1150,53 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 />
               </div>
 
-              {/* Target Month & How many Epics division for this */}
+              {/* Target Month & Planned Epics Count */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Month *</label>
-                  <select
-                    required
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Month / Date</label>
+                  <CalendarPicker
                     value={targetMonth}
-                    onChange={(e) => setTargetMonth(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                  >
-                    <option value="Month 1 (Weeks 1–4)">Month 1 (Weeks 1–4)</option>
-                    <option value="Month 2 (Weeks 5–8)">Month 2 (Weeks 5–8)</option>
-                    <option value="Month 3 (Weeks 9–12)">Month 3 (Weeks 9–12)</option>
-                  </select>
+                    onChange={(formatted) => setTargetMonth(formatted)}
+                    placeholder="e.g. September 2026"
+                    formatMode="month"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">How many Epics division for this? *</label>
-                  <select
-                    value={epicsCountTarget}
-                    onChange={(e) => setEpicsCountTarget(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                  >
-                    <option value={1}>1 Epic</option>
-                    <option value={2}>2 Epics</option>
-                    <option value={3}>3 Epics</option>
-                    <option value={4}>4 Epics</option>
-                    <option value={5}>5 Epics</option>
-                    <option value={6}>6 Epics</option>
-                    <option value={8}>8 Epics</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Planned Epics Target</label>
+                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEpicsCountTarget(prev => Math.max(0, (prev || 0) - 1))}
+                      className="px-2.5 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl border border-gray-200 cursor-pointer transition-colors"
+                      title="Decrease Epics Count"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      placeholder="Flexible / No limit"
+                      value={epicsCountTarget > 0 ? epicsCountTarget : ''}
+                      onChange={(e) => setEpicsCountTarget(e.target.value ? Number(e.target.value) : 0)}
+                      className="w-full text-center px-2 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEpicsCountTarget(prev => (prev || 0) + 1)}
+                      className="px-2.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 cursor-pointer transition-colors"
+                      title="Increase Epics Count"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-medium mt-1">
+                    {epicsCountTarget > 0 ? `Target set to ${epicsCountTarget} epics.` : 'Leave blank/0 for dynamic flexible count.'}
+                  </p>
                 </div>
               </div>
 

@@ -120,7 +120,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // PUT /api/sprints/:id - Manager/Admin protected sprint properties update
 router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
-  const { name, goal, startDate, endDate, status } = req.body;
+  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId } = req.body;
 
   try {
     const updatePayload: any = {};
@@ -129,6 +129,10 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (startDate !== undefined) updatePayload.startDate = new Date(startDate);
     if (endDate !== undefined) updatePayload.endDate = new Date(endDate);
     if (status !== undefined) updatePayload.status = status;
+    if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek;
+    if (department !== undefined) updatePayload.department = department;
+    if (epicId !== undefined) updatePayload.epicId = epicId || null;
+    if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;
 
     const [updated] = await db
       .update(sprints)
@@ -143,6 +147,40 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     res.json(updated);
   } catch (err: any) {
     console.error('[UPDATE SPRINT ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to update sprint' });
+  }
+});
+
+// Also support PATCH /api/sprints/:id
+router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const sprintId = req.params.id as string;
+  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId } = req.body;
+
+  try {
+    const updatePayload: any = {};
+    if (name !== undefined) updatePayload.name = name;
+    if (goal !== undefined) updatePayload.goal = goal;
+    if (startDate !== undefined) updatePayload.startDate = new Date(startDate);
+    if (endDate !== undefined) updatePayload.endDate = new Date(endDate);
+    if (status !== undefined) updatePayload.status = status;
+    if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek;
+    if (department !== undefined) updatePayload.department = department;
+    if (epicId !== undefined) updatePayload.epicId = epicId || null;
+    if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;
+
+    const [updated] = await db
+      .update(sprints)
+      .set(updatePayload)
+      .where(eq(sprints.id, sprintId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Sprint not found' });
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[PATCH SPRINT ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update sprint' });
   }
 });
