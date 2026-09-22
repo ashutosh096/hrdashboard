@@ -92,13 +92,22 @@ export const ApplicationsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const isEmployee = user?.role === 'EMPLOYEE';
+  const [dbEmployees, setDbEmployees] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchApi<any[]>('/api/employees')
+      .then((data) => {
+        if (Array.isArray(data)) setDbEmployees(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Add Application Form State
   const [title, setTitle] = useState('');
   const [urlLink, setUrlLink] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('High');
   const [reviewingLead, setReviewingLead] = useState('Dr. Harshit Mishra');
-  const [assignedTo, setAssignedTo] = useState(user?.name || 'Priyanka Sharma');
+  const [assignedTo, setAssignedTo] = useState(user?.name || 'Ashutosh Mishra');
   const [description, setDescription] = useState('');
 
   // Status Update Modal State for Applications
@@ -114,7 +123,7 @@ export const ApplicationsView: React.FC = () => {
   const [projectEntity, setProjectEntity] = useState<'EHM' | 'CAG'>('EHM');
   const [projectCategory, setProjectCategory] = useState('Environmental Compliance');
   const [projectLead, setProjectLead] = useState('Dr. Harshit Mishra');
-  const [projectTeam, setProjectTeam] = useState('Ashutosh Mishra, Priyanka Sharma');
+  const [projectTeam, setProjectTeam] = useState('Ashutosh Mishra, Pranshu Dubey');
   const [projectBudget] = useState('$45,000');
   const [projectStartDate, setProjectStartDate] = useState('2026-09-01');
   const [projectTargetDate, setProjectTargetDate] = useState('2026-12-15');
@@ -129,7 +138,7 @@ export const ApplicationsView: React.FC = () => {
   // Multi-select Team Members State
   const [selectedTeamMemberNames, setSelectedTeamMemberNames] = useState<string[]>([
     'Ashutosh Mishra',
-    'Priyanka Sharma',
+    'Pranshu Dubey',
   ]);
 
   // Project Clone & Comments Modal State
@@ -137,17 +146,6 @@ export const ApplicationsView: React.FC = () => {
   const [cloneSourceProjectId, setCloneSourceProjectId] = useState('');
   const [projectComments, setProjectComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
   const [newProjectCommentText, setNewProjectCommentText] = useState('');
-
-  const TEAM_MEMBERS_LIST = [
-    { id: 'tm-1', name: 'Ashutosh Mishra', code: 'EHM-EMP01' },
-    { id: 'tm-2', name: 'Priyanka Sharma', code: 'EHM-EMP02' },
-    { id: 'tm-3', name: 'Prerna Shukla', code: 'EHM-EMP03' },
-    { id: 'tm-4', name: 'Himanshu Tiwari', code: 'CAG-EMP01' },
-    { id: 'tm-5', name: 'Utkarsh Mishra', code: 'EHM-EMP04' },
-    { id: 'tm-6', name: 'Shreyansh Siladar', code: 'CAG-EMP02' },
-    { id: 'tm-7', name: 'Dr. Utsav Mishra', code: 'CAG-EMP03' },
-    { id: 'tm-8', name: "Tarul Ma'am", code: 'EHM-EMP06' },
-  ];
 
   const handleAddProjectComment = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1004,11 +1002,19 @@ export const ApplicationsView: React.FC = () => {
                     onChange={(e) => setProjectLead(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
                   >
-                    <option value="Dr. Harshit Mishra">Dr. Harshit Mishra (VP Tech & Lead)</option>
-                    <option value="Neha Shukla">Neha Shukla (HR & Delivery Manager)</option>
-                    <option value="Dr. Utsav Mishra">Dr. Utsav Mishra (AI & Research Lead)</option>
-                    <option value="Tarul Ma'am">Tarul Ma'am (Operations Lead)</option>
-                    <option value="Jitendra Sir">Jitendra Sir (Governance & Grants)</option>
+                    {dbEmployees.length === 0 ? (
+                      <option value="Ashutosh Mishra">Ashutosh Mishra (Admin Lead)</option>
+                    ) : (
+                      dbEmployees.map((emp) => {
+                        const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
+                        const designation = emp.designation || 'Lead';
+                        return (
+                          <option key={emp.id} value={name}>
+                            {name} ({designation})
+                          </option>
+                        );
+                      })
+                    )}
                   </select>
                 </div>
 

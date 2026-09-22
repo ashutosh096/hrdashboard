@@ -1,12 +1,13 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T06:41:44.051Z
-> Total Source Files Included: 149
+> Generated on: 2026-09-22T06:48:46.707Z
+> Total Source Files Included: 150
 
 ## Table of Contents
 
 - [artifacts/api-server/.env.example](#file-artifacts-api-server--env-example)
 - [artifacts/api-server/package.json](#file-artifacts-api-server-package-json)
+- [artifacts/api-server/src/audit_users.ts](#file-artifacts-api-server-src-audit_users-ts)
 - [artifacts/api-server/src/clean_production_seed.ts](#file-artifacts-api-server-src-clean_production_seed-ts)
 - [artifacts/api-server/src/comprehensive_e2e_test.ts](#file-artifacts-api-server-src-comprehensive_e2e_test-ts)
 - [artifacts/api-server/src/config/jwt.ts](#file-artifacts-api-server-src-config-jwt-ts)
@@ -223,6 +224,43 @@ GOOGLE_CLIENT_SECRET="mock-google-client-secret"
     "typescript": "^5.7.0"
   }
 }
+
+```
+
+---
+
+### File: `artifacts/api-server/src/audit_users.ts`
+
+```typescript
+import { db, users, employees } from '@workspace/db';
+import { eq } from 'drizzle-orm';
+
+async function fixAndAudit() {
+  // Update Ashutosh Mishra code to EHM-ADM01 and role to ADMIN
+  await db.update(employees).set({
+    employeeCode: 'EHM-ADM01',
+    designation: 'Managing Director & Founder',
+  }).where(eq(employees.email, 'ashutosh@ehmconsultancy.com'));
+
+  await db.update(users).set({
+    role: 'ADMIN',
+    status: 'ACTIVE',
+  }).where(eq(users.email, 'ashutosh@ehmconsultancy.com'));
+
+  const allUsers = await db.select().from(users);
+  console.log('ALL USERS IN DB:');
+  for (const u of allUsers) {
+    console.log(`- ID: ${u.id}, Email: ${u.email}, Role: ${u.role}, Status: ${u.status}, EmployeeId: ${u.employeeId}`);
+  }
+
+  const allEmployees = await db.select().from(employees);
+  console.log('\nALL EMPLOYEES IN DB:');
+  for (const e of allEmployees) {
+    console.log(`- ID: ${e.id}, Code: ${e.employeeCode}, Name: ${e.firstName} ${e.lastName}, Email: ${e.email}`);
+  }
+}
+
+fixAndAudit().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
 
 ```
 
@@ -7967,134 +8005,6 @@ export interface EmployeeDeliverableTask {
   notes?: string;
   sprintWeek?: string;
 }
-
-// 12 Team Members list for Team Directory Exception inside Employee View
-const FULL_TEAM_MEMBERS = [
-  { id: 'tm-1', name: 'Ashutosh Mishra', role: 'Lead Systems Architect', dept: 'Product & Tech', entity: 'EHM', avatar: MALE_AVATAR, status: 'Active', tasks: 5 },
-  { id: 'tm-2', name: 'Priyanka Sharma', role: 'Senior Brand Strategist', dept: 'Marketing', entity: 'EHM', avatar: FEMALE_AVATAR, status: 'Active', tasks: 7 },
-  { id: 'tm-3', name: 'Utkarsh Mishra', role: 'Operations Lead', dept: 'Operations & Delivery', entity: 'EHM', avatar: MALE_AVATAR, status: 'Active', tasks: 6 },
-  { id: 'tm-4', name: 'Prerna Shukla', role: 'Grants Strategist', dept: 'Grants & Governance', entity: 'EHM', avatar: FEMALE_AVATAR, status: 'Active', tasks: 9 },
-  { id: 'tm-5', name: 'Shreyansh Siladar', role: 'Social Media Lead', dept: 'SM Marketing', entity: 'EHM', avatar: MALE_AVATAR, status: 'Active', tasks: 4 },
-  { id: 'tm-6', name: "Tarul Ma'am", role: 'Delivery Associate', dept: 'Operations & Delivery', entity: 'CAG', avatar: FEMALE_AVATAR, status: 'Active', tasks: 3 },
-  { id: 'tm-7', name: 'Dr. Harshit Mishra', role: 'CTO & VP Tech', dept: 'Product & Tech', entity: 'EHM', avatar: MALE_AVATAR, status: 'Active', tasks: 8 },
-  { id: 'tm-8', name: 'Neha Shukla', role: 'Brand Manager', dept: 'Marketing', entity: 'EHM', avatar: FEMALE_AVATAR, status: 'Active', tasks: 5 },
-  { id: 'tm-9', name: 'Dr. Utsav Mishra', role: 'Governance Lead', dept: 'Grants & Governance', entity: 'CAG', avatar: MALE_AVATAR, status: 'Active', tasks: 6 },
-  { id: 'tm-10', name: 'Jitendra Sir', role: 'Executive Advisor', dept: 'Executive Board', entity: 'EHM', avatar: MALE_AVATAR, status: 'Active', tasks: 2 },
-  { id: 'tm-11', name: 'Pranshu Dubey', role: 'DevOps Lead', dept: 'Product & Tech', entity: 'EHM', avatar: MALE_AVATAR, status: 'Active', tasks: 5 },
-  { id: 'tm-12', name: 'Himanshu Tiwari', role: 'QA & Testing Lead', dept: 'Product & Tech', entity: 'CAG', avatar: MALE_AVATAR, status: 'Active', tasks: 4 },
-];
-
-const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
-  {
-    id: 'emp-t1',
-    taskId: 'EHM-EMP01-001',
-    title: 'API Gateway Telemetry Pipeline Integration',
-    dept: 'Product & Tech',
-    entity: 'EHM',
-    priority: 'HIGH',
-    lead: 'Dr. Harshit Mishra',
-    assigneeName: 'Ashutosh Mishra',
-    status: 'In Progress',
-    dueDate: '2026-09-08',
-    outputUrl: 'https://github.com/ehm/api-gateway-telemetry',
-    waitingOn: 'None (Self)',
-    notes: 'Configuring GraphQL gateway telemetry and rate limiting middlewares.',
-    delayRequested: false,
-    sprintWeek: 'Week 1 (Days 1–7)',
-    completionPct: 75,
-  },
-  {
-    id: 'emp-t2',
-    taskId: 'EHM-EMP01-002',
-    title: 'Real-time WebSocket Notification & Push Engine',
-    dept: 'Product & Tech',
-    entity: 'EHM',
-    priority: 'HIGH',
-    lead: 'Jitendra Sir',
-    assigneeName: 'Ashutosh Mishra',
-    status: 'Done',
-    dueDate: '2026-09-05',
-    outputUrl: 'https://canva.link/push-engine-architecture',
-    waitingOn: 'None (Self)',
-    notes: 'Completed Redis pub/sub channel setup and tested 500 concurrent connections.',
-    delayRequested: false,
-    sprintWeek: 'Week 1 (Days 1–7)',
-    completionPct: 100,
-  },
-  {
-    id: 'emp-t3',
-    taskId: 'EHM-EMP01-003',
-    title: 'OAuth2 & Role-Based Access Security Audit',
-    dept: 'Product & Tech',
-    entity: 'EHM',
-    priority: 'URGENT',
-    lead: 'Jitendra Sir',
-    assigneeName: 'Ashutosh Mishra',
-    status: 'In Progress',
-    dueDate: '2026-09-09',
-    outputUrl: 'https://drive.google.com/oauth2-security-audit',
-    waitingOn: 'Waiting on Reviewing Lead',
-    notes: 'Auditing JWT expiration and bearer token scopes across API endpoints.',
-    delayRequested: false,
-    sprintWeek: 'Week 1 (Days 1–7)',
-    completionPct: 60,
-  },
-  {
-    id: 'emp-t4',
-    taskId: 'EHM-EMP01-004',
-    title: 'Supabase Database DDL Schema Migration Review',
-    dept: 'Product & Tech',
-    entity: 'EHM',
-    priority: 'MEDIUM',
-    lead: 'Dr. Harshit Mishra',
-    assigneeName: 'Ashutosh Mishra',
-    status: 'Done',
-    dueDate: '2026-09-04',
-    outputUrl: 'https://github.com/ehm/db-schema-migrations',
-    waitingOn: 'None (Self)',
-    notes: 'Applied PostgreSQL migration script for initiatives, epics, and sprint relations.',
-    delayRequested: false,
-    sprintWeek: 'Week 1 (Days 1–7)',
-    completionPct: 100,
-  },
-  {
-    id: 'emp-t5',
-    taskId: 'EHM-EMP01-005',
-    title: 'Automated CI/CD Deployment Pipeline Optimization',
-    dept: 'Product & Tech',
-    entity: 'EHM',
-    priority: 'HIGH',
-    lead: 'Pranshu Dubey',
-    assigneeName: 'Ashutosh Mishra',
-    status: 'Delayed',
-    dueDate: '2026-09-06',
-    outputUrl: 'https://github.com/ehm/cicd-pipeline',
-    waitingOn: 'Staging Environment Readiness',
-    notes: 'Awaiting Docker image artifact builds for integration testing suite.',
-    delayRequested: true,
-    sprintWeek: 'Week 1 (Days 1–7)',
-    completionPct: 40,
-  },
-];
-
-const DEFAULT_EMPLOYEE_MEETINGS = [
-  {
-    id: 'm-1',
-    title: 'Engineering Tech Leadership & Architecture Sync',
-    startTime: '2026-09-07T10:00:00.000Z',
-    description: 'Weekly system design review with CTO Jitendra Sir and Dev Leads.',
-    googleMeetUrl: 'https://meet.google.com/hros-tech-sync',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 'm-2',
-    title: 'Cross-Entity Infrastructure & DevOps Retrospective',
-    startTime: '2026-09-07T14:30:00.000Z',
-    description: 'Reviewing deployment pipelines with Pranshu Dubey & Himanshu Tiwari.',
-    googleMeetUrl: 'https://meet.google.com/hros-infra-retro',
-    status: 'SCHEDULED',
-  },
-];
 
 // Recharts Personal Employee Data Analytics
 
@@ -20895,13 +20805,22 @@ export const ApplicationsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const isEmployee = user?.role === 'EMPLOYEE';
+  const [dbEmployees, setDbEmployees] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchApi<any[]>('/api/employees')
+      .then((data) => {
+        if (Array.isArray(data)) setDbEmployees(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Add Application Form State
   const [title, setTitle] = useState('');
   const [urlLink, setUrlLink] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('High');
   const [reviewingLead, setReviewingLead] = useState('Dr. Harshit Mishra');
-  const [assignedTo, setAssignedTo] = useState(user?.name || 'Priyanka Sharma');
+  const [assignedTo, setAssignedTo] = useState(user?.name || 'Ashutosh Mishra');
   const [description, setDescription] = useState('');
 
   // Status Update Modal State for Applications
@@ -20917,7 +20836,7 @@ export const ApplicationsView: React.FC = () => {
   const [projectEntity, setProjectEntity] = useState<'EHM' | 'CAG'>('EHM');
   const [projectCategory, setProjectCategory] = useState('Environmental Compliance');
   const [projectLead, setProjectLead] = useState('Dr. Harshit Mishra');
-  const [projectTeam, setProjectTeam] = useState('Ashutosh Mishra, Priyanka Sharma');
+  const [projectTeam, setProjectTeam] = useState('Ashutosh Mishra, Pranshu Dubey');
   const [projectBudget] = useState('$45,000');
   const [projectStartDate, setProjectStartDate] = useState('2026-09-01');
   const [projectTargetDate, setProjectTargetDate] = useState('2026-12-15');
@@ -20932,7 +20851,7 @@ export const ApplicationsView: React.FC = () => {
   // Multi-select Team Members State
   const [selectedTeamMemberNames, setSelectedTeamMemberNames] = useState<string[]>([
     'Ashutosh Mishra',
-    'Priyanka Sharma',
+    'Pranshu Dubey',
   ]);
 
   // Project Clone & Comments Modal State
@@ -20940,17 +20859,6 @@ export const ApplicationsView: React.FC = () => {
   const [cloneSourceProjectId, setCloneSourceProjectId] = useState('');
   const [projectComments, setProjectComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
   const [newProjectCommentText, setNewProjectCommentText] = useState('');
-
-  const TEAM_MEMBERS_LIST = [
-    { id: 'tm-1', name: 'Ashutosh Mishra', code: 'EHM-EMP01' },
-    { id: 'tm-2', name: 'Priyanka Sharma', code: 'EHM-EMP02' },
-    { id: 'tm-3', name: 'Prerna Shukla', code: 'EHM-EMP03' },
-    { id: 'tm-4', name: 'Himanshu Tiwari', code: 'CAG-EMP01' },
-    { id: 'tm-5', name: 'Utkarsh Mishra', code: 'EHM-EMP04' },
-    { id: 'tm-6', name: 'Shreyansh Siladar', code: 'CAG-EMP02' },
-    { id: 'tm-7', name: 'Dr. Utsav Mishra', code: 'CAG-EMP03' },
-    { id: 'tm-8', name: "Tarul Ma'am", code: 'EHM-EMP06' },
-  ];
 
   const handleAddProjectComment = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -21807,11 +21715,19 @@ export const ApplicationsView: React.FC = () => {
                     onChange={(e) => setProjectLead(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
                   >
-                    <option value="Dr. Harshit Mishra">Dr. Harshit Mishra (VP Tech & Lead)</option>
-                    <option value="Neha Shukla">Neha Shukla (HR & Delivery Manager)</option>
-                    <option value="Dr. Utsav Mishra">Dr. Utsav Mishra (AI & Research Lead)</option>
-                    <option value="Tarul Ma'am">Tarul Ma'am (Operations Lead)</option>
-                    <option value="Jitendra Sir">Jitendra Sir (Governance & Grants)</option>
+                    {dbEmployees.length === 0 ? (
+                      <option value="Ashutosh Mishra">Ashutosh Mishra (Admin Lead)</option>
+                    ) : (
+                      dbEmployees.map((emp) => {
+                        const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
+                        const designation = emp.designation || 'Lead';
+                        return (
+                          <option key={emp.id} value={name}>
+                            {name} ({designation})
+                          </option>
+                        );
+                      })
+                    )}
                   </select>
                 </div>
 
