@@ -1,6 +1,6 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T06:48:46.707Z
+> Generated on: 2026-09-22T06:55:05.675Z
 > Total Source Files Included: 150
 
 ## Table of Contents
@@ -3135,8 +3135,9 @@ const router = Router();
 const REFRESH_SECRET = process.env.REFRESH_SECRET || `${JWT_SECRET}_refresh_v2`;
 
 export function generateTokens(userPayload: any, rememberMe: boolean = false) {
-  const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
-  const refreshExpiresIn = rememberMe ? '30d' : '1d';
+  const tokenExpiresIn = rememberMe ? '30d' : '7d';
+  const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: tokenExpiresIn });
+  const refreshExpiresIn = rememberMe ? '60d' : '30d';
   const refreshToken = jwt.sign({ id: userPayload.id, email: userPayload.email }, REFRESH_SECRET, {
     expiresIn: refreshExpiresIn,
   });
@@ -3290,7 +3291,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
       managedTeamId: user.managedTeamId || undefined,
     };
 
-    const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
+    const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
     return res.json({ token: accessToken, user: userPayload });
   } catch {
     return res.status(401).json({ message: 'Invalid or expired refresh token' });
@@ -4069,6 +4070,7 @@ import {
   applications,
   meetings,
   meetingAttendees,
+  attendance,
   auditLogs,
   eq,
   or,
@@ -4477,6 +4479,7 @@ router.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response
       await tx.update(initiatives).set({ ownerId: null }).where(eq(initiatives.ownerId, id));
 
       await tx.delete(taskTemplates).where(eq(taskTemplates.createdBy, id));
+      await tx.delete(attendance).where(eq(attendance.employeeId, id));
       await tx.delete(applications).where(or(eq(applications.employeeId, id), eq(applications.reviewedBy, id)));
       await tx.delete(meetingAttendees).where(eq(meetingAttendees.employeeId, id));
       await tx.delete(meetings).where(eq(meetings.organizerId, id));

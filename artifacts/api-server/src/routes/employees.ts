@@ -21,6 +21,7 @@ import {
   applications,
   meetings,
   meetingAttendees,
+  attendance,
   auditLogs,
   eq,
   or,
@@ -429,6 +430,7 @@ router.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response
       await tx.update(initiatives).set({ ownerId: null }).where(eq(initiatives.ownerId, id));
 
       await tx.delete(taskTemplates).where(eq(taskTemplates.createdBy, id));
+      await tx.delete(attendance).where(eq(attendance.employeeId, id));
       await tx.delete(applications).where(or(eq(applications.employeeId, id), eq(applications.reviewedBy, id)));
       await tx.delete(meetingAttendees).where(eq(meetingAttendees.employeeId, id));
       await tx.delete(meetings).where(eq(meetings.organizerId, id));

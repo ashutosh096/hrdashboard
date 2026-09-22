@@ -11,8 +11,9 @@ const router = Router();
 const REFRESH_SECRET = process.env.REFRESH_SECRET || `${JWT_SECRET}_refresh_v2`;
 
 export function generateTokens(userPayload: any, rememberMe: boolean = false) {
-  const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
-  const refreshExpiresIn = rememberMe ? '30d' : '1d';
+  const tokenExpiresIn = rememberMe ? '30d' : '7d';
+  const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: tokenExpiresIn });
+  const refreshExpiresIn = rememberMe ? '60d' : '30d';
   const refreshToken = jwt.sign({ id: userPayload.id, email: userPayload.email }, REFRESH_SECRET, {
     expiresIn: refreshExpiresIn,
   });
@@ -166,7 +167,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
       managedTeamId: user.managedTeamId || undefined,
     };
 
-    const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
+    const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '7d' });
     return res.json({ token: accessToken, user: userPayload });
   } catch {
     return res.status(401).json({ message: 'Invalid or expired refresh token' });
