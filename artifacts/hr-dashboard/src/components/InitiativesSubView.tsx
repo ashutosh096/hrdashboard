@@ -450,15 +450,20 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
                     {/* Status Dropdown */}
                     <select
+                      disabled={!isManager}
                       value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
-                      onChange={(e) => openStatusConfirmModal(item, e.target.value)}
-                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border cursor-pointer outline-none transition-all ${
+                      onChange={(e) => {
+                        if (!isManager) return;
+                        openStatusConfirmModal(item, e.target.value);
+                      }}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${!isManager ? 'cursor-default opacity-85' : 'cursor-pointer'} outline-none transition-all ${
                         isDone
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : isInProgress
                           ? 'bg-blue-50 text-blue-700 border-blue-200'
                           : 'bg-purple-50 text-purple-700 border-purple-200'
                       }`}
+                      title={!isManager ? "Initiative Status (View Only)" : "Change Initiative Status"}
                     >
                       <option value="PLANNED">Planned</option>
                       <option value="ACTIVE">In progress</option>

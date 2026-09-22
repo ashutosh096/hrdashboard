@@ -104,7 +104,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'None (Self)',
     notes: 'Configuring GraphQL gateway telemetry and rate limiting middlewares.',
     delayRequested: false,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 75,
   },
   {
@@ -122,7 +122,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'None (Self)',
     notes: 'Completed Redis pub/sub channel setup and tested 500 concurrent connections.',
     delayRequested: false,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 100,
   },
   {
@@ -140,7 +140,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'Waiting on Reviewing Lead',
     notes: 'Auditing JWT expiration and bearer token scopes across API endpoints.',
     delayRequested: false,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 60,
   },
   {
@@ -158,7 +158,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'None (Self)',
     notes: 'Applied PostgreSQL migration script for initiatives, epics, and sprint relations.',
     delayRequested: false,
-    sprintWeek: 'Sprint 34 (Past)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 100,
   },
   {
@@ -176,7 +176,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'Staging Environment Readiness',
     notes: 'Awaiting Docker image artifact builds for integration testing suite.',
     delayRequested: true,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 40,
   },
 ];
@@ -203,10 +203,10 @@ const DEFAULT_EMPLOYEE_MEETINGS = [
 // Recharts Personal Employee Data Analytics
 
 const PERSONAL_VELOCITY_TREND = [
-  { sprint: 'Sprint 32', velocity: 88, quality: 92 },
-  { sprint: 'Sprint 33', velocity: 91, quality: 94 },
-  { sprint: 'Sprint 34', velocity: 93, quality: 96 },
-  { sprint: 'Sprint 35 (Current)', velocity: 95, quality: 98 },
+  { sprint: 'Sprint 1', velocity: 88, quality: 92 },
+  { sprint: 'Sprint 2', velocity: 91, quality: 94 },
+  { sprint: 'Sprint 3', velocity: 93, quality: 96 },
+  { sprint: 'Active Sprint', velocity: 95, quality: 98 },
 ];
 
 export const EmployeeDashboardView: React.FC = () => {
@@ -222,6 +222,7 @@ export const EmployeeDashboardView: React.FC = () => {
 
   // DB Employees & Active Employee Profile Resolution
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
+  const [sprints, setSprints] = useState<any[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
 
   // Big Responsive Tile Detail Pop-up Modal State
@@ -237,7 +238,7 @@ export const EmployeeDashboardView: React.FC = () => {
   const [newDueDate, setNewDueDate] = useState('2026-09-12');
   const [newNotes, setNewNotes] = useState('');
   const [newOutputUrl, setNewOutputUrl] = useState('');
-  const [newSprintWeek, setNewSprintWeek] = useState('Sprint 35 (Current)');
+  const [newSprintWeek, setNewSprintWeek] = useState('Week 1 (Days 1–7)');
 
   // Resolve currently selected active employee (For non-admin, strictly lock to logged-in user!)
   const isAdmin = user?.role === 'ADMIN';
@@ -300,14 +301,19 @@ export const EmployeeDashboardView: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [empData, tasksData, meetingsData] = await Promise.all([
+      const [empData, tasksData, meetingsData, sprintsData] = await Promise.all([
         fetchApi<any[]>('/api/employees').catch(() => []),
         fetchApi<any[]>('/api/tasks').catch(() => []),
         fetchApi<any[]>('/api/meetings').catch(() => []),
+        fetchApi<any[]>('/api/sprints').catch(() => []),
       ]);
 
       if (Array.isArray(empData) && empData.length > 0) {
         setDbEmployees(empData);
+      }
+
+      if (Array.isArray(sprintsData)) {
+        setSprints(sprintsData);
       }
 
       if (Array.isArray(tasksData)) {
@@ -321,6 +327,9 @@ export const EmployeeDashboardView: React.FC = () => {
         const targetId = currentTargetEmp?.id || user?.employeeId || user?.id;
         const targetEmail = (currentTargetEmp?.email || user?.email || '').toLowerCase();
 
+        const sprintMap = new Map<string, string>();
+        (sprintsData || []).forEach((s: any) => sprintMap.set(s.id, s.name));
+
         const filteredTasks = tasksData
           .filter((t) => {
             const matchesAssignment = (
@@ -333,7 +342,8 @@ export const EmployeeDashboardView: React.FC = () => {
           })
           .map((t) => {
             const matchedLeadEmp = (empData || []).find((e: any) => e.id === t.reviewingLeadId || e.employeeId === t.reviewingLeadId);
-            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Dr. Harshit Mishra');
+            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Manager Lead');
+            const resolvedSprintName = t.sprintId ? sprintMap.get(t.sprintId) : t.sprintWeek;
 
             return {
               id: t.id,
@@ -358,7 +368,7 @@ export const EmployeeDashboardView: React.FC = () => {
               waitingOn: t.waitingOn || 'None (Self)',
               notes: t.description || '',
               delayRequested: false,
-              sprintWeek: t.sprintWeek || 'Sprint 35 (Current)',
+              sprintWeek: resolvedSprintName || 'Active Sprint',
               completionPct: t.status === 'DONE' ? 100 : 65,
             };
           });
@@ -514,8 +524,18 @@ export const EmployeeDashboardView: React.FC = () => {
     return matchesSearch && matchesPriority;
   });
 
+  const activeSprint = sprints.find((s) => s.status === 'ACTIVE') || sprints[0];
+  const activeSprintName = activeSprint
+    ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name)
+    : 'Active Sprint';
+
   // Active Sprint week tasks filter
-  const activeSprintTasks = scopedMyTasks.filter((t) => (t.sprintWeek || '').includes('Sprint 35'));
+  const activeSprintTasks = scopedMyTasks.filter((t) => {
+    if (activeSprint?.id && (t as any).sprintId === activeSprint.id) return true;
+    if (activeSprint?.name && (t.sprintWeek || '').toLowerCase().includes(activeSprint.name.toLowerCase())) return true;
+    if (activeSprint?.targetWeek && (t.sprintWeek || '').toLowerCase().includes(activeSprint.targetWeek.toLowerCase())) return true;
+    return (t.sprintWeek || '').toLowerCase() !== 'backlog' && t.status !== 'Done';
+  });
 
   // Filter Team Members table search from live database
   const mappedTeamMembers = dbEmployees.map((emp) => ({
@@ -686,7 +706,9 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Active Sprint</span>
-                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">Sprint 35 Active</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5 truncate max-w-[200px]" title={activeSprintName}>
+                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint'}
+                </span>
                 <span className="text-[10px] text-emerald-700 font-bold block pt-1">{activeSprintTasks.length} active sprint items</span>
               </div>
             </div>
@@ -789,8 +811,8 @@ export const EmployeeDashboardView: React.FC = () => {
                   <h3 className="font-bold text-gray-900 text-base tracking-tight">My Assigned Deliverables & Matrix</h3>
                   <p className="text-xs text-gray-400 font-medium">Click any task to update progress, attach link, or submit notes.</p>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                  Sprint 35 Active
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full truncate max-w-[200px]" title={activeSprintName}>
+                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint'}
                 </span>
               </div>
 
@@ -1016,14 +1038,14 @@ export const EmployeeDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: MY ACTIVE SPRINT WEEK (ONLY SPRINT 35 DELIVERABLES) */}
+      {/* TAB 3: MY ACTIVE SPRINT WEEK */}
       {activeSubTab === 'SPRINT' && (
         <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
-                  Active Sprint 35 (Sept 01 - Sept 14, 2026)
+                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint Cycle'}
                 </span>
               </div>
               <h3 className="text-lg font-bold text-gray-900 tracking-tight">My Active Sprint Deliverables</h3>
@@ -1180,7 +1202,7 @@ export const EmployeeDashboardView: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 tracking-tight">Active sprints</h3>
-                      <p className="text-xs text-gray-500 font-medium">Sprint 35 active iteration tracking</p>
+                      <p className="text-xs text-gray-500 font-medium">{activeSprintName} active iteration tracking</p>
                     </div>
                   </div>
                   <button
@@ -1484,10 +1506,21 @@ export const EmployeeDashboardView: React.FC = () => {
                   <select
                     value={newSprintWeek}
                     onChange={(e) => setNewSprintWeek(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
-                    <option value="Sprint 35 (Current)">Sprint 35 (Current Active)</option>
-                    <option value="Sprint 36 (Upcoming)">Sprint 36 (Upcoming)</option>
+                    {sprints.map((s) => (
+                      <option key={s.id} value={s.targetWeek || s.name}>
+                        [{s.sprintCode || 'Sprint'}] {s.name}
+                      </option>
+                    ))}
+                    {sprints.length === 0 && (
+                      <>
+                        <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
+                        <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
+                        <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
+                        <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -1496,12 +1529,16 @@ export const EmployeeDashboardView: React.FC = () => {
                   <select
                     value={newLead}
                     onChange={(e) => setNewLead(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
-                    <option value="Dr. Harshit Mishra">Dr. Harshit Mishra (CTO)</option>
-                    <option value="Jitendra Sir">Jitendra Sir (Executive Advisor)</option>
-                    <option value="Pranshu Dubey">Pranshu Dubey (DevOps Lead)</option>
-                    <option value="Utkarsh Mishra">Utkarsh Mishra (Ops Lead)</option>
+                    {dbEmployees.map((e) => (
+                      <option key={e.id} value={`${e.firstName} ${e.lastName}`}>
+                        [{e.employeeCode || 'EMP'}] {e.firstName} {e.lastName} ({e.designation || 'Lead'})
+                      </option>
+                    ))}
+                    {dbEmployees.length === 0 && (
+                      <option value="Manager Lead">Manager Lead</option>
+                    )}
                   </select>
                 </div>
               </div>

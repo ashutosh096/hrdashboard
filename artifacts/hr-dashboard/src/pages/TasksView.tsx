@@ -242,6 +242,11 @@ export const TasksView: React.FC = () => {
   const paginatedTasks = filteredTasks.slice(startIndex, startIndex + pageSize);
 
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!isManager && !isTaskAssignedToUser(task)) {
+      toast.error('You can only update tasks assigned to you.');
+      return;
+    }
     try {
       await fetchApi(`/api/tasks/${taskId}`, {
         method: 'PUT',
@@ -677,15 +682,19 @@ export const TasksView: React.FC = () => {
                             </td>
                             <td className="py-2.5 px-3">
                               <select
+                                disabled={!isManager && !isTaskAssignedToUser(t)}
                                 value={isDone ? 'DONE' : isInProgress ? 'IN_PROGRESS' : t.status || 'BACKLOG'}
                                 onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}
-                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase border cursor-pointer focus:outline-none transition-all shadow-2xs ${
+                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase border focus:outline-none transition-all shadow-2xs ${
+                                  !isManager && !isTaskAssignedToUser(t) ? 'cursor-default opacity-80' : 'cursor-pointer'
+                                } ${
                                   isDone
                                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
                                     : isInProgress
                                     ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                                     : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
                                 }`}
+                                title={!isManager && !isTaskAssignedToUser(t) ? "Status (View Only)" : "Change Task Status"}
                               >
                                 <option value="BACKLOG">BACKLOG</option>
                                 <option value="PLANNED">PLANNED</option>
@@ -707,14 +716,16 @@ export const TasksView: React.FC = () => {
                                 </button>
 
                                 {/* Edit Button: Manager can edit all, Employee can edit assigned tasks */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleTaskClick(t, false)}
-                                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
-                                  title={isManager ? "Edit Task Details (Manager Level)" : isTaskAssignedToUser(t) ? "Edit My Assigned Task" : "Edit Task"}
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                                </button>
+                                {(isManager || isTaskAssignedToUser(t)) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTaskClick(t, false)}
+                                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
+                                    title={isManager ? "Edit Task Details (Manager Level)" : "Edit My Assigned Task"}
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>

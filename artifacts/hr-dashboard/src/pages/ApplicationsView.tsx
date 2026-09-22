@@ -738,9 +738,13 @@ export const ApplicationsView: React.FC = () => {
                                   <div className="flex items-center gap-2">
                                     <input
                                       type="checkbox"
+                                      disabled={isEmployee}
                                       checked={chk.isCompleted}
-                                      onChange={() => handleToggleProjectCardCheckpoint(prj.id, chk.id)}
-                                      className="w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                                      onChange={() => {
+                                        if (isEmployee) return;
+                                        handleToggleProjectCardCheckpoint(prj.id, chk.id);
+                                      }}
+                                      className={`w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 ${isEmployee ? 'cursor-default' : 'cursor-pointer'}`}
                                     />
                                     <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
                                       {chk.title}

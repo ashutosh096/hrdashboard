@@ -1,7 +1,7 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T06:06:49.032Z
-> Total Source Files Included: 149
+> Generated on: 2026-09-22T06:27:42.226Z
+> Total Source Files Included: 150
 
 ## Table of Contents
 
@@ -11,6 +11,7 @@
 - [artifacts/api-server/src/comprehensive_e2e_test.ts](#file-artifacts-api-server-src-comprehensive_e2e_test-ts)
 - [artifacts/api-server/src/config/jwt.ts](#file-artifacts-api-server-src-config-jwt-ts)
 - [artifacts/api-server/src/db/check_admin.ts](#file-artifacts-api-server-src-db-check_admin-ts)
+- [artifacts/api-server/src/db/check_tasks.ts](#file-artifacts-api-server-src-db-check_tasks-ts)
 - [artifacts/api-server/src/db/clean_team_codes.ts](#file-artifacts-api-server-src-db-clean_team_codes-ts)
 - [artifacts/api-server/src/db/fix_constraint.ts](#file-artifacts-api-server-src-db-fix_constraint-ts)
 - [artifacts/api-server/src/db/seed.ts](#file-artifacts-api-server-src-db-seed-ts)
@@ -1074,6 +1075,44 @@ async function checkAndSetAdmin() {
 }
 
 checkAndSetAdmin().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
+
+```
+
+---
+
+### File: `artifacts/api-server/src/db/check_tasks.ts`
+
+```typescript
+import { db, tasks, employees, epics, initiatives, sprints, users, eq } from '@workspace/db';
+
+async function checkTasks() {
+  console.log('--- ALL TASKS IN DB ---');
+  const allT = await db.select().from(tasks);
+  console.log(allT);
+
+  console.log('\n--- ALL EMPLOYEES IN DB ---');
+  const allE = await db.select().from(employees);
+  console.log(allE.map(e => ({ id: e.id, email: e.email, code: e.employeeCode, name: `${e.firstName} ${e.lastName}` })));
+
+  console.log('\n--- ALL SPRINTS IN DB ---');
+  const allS = await db.select().from(sprints);
+  console.log(allS);
+
+  console.log('\n--- ALL EPICS IN DB ---');
+  const allEpics = await db.select().from(epics);
+  console.log(allEpics);
+
+  console.log('\n--- ALL INITIATIVES IN DB ---');
+  const allInits = await db.select().from(initiatives);
+  console.log(allInits);
+
+  process.exit(0);
+}
+
+checkTasks().catch(err => {
   console.error(err);
   process.exit(1);
 });
@@ -7948,7 +7987,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'None (Self)',
     notes: 'Configuring GraphQL gateway telemetry and rate limiting middlewares.',
     delayRequested: false,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 75,
   },
   {
@@ -7966,7 +8005,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'None (Self)',
     notes: 'Completed Redis pub/sub channel setup and tested 500 concurrent connections.',
     delayRequested: false,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 100,
   },
   {
@@ -7984,7 +8023,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'Waiting on Reviewing Lead',
     notes: 'Auditing JWT expiration and bearer token scopes across API endpoints.',
     delayRequested: false,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 60,
   },
   {
@@ -8002,7 +8041,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'None (Self)',
     notes: 'Applied PostgreSQL migration script for initiatives, epics, and sprint relations.',
     delayRequested: false,
-    sprintWeek: 'Sprint 34 (Past)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 100,
   },
   {
@@ -8020,7 +8059,7 @@ const DEFAULT_EMPLOYEE_TASKS: EmployeeDeliverableTask[] = [
     waitingOn: 'Staging Environment Readiness',
     notes: 'Awaiting Docker image artifact builds for integration testing suite.',
     delayRequested: true,
-    sprintWeek: 'Sprint 35 (Current)',
+    sprintWeek: 'Week 1 (Days 1–7)',
     completionPct: 40,
   },
 ];
@@ -8047,10 +8086,10 @@ const DEFAULT_EMPLOYEE_MEETINGS = [
 // Recharts Personal Employee Data Analytics
 
 const PERSONAL_VELOCITY_TREND = [
-  { sprint: 'Sprint 32', velocity: 88, quality: 92 },
-  { sprint: 'Sprint 33', velocity: 91, quality: 94 },
-  { sprint: 'Sprint 34', velocity: 93, quality: 96 },
-  { sprint: 'Sprint 35 (Current)', velocity: 95, quality: 98 },
+  { sprint: 'Sprint 1', velocity: 88, quality: 92 },
+  { sprint: 'Sprint 2', velocity: 91, quality: 94 },
+  { sprint: 'Sprint 3', velocity: 93, quality: 96 },
+  { sprint: 'Active Sprint', velocity: 95, quality: 98 },
 ];
 
 export const EmployeeDashboardView: React.FC = () => {
@@ -8066,6 +8105,7 @@ export const EmployeeDashboardView: React.FC = () => {
 
   // DB Employees & Active Employee Profile Resolution
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
+  const [sprints, setSprints] = useState<any[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
 
   // Big Responsive Tile Detail Pop-up Modal State
@@ -8081,7 +8121,7 @@ export const EmployeeDashboardView: React.FC = () => {
   const [newDueDate, setNewDueDate] = useState('2026-09-12');
   const [newNotes, setNewNotes] = useState('');
   const [newOutputUrl, setNewOutputUrl] = useState('');
-  const [newSprintWeek, setNewSprintWeek] = useState('Sprint 35 (Current)');
+  const [newSprintWeek, setNewSprintWeek] = useState('Week 1 (Days 1–7)');
 
   // Resolve currently selected active employee (For non-admin, strictly lock to logged-in user!)
   const isAdmin = user?.role === 'ADMIN';
@@ -8144,14 +8184,19 @@ export const EmployeeDashboardView: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [empData, tasksData, meetingsData] = await Promise.all([
+      const [empData, tasksData, meetingsData, sprintsData] = await Promise.all([
         fetchApi<any[]>('/api/employees').catch(() => []),
         fetchApi<any[]>('/api/tasks').catch(() => []),
         fetchApi<any[]>('/api/meetings').catch(() => []),
+        fetchApi<any[]>('/api/sprints').catch(() => []),
       ]);
 
       if (Array.isArray(empData) && empData.length > 0) {
         setDbEmployees(empData);
+      }
+
+      if (Array.isArray(sprintsData)) {
+        setSprints(sprintsData);
       }
 
       if (Array.isArray(tasksData)) {
@@ -8165,6 +8210,9 @@ export const EmployeeDashboardView: React.FC = () => {
         const targetId = currentTargetEmp?.id || user?.employeeId || user?.id;
         const targetEmail = (currentTargetEmp?.email || user?.email || '').toLowerCase();
 
+        const sprintMap = new Map<string, string>();
+        (sprintsData || []).forEach((s: any) => sprintMap.set(s.id, s.name));
+
         const filteredTasks = tasksData
           .filter((t) => {
             const matchesAssignment = (
@@ -8177,7 +8225,8 @@ export const EmployeeDashboardView: React.FC = () => {
           })
           .map((t) => {
             const matchedLeadEmp = (empData || []).find((e: any) => e.id === t.reviewingLeadId || e.employeeId === t.reviewingLeadId);
-            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Dr. Harshit Mishra');
+            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Manager Lead');
+            const resolvedSprintName = t.sprintId ? sprintMap.get(t.sprintId) : t.sprintWeek;
 
             return {
               id: t.id,
@@ -8202,7 +8251,7 @@ export const EmployeeDashboardView: React.FC = () => {
               waitingOn: t.waitingOn || 'None (Self)',
               notes: t.description || '',
               delayRequested: false,
-              sprintWeek: t.sprintWeek || 'Sprint 35 (Current)',
+              sprintWeek: resolvedSprintName || 'Active Sprint',
               completionPct: t.status === 'DONE' ? 100 : 65,
             };
           });
@@ -8358,8 +8407,18 @@ export const EmployeeDashboardView: React.FC = () => {
     return matchesSearch && matchesPriority;
   });
 
+  const activeSprint = sprints.find((s) => s.status === 'ACTIVE') || sprints[0];
+  const activeSprintName = activeSprint
+    ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name)
+    : 'Active Sprint';
+
   // Active Sprint week tasks filter
-  const activeSprintTasks = scopedMyTasks.filter((t) => (t.sprintWeek || '').includes('Sprint 35'));
+  const activeSprintTasks = scopedMyTasks.filter((t) => {
+    if (activeSprint?.id && (t as any).sprintId === activeSprint.id) return true;
+    if (activeSprint?.name && (t.sprintWeek || '').toLowerCase().includes(activeSprint.name.toLowerCase())) return true;
+    if (activeSprint?.targetWeek && (t.sprintWeek || '').toLowerCase().includes(activeSprint.targetWeek.toLowerCase())) return true;
+    return (t.sprintWeek || '').toLowerCase() !== 'backlog' && t.status !== 'Done';
+  });
 
   // Filter Team Members table search from live database
   const mappedTeamMembers = dbEmployees.map((emp) => ({
@@ -8530,7 +8589,9 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold block">Active Sprint</span>
-                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">Sprint 35 Active</span>
+                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5 truncate max-w-[200px]" title={activeSprintName}>
+                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint'}
+                </span>
                 <span className="text-[10px] text-emerald-700 font-bold block pt-1">{activeSprintTasks.length} active sprint items</span>
               </div>
             </div>
@@ -8633,8 +8694,8 @@ export const EmployeeDashboardView: React.FC = () => {
                   <h3 className="font-bold text-gray-900 text-base tracking-tight">My Assigned Deliverables & Matrix</h3>
                   <p className="text-xs text-gray-400 font-medium">Click any task to update progress, attach link, or submit notes.</p>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                  Sprint 35 Active
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full truncate max-w-[200px]" title={activeSprintName}>
+                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint'}
                 </span>
               </div>
 
@@ -8860,14 +8921,14 @@ export const EmployeeDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: MY ACTIVE SPRINT WEEK (ONLY SPRINT 35 DELIVERABLES) */}
+      {/* TAB 3: MY ACTIVE SPRINT WEEK */}
       {activeSubTab === 'SPRINT' && (
         <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
-                  Active Sprint 35 (Sept 01 - Sept 14, 2026)
+                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint Cycle'}
                 </span>
               </div>
               <h3 className="text-lg font-bold text-gray-900 tracking-tight">My Active Sprint Deliverables</h3>
@@ -9024,7 +9085,7 @@ export const EmployeeDashboardView: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 tracking-tight">Active sprints</h3>
-                      <p className="text-xs text-gray-500 font-medium">Sprint 35 active iteration tracking</p>
+                      <p className="text-xs text-gray-500 font-medium">{activeSprintName} active iteration tracking</p>
                     </div>
                   </div>
                   <button
@@ -9328,10 +9389,21 @@ export const EmployeeDashboardView: React.FC = () => {
                   <select
                     value={newSprintWeek}
                     onChange={(e) => setNewSprintWeek(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
-                    <option value="Sprint 35 (Current)">Sprint 35 (Current Active)</option>
-                    <option value="Sprint 36 (Upcoming)">Sprint 36 (Upcoming)</option>
+                    {sprints.map((s) => (
+                      <option key={s.id} value={s.targetWeek || s.name}>
+                        [{s.sprintCode || 'Sprint'}] {s.name}
+                      </option>
+                    ))}
+                    {sprints.length === 0 && (
+                      <>
+                        <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
+                        <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
+                        <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
+                        <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -9340,12 +9412,16 @@ export const EmployeeDashboardView: React.FC = () => {
                   <select
                     value={newLead}
                     onChange={(e) => setNewLead(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
-                    <option value="Dr. Harshit Mishra">Dr. Harshit Mishra (CTO)</option>
-                    <option value="Jitendra Sir">Jitendra Sir (Executive Advisor)</option>
-                    <option value="Pranshu Dubey">Pranshu Dubey (DevOps Lead)</option>
-                    <option value="Utkarsh Mishra">Utkarsh Mishra (Ops Lead)</option>
+                    {dbEmployees.map((e) => (
+                      <option key={e.id} value={`${e.firstName} ${e.lastName}`}>
+                        [{e.employeeCode || 'EMP'}] {e.firstName} {e.lastName} ({e.designation || 'Lead'})
+                      </option>
+                    ))}
+                    {dbEmployees.length === 0 && (
+                      <option value="Manager Lead">Manager Lead</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -10226,15 +10302,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       {Array.from({ length: Math.max(0, targetTasksCount - linkedTasks.length) }).map((_, idx) => (
                         <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
                           <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              toast.info(`Creating Task slot ${linkedTasks.length + idx + 1} for ${viewingEpic.epicCode}`);
-                            }}
-                            className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
-                          >
-                            Add
-                          </button>
+                          {isManager && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toast.info(`Creating Task slot ${linkedTasks.length + idx + 1} for ${viewingEpic.epicCode}`);
+                              }}
+                              className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                            >
+                              Add
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -12034,15 +12112,20 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
                     {/* Status Dropdown */}
                     <select
+                      disabled={!isManager}
                       value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
-                      onChange={(e) => openStatusConfirmModal(item, e.target.value)}
-                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border cursor-pointer outline-none transition-all ${
+                      onChange={(e) => {
+                        if (!isManager) return;
+                        openStatusConfirmModal(item, e.target.value);
+                      }}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${!isManager ? 'cursor-default opacity-85' : 'cursor-pointer'} outline-none transition-all ${
                         isDone
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : isInProgress
                           ? 'bg-blue-50 text-blue-700 border-blue-200'
                           : 'bg-purple-50 text-purple-700 border-purple-200'
                       }`}
+                      title={!isManager ? "Initiative Status (View Only)" : "Change Initiative Status"}
                     >
                       <option value="PLANNED">Planned</option>
                       <option value="ACTIVE">In progress</option>
@@ -16280,13 +16363,19 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                         return (
                           <div
                             key={t.id}
-                            draggable={true}
+                            draggable={isManager || isTaskAssignedToUser(t)}
                             onDragStart={(e) => {
+                              if (!isManager && !isTaskAssignedToUser(t)) {
+                                e.preventDefault();
+                                return;
+                              }
                               e.dataTransfer.setData('text/plain', t.id);
                               e.dataTransfer.effectAllowed = 'move';
                             }}
                             onClick={() => handleTaskClick(t)}
-                            className="relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2 hover:shadow-md hover:border-emerald-400 transition-all cursor-grab active:cursor-grabbing group overflow-hidden select-none"
+                            className={`relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2 hover:shadow-md hover:border-emerald-400 transition-all ${
+                              isManager || isTaskAssignedToUser(t) ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                            } group overflow-hidden select-none`}
                           >
                             {/* 1. Priority (Left Edge Color Bar) */}
                             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${priorityBarColor}`} />
@@ -16312,17 +16401,19 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                                   >
                                     <Eye className="w-3 h-3 text-emerald-600" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleTaskClick(t, false);
-                                    }}
-                                    className="p-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer"
-                                    title={isManager ? "Edit Task Details (Manager Level)" : isTaskAssignedToUser(t) ? "Edit My Assigned Task" : "Edit Task"}
-                                  >
-                                    <Edit3 className="w-3 h-3 text-blue-600" />
-                                  </button>
+                                  {(isManager || isTaskAssignedToUser(t)) && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTaskClick(t, false);
+                                      }}
+                                      className="p-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer"
+                                      title={isManager ? "Edit Task Details (Manager Level)" : "Edit My Assigned Task"}
+                                    >
+                                      <Edit3 className="w-3 h-3 text-blue-600" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -21437,9 +21528,13 @@ export const ApplicationsView: React.FC = () => {
                                   <div className="flex items-center gap-2">
                                     <input
                                       type="checkbox"
+                                      disabled={isEmployee}
                                       checked={chk.isCompleted}
-                                      onChange={() => handleToggleProjectCardCheckpoint(prj.id, chk.id)}
-                                      className="w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                                      onChange={() => {
+                                        if (isEmployee) return;
+                                        handleToggleProjectCardCheckpoint(prj.id, chk.id);
+                                      }}
+                                      className={`w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 ${isEmployee ? 'cursor-default' : 'cursor-pointer'}`}
                                     />
                                     <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
                                       {chk.title}
@@ -23438,10 +23533,8 @@ import { ScheduleMeetingModal } from '../components/ScheduleMeetingModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
-import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
+import { MALE_AVATAR, FEMALE_AVATAR, getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
-
-
 
 export const MeetingsView: React.FC = () => {
   const { user } = useAuth();
@@ -23477,8 +23570,8 @@ export const MeetingsView: React.FC = () => {
   };
 
   const livePresenceList = employees.map((emp, idx) => {
-    const entity = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
-    const entityName = entity === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy';
+    const entity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM');
+    const entityName = entity === 'CAG' ? 'Climagro Analytics' : entity === 'COMMON' ? 'EHM & CLIMAGRO' : 'EHM Consultancy';
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
 
     const empMeetings = meetings.filter((m) => {
@@ -23535,14 +23628,19 @@ export const MeetingsView: React.FC = () => {
       return now >= start && now <= end;
     });
 
+    const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
+
     return {
       id: emp.id,
-      name: `${emp.firstName} ${emp.lastName}`,
+      name: empName,
+      employeeCode: emp.employeeCode || `EHM-EMP0${idx + 1}`,
       entity,
+      entityCode: entity,
+      entityId: emp.entityId,
       entityName,
-      dept: 'Engineering & Operations',
-      role: emp.designation || 'Team Member',
-      avatar: idx % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR,
+      dept: emp.departmentName || 'Product & Tech',
+      role: emp.designation || 'Team Specialist',
+      avatar: getAvatarByName(empName),
       status: isMeeting ? 'Busy in Meeting' : 'In Office (Present)',
       isMeeting,
       workMode: 'IN_OFFICE',
@@ -23926,85 +24024,150 @@ export const MeetingsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {livePresenceList.filter(item => matchesEntityFilter(item, selectedEntity)).map(item => (
-              <div key={item.id} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-5">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={item.avatar}
-                      alt={item.name}
-                      className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/20 shadow-2xs"
-                    />
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">{item.name}</h3>
-                      <span className="text-[11px] font-semibold text-gray-400 block">{item.entityName}</span>
-                      <span className="text-xs font-semibold text-emerald-600 block">{item.role}</span>
-                    </div>
-                  </div>
+          {(() => {
+            const filteredLivePresence = livePresenceList.filter(item => matchesEntityFilter(item, selectedEntity));
 
-                  <div className="flex flex-col gap-1.5">
-                    <div
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                        item.isMeeting
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : item.workMode === 'REMOTE'
-                          ? 'bg-blue-50 text-blue-800 border-blue-200'
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      }`}
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'
-                        }`}
-                      ></span>
-                      <span>{item.status}</span>
-                    </div>
+            if (filteredLivePresence.length === 0) {
+              return (
+                <div className="bg-white border border-gray-200/80 rounded-3xl p-12 text-center shadow-xs">
+                  <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <h4 className="text-sm font-bold text-gray-800">No Team Members Found</h4>
+                  <p className="text-xs text-gray-400 mt-1">
+                    No active team members matched the selected entity filter ({selectedEntity || 'ALL'}). Switch to "ALL" to view the full team directory.
+                  </p>
+                </div>
+              );
+            }
 
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-400">
-                      {item.workMode === 'REMOTE' ? <Laptop className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
-                      <span>{item.workMode === 'REMOTE' ? 'Remote Working' : 'Office Location'}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t border-gray-100">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-emerald-600" /> Today's Meetings
-                      </span>
-                      <span>({(item.todayMeetings || []).length})</span>
-                    </div>
-
-                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 custom-scrollbar">
-                      {(item.todayMeetings || []).map((m: any, mIdx: number) => (
-                        <div
-                          key={m.title + mIdx}
-                          className={`p-2.5 rounded-xl border text-xs space-y-1 transition-all ${
-                            m.active
-                              ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-400/20'
-                              : 'bg-gray-50/60 border-gray-100 text-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-gray-900 line-clamp-1">{m.title}</span>
-                            {m.active && (
-                              <span className="text-[9px] font-bold bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded uppercase shrink-0">
-                                Active Now
-                              </span>
-                            )}
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                {filteredLivePresence.map(item => (
+                  <div
+                    key={item.id}
+                    className="bg-white border border-gray-200/90 rounded-3xl p-6 shadow-xs hover:shadow-md hover:border-emerald-200 transition-all flex flex-col justify-between space-y-5"
+                  >
+                    <div className="space-y-4">
+                      {/* Top Bar: Avatar + Live Badge + Details */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <img
+                              src={item.avatar}
+                              alt={item.name}
+                              className="w-13 h-13 rounded-2xl object-cover border-2 border-emerald-500/20 shadow-2xs"
+                            />
+                            <span
+                              className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                                item.isMeeting ? 'bg-amber-500 ring-2 ring-amber-400 animate-ping' : 'bg-emerald-500'
+                              }`}
+                            />
                           </div>
-                          <div className="flex items-center gap-1 text-[10px] text-gray-400 font-semibold">
-                            <Clock className="w-3 h-3" />
-                            <span>{m.time}</span>
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 leading-snug">{item.name}</h3>
+                            <span className="text-xs font-semibold text-emerald-700 block">{item.role}</span>
+                            <span className="text-[10px] font-mono text-gray-400 font-bold block">{item.employeeCode}</span>
                           </div>
                         </div>
-                      ))}
+
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase tracking-wide border ${
+                          item.entity === 'CAG'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}>
+                          {item.entity === 'CAG' ? 'Climagro' : 'EHM'}
+                        </span>
+                      </div>
+
+                      {/* Presence Status Pill & Location */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                            item.isMeeting
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : item.workMode === 'REMOTE'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'
+                            }`}
+                          />
+                          <span className="truncate">{item.status}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-50 border border-gray-200/80 text-gray-700">
+                          {item.workMode === 'REMOTE' ? <Laptop className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          <span className="truncate">{item.workMode === 'REMOTE' ? 'Remote' : 'In Office'}</span>
+                        </div>
+                      </div>
+
+                      {/* Department Tag */}
+                      <div className="text-[11px] font-semibold text-gray-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <span>Department:</span>
+                        <span className="font-bold text-gray-800">{item.dept}</span>
+                      </div>
+
+                      {/* Today's Calendar Schedule */}
+                      <div className="space-y-2 pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-emerald-600" /> Today's Meetings
+                          </span>
+                          <span>({(item.todayMeetings || []).length})</span>
+                        </div>
+
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                          {(item.todayMeetings || []).length === 0 ? (
+                            <div className="p-2.5 rounded-xl border border-dashed border-gray-200 text-center text-[11px] font-medium text-gray-400 bg-gray-50/50">
+                              No meetings scheduled today. Available for focus work.
+                            </div>
+                          ) : (
+                            (item.todayMeetings || []).map((m: any, mIdx: number) => (
+                              <div
+                                key={m.title + mIdx}
+                                className={`p-2.5 rounded-xl border text-xs space-y-1 transition-all ${
+                                  m.active
+                                    ? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-400/20'
+                                    : 'bg-gray-50/60 border-gray-100 text-gray-700'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-gray-900 line-clamp-1">{m.title}</span>
+                                  {m.active && (
+                                    <span className="text-[9px] font-extrabold bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded uppercase shrink-0">
+                                      Active Now
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 text-[10px] text-gray-400 font-semibold">
+                                  <Clock className="w-3 h-3 text-gray-400" />
+                                  <span>{m.time}</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Sync Button */}
+                    <div className="pt-3 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setIsScheduleModalOpen(true)}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Video className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Schedule Meeting with {item.name.split(' ')[0]}</span>
+                      </button>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       )}
 
@@ -24288,7 +24451,7 @@ import React, { useState, useEffect } from 'react';
 import { Video, Calendar, Clock, Building2, Laptop, CheckCircle2 } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
-import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
+import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
 export const OfficeTodayView: React.FC = () => {
@@ -24317,8 +24480,8 @@ export const OfficeTodayView: React.FC = () => {
   }, []);
 
   const presenceList = (employees.length > 0 ? employees : []).map((emp, idx) => {
-    const entity = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
-    const entityName = entity === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy';
+    const entity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM');
+    const entityName = entity === 'CAG' ? 'Climagro Analytics' : entity === 'COMMON' ? 'EHM & CLIMAGRO' : 'EHM Consultancy';
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
 
     const empMeetings = meetings.filter((m) => {
@@ -24373,14 +24536,19 @@ export const OfficeTodayView: React.FC = () => {
       return now >= start && now <= end;
     });
 
+    const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
+
     return {
       id: emp.id,
-      name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email,
+      name: empName,
+      employeeCode: emp.employeeCode || `EHM-EMP0${idx + 1}`,
       entity,
+      entityCode: entity,
+      entityId: emp.entityId,
       entityName,
-      dept: 'Engineering & Operations',
-      role: emp.designation || 'Team Member',
-      avatar: idx % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR,
+      dept: emp.departmentName || 'Product & Tech',
+      role: emp.designation || 'Team Specialist',
+      avatar: getAvatarByName(empName),
       status: isMeeting ? 'Busy in Meeting' : 'In Office (Present)',
       isMeeting,
       workMode: 'IN_OFFICE',
@@ -24394,38 +24562,72 @@ export const OfficeTodayView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Office Today & Live Presence</h2>
-        <p className="text-xs text-gray-500 font-medium">Real-time presence, active meeting status, and today's calendar schedule for each team member.</p>
+      <div className="bg-white border border-gray-200/80 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Office Today & Live Presence</h2>
+          <p className="text-xs text-gray-500 font-medium">Real-time presence, active meeting status, and today's calendar schedule for each team member.</p>
+        </div>
+        <div className="flex items-center gap-3 text-xs font-semibold">
+          <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> In Office
+          </span>
+          <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> In Meeting
+          </span>
+          <span className="flex items-center gap-1.5 text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-blue-500"></span> Remote
+          </span>
+        </div>
       </div>
 
       {loading ? (
         <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading office presence and meetings...</div>
       ) : filteredPresence.length === 0 ? (
-        <div className="py-12 text-center text-xs font-semibold text-gray-400">No team members found for selected entity.</div>
+        <div className="bg-white border border-gray-200/80 rounded-3xl p-12 text-center shadow-xs">
+          <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <h4 className="text-sm font-bold text-gray-800">No Team Members Found</h4>
+          <p className="text-xs text-gray-400 mt-1">No active team members matched the selected entity filter ({selectedEntity || 'ALL'}).</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filteredPresence.map(item => (
-            <div key={item.id || item.name} className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-5">
+            <div key={item.id || item.name} className="bg-white border border-gray-200/90 rounded-3xl p-6 shadow-xs hover:shadow-md hover:border-emerald-200 transition-all flex flex-col justify-between space-y-5">
               {/* Header: Avatar + Info */}
               <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={item.avatar}
-                    alt={item.name}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/20 shadow-2xs"
-                  />
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">{item.name}</h3>
-                    <span className="text-[11px] font-semibold text-gray-400 block">{item.entityName}</span>
-                    <span className="text-xs font-semibold text-emerald-600 block">{item.role}</span>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <img
+                        src={item.avatar}
+                        alt={item.name}
+                        className="w-13 h-13 rounded-2xl object-cover border-2 border-emerald-500/20 shadow-2xs"
+                      />
+                      <span
+                        className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                          item.isMeeting ? 'bg-amber-500 ring-2 ring-amber-400 animate-ping' : 'bg-emerald-500'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 leading-snug">{item.name}</h3>
+                      <span className="text-xs font-semibold text-emerald-700 block">{item.role}</span>
+                      <span className="text-[10px] font-mono text-gray-400 font-bold block">{item.employeeCode}</span>
+                    </div>
                   </div>
+
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase tracking-wide border ${
+                    item.entity === 'CAG'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    {item.entity === 'CAG' ? 'Climagro' : 'EHM'}
+                  </span>
                 </div>
 
                 {/* Status Badge */}
-                <div className="flex flex-col gap-1.5">
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   <div
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
                       item.isMeeting
                         ? 'bg-amber-50 text-amber-800 border-amber-200'
                         : item.workMode === 'REMOTE'
@@ -24433,14 +24635,24 @@ export const OfficeTodayView: React.FC = () => {
                         : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                     }`}
                   >
-                    <span className={`w-2 h-2 rounded-full ${item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'}`}></span>
-                    <span>{item.status}</span>
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        item.isMeeting ? 'bg-amber-500 animate-ping' : item.workMode === 'REMOTE' ? 'bg-blue-500' : 'bg-emerald-500'
+                      }`}
+                    />
+                    <span className="truncate">{item.status}</span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-400">
-                    {item.workMode === 'REMOTE' ? <Laptop className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
-                    <span>{item.workMode === 'REMOTE' ? 'Remote Working' : 'Office Location'}</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-50 border border-gray-200/80 text-gray-700">
+                    {item.workMode === 'REMOTE' ? <Laptop className="w-3.5 h-3.5 text-blue-600 shrink-0" /> : <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                    <span className="truncate">{item.workMode === 'REMOTE' ? 'Remote' : 'In Office'}</span>
                   </div>
+                </div>
+
+                {/* Department Tag */}
+                <div className="text-[11px] font-semibold text-gray-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <span>Department:</span>
+                  <span className="font-bold text-gray-800">{item.dept}</span>
                 </div>
 
                 {/* Today's Meetings Timeline Schedule */}
@@ -24453,10 +24665,12 @@ export const OfficeTodayView: React.FC = () => {
                   </div>
 
                   {item.todayMeetings.length === 0 ? (
-                    <p className="text-[11px] font-medium text-gray-400 italic">No meetings scheduled today</p>
+                    <div className="p-2.5 rounded-xl border border-dashed border-gray-200 text-center text-[11px] font-medium text-gray-400 bg-gray-50/50">
+                      No meetings scheduled today. Available for focus work.
+                    </div>
                   ) : (
-                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 custom-scrollbar">
-                      {item.todayMeetings.map((m, mIdx) => (
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                      {item.todayMeetings.map((m: any, mIdx: number) => (
                         <div
                           key={m.title + mIdx}
                           className={`p-2.5 rounded-xl border text-xs space-y-1 transition-all ${
@@ -24468,13 +24682,13 @@ export const OfficeTodayView: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-gray-900 line-clamp-1">{m.title}</span>
                             {m.active && (
-                              <span className="text-[9px] font-bold bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded uppercase shrink-0">
+                              <span className="text-[9px] font-extrabold bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded uppercase shrink-0">
                                 Active Now
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-1 text-[10px] text-gray-400 font-semibold">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="w-3 h-3 text-gray-400" />
                             <span>{m.time}</span>
                           </div>
                         </div>
@@ -25441,6 +25655,11 @@ export const TasksView: React.FC = () => {
   const paginatedTasks = filteredTasks.slice(startIndex, startIndex + pageSize);
 
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!isManager && !isTaskAssignedToUser(task)) {
+      toast.error('You can only update tasks assigned to you.');
+      return;
+    }
     try {
       await fetchApi(`/api/tasks/${taskId}`, {
         method: 'PUT',
@@ -25876,15 +26095,19 @@ export const TasksView: React.FC = () => {
                             </td>
                             <td className="py-2.5 px-3">
                               <select
+                                disabled={!isManager && !isTaskAssignedToUser(t)}
                                 value={isDone ? 'DONE' : isInProgress ? 'IN_PROGRESS' : t.status || 'BACKLOG'}
                                 onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}
-                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase border cursor-pointer focus:outline-none transition-all shadow-2xs ${
+                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase border focus:outline-none transition-all shadow-2xs ${
+                                  !isManager && !isTaskAssignedToUser(t) ? 'cursor-default opacity-80' : 'cursor-pointer'
+                                } ${
                                   isDone
                                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
                                     : isInProgress
                                     ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                                     : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
                                 }`}
+                                title={!isManager && !isTaskAssignedToUser(t) ? "Status (View Only)" : "Change Task Status"}
                               >
                                 <option value="BACKLOG">BACKLOG</option>
                                 <option value="PLANNED">PLANNED</option>
@@ -25906,14 +26129,16 @@ export const TasksView: React.FC = () => {
                                 </button>
 
                                 {/* Edit Button: Manager can edit all, Employee can edit assigned tasks */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleTaskClick(t, false)}
-                                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
-                                  title={isManager ? "Edit Task Details (Manager Level)" : isTaskAssignedToUser(t) ? "Edit My Assigned Task" : "Edit Task"}
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                                </button>
+                                {(isManager || isTaskAssignedToUser(t)) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTaskClick(t, false)}
+                                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
+                                    title={isManager ? "Edit Task Details (Manager Level)" : "Edit My Assigned Task"}
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>

@@ -811,15 +811,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       {Array.from({ length: Math.max(0, targetTasksCount - linkedTasks.length) }).map((_, idx) => (
                         <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
                           <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              toast.info(`Creating Task slot ${linkedTasks.length + idx + 1} for ${viewingEpic.epicCode}`);
-                            }}
-                            className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
-                          >
-                            Add
-                          </button>
+                          {isManager && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toast.info(`Creating Task slot ${linkedTasks.length + idx + 1} for ${viewingEpic.epicCode}`);
+                              }}
+                              className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                            >
+                              Add
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

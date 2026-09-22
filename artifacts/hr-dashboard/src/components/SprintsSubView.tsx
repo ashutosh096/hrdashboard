@@ -1248,13 +1248,19 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                         return (
                           <div
                             key={t.id}
-                            draggable={true}
+                            draggable={isManager || isTaskAssignedToUser(t)}
                             onDragStart={(e) => {
+                              if (!isManager && !isTaskAssignedToUser(t)) {
+                                e.preventDefault();
+                                return;
+                              }
                               e.dataTransfer.setData('text/plain', t.id);
                               e.dataTransfer.effectAllowed = 'move';
                             }}
                             onClick={() => handleTaskClick(t)}
-                            className="relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2 hover:shadow-md hover:border-emerald-400 transition-all cursor-grab active:cursor-grabbing group overflow-hidden select-none"
+                            className={`relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2 hover:shadow-md hover:border-emerald-400 transition-all ${
+                              isManager || isTaskAssignedToUser(t) ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                            } group overflow-hidden select-none`}
                           >
                             {/* 1. Priority (Left Edge Color Bar) */}
                             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${priorityBarColor}`} />
@@ -1280,17 +1286,19 @@ export const SprintsSubView: React.FC<Props> = ({ isManager }) => {
                                   >
                                     <Eye className="w-3 h-3 text-emerald-600" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleTaskClick(t, false);
-                                    }}
-                                    className="p-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer"
-                                    title={isManager ? "Edit Task Details (Manager Level)" : isTaskAssignedToUser(t) ? "Edit My Assigned Task" : "Edit Task"}
-                                  >
-                                    <Edit3 className="w-3 h-3 text-blue-600" />
-                                  </button>
+                                  {(isManager || isTaskAssignedToUser(t)) && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTaskClick(t, false);
+                                      }}
+                                      className="p-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer"
+                                      title={isManager ? "Edit Task Details (Manager Level)" : "Edit My Assigned Task"}
+                                    >
+                                      <Edit3 className="w-3 h-3 text-blue-600" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
