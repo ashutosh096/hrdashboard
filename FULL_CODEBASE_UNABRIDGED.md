@@ -1,7 +1,7 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T06:00:22.686Z
-> Total Source Files Included: 147
+> Generated on: 2026-09-22T06:06:49.032Z
+> Total Source Files Included: 149
 
 ## Table of Contents
 
@@ -10,11 +10,13 @@
 - [artifacts/api-server/src/clean_production_seed.ts](#file-artifacts-api-server-src-clean_production_seed-ts)
 - [artifacts/api-server/src/comprehensive_e2e_test.ts](#file-artifacts-api-server-src-comprehensive_e2e_test-ts)
 - [artifacts/api-server/src/config/jwt.ts](#file-artifacts-api-server-src-config-jwt-ts)
+- [artifacts/api-server/src/db/check_admin.ts](#file-artifacts-api-server-src-db-check_admin-ts)
 - [artifacts/api-server/src/db/clean_team_codes.ts](#file-artifacts-api-server-src-db-clean_team_codes-ts)
 - [artifacts/api-server/src/db/fix_constraint.ts](#file-artifacts-api-server-src-db-fix_constraint-ts)
 - [artifacts/api-server/src/db/seed.ts](#file-artifacts-api-server-src-db-seed-ts)
 - [artifacts/api-server/src/db/sync_departments.ts](#file-artifacts-api-server-src-db-sync_departments-ts)
 - [artifacts/api-server/src/db/test_employee_updates.ts](#file-artifacts-api-server-src-db-test_employee_updates-ts)
+- [artifacts/api-server/src/db/test_entity_and_admin.ts](#file-artifacts-api-server-src-db-test_entity_and_admin-ts)
 - [artifacts/api-server/src/db/verify.ts](#file-artifacts-api-server-src-db-verify-ts)
 - [artifacts/api-server/src/exhaustive_audit.ts](#file-artifacts-api-server-src-exhaustive_audit-ts)
 - [artifacts/api-server/src/generate_unabridged_codebase.ts](#file-artifacts-api-server-src-generate_unabridged_codebase-ts)
@@ -1040,6 +1042,46 @@ export const JWT_SECRET = jwtSecret;
 
 ---
 
+### File: `artifacts/api-server/src/db/check_admin.ts`
+
+```typescript
+import { db, entities, users, employees, invites, eq } from '@workspace/db';
+
+async function checkAndSetAdmin() {
+  console.log('--- Entities in DB ---');
+  const allEntities = await db.select().from(entities);
+  console.log(allEntities);
+
+  console.log('\n--- Ensure Ashutosh is ADMIN ---');
+  const [ashuUser] = await db.select().from(users).where(eq(users.email, 'ashutosh@ehmconsultancy.com'));
+  console.log('Ashutosh User:', ashuUser);
+
+  if (ashuUser) {
+    await db.update(users).set({ role: 'ADMIN' }).where(eq(users.id, ashuUser.id));
+    console.log('Updated user role to ADMIN');
+  }
+
+  const [ashuEmp] = await db.select().from(employees).where(eq(employees.email, 'ashutosh@ehmconsultancy.com'));
+  console.log('Ashutosh Employee:', ashuEmp);
+
+  await db.update(invites).set({ role: 'ADMIN' }).where(eq(invites.email, 'ashutosh@ehmconsultancy.com'));
+
+  console.log('\n--- All users ---');
+  const allUsers = await db.select({ id: users.id, email: users.email, role: users.role, employeeId: users.employeeId }).from(users);
+  console.log(allUsers);
+
+  process.exit(0);
+}
+
+checkAndSetAdmin().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
+
+```
+
+---
+
 ### File: `artifacts/api-server/src/db/clean_team_codes.ts`
 
 ```typescript
@@ -1497,6 +1539,132 @@ async function testEmployeeUpdates() {
 }
 
 testEmployeeUpdates().catch(err => {
+  console.error('[TEST ERROR]:', err);
+  process.exit(1);
+});
+
+```
+
+---
+
+### File: `artifacts/api-server/src/db/test_entity_and_admin.ts`
+
+```typescript
+import { db, users, employees, entities, eq } from '@workspace/db';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_in_production_123456';
+
+async function testEntityAndAdmin() {
+  console.log('--- 1. Verifying Ashutosh is ADMIN in DB ---');
+  const [ashuUser] = await db.select().from(users).where(eq(users.email, 'ashutosh@ehmconsultancy.com'));
+  const [ashuEmp] = await db.select().from(employees).where(eq(employees.email, 'ashutosh@ehmconsultancy.com'));
+  console.log('Ashutosh User Role:', ashuUser?.role);
+  console.log('Ashutosh Employee Code:', ashuEmp?.employeeCode);
+
+  if (ashuUser?.role !== 'ADMIN') {
+    throw new Error('Ashutosh user role is not ADMIN!');
+  }
+
+  const token = jwt.sign(
+    {
+      id: ashuUser.id,
+      email: ashuUser.email,
+      role: 'ADMIN',
+      employeeId: ashuUser.employeeId,
+    },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+  console.log('\n--- 2. Testing Entity Switch to COMMON ---');
+  const [pranshuEmp] = await db.select().from(employees).where(eq(employees.email, 'dubey.pranshu@gmail.com'));
+  
+  const res1 = await fetch(`http://localhost:5000/api/employees/${pranshuEmp.id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      firstName: pranshuEmp.firstName,
+      lastName: pranshuEmp.lastName,
+      email: pranshuEmp.email,
+      designation: pranshuEmp.designation,
+      role: 'MANAGER',
+      departmentName: 'Product & Tech',
+      entityCode: 'COMMON'
+    })
+  });
+  const data1 = await res1.json();
+  console.log('Update to COMMON status:', res1.status);
+  console.log('Updated employee data:', data1.employee);
+  if (data1.employee?.employeeCode?.startsWith('COM')) {
+    console.log('✅ PASS: COM prefix assigned for COMMON entity!');
+  }
+
+  console.log('\n--- 3. Testing Entity Switch to CAG ---');
+  const res2 = await fetch(`http://localhost:5000/api/employees/${pranshuEmp.id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      firstName: pranshuEmp.firstName,
+      lastName: pranshuEmp.lastName,
+      email: pranshuEmp.email,
+      designation: pranshuEmp.designation,
+      role: 'MANAGER',
+      departmentName: 'Product & Tech',
+      entityCode: 'CAG'
+    })
+  });
+  const data2 = await res2.json();
+  console.log('Update to CAG status:', res2.status);
+  console.log('Updated employee data:', data2.employee);
+  if (data2.employee?.employeeCode?.startsWith('CAG')) {
+    console.log('✅ PASS: CAG prefix assigned for CAG entity!');
+  }
+
+  console.log('\n--- 4. Reverting Pranshu back to EHM ---');
+  const res3 = await fetch(`http://localhost:5000/api/employees/${pranshuEmp.id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      firstName: pranshuEmp.firstName,
+      lastName: pranshuEmp.lastName,
+      email: pranshuEmp.email,
+      designation: pranshuEmp.designation,
+      role: 'MANAGER',
+      departmentName: 'Product & Tech',
+      entityCode: 'EHM'
+    })
+  });
+  const data3 = await res3.json();
+  console.log('Revert to EHM status:', res3.status);
+  console.log('Reverted employee data:', data3.employee);
+  if (data3.employee?.employeeCode?.startsWith('EHM')) {
+    console.log('✅ PASS: Reverted to EHM prefix!');
+  }
+
+  console.log('\n--- 5. GET /api/employees output ---');
+  const getRes = await fetch('http://localhost:5000/api/employees', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const allEmps = await getRes.json();
+  allEmps.forEach((e: any) => {
+    console.log(`- [${e.employeeCode}] ${e.firstName} ${e.lastName} | Role: ${e.role} | Entity: ${e.entityCode} | Dept: ${e.departmentName}`);
+  });
+
+  console.log('\nALL VERIFICATION TESTS COMPLETED SUCCESSFULLY!');
+  process.exit(0);
+}
+
+testEntityAndAdmin().catch(err => {
   console.error('[TEST ERROR]:', err);
   process.exit(1);
 });
@@ -3953,7 +4121,20 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
       let targetEntityId = entityId;
       if (!targetEntityId && entityCode) {
         const allEnts = await tx.select().from(entities);
-        const matchedEnt = allEnts.find(e => e.code.toUpperCase() === entityCode.toUpperCase() || e.name.toLowerCase().includes(entityCode.toLowerCase()));
+        const cleanCode = entityCode.toUpperCase().trim();
+        let matchedEnt = allEnts.find(e =>
+          e.code.toUpperCase() === cleanCode ||
+          (cleanCode === 'COMMON' && (e.code.toUpperCase() === 'COM' || e.code.toUpperCase() === 'COMMON')) ||
+          (cleanCode === 'CAG' && (e.code.toUpperCase() === 'CAG' || e.code.toUpperCase() === 'CLIMAGRO')) ||
+          e.name.toLowerCase().includes(entityCode.toLowerCase())
+        );
+        if (!matchedEnt && (cleanCode === 'COMMON' || cleanCode === 'COM')) {
+          const [newEnt] = await tx.insert(entities).values({
+            code: 'COMMON',
+            name: 'EHM & CLIMAGRO (COMMON)',
+          }).returning();
+          matchedEnt = newEnt;
+        }
         targetEntityId = matchedEnt?.id;
       }
       if (!targetEntityId) {
@@ -3970,9 +4151,11 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
         throw new Error(`Entity not found for ID: ${targetEntityId}`);
       }
 
-      const resEntityCode = entity.code;
+      const resEntityCode = entity.code === 'COMMON' ? 'COM' : entity.code;
+      const isAdm = requestedRole === 'ADMIN';
       const isMgr = requestedRole === 'MANAGER';
-      const prefix = `${resEntityCode}-${isMgr ? 'MGR' : 'EMP'}`;
+      const rolePrefix = isAdm ? 'ADM' : isMgr ? 'MGR' : 'EMP';
+      const prefix = `${resEntityCode}-${rolePrefix}`;
 
       const allExisting = await tx
         .select({ employeeCode: employees.employeeCode })
@@ -4271,18 +4454,32 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     let targetEntityId = entityId;
     if (!targetEntityId && entityCode) {
       const allEnts = await db.select().from(entities);
-      const matchedEnt = allEnts.find(e => e.code.toUpperCase() === entityCode.toUpperCase() || e.name.toLowerCase().includes(entityCode.toLowerCase()));
+      const cleanCode = entityCode.toUpperCase().trim();
+      let matchedEnt = allEnts.find(e =>
+        e.code.toUpperCase() === cleanCode ||
+        (cleanCode === 'COMMON' && (e.code.toUpperCase() === 'COM' || e.code.toUpperCase() === 'COMMON')) ||
+        (cleanCode === 'CAG' && (e.code.toUpperCase() === 'CAG' || e.code.toUpperCase() === 'CLIMAGRO')) ||
+        e.name.toLowerCase().includes(entityCode.toLowerCase())
+      );
+      if (!matchedEnt && (cleanCode === 'COMMON' || cleanCode === 'COM')) {
+        const [newEnt] = await db.insert(entities).values({
+          code: 'COMMON',
+          name: 'EHM & CLIMAGRO (COMMON)',
+        }).returning();
+        matchedEnt = newEnt;
+      }
       if (matchedEnt) targetEntityId = matchedEnt.id;
     }
     if (targetEntityId) updateData.entityId = targetEntityId;
 
     const finalEntityId = targetEntityId || emp.entityId;
     const [finalEntity] = await db.select().from(entities).where(eq(entities.id, finalEntityId));
-    const finalEntityCode = finalEntity?.code || (entityCode?.toUpperCase() === 'CAG' ? 'CAG' : 'EHM');
+    const finalEntityCode = finalEntity?.code || (entityCode?.toUpperCase() === 'CAG' ? 'CAG' : entityCode?.toUpperCase() === 'COMMON' ? 'COMMON' : 'EHM');
 
     const effectiveRole = ((role || targetUser?.role || 'EMPLOYEE') as string).toUpperCase();
     const roleCode = effectiveRole === 'ADMIN' ? 'ADM' : effectiveRole === 'MANAGER' ? 'MGR' : 'EMP';
-    const expectedPrefix = `${finalEntityCode}-${roleCode}`;
+    const codePrefix = finalEntityCode === 'COMMON' ? 'COM' : finalEntityCode;
+    const expectedPrefix = `${codePrefix}-${roleCode}`;
 
     if (!emp.employeeCode || !emp.employeeCode.startsWith(expectedPrefix)) {
       const allExisting = await db
@@ -26247,8 +26444,15 @@ export const TeamDirectoryView: React.FC = () => {
     setEditEmail(emp.email || '');
     setEditRole(emp.roleType || 'EMPLOYEE');
     setEditPosition(emp.role || '');
-    setEditDepartment(emp.dept || 'Marketing');
-    setEditEntity(emp.entity || 'EHM');
+    setEditDepartment(emp.dept || 'Product & Tech');
+    const normEnt = (emp.entity || emp.entityCode || '').toUpperCase();
+    if (normEnt.includes('CAG') || normEnt.includes('CLIMAGRO')) {
+      setEditEntity('CAG');
+    } else if (normEnt.includes('COM') || normEnt.includes('BOTH') || normEnt.includes('COMMON')) {
+      setEditEntity('COMMON');
+    } else {
+      setEditEntity('EHM');
+    }
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {

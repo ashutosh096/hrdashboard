@@ -149,8 +149,15 @@ export const TeamDirectoryView: React.FC = () => {
     setEditEmail(emp.email || '');
     setEditRole(emp.roleType || 'EMPLOYEE');
     setEditPosition(emp.role || '');
-    setEditDepartment(emp.dept || 'Marketing');
-    setEditEntity(emp.entity || 'EHM');
+    setEditDepartment(emp.dept || 'Product & Tech');
+    const normEnt = (emp.entity || emp.entityCode || '').toUpperCase();
+    if (normEnt.includes('CAG') || normEnt.includes('CLIMAGRO')) {
+      setEditEntity('CAG');
+    } else if (normEnt.includes('COM') || normEnt.includes('BOTH') || normEnt.includes('COMMON')) {
+      setEditEntity('COMMON');
+    } else {
+      setEditEntity('EHM');
+    }
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {

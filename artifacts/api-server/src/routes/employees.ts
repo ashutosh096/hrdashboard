@@ -163,7 +163,20 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
       let targetEntityId = entityId;
       if (!targetEntityId && entityCode) {
         const allEnts = await tx.select().from(entities);
-        const matchedEnt = allEnts.find(e => e.code.toUpperCase() === entityCode.toUpperCase() || e.name.toLowerCase().includes(entityCode.toLowerCase()));
+        const cleanCode = entityCode.toUpperCase().trim();
+        let matchedEnt = allEnts.find(e =>
+          e.code.toUpperCase() === cleanCode ||
+          (cleanCode === 'COMMON' && (e.code.toUpperCase() === 'COM' || e.code.toUpperCase() === 'COMMON')) ||
+          (cleanCode === 'CAG' && (e.code.toUpperCase() === 'CAG' || e.code.toUpperCase() === 'CLIMAGRO')) ||
+          e.name.toLowerCase().includes(entityCode.toLowerCase())
+        );
+        if (!matchedEnt && (cleanCode === 'COMMON' || cleanCode === 'COM')) {
+          const [newEnt] = await tx.insert(entities).values({
+            code: 'COMMON',
+            name: 'EHM & CLIMAGRO (COMMON)',
+          }).returning();
+          matchedEnt = newEnt;
+        }
         targetEntityId = matchedEnt?.id;
       }
       if (!targetEntityId) {
@@ -180,9 +193,11 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
         throw new Error(`Entity not found for ID: ${targetEntityId}`);
       }
 
-      const resEntityCode = entity.code;
+      const resEntityCode = entity.code === 'COMMON' ? 'COM' : entity.code;
+      const isAdm = requestedRole === 'ADMIN';
       const isMgr = requestedRole === 'MANAGER';
-      const prefix = `${resEntityCode}-${isMgr ? 'MGR' : 'EMP'}`;
+      const rolePrefix = isAdm ? 'ADM' : isMgr ? 'MGR' : 'EMP';
+      const prefix = `${resEntityCode}-${rolePrefix}`;
 
       const allExisting = await tx
         .select({ employeeCode: employees.employeeCode })
@@ -481,18 +496,32 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     let targetEntityId = entityId;
     if (!targetEntityId && entityCode) {
       const allEnts = await db.select().from(entities);
-      const matchedEnt = allEnts.find(e => e.code.toUpperCase() === entityCode.toUpperCase() || e.name.toLowerCase().includes(entityCode.toLowerCase()));
+      const cleanCode = entityCode.toUpperCase().trim();
+      let matchedEnt = allEnts.find(e =>
+        e.code.toUpperCase() === cleanCode ||
+        (cleanCode === 'COMMON' && (e.code.toUpperCase() === 'COM' || e.code.toUpperCase() === 'COMMON')) ||
+        (cleanCode === 'CAG' && (e.code.toUpperCase() === 'CAG' || e.code.toUpperCase() === 'CLIMAGRO')) ||
+        e.name.toLowerCase().includes(entityCode.toLowerCase())
+      );
+      if (!matchedEnt && (cleanCode === 'COMMON' || cleanCode === 'COM')) {
+        const [newEnt] = await db.insert(entities).values({
+          code: 'COMMON',
+          name: 'EHM & CLIMAGRO (COMMON)',
+        }).returning();
+        matchedEnt = newEnt;
+      }
       if (matchedEnt) targetEntityId = matchedEnt.id;
     }
     if (targetEntityId) updateData.entityId = targetEntityId;
 
     const finalEntityId = targetEntityId || emp.entityId;
     const [finalEntity] = await db.select().from(entities).where(eq(entities.id, finalEntityId));
-    const finalEntityCode = finalEntity?.code || (entityCode?.toUpperCase() === 'CAG' ? 'CAG' : 'EHM');
+    const finalEntityCode = finalEntity?.code || (entityCode?.toUpperCase() === 'CAG' ? 'CAG' : entityCode?.toUpperCase() === 'COMMON' ? 'COMMON' : 'EHM');
 
     const effectiveRole = ((role || targetUser?.role || 'EMPLOYEE') as string).toUpperCase();
     const roleCode = effectiveRole === 'ADMIN' ? 'ADM' : effectiveRole === 'MANAGER' ? 'MGR' : 'EMP';
-    const expectedPrefix = `${finalEntityCode}-${roleCode}`;
+    const codePrefix = finalEntityCode === 'COMMON' ? 'COM' : finalEntityCode;
+    const expectedPrefix = `${codePrefix}-${roleCode}`;
 
     if (!emp.employeeCode || !emp.employeeCode.startsWith(expectedPrefix)) {
       const allExisting = await db
