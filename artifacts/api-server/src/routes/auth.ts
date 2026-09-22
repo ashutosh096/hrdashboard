@@ -207,40 +207,90 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/accept-invite (Strictly requires valid cryptographic invite token)
+// POST /api/auth/accept-invite (Supports cryptographic invite token OR direct registered email activation)
 router.post('/accept-invite', async (req: Request, res: Response) => {
-  const { token, password } = req.body;
+  const { token, email, password } = req.body;
 
-  if (!token || !password) {
-    return res.status(400).json({ message: 'Valid invite token and new password are required' });
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters long' });
   }
 
-  if (typeof password !== 'string' || password.length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
-  }
+  let targetEmail = (email || '').toLowerCase().trim();
+  let assignedRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | undefined;
+  let employeeId: string | undefined;
+  let inviteRecordId: string | undefined;
 
   try {
-    const [invite] = await db
+    // 1. If token is provided, attempt lookup by token first
+    if (token) {
+      const [invite] = await db
+        .select()
+        .from(invites)
+        .where(and(eq(invites.token, token), eq(invites.status, 'PENDING')));
+
+      if (invite) {
+        if (!invite.expiresAt || new Date(invite.expiresAt) >= new Date()) {
+          targetEmail = invite.email.toLowerCase().trim();
+          assignedRole = (invite.role as any) || 'EMPLOYEE';
+          employeeId = invite.employeeId || undefined;
+          inviteRecordId = invite.id;
+        }
+      }
+    }
+
+    // 2. If no valid invite resolved by token, check by registered email
+    if (!targetEmail) {
+      return res.status(400).json({ message: 'Please enter your registered email address.' });
+    }
+
+    // Check employees table
+    const [matchingEmployee] = await db
       .select()
-      .from(invites)
-      .where(and(eq(invites.token, token), eq(invites.status, 'PENDING')));
+      .from(employees)
+      .where(sql`TRIM(LOWER(${employees.email})) = ${targetEmail}`);
 
-    if (!invite) {
-      return res.status(400).json({ message: 'Invalid or expired invitation token.' });
-    }
-
-    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
-      return res.status(400).json({ message: 'This invitation has expired. Please ask your administrator to reinvite you.' });
-    }
-
-    const targetEmail = invite.email.toLowerCase().trim();
-    const passwordHash = await bcrypt.hash(password, 10);
-
+    // Check users table
     const [existingUser] = await db
       .select()
       .from(users)
       .where(sql`TRIM(LOWER(${users.email})) = ${targetEmail}`);
 
+    // Check invites table for any pending invite for this email
+    const [matchingInvite] = await db
+      .select()
+      .from(invites)
+      .where(and(sql`TRIM(LOWER(${invites.email})) = ${targetEmail}`, eq(invites.status, 'PENDING')));
+
+    if (!matchingEmployee && !existingUser && !matchingInvite) {
+      return res.status(400).json({
+        message: `No registered account found for "${targetEmail}". Please contact your administrator to add you to the company directory first.`,
+      });
+    }
+
+    // Resolve details
+    if (matchingEmployee) {
+      employeeId = matchingEmployee.id;
+      const code = (matchingEmployee.employeeCode || '').toUpperCase();
+      if (code.includes('ADM')) assignedRole = 'ADMIN';
+      else if (code.includes('MGR')) assignedRole = 'MANAGER';
+      else assignedRole = 'EMPLOYEE';
+    }
+
+    if (matchingInvite) {
+      inviteRecordId = matchingInvite.id;
+      if (!assignedRole && matchingInvite.role) {
+        assignedRole = matchingInvite.role as any;
+      }
+      if (!employeeId && matchingInvite.employeeId) {
+        employeeId = matchingInvite.employeeId;
+      }
+    }
+
+    if (!assignedRole) {
+      assignedRole = (existingUser?.role as any) || 'EMPLOYEE';
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
     let userId: string;
 
     if (existingUser) {
@@ -250,8 +300,8 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
         .set({
           passwordHash,
           status: 'ACTIVE',
-          role: invite.role || existingUser.role,
-          employeeId: invite.employeeId || existingUser.employeeId,
+          role: assignedRole,
+          employeeId: employeeId || existingUser.employeeId,
         })
         .where(eq(users.id, existingUser.id));
     } else {
@@ -260,24 +310,26 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
         .values({
           email: targetEmail,
           passwordHash,
-          role: invite.role || 'EMPLOYEE',
+          role: assignedRole,
           status: 'ACTIVE',
-          employeeId: invite.employeeId,
+          employeeId: employeeId,
         })
         .returning();
       userId = newUser.id;
     }
 
-    await db
-      .update(invites)
-      .set({ status: 'ACCEPTED' })
-      .where(eq(invites.id, invite.id));
+    if (inviteRecordId) {
+      await db
+        .update(invites)
+        .set({ status: 'ACCEPTED' })
+        .where(eq(invites.id, inviteRecordId));
+    }
 
     const userPayload = {
       id: userId,
       email: targetEmail,
-      role: invite.role || 'EMPLOYEE',
-      employeeId: invite.employeeId || undefined,
+      role: assignedRole,
+      employeeId: employeeId || undefined,
     };
 
     const { accessToken, refreshToken } = generateTokens(userPayload, true);

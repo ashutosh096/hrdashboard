@@ -69,7 +69,7 @@ export const AcceptInviteView: React.FC = () => {
       setLocation('/');
     } catch (err: any) {
       console.error('[SET-PASSWORD ERROR]:', err);
-      toast.error(err.message || 'Invalid, expired, or already-used invite token');
+      toast.error(err.message || 'Failed to activate account. Please verify your registered email.');
     } finally {
       setIsSubmitting(false);
     }

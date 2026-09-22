@@ -1,7 +1,7 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T06:27:42.226Z
-> Total Source Files Included: 150
+> Generated on: 2026-09-22T06:41:44.051Z
+> Total Source Files Included: 149
 
 ## Table of Contents
 
@@ -11,7 +11,6 @@
 - [artifacts/api-server/src/comprehensive_e2e_test.ts](#file-artifacts-api-server-src-comprehensive_e2e_test-ts)
 - [artifacts/api-server/src/config/jwt.ts](#file-artifacts-api-server-src-config-jwt-ts)
 - [artifacts/api-server/src/db/check_admin.ts](#file-artifacts-api-server-src-db-check_admin-ts)
-- [artifacts/api-server/src/db/check_tasks.ts](#file-artifacts-api-server-src-db-check_tasks-ts)
 - [artifacts/api-server/src/db/clean_team_codes.ts](#file-artifacts-api-server-src-db-clean_team_codes-ts)
 - [artifacts/api-server/src/db/fix_constraint.ts](#file-artifacts-api-server-src-db-fix_constraint-ts)
 - [artifacts/api-server/src/db/seed.ts](#file-artifacts-api-server-src-db-seed-ts)
@@ -1075,44 +1074,6 @@ async function checkAndSetAdmin() {
 }
 
 checkAndSetAdmin().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
-
-```
-
----
-
-### File: `artifacts/api-server/src/db/check_tasks.ts`
-
-```typescript
-import { db, tasks, employees, epics, initiatives, sprints, users, eq } from '@workspace/db';
-
-async function checkTasks() {
-  console.log('--- ALL TASKS IN DB ---');
-  const allT = await db.select().from(tasks);
-  console.log(allT);
-
-  console.log('\n--- ALL EMPLOYEES IN DB ---');
-  const allE = await db.select().from(employees);
-  console.log(allE.map(e => ({ id: e.id, email: e.email, code: e.employeeCode, name: `${e.firstName} ${e.lastName}` })));
-
-  console.log('\n--- ALL SPRINTS IN DB ---');
-  const allS = await db.select().from(sprints);
-  console.log(allS);
-
-  console.log('\n--- ALL EPICS IN DB ---');
-  const allEpics = await db.select().from(epics);
-  console.log(allEpics);
-
-  console.log('\n--- ALL INITIATIVES IN DB ---');
-  const allInits = await db.select().from(initiatives);
-  console.log(allInits);
-
-  process.exit(0);
-}
-
-checkTasks().catch(err => {
   console.error(err);
   process.exit(1);
 });
@@ -3332,40 +3293,90 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/accept-invite (Strictly requires valid cryptographic invite token)
+// POST /api/auth/accept-invite (Supports cryptographic invite token OR direct registered email activation)
 router.post('/accept-invite', async (req: Request, res: Response) => {
-  const { token, password } = req.body;
+  const { token, email, password } = req.body;
 
-  if (!token || !password) {
-    return res.status(400).json({ message: 'Valid invite token and new password are required' });
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters long' });
   }
 
-  if (typeof password !== 'string' || password.length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
-  }
+  let targetEmail = (email || '').toLowerCase().trim();
+  let assignedRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | undefined;
+  let employeeId: string | undefined;
+  let inviteRecordId: string | undefined;
 
   try {
-    const [invite] = await db
+    // 1. If token is provided, attempt lookup by token first
+    if (token) {
+      const [invite] = await db
+        .select()
+        .from(invites)
+        .where(and(eq(invites.token, token), eq(invites.status, 'PENDING')));
+
+      if (invite) {
+        if (!invite.expiresAt || new Date(invite.expiresAt) >= new Date()) {
+          targetEmail = invite.email.toLowerCase().trim();
+          assignedRole = (invite.role as any) || 'EMPLOYEE';
+          employeeId = invite.employeeId || undefined;
+          inviteRecordId = invite.id;
+        }
+      }
+    }
+
+    // 2. If no valid invite resolved by token, check by registered email
+    if (!targetEmail) {
+      return res.status(400).json({ message: 'Please enter your registered email address.' });
+    }
+
+    // Check employees table
+    const [matchingEmployee] = await db
       .select()
-      .from(invites)
-      .where(and(eq(invites.token, token), eq(invites.status, 'PENDING')));
+      .from(employees)
+      .where(sql`TRIM(LOWER(${employees.email})) = ${targetEmail}`);
 
-    if (!invite) {
-      return res.status(400).json({ message: 'Invalid or expired invitation token.' });
-    }
-
-    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
-      return res.status(400).json({ message: 'This invitation has expired. Please ask your administrator to reinvite you.' });
-    }
-
-    const targetEmail = invite.email.toLowerCase().trim();
-    const passwordHash = await bcrypt.hash(password, 10);
-
+    // Check users table
     const [existingUser] = await db
       .select()
       .from(users)
       .where(sql`TRIM(LOWER(${users.email})) = ${targetEmail}`);
 
+    // Check invites table for any pending invite for this email
+    const [matchingInvite] = await db
+      .select()
+      .from(invites)
+      .where(and(sql`TRIM(LOWER(${invites.email})) = ${targetEmail}`, eq(invites.status, 'PENDING')));
+
+    if (!matchingEmployee && !existingUser && !matchingInvite) {
+      return res.status(400).json({
+        message: `No registered account found for "${targetEmail}". Please contact your administrator to add you to the company directory first.`,
+      });
+    }
+
+    // Resolve details
+    if (matchingEmployee) {
+      employeeId = matchingEmployee.id;
+      const code = (matchingEmployee.employeeCode || '').toUpperCase();
+      if (code.includes('ADM')) assignedRole = 'ADMIN';
+      else if (code.includes('MGR')) assignedRole = 'MANAGER';
+      else assignedRole = 'EMPLOYEE';
+    }
+
+    if (matchingInvite) {
+      inviteRecordId = matchingInvite.id;
+      if (!assignedRole && matchingInvite.role) {
+        assignedRole = matchingInvite.role as any;
+      }
+      if (!employeeId && matchingInvite.employeeId) {
+        employeeId = matchingInvite.employeeId;
+      }
+    }
+
+    if (!assignedRole) {
+      assignedRole = (existingUser?.role as any) || 'EMPLOYEE';
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
     let userId: string;
 
     if (existingUser) {
@@ -3375,8 +3386,8 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
         .set({
           passwordHash,
           status: 'ACTIVE',
-          role: invite.role || existingUser.role,
-          employeeId: invite.employeeId || existingUser.employeeId,
+          role: assignedRole,
+          employeeId: employeeId || existingUser.employeeId,
         })
         .where(eq(users.id, existingUser.id));
     } else {
@@ -3385,24 +3396,26 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
         .values({
           email: targetEmail,
           passwordHash,
-          role: invite.role || 'EMPLOYEE',
+          role: assignedRole,
           status: 'ACTIVE',
-          employeeId: invite.employeeId,
+          employeeId: employeeId,
         })
         .returning();
       userId = newUser.id;
     }
 
-    await db
-      .update(invites)
-      .set({ status: 'ACCEPTED' })
-      .where(eq(invites.id, invite.id));
+    if (inviteRecordId) {
+      await db
+        .update(invites)
+        .set({ status: 'ACCEPTED' })
+        .where(eq(invites.id, inviteRecordId));
+    }
 
     const userPayload = {
       id: userId,
       email: targetEmail,
-      role: invite.role || 'EMPLOYEE',
-      employeeId: invite.employeeId || undefined,
+      role: assignedRole,
+      employeeId: employeeId || undefined,
     };
 
     const { accessToken, refreshToken } = generateTokens(userPayload, true);
@@ -20384,7 +20397,7 @@ export const AcceptInviteView: React.FC = () => {
       setLocation('/');
     } catch (err: any) {
       console.error('[SET-PASSWORD ERROR]:', err);
-      toast.error(err.message || 'Invalid, expired, or already-used invite token');
+      toast.error(err.message || 'Failed to activate account. Please verify your registered email.');
     } finally {
       setIsSubmitting(false);
     }
@@ -26752,13 +26765,28 @@ export const TeamDirectoryView: React.FC = () => {
         </div>
 
         {!isEmployee && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add Employee</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const inviteUrl = `${window.location.origin}/accept-invite`;
+                navigator.clipboard.writeText(inviteUrl);
+                toast.success('Team Invite Link copied! Share with your team: ' + inviteUrl);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl border border-gray-300 shadow-2xs transition-colors cursor-pointer"
+              title="Copy generic invitation link to share with any registered team member"
+            >
+              <LinkIcon className="w-4 h-4 text-gray-600" />
+              <span>Copy Team Invite Link</span>
+            </button>
+
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Add Employee</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -26838,7 +26866,7 @@ export const TeamDirectoryView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons: Re-invite, View/Edit & Remove */}
+                {/* Action Buttons: Re-invite, Copy Link, View/Edit & Remove */}
                 {!isEmployee && (
                   <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-mono font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 shadow-2xs shrink-0">
@@ -26846,6 +26874,20 @@ export const TeamDirectoryView: React.FC = () => {
                     </span>
 
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {/* Copy Direct Link Button */}
+                      <button
+                        onClick={() => {
+                          const directUrl = `${window.location.origin}/accept-invite?email=${encodeURIComponent(member.email)}`;
+                          navigator.clipboard.writeText(directUrl);
+                          toast.success(`Direct activation link for ${member.name} copied!`);
+                        }}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-300 px-2.5 py-1 rounded-xl transition-colors cursor-pointer"
+                        title="Copy direct activation URL for this employee"
+                      >
+                        <Copy className="w-3 h-3 text-gray-600" />
+                        <span>Copy Link</span>
+                      </button>
+
                       {/* Re-invite Button */}
                       <button
                         onClick={() => handleReinviteEmployee(member.id, member.email, member.name)}
@@ -26854,7 +26896,7 @@ export const TeamDirectoryView: React.FC = () => {
                         title="Resend invitation email"
                       >
                         {isReinviting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3 text-emerald-600" />}
-                        <span>{isReinviting ? 'Sending...' : 'Re-invite'}</span>
+                        <span>{isReinviting ? 'Sending...' : 'Email'}</span>
                       </button>
 
                       {/* View / Edit Button */}
@@ -26864,7 +26906,7 @@ export const TeamDirectoryView: React.FC = () => {
                         title="View or Edit employee details"
                       >
                         <Edit3 className="w-3 h-3 text-blue-600" />
-                        <span>View / Edit</span>
+                        <span>Edit</span>
                       </button>
 
                       {/* Remove Button */}

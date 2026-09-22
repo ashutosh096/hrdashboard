@@ -232,13 +232,28 @@ export const TeamDirectoryView: React.FC = () => {
         </div>
 
         {!isEmployee && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add Employee</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const inviteUrl = `${window.location.origin}/accept-invite`;
+                navigator.clipboard.writeText(inviteUrl);
+                toast.success('Team Invite Link copied! Share with your team: ' + inviteUrl);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl border border-gray-300 shadow-2xs transition-colors cursor-pointer"
+              title="Copy generic invitation link to share with any registered team member"
+            >
+              <LinkIcon className="w-4 h-4 text-gray-600" />
+              <span>Copy Team Invite Link</span>
+            </button>
+
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Add Employee</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -318,7 +333,7 @@ export const TeamDirectoryView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons: Re-invite, View/Edit & Remove */}
+                {/* Action Buttons: Re-invite, Copy Link, View/Edit & Remove */}
                 {!isEmployee && (
                   <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-mono font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 shadow-2xs shrink-0">
@@ -326,6 +341,20 @@ export const TeamDirectoryView: React.FC = () => {
                     </span>
 
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {/* Copy Direct Link Button */}
+                      <button
+                        onClick={() => {
+                          const directUrl = `${window.location.origin}/accept-invite?email=${encodeURIComponent(member.email)}`;
+                          navigator.clipboard.writeText(directUrl);
+                          toast.success(`Direct activation link for ${member.name} copied!`);
+                        }}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-300 px-2.5 py-1 rounded-xl transition-colors cursor-pointer"
+                        title="Copy direct activation URL for this employee"
+                      >
+                        <Copy className="w-3 h-3 text-gray-600" />
+                        <span>Copy Link</span>
+                      </button>
+
                       {/* Re-invite Button */}
                       <button
                         onClick={() => handleReinviteEmployee(member.id, member.email, member.name)}
@@ -334,7 +363,7 @@ export const TeamDirectoryView: React.FC = () => {
                         title="Resend invitation email"
                       >
                         {isReinviting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3 text-emerald-600" />}
-                        <span>{isReinviting ? 'Sending...' : 'Re-invite'}</span>
+                        <span>{isReinviting ? 'Sending...' : 'Email'}</span>
                       </button>
 
                       {/* View / Edit Button */}
@@ -344,7 +373,7 @@ export const TeamDirectoryView: React.FC = () => {
                         title="View or Edit employee details"
                       >
                         <Edit3 className="w-3 h-3 text-blue-600" />
-                        <span>View / Edit</span>
+                        <span>Edit</span>
                       </button>
 
                       {/* Remove Button */}
