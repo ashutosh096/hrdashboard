@@ -75,7 +75,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   // Scalable Filter & Search Toolbar State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PLANNED' | 'IN_PROGRESS' | 'DONE'>('ALL');
-  const [collapsedInitiativeIds, setCollapsedInitiativeIds] = useState<Record<string, boolean>>({});
+  const [collapsedEpicIds, setCollapsedEpicIds] = useState<Record<string, boolean>>({});
 
   // New Epic Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -473,165 +473,144 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           <p className="text-xs text-gray-400 mt-1">Try clearing search query or switching active/archive filters above.</p>
         </div>
       ) : (
-        /* 📋 Clean Initiative Card Container & Collapsed Gray Sub-line Epics List */
+        /* 📋 Feature Epics List with Collapsible Linked Tasks */
         <div className="space-y-4">
-          {initiatives.map((init) => {
-            const epicsUnderInit = filteredEpics.filter(
-              (e) => e.initiativeId === init.id || e.initiativeId === init.initiativeCode
-            );
-            if (epicsUnderInit.length === 0) return null;
+          {filteredEpics.map((epic) => {
+            const rawStatus = epic.status || 'PLANNED';
+            const epicStatus = rawStatus === 'COMPLETED' ? 'DONE' : rawStatus;
+            const isDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED' || epicStatus === 'ARCHIVED';
+            const isInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
 
-            const isCollapsed = collapsedInitiativeIds[init.id] !== false;
+            const epicTasks = (epic.tasks && epic.tasks.length > 0)
+              ? epic.tasks
+              : allTasks.filter(t => t.epicId === epic.id || (epic.sprints && epic.sprints.some((s: any) => s.id === t.sprintId)));
+
+            const totalTasks = epicTasks.length;
+            const doneTasks = epicTasks.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
+            const tasksSummary = totalTasks === 0
+              ? 'no tasks yet'
+              : doneTasks > 0
+              ? `${totalTasks} task${totalTasks > 1 ? 's' : ''}, ${doneTasks} done`
+              : `${totalTasks} task${totalTasks > 1 ? 's' : ''}`;
+
+            const parentInit = initiatives.find((i) => i.id === epic.initiativeId || i.initiativeCode === epic.initiativeId);
+            const isCollapsed = collapsedEpicIds[epic.id] !== false;
 
             return (
-              <div key={init.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xs">
-                {/* Initiative Header Bar */}
+              <div key={epic.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xs transition-all hover:border-emerald-300">
+                {/* Epic Header Bar */}
                 <div 
-                  className="bg-gray-50/90 border-b border-gray-200 px-5 py-3 flex items-center justify-between transition-colors select-none"
+                  className="bg-gray-50/90 border-b border-gray-200 px-5 py-3.5 flex items-center justify-between gap-4 transition-colors select-none"
                 >
                   <div 
-                    onClick={() => setViewingInitiativeInEpics(init)}
-                    className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:text-emerald-700"
+                    onClick={() => setViewingEpic(epic)}
+                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
                   >
-                    <Target className="w-4 h-4 text-gray-500 shrink-0" />
-                    <h4 className="font-bold text-gray-900 text-sm truncate">{init.title}</h4>
-                    <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
-                      {init.initiativeCode} • {epicsUnderInit.length} epic{epicsUnderInit.length > 1 ? 's' : ''}
-                    </span>
+                    <Layers className="w-4 h-4 text-emerald-600 shrink-0 group-hover:scale-110 transition-transform" />
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-gray-900 group-hover:text-emerald-700 text-sm truncate transition-colors">
+                        {epic.title}
+                      </h4>
+                      <p className="text-xs text-gray-400 font-medium truncate mt-0.5">
+                        {epic.epicCode} • {parentInit?.title ? `${parentInit.title} • ` : ''}{epic.department || 'Product & Tech'} • {tasksSummary}
+                      </p>
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCollapsedInitiativeIds(prev => ({ ...prev, [init.id]: !isCollapsed }));
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-gray-200/80 text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
-                    title={isCollapsed ? "Expand Epics Section" : "Collapse Epics Section"}
-                  >
-                    <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
-                    {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs font-bold text-gray-700">
+                      {epic.targetWeek ? epic.targetWeek.split(' ')[0] + ' ' + (epic.targetWeek.split(' ')[1] || '') : 'Week 1'}
+                    </span>
+
+                    <span className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all ${
+                      isDone 
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                        : isInProgress 
+                        ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}>
+                      {isDone ? 'Done' : isInProgress ? 'In Progress' : 'Planned'}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCollapsedEpicIds(prev => ({ ...prev, [epic.id]: !isCollapsed }));
+                      }}
+                      className="p-1.5 px-2.5 rounded-lg hover:bg-gray-200/80 text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer border border-gray-200 bg-white"
+                      title={isCollapsed ? "Expand Tasks Section" : "Collapse Tasks Section"}
+                    >
+                      <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
+                      {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Child Epics List */}
+                {/* Expanded Child Tasks List */}
                 {!isCollapsed && (
-                <div className="divide-y divide-gray-100">
-                  {epicsUnderInit.map((epic) => {
-                    const rawStatus = epic.status || 'PLANNED';
-                    const epicStatus = rawStatus === 'COMPLETED' ? 'DONE' : rawStatus;
-                    const isDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED';
-                    const isInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
-
-                    const tasksList = epic.tasks || [];
-                    const totalTasks = tasksList.length;
-                    const doneTasks = tasksList.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
-                    
-                    const tasksSummary = totalTasks === 0 
-                      ? 'no tasks yet' 
-                      : doneTasks > 0 
-                      ? `${totalTasks} task${totalTasks > 1 ? 's' : ''}, ${doneTasks} done` 
-                      : `${totalTasks} task${totalTasks > 1 ? 's' : ''}`;
-
-                    return (
-                      <div 
-                        key={epic.id}
-                        onClick={() => setViewingEpic(epic)}
-                        className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-emerald-50/20 transition-colors cursor-pointer group"
-                      >
-                        {/* Title & Gray Sub-line */}
-                        <div className="space-y-1 min-w-0 flex-1">
-                          <h5 className="font-bold text-gray-900 group-hover:text-emerald-700 text-sm transition-colors">
-                            {epic.title}
-                          </h5>
-                          <p className="text-xs text-gray-400 font-medium">
-                            {epic.epicCode} • {epic.department || 'Product and tech'} • {tasksSummary}
-                          </p>
-                        </div>
-
-                        {/* Right: Week, Status Pill & Chevron Arrow */}
-                        <div className="flex items-center gap-4 shrink-0">
-                          <span className="text-xs font-bold text-gray-700">
-                            {epic.targetWeek ? epic.targetWeek.split(' ')[0] + ' ' + (epic.targetWeek.split(' ')[1] || '') : 'Week 1'}
-                          </span>
-
-                          <span className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all ${
-                            isDone 
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                              : isInProgress 
-                              ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                              : 'bg-gray-50 text-gray-700 border-gray-200'
-                          }`}>
-                            {isDone ? 'Done' : isInProgress ? 'Active' : 'Planned'}
-                          </span>
-
-                          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
-                        </div>
+                  <div className="bg-slate-50/50">
+                    {epicTasks.length === 0 ? (
+                      <div className="px-6 py-4 text-xs font-medium text-gray-400 italic flex items-center justify-between">
+                        <span>No tasks linked to this epic yet.</span>
+                        {isManager && (
+                          <button
+                            onClick={() => setViewingEpic(epic)}
+                            className="text-xs text-emerald-700 hover:text-emerald-800 font-bold hover:underline cursor-pointer"
+                          >
+                            View Epic Details
+                          </button>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100 border-t border-gray-100">
+                        {epicTasks.map((task: any) => {
+                          const isTaskDone = task.status === 'DONE' || task.status === 'COMPLETED';
+                          const isTaskInProgress = task.status === 'IN_PROGRESS' || task.status === 'ACTIVE';
+
+                          return (
+                            <div
+                              key={task.id || task.taskCode}
+                              onClick={() => handleOpenTaskModal(task)}
+                              className="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-emerald-50/30 transition-colors cursor-pointer group bg-white/70"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <ListTodo className="w-4 h-4 text-emerald-500 shrink-0 group-hover:scale-110 transition-transform" />
+                                <div className="space-y-0.5 min-w-0">
+                                  <h5 className="font-bold text-gray-800 group-hover:text-emerald-700 text-xs truncate transition-colors">
+                                    {task.title}
+                                  </h5>
+                                  <p className="text-[11px] text-gray-400 font-medium truncate">
+                                    <span className="font-mono font-bold text-gray-500">{task.taskCode || task.id}</span>
+                                    {' • '}
+                                    <span>{task.assigneeName || task.assignee || 'Unassigned'}</span>
+                                    {task.priority ? ` • ${task.priority} Priority` : ''}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md border ${
+                                  isTaskDone
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : isTaskInProgress
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : 'bg-gray-100 text-gray-700 border-gray-200'
+                                }`}>
+                                  {isTaskDone ? 'Done' : isTaskInProgress ? 'In Progress' : 'Planned'}
+                                </span>
+                                <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })}
-
-          {/* Standalone / Unassigned Epics fallback */}
-          {(() => {
-            const unassignedEpics = filteredEpics.filter(
-              (e) => !initiatives.some((i) => i.id === e.initiativeId || i.initiativeCode === e.initiativeId)
-            );
-            if (unassignedEpics.length === 0) return null;
-
-            return (
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xs">
-                <div className="bg-gray-50/80 border-b border-gray-200 px-5 py-3.5">
-                  <h4 className="font-bold text-gray-500 text-xs uppercase tracking-wider">General / Standalone Epics</h4>
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {unassignedEpics.map((epic) => {
-                    const rawStatus = epic.status || 'PLANNED';
-                    const epicStatus = rawStatus === 'COMPLETED' ? 'DONE' : rawStatus;
-                    const isDone = epicStatus === 'DONE' || epicStatus === 'COMPLETED';
-                    const isInProgress = epicStatus === 'IN_PROGRESS' || epicStatus === 'ACTIVE';
-
-                    const tasksList = epic.tasks || [];
-                    const totalTasks = tasksList.length;
-                    const doneTasks = tasksList.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
-                    const tasksSummary = totalTasks === 0 ? 'no tasks yet' : doneTasks > 0 ? `${totalTasks} tasks, ${doneTasks} done` : `${totalTasks} tasks`;
-
-                    return (
-                      <div 
-                        key={epic.id}
-                        onClick={() => setViewingEpic(epic)}
-                        className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-emerald-50/20 transition-colors cursor-pointer group"
-                      >
-                        <div className="space-y-1 min-w-0 flex-1">
-                          <h5 className="font-bold text-gray-900 group-hover:text-emerald-700 text-sm transition-colors">
-                            {epic.title}
-                          </h5>
-                          <p className="text-xs text-gray-400 font-medium">
-                            {epic.epicCode} • {epic.department || 'General'} • {tasksSummary}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4 shrink-0">
-                          <span className="text-xs font-bold text-gray-700">
-                            {epic.targetWeek ? epic.targetWeek.split(' ')[0] + ' ' + (epic.targetWeek.split(' ')[1] || '') : 'Week 1'}
-                          </span>
-                          <span className={`text-xs font-bold px-3 py-1 rounded-lg border ${
-                            isDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700 border-gray-200'
-                          }`}>
-                            {isDone ? 'Done' : isInProgress ? 'Active' : 'Planned'}
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-all" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
         </div>
       )}
 

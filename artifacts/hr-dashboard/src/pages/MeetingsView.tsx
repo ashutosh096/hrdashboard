@@ -1154,35 +1154,13 @@ export const MeetingsView: React.FC = () => {
               <p className="text-xs text-gray-500 font-medium">Real-time status and chronological meeting slots (Morning → Noon → Evening). Colleague private details are securely anonymized.</p>
             </div>
 
-            {/* Date Filter Pills: Today / Tomorrow */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-2xs">
-                {(['TODAY', 'TOMORROW'] as const).map((filterOpt) => (
-                  <button
-                    key={filterOpt}
-                    onClick={() => {
-                      setAvailDateFilter(filterOpt);
-                      setCardDateFilters({});
-                    }}
-                    className={`px-4 py-1.5 text-xs font-bold rounded-lg capitalize transition-all cursor-pointer ${
-                      availDateFilter === filterOpt
-                        ? 'bg-blue-600 text-white shadow-xs font-black'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {filterOpt === 'TODAY' ? 'Today' : 'Tomorrow'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 text-xs font-semibold">
-                <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> In Office
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> In Meeting
-                </span>
-              </div>
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> In Office
+              </span>
+              <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> In Meeting
+              </span>
             </div>
           </div>
 
