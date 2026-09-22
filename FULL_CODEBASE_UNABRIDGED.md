@@ -1,6 +1,6 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-22T07:14:14.739Z
+> Generated on: 2026-09-22T07:18:30.852Z
 > Total Source Files Included: 150
 
 ## Table of Contents
@@ -20084,7 +20084,7 @@ function decodeJwtPayload(token: string): User | null {
     if (parts.length !== 3) return null;
     const payload = JSON.parse(atob(parts[1]));
 
-    // Client-side expiry check: payload.exp (seconds) * 1000 < Date.now()
+    // Check expiry
     if (typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) {
       return null;
     }
@@ -20102,11 +20102,51 @@ function decodeJwtPayload(token: string): User | null {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [actualRole, setActualRole] = useState<UserRole | null>(null);
-  const [previewRole, setPreviewRoleState] = useState<UserRole | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('hros_token') || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [actualRole, setActualRole] = useState<UserRole | null>(() => {
+    try {
+      const stored = localStorage.getItem('hros_token');
+      if (stored) {
+        const decoded = decodeJwtPayload(stored);
+        return decoded?.role || null;
+      }
+    } catch {}
+    return null;
+  });
+
+  const [previewRole, setPreviewRoleState] = useState<UserRole | null>(() => {
+    try {
+      const storedRole = (localStorage.getItem('hros_preview_role') || localStorage.getItem('hros_active_role')) as UserRole | null;
+      if (storedRole && ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(storedRole)) {
+        return storedRole;
+      }
+    } catch {}
+    return null;
+  });
+
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const storedToken = localStorage.getItem('hros_token');
+      if (storedToken) {
+        const decoded = decodeJwtPayload(storedToken);
+        if (decoded) {
+          const storedPreview = (localStorage.getItem('hros_preview_role') || localStorage.getItem('hros_active_role')) as UserRole | null;
+          const role = (decoded.role === 'ADMIN' && storedPreview) ? storedPreview : decoded.role;
+          return { ...decoded, role };
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const applySession = (decodedUser: User | null, authToken: string | null) => {
     if (!decodedUser || !authToken) {
@@ -20120,7 +20160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const realRole = decodedUser.role; // Authentic JWT role
+    const realRole = decodedUser.role;
     setActualRole(realRole);
     setToken(authToken);
 
@@ -20138,11 +20178,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPreviewRoleState(activePreview);
     setUser({
       ...decodedUser,
-      role: activePreview, // Used solely for client dashboard layout selection
+      role: activePreview,
     });
   };
 
-  // Restore session & active preview role from localStorage or query param on app load
+  // Restore and verify session on app load
   useEffect(() => {
     async function initAuth() {
       const searchParams = new URLSearchParams(window.location.search);
@@ -20160,19 +20200,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (decodedUser) {
           applySession(decodedUser, targetToken);
 
-          // Verify with server that user account still exists in DB!
+          // Background verification with /api/auth/me
           try {
             const meRes = await fetchApi<{ user: User }>('/api/auth/me');
             if (meRes && meRes.user) {
               applySession({ ...decodedUser, ...meRes.user }, targetToken);
+            }
+          } catch (err: any) {
+            if (err?.message?.includes('no longer exists') || (err?.status === 401 && err?.message?.includes('Unauthorized'))) {
+              applySession(null, null);
+            }
+          }
+        } else {
+          // Token expired, attempt refresh
+          try {
+            const refreshRes = await fetchApi<{ token: string; user: User }>('/api/auth/refresh', { method: 'POST' });
+            if (refreshRes && refreshRes.token) {
+              localStorage.setItem('hros_token', refreshRes.token);
+              applySession(refreshRes.user, refreshRes.token);
             } else {
               applySession(null, null);
             }
           } catch {
             applySession(null, null);
           }
-        } else {
-          applySession(null, null);
         }
       } else {
         applySession(null, null);
@@ -20183,7 +20234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  // Multi-tab session synchronization listener across open browser tabs
+  // Multi-tab session synchronization listener
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'hros_token' || e.key === 'hros_preview_role' || e.key === 'hros_active_role') {
@@ -20201,7 +20252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const login = async (email: string, pass: string, rememberMe: boolean = false) => {
+  const login = async (email: string, pass: string, rememberMe: boolean = true) => {
     setIsLoading(true);
     try {
       const res = await fetchApi<{ token: string; user: User }>('/api/auth/login', {
@@ -27803,7 +27854,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     try {
       const res = await fetch(endpoint, { ...options, headers });
       if (!res.ok) {
-        if (res.status === 401) {
+        if (res.status === 401 && endpoint.startsWith('/api/auth/me')) {
           localStorage.removeItem('hros_token');
           localStorage.removeItem('hros_active_role');
           if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/accept-invite')) {

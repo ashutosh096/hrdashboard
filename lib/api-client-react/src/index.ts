@@ -58,7 +58,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     try {
       const res = await fetch(endpoint, { ...options, headers });
       if (!res.ok) {
-        if (res.status === 401) {
+        if (res.status === 401 && endpoint.startsWith('/api/auth/me')) {
           localStorage.removeItem('hros_token');
           localStorage.removeItem('hros_active_role');
           if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/accept-invite')) {
