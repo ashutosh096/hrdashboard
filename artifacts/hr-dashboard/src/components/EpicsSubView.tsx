@@ -296,8 +296,31 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       if (viewingEpic && viewingEpic.id === epicId) {
         setViewingEpic((prev) => (prev ? { ...prev, status: apiStatus } : null));
       }
+      window.dispatchEvent(new CustomEvent('epics-updated'));
     } catch (err: any) {
       toast.error(err.message || 'Failed to update status');
+    }
+  };
+
+  const handleInitiativeStatusChangeInEpics = async (initId: string, newStatus: string) => {
+    const mappedStatus = newStatus === 'DONE' ? 'DONE' : newStatus === 'ACTIVE' ? 'ACTIVE' : 'PLANNED';
+    if (viewingInitiativeInEpics && viewingInitiativeInEpics.id === initId) {
+      setViewingInitiativeInEpics((prev: any) => prev ? { ...prev, status: mappedStatus } : null);
+    }
+    try {
+      await fetchApi(`/api/initiatives/${initId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: mappedStatus }),
+      });
+      if (mappedStatus === 'DONE') {
+        toast.success(`Initiative marked as DONE & moved to Archive!`);
+      } else {
+        toast.success(`Initiative status updated to ${mappedStatus === 'ACTIVE' ? 'ACTIVE (IN PROGRESS)' : mappedStatus}`);
+      }
+      window.dispatchEvent(new CustomEvent('initiatives-updated'));
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update initiative status');
     }
   };
 
@@ -522,15 +545,37 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       {epic.targetWeek ? epic.targetWeek.split(' ')[0] + ' ' + (epic.targetWeek.split(' ')[1] || '') : 'Week 1'}
                     </span>
 
-                    <span className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all ${
-                      isDone 
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                        : isInProgress 
-                        ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                        : 'bg-gray-100 text-gray-700 border-gray-200'
-                    }`}>
-                      {isDone ? 'Done' : isInProgress ? 'In Progress' : 'Planned'}
-                    </span>
+                    {(isManager || isAdmin) ? (
+                      <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={isDone ? 'DONE' : isInProgress ? 'IN_PROGRESS' : 'PLANNED'}
+                          onChange={(e) => handleStatusChange(epic.id, e.target.value)}
+                          className={`text-xs font-bold px-2.5 py-1 pr-6 rounded-lg border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                            isDone 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' 
+                              : isInProgress 
+                              ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100' 
+                              : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          }`}
+                          title="Click to change epic status live"
+                        >
+                          <option value="PLANNED">Planned</option>
+                          <option value="IN_PROGRESS">In Progress</option>
+                          <option value="DONE">Done</option>
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-1.5 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <span className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all ${
+                        isDone 
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                          : isInProgress 
+                          ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                          : 'bg-gray-100 text-gray-700 border-gray-200'
+                      }`}>
+                        {isDone ? 'Done' : isInProgress ? 'In Progress' : 'Planned'}
+                      </span>
+                    )}
 
                     <button
                       type="button"
@@ -705,9 +750,31 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
                         {isCAG ? 'Climagro' : 'EHM'}
                       </span>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
-                        {statusLabel}
-                      </span>
+                      {(isManager || isAdmin) ? (
+                        <div className="relative inline-flex items-center">
+                          <select
+                            value={viewingEpic.status === 'COMPLETED' || viewingEpic.status === 'DONE' ? 'DONE' : viewingEpic.status === 'IN_PROGRESS' || viewingEpic.status === 'ACTIVE' ? 'IN_PROGRESS' : 'PLANNED'}
+                            onChange={(e) => handleStatusChange(viewingEpic.id, e.target.value)}
+                            className={`text-xs font-bold px-3 py-1 pr-6 rounded-lg border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                              viewingEpic.status === 'COMPLETED' || viewingEpic.status === 'DONE'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                : viewingEpic.status === 'IN_PROGRESS' || viewingEpic.status === 'ACTIVE'
+                                ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                                : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                            }`}
+                            title="Click to change epic status live"
+                          >
+                            <option value="PLANNED">Planned</option>
+                            <option value="IN_PROGRESS">In progress</option>
+                            <option value="DONE">Done</option>
+                          </select>
+                          <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-1.5 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                          {statusLabel}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -1382,9 +1449,31 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
                       {isCAG ? 'Climagro' : 'EHM'}
                     </span>
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
-                      {statusLabel}
-                    </span>
+                    {(isManager || isAdmin) ? (
+                      <div className="relative inline-flex items-center">
+                        <select
+                          value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
+                          onChange={(e) => handleInitiativeStatusChangeInEpics(viewingInitiativeInEpics.id, e.target.value)}
+                          className={`text-xs font-bold px-3 py-1 pr-6 rounded-lg border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                            isDone
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                              : isInProgress
+                              ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                              : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          }`}
+                          title="Click to change initiative status live"
+                        >
+                          <option value="PLANNED">Planned</option>
+                          <option value="ACTIVE">In progress (Active)</option>
+                          <option value="DONE">Done (Archive)</option>
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-1.5 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                        {statusLabel}
+                      </span>
+                    )}
                   </div>
                 );
               })()}

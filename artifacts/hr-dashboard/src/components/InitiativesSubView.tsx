@@ -253,6 +253,60 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     }
   };
 
+  const handleDirectStatusChange = async (id: string, newStatus: string) => {
+    const targetInit = initiatives.find(i => i.id === id);
+    const mappedStatus = newStatus === 'DONE' ? 'DONE' : newStatus === 'ACTIVE' ? 'ACTIVE' : 'PLANNED';
+
+    // Optimistic update
+    setInitiatives(prev => prev.map(i => i.id === id ? { ...i, status: mappedStatus } : i));
+    if (viewingInitiative && viewingInitiative.id === id) {
+      setViewingInitiative(prev => prev ? { ...prev, status: mappedStatus } : null);
+    }
+
+    try {
+      await fetchApi(`/api/initiatives/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: mappedStatus }),
+      });
+
+      if (mappedStatus === 'DONE') {
+        toast.success(`Initiative ${targetInit?.initiativeCode || ''} marked as DONE & moved to Archive!`);
+      } else {
+        toast.success(`Initiative ${targetInit?.initiativeCode || ''} status updated to ${mappedStatus === 'ACTIVE' ? 'ACTIVE (IN PROGRESS)' : mappedStatus}`);
+      }
+      window.dispatchEvent(new CustomEvent('initiatives-updated'));
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update initiative status');
+      loadData();
+    }
+  };
+
+  const handleDirectEpicStatusChange = async (epicId: string, newStatus: string) => {
+    const apiStatus = newStatus === 'DONE' ? 'COMPLETED' : newStatus;
+
+    if (viewingEpicDetails && (viewingEpicDetails.id === epicId || viewingEpicDetails.epicCode === epicId)) {
+      setViewingEpicDetails((prev: any) => prev ? { ...prev, status: apiStatus } : null);
+    }
+
+    try {
+      await fetchApi<any>(`/api/epics/${epicId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: apiStatus }),
+      });
+
+      if (apiStatus === 'COMPLETED') {
+        toast.success(`Epic marked as DONE & moved to Archive!`);
+      } else {
+        toast.success(`Epic status updated to ${newStatus === 'IN_PROGRESS' ? 'IN PROGRESS' : newStatus}`);
+      }
+      window.dispatchEvent(new CustomEvent('epics-updated'));
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update epic status');
+    }
+  };
+
   const openStatusConfirmModal = (initiative: InitiativeItem, targetStatus: string) => {
     setConfirmModal({
       isOpen: true,
@@ -463,15 +517,37 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
-                      isDone
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : isInProgress
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : 'bg-gray-100 text-gray-600 border-gray-200'
-                    }`}>
-                      {item.status || 'PLANNED'}
-                    </span>
+                    {(isManager || isAdmin) ? (
+                      <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
+                          onChange={(e) => handleDirectStatusChange(item.id, e.target.value)}
+                          className={`text-[10px] font-extrabold px-2.5 py-1 pr-6 rounded-lg uppercase tracking-wider border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                            isDone
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                              : isInProgress
+                              ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                              : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          }`}
+                          title="Click to quickly change initiative status live"
+                        >
+                          <option value="PLANNED">PLANNED</option>
+                          <option value="ACTIVE">ACTIVE</option>
+                          <option value="DONE">DONE</option>
+                        </select>
+                        <ChevronDown className="w-3 h-3 text-gray-500 absolute right-1.5 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
+                        isDone
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : isInProgress
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-gray-100 text-gray-600 border-gray-200'
+                      }`}>
+                        {item.status || 'PLANNED'}
+                      </span>
+                    )}
 
                     <button
                       type="button"
@@ -637,9 +713,31 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
                         {isCAG ? 'Climagro' : 'EHM'}
                       </span>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
-                        {statusLabel}
-                      </span>
+                      {(isManager || isAdmin) ? (
+                        <div className="relative inline-flex items-center">
+                          <select
+                            value={viewingInitiative.status === 'DONE' || viewingInitiative.status === 'COMPLETED' ? 'DONE' : viewingInitiative.status === 'ACTIVE' || viewingInitiative.status === 'IN_PROGRESS' ? 'ACTIVE' : 'PLANNED'}
+                            onChange={(e) => handleDirectStatusChange(viewingInitiative.id, e.target.value)}
+                            className={`text-xs font-bold px-3 py-1 pr-7 rounded-lg border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                              viewingInitiative.status === 'DONE' || viewingInitiative.status === 'COMPLETED'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                : viewingInitiative.status === 'ACTIVE' || viewingInitiative.status === 'IN_PROGRESS'
+                                ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                                : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                            }`}
+                            title="Click to change status live"
+                          >
+                            <option value="PLANNED">Planned</option>
+                            <option value="ACTIVE">In progress (Active)</option>
+                            <option value="DONE">Done (Archive)</option>
+                          </select>
+                          <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-2 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                          {statusLabel}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -837,13 +935,33 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                             </div>
 
                             <div className="flex items-center gap-3 shrink-0">
-                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
-                                isEpicDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                isEpicInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                'bg-gray-100 text-gray-700 border-gray-200'
-                              }`}>
-                                {epicStatusLabel}
-                              </span>
+                              {(isAdmin || isManager) ? (
+                                <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+                                  <select
+                                    value={isEpicDone ? 'DONE' : isEpicInProgress ? 'IN_PROGRESS' : 'PLANNED'}
+                                    onChange={(e) => handleDirectEpicStatusChange(epic.id, e.target.value)}
+                                    className={`text-[11px] font-bold px-2 py-0.5 pr-5 rounded border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                                      isEpicDone ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' :
+                                      isEpicInProgress ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100' :
+                                      'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                                    }`}
+                                    title="Click to change epic status live"
+                                  >
+                                    <option value="PLANNED">Planned</option>
+                                    <option value="IN_PROGRESS">Active</option>
+                                    <option value="DONE">Done</option>
+                                  </select>
+                                  <ChevronDown className="w-3 h-3 text-gray-500 absolute right-1 pointer-events-none" />
+                                </div>
+                              ) : (
+                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
+                                  isEpicDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                  isEpicInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  'bg-gray-100 text-gray-700 border-gray-200'
+                                }`}>
+                                  {epicStatusLabel}
+                                </span>
+                              )}
                               <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
                             </div>
                           </div>
@@ -1345,9 +1463,31 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
                         {isCAG ? 'Climagro' : 'EHM'}
                       </span>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
-                        {statusLabel}
-                      </span>
+                      {(isAdmin || isManager) ? (
+                        <div className="relative inline-flex items-center">
+                          <select
+                            value={viewingEpicDetails.status === 'COMPLETED' || viewingEpicDetails.status === 'DONE' ? 'DONE' : viewingEpicDetails.status === 'IN_PROGRESS' || viewingEpicDetails.status === 'ACTIVE' ? 'IN_PROGRESS' : 'PLANNED'}
+                            onChange={(e) => handleDirectEpicStatusChange(viewingEpicDetails.id, e.target.value)}
+                            className={`text-xs font-bold px-3 py-1 pr-6 rounded-lg border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                              viewingEpicDetails.status === 'COMPLETED' || viewingEpicDetails.status === 'DONE'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                : viewingEpicDetails.status === 'IN_PROGRESS' || viewingEpicDetails.status === 'ACTIVE'
+                                ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                                : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                            }`}
+                            title="Click to change epic status live"
+                          >
+                            <option value="PLANNED">Planned</option>
+                            <option value="IN_PROGRESS">In progress</option>
+                            <option value="DONE">Done</option>
+                          </select>
+                          <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-1.5 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                          {statusLabel}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
