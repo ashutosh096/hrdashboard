@@ -139,8 +139,8 @@ export async function createTaskNotification({
   }
 }
 
-// Enforce ADMIN and MANAGER role for creating tasks
-router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+// Allow ADMIN, MANAGER, and EMPLOYEE to create tasks
+router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res) => {
   const {
     title,
     description,
@@ -165,6 +165,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     targetAssigneeIds = assigneeIds;
   } else if (assigneeId) {
     targetAssigneeIds = [assigneeId];
+  } else if (req.user?.employeeId) {
+    targetAssigneeIds = [req.user.employeeId];
   }
 
   if (targetAssigneeIds.length === 0) {

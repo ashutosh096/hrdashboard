@@ -101,6 +101,7 @@ export const EmployeeDashboardView: React.FC = () => {
   const [todaysMeetings, setTodaysMeetings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+  const [showPendingOnly, setShowPendingOnly] = useState<boolean>(false);
 
   // DB Employees & Active Employee Profile Resolution
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
@@ -250,7 +251,7 @@ export const EmployeeDashboardView: React.FC = () => {
               waitingOn: t.waitingOn || 'None (Self)',
               notes: t.description || '',
               delayRequested: false,
-              sprintWeek: resolvedSprintName || 'Active Sprint',
+              sprintWeek: resolvedSprintName || t.sprintWeek || 'Backlog',
               completionPct: calculateTaskProgress(t.status, t.checklists),
             };
           });
@@ -406,18 +407,68 @@ export const EmployeeDashboardView: React.FC = () => {
     return matchesSearch && matchesPriority;
   });
 
-  const activeSprint = sprints.find((s) => s.status === 'ACTIVE') || sprints[0];
+  // Identify sprints assigned specifically to this employee
+  const currentEmployeeId = activeEmployee?.id || user?.employeeId;
+  const employeeSprints = sprints.filter((s) => {
+    if (!currentEmployeeId && !isAdmin) return false;
+    if (currentEmployeeId && (s.employeeId === currentEmployeeId || (Array.isArray(s.employeeIds) && s.employeeIds.includes(currentEmployeeId)))) return true;
+    if (s.id && scopedMyTasks.some((t: any) => t.sprintId === s.id)) return true;
+    return false;
+  });
+
+  const activeSprint =
+    employeeSprints.find((s) => s.status === 'ACTIVE') ||
+    (isAdmin && !selectedEmployeeId ? (sprints.find((s) => s.status === 'ACTIVE') || null) : null) ||
+    null;
+
   const activeSprintName = activeSprint
     ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name)
-    : 'Active Sprint';
+    : 'No Active Sprint';
 
-  // Active Sprint week tasks filter
-  const activeSprintTasks = scopedMyTasks.filter((t) => {
-    if (activeSprint?.id && (t as any).sprintId === activeSprint.id) return true;
-    if (activeSprint?.name && (t.sprintWeek || '').toLowerCase().includes(activeSprint.name.toLowerCase())) return true;
-    if (activeSprint?.targetWeek && (t.sprintWeek || '').toLowerCase().includes(activeSprint.targetWeek.toLowerCase())) return true;
-    return (t.sprintWeek || '').toLowerCase() !== 'backlog';
-  });
+  // Core dynamic metrics strictly from scopedMyTasks (Single unified source of truth)
+  const totalTasksCount = scopedMyTasks.length;
+  const doneTasksCount = scopedMyTasks.filter((t) => t.status === 'Done').length;
+  const pendingTasksCount = scopedMyTasks.filter((t) => t.status !== 'Done').length;
+  const completionVelocityPct = totalTasksCount > 0
+    ? Math.round((doneTasksCount / totalTasksCount) * 100)
+    : 0;
+
+  // Active Sprints list strictly for this employee
+  const activeSprintsList = employeeSprints.filter((s) => s.status === 'ACTIVE');
+  const activeSprintsCount = activeSprintsList.length;
+  const activeSprintCodes = activeSprintsCount > 0
+    ? activeSprintsList.map((s) => s.sprintCode || s.name).join(', ')
+    : 'No active sprint';
+
+  // Today's meetings completed vs scheduled ratio calculation
+  const now = new Date();
+  const pastMeetingsCount = scopedTodaysMeetings.filter((m) => {
+    if (m.status === 'COMPLETED' || m.status === 'DONE') return true;
+    if (m.endTime && new Date(m.endTime) < now) return true;
+    if (!m.endTime && m.startTime) {
+      const start = new Date(m.startTime);
+      return start.getTime() + 30 * 60 * 1000 < now.getTime();
+    }
+    return false;
+  }).length;
+  const totalTodayMeetings = scopedTodaysMeetings.length;
+  const upcomingMeetingsCount = Math.max(0, totalTodayMeetings - pastMeetingsCount);
+
+  // Overview filtered deliverables (handles clicking the Task pending filter tile)
+  const displayedDeliverables = showPendingOnly
+    ? scopedMyTasks.filter((t) => t.status !== 'Done')
+    : scopedMyTasks;
+
+  // Active Sprint week tasks filter: strictly tasks assigned to this active sprint
+  const activeSprintTasks = activeSprint
+    ? scopedMyTasks.filter((t) => {
+        if ((t as any).sprintId && (t as any).sprintId === activeSprint.id) return true;
+        if (activeSprint.name && (t.sprintWeek || '').toLowerCase() === activeSprint.name.toLowerCase()) return true;
+        if (activeSprint.targetWeek && (t.sprintWeek || '').toLowerCase() === activeSprint.targetWeek.toLowerCase()) return true;
+        if (activeSprint.sprintCode && (t.sprintWeek || '').toLowerCase().includes(activeSprint.sprintCode.toLowerCase())) return true;
+        return false;
+      })
+    : [];
 
   const overallSprintCompletionPct = activeSprintTasks.length > 0
     ? Math.round(activeSprintTasks.reduce((sum, t) => sum + (t.completionPct || 0), 0) / activeSprintTasks.length)
@@ -559,151 +610,160 @@ export const EmployeeDashboardView: React.FC = () => {
       {/* TAB 1: OVERVIEW & VISUAL ANALYTICS */}
       {activeSubTab === 'OVERVIEW' && (
         <div className="space-y-6">
-          {/* Top 4 Featured Responsive Stat Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Tile 1: Tasks Pending & Today's Tasks */}
+          {/* STAT TILES — 4 tiles total, in exact order with top-right logos */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Tile 1: Task (Pending / Total) with click-to-filter & Top-Right Logo */}
             <div
-              onClick={() => setActiveModalType('PENDING_TASKS')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+              onClick={() => setShowPendingOnly(prev => !prev)}
+              className={`border rounded-xl p-3.5 shadow-2xs space-y-1.5 cursor-pointer hover:border-emerald-400 hover:shadow-xs transition-all group ${
+                showPendingOnly
+                  ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20'
+                  : 'bg-white border-gray-200/80'
+              }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
-                  <Clock className="w-5 h-5" />
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-gray-500 font-semibold block leading-tight">Task</span>
+                    {showPendingOnly && (
+                      <span className="px-1.5 py-0.2 bg-emerald-600 text-white text-[8px] font-extrabold uppercase rounded-full">
+                        FILTERED
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-1 pt-1">
+                    <span className="text-xl sm:text-2xl font-black text-gray-900 leading-tight">
+                      {pendingTasksCount}
+                    </span>
+                    <span className="text-xs text-gray-500 font-bold">pending</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-700 font-semibold block pt-1 leading-tight">
+                    {doneTasksCount}/{totalTasksCount} completed
+                  </span>
                 </div>
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-semibold block">Today's Tasks & Pending</span>
-                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
-                  {myTasks.filter(t => t.status !== 'Done').length} Pending Tasks
-                </span>
-                <span className="text-[10px] text-emerald-700 font-bold block pt-1">Active deliverables in execution</span>
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
+                  <Clock className="w-4 h-4" />
+                </div>
               </div>
             </div>
 
-            {/* Tile 2: Active Sprint Cycles */}
+            {/* Tile 2: Active Sprints (Scoped to employee) & Top-Right Logo */}
             <div
               onClick={() => setActiveModalType('ACTIVE_SPRINTS')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+              className="bg-white border border-gray-200/80 rounded-xl p-3.5 shadow-2xs space-y-1.5 cursor-pointer hover:border-emerald-400 hover:shadow-xs transition-all group"
             >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
-                  <Flame className="w-5 h-5" />
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="text-[11px] text-gray-500 font-semibold block leading-tight">Active Sprints</span>
+                  <div className="flex items-baseline gap-1 pt-1">
+                    <span className="text-xl sm:text-2xl font-black text-gray-900 leading-tight">
+                      {activeSprintsCount}
+                    </span>
+                    <span className="text-xs text-gray-500 font-bold">active</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-700 font-medium block pt-1 leading-tight truncate max-w-[170px]" title={activeSprintCodes}>
+                    {activeSprintCodes}
+                  </span>
                 </div>
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-semibold block">Active Sprint</span>
-                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5 truncate max-w-[200px]" title={activeSprintName}>
-                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint'}
-                </span>
-                <span className="text-[10px] text-emerald-700 font-bold block pt-1">{activeSprintTasks.length} active sprint items</span>
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
+                  <Flame className="w-4 h-4" />
+                </div>
               </div>
             </div>
 
-            {/* Tile 3: Google Meetings */}
+            {/* Tile 3: Meetings today (Ratio e.g. 2/3) & Top-Right Logo */}
             <div
               onClick={() => setActiveModalType('MEETINGS')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+              className="bg-white border border-gray-200/80 rounded-xl p-3.5 shadow-2xs space-y-1.5 cursor-pointer hover:border-emerald-400 hover:shadow-xs transition-all group"
             >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
-                  <Calendar className="w-5 h-5" />
-                </div>
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-semibold block">Google Meetings</span>
-                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
-                  {todaysMeetings.length} Scheduled
-                </span>
-                <span className="text-[10px] text-emerald-700 font-bold block pt-1">Synced live calendar</span>
-              </div>
-            </div>
-
-            {/* Tile 4: Completed Tasks */}
-            <div
-              onClick={() => setActiveModalType('COMPLETED_TASKS')}
-              className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold group-hover:scale-105 transition-transform border border-emerald-100">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div>
-                <span className="text-xs text-gray-400 font-semibold block">Completed Tasks</span>
-                <span className="text-base font-extrabold text-gray-900 block leading-tight pt-0.5">
-                  {doneCount} Completed
-                </span>
-                <span className="text-[10px] text-emerald-700 font-bold block pt-1">Approved & signed-off</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Visual Recharts Section: Task Progress & Sprint Analytics (Left 65%) + My Task Load Distribution (Right 35%) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-            <div className="lg:col-span-2">
-              <TaskProgressSprintAnalytics className="h-full" />
-            </div>
-
-            <div className="lg:col-span-1 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-gray-900 text-sm tracking-tight">My Task Load Distribution</h3>
-                    <p className="text-[11px] text-gray-400 font-medium">Personal deliverable status pie chart.</p>
-                  </div>
-                  <PieIcon className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div className="h-52 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={personalTaskPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={75}
-                        paddingAngle={4}
-                        dataKey="value"
-                      >
-                        {personalTaskPieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                {personalTaskPieData.map((item) => (
-                  <div key={item.name} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-gray-600 font-semibold">{item.name}:</span>
-                    <span className="font-bold text-gray-900">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content Grid: My Tasks (60%) + Daily Standup & Meetings (40%) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column: My Assigned Deliverables Only */}
-            <div className="lg:col-span-2 bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-gray-900 text-base tracking-tight">My Assigned Deliverables & Matrix</h3>
-                  <p className="text-xs text-gray-400 font-medium">Click any task to update progress, attach link, or submit notes.</p>
+                  <span className="text-[11px] text-gray-500 font-semibold block leading-tight">Meetings today</span>
+                  <div className="flex items-baseline gap-1 pt-1">
+                    <span className="text-xl sm:text-2xl font-black text-gray-900 leading-tight">
+                      {pastMeetingsCount}/{totalTodayMeetings}
+                    </span>
+                    <span className="text-xs text-gray-500 font-bold">done</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-700 font-medium block pt-1 leading-tight">
+                    {totalTodayMeetings > 0 ? `${upcomingMeetingsCount} upcoming today` : 'No meetings today'}
+                  </span>
                 </div>
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
+                  <Calendar className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* Tile 4: Completion velocity & Top-Right Logo */}
+            <div
+              onClick={() => setActiveModalType('COMPLETION_RATE')}
+              className="bg-white border border-gray-200/80 rounded-xl p-3.5 shadow-2xs space-y-1.5 cursor-pointer hover:border-emerald-400 hover:shadow-xs transition-all group"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] text-gray-500 font-semibold block leading-tight">Completion velocity</span>
+                  <div className="flex items-baseline gap-1 pt-1">
+                    <span className="text-xl sm:text-2xl font-black text-gray-900 leading-tight">
+                      {completionVelocityPct}%
+                    </span>
+                    <span className="text-xs text-gray-500 font-bold">velocity</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mt-2">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${completionVelocityPct}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform ml-2">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 1. MY ASSIGNED DELIVERABLES & MATRIX (DIRECTLY BELOW STAT TILES - LARGEST PROMINENT SECTION) */}
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-gray-900 text-base tracking-tight">My Assigned Deliverables & Matrix</h3>
+                <p className="text-xs text-gray-400 font-medium">Click any task to update progress, attach link, or submit notes.</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {showPendingOnly && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-xs font-bold animate-in fade-in">
+                    <span>Showing: Pending only ({displayedDeliverables.length})</span>
+                    <button
+                      onClick={() => setShowPendingOnly(false)}
+                      className="text-amber-800 hover:text-amber-950 underline ml-1 cursor-pointer font-black text-[11px]"
+                    >
+                      Show all
+                    </button>
+                  </div>
+                )}
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full truncate max-w-[200px]" title={activeSprintName}>
-                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint'}
+                  {activeSprintName}
                 </span>
               </div>
+            </div>
 
-              <div className="space-y-3">
-                {myTasks.map((t) => (
+            <div className="space-y-3">
+              {displayedDeliverables.length === 0 ? (
+                <div className="p-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                  <p className="text-xs font-bold text-gray-500">
+                    {showPendingOnly
+                      ? 'No pending deliverables found! All assigned tasks are completed.'
+                      : 'No deliverables currently assigned to your workspace.'}
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {showPendingOnly
+                      ? 'Click "Show all" to view completed tasks.'
+                      : 'Use the "+ Create Personal Task" button above to log a task or wait for Lead assignment.'}
+                  </p>
+                </div>
+              ) : (
+                displayedDeliverables.map((t) => (
                   <div
                     key={t.id}
                     onClick={() => handleOpenTaskUpdate(t)}
@@ -767,46 +827,144 @@ export const EmployeeDashboardView: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 2. LOWER SECTION: SHRUNK COMBINED ANALYTICS (LEFT 2/3) + GOOGLE MEETINGS (RIGHT 1/3) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+            {/* Left 2 Cols: Combined Shrunk Analytics Card with Threshold */}
+            <div className="lg:col-span-2">
+              {doneTasksCount > 5 ? (
+                <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4 h-full flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-sm tracking-tight">Task Progress & Sprint Analytics</h3>
+                      <p className="text-[11px] text-gray-400 font-medium">Weekly execution velocity & deliverable trends.</p>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                      {doneTasksCount} Completed
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div className="md:col-span-2 h-44 w-full">
+                      <TaskProgressSprintAnalytics className="h-full" />
+                    </div>
+                    <div className="md:col-span-1 h-44 flex flex-col items-center justify-center">
+                      <ResponsiveContainer width="100%" height="80%">
+                        <PieChart>
+                          <Pie
+                            data={personalTaskPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={30}
+                            outerRadius={50}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {personalTaskPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500 font-semibold">
+                        <span>Done: {doneCount}</span>
+                        <span>·</span>
+                        <span>In Progress: {inProgressCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs h-full flex flex-col justify-center items-center text-center space-y-3 min-h-[190px]">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <div className="max-w-md space-y-1">
+                    <h4 className="text-sm font-bold text-gray-900">Task Progress & Sprint Analytics</h4>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                      You're just getting started — progress trends will show here once you've completed a few deliverables.
+                    </p>
+                    <p className="text-[11px] text-emerald-700 font-bold pt-1">
+                      {doneTasksCount} of 6 completed deliverables logged
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Right Column: Today's Meetings */}
-            <div className="lg:col-span-1 space-y-6">
-              {/* Today's Meetings Box */}
-              <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-gray-900 text-sm tracking-tight">Today's Google Meetings</h3>
-                  <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">Google Sync</span>
+            {/* Right 1 Col: Today's Google Meetings */}
+            <div className="lg:col-span-1">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-1">
+                    <h3 className="font-bold text-gray-900 text-sm tracking-tight">Today's Google Meetings</h3>
+                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                      Live Sync
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 font-medium">Calendar synced schedule for {activeEmpName}.</p>
                 </div>
 
-                <div className="space-y-3 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
-                  {todaysMeetings.length === 0 ? (
-                    <p className="text-xs font-medium text-gray-400 italic py-2">No meetings scheduled for today</p>
+                <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1 custom-scrollbar flex-1">
+                  {scopedTodaysMeetings.length === 0 ? (
+                    <div className="p-4 text-center bg-gray-50/60 rounded-xl border border-dashed border-gray-200">
+                      <p className="text-xs font-medium text-gray-400 italic">No meetings scheduled for today</p>
+                    </div>
                   ) : (
-                    todaysMeetings.map((m, idx) => (
-                      <div key={m.id || idx} className="p-3.5 bg-emerald-50/60 border border-emerald-200/80 rounded-xl space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-emerald-800">
-                            {m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'}
-                          </span>
-                          <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full">SCHEDULED</span>
+                    scopedTodaysMeetings.map((m, idx) => {
+                      const isPast =
+                        m.status === 'COMPLETED' ||
+                        m.status === 'DONE' ||
+                        (m.endTime && new Date(m.endTime) < now) ||
+                        (!m.endTime && m.startTime && new Date(m.startTime).getTime() + 30 * 60 * 1000 < now.getTime());
+
+                      return (
+                        <div
+                          key={m.id || idx}
+                          className={`p-3 rounded-xl space-y-1.5 transition-all ${
+                            isPast
+                              ? 'bg-slate-50/80 border border-slate-200/80 opacity-90'
+                              : 'bg-emerald-50/60 border border-emerald-200/80'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-gray-800">
+                              {m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'}
+                            </span>
+                            {isPast ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-extrabold rounded-full border border-slate-300">
+                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                                DONE
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-extrabold rounded-full shadow-2xs">
+                                <Clock className="w-2.5 h-2.5" />
+                                SCHEDULED
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-gray-900 text-xs truncate">{m.title}</h4>
+                          {m.description && <p className="text-[11px] text-gray-500 font-medium line-clamp-1">{m.description}</p>}
+                          {m.googleMeetUrl && !isPast && (
+                            <a
+                              href={m.googleMeetUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg justify-center transition-colors shadow-2xs mt-1"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>Join Google Meet</span>
+                            </a>
+                          )}
                         </div>
-                        <h4 className="font-bold text-gray-900 text-xs">{m.title}</h4>
-                        <p className="text-[11px] text-gray-500 font-medium">{m.description || 'HROS Meeting'}</p>
-                        {m.googleMeetUrl && (
-                          <a
-                            href={m.googleMeetUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg justify-center transition-colors shadow-2xs mt-1"
-                          >
-                            <Video className="w-3.5 h-3.5" />
-                            <span>Join Google Meet</span>
-                          </a>
-                        )}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -931,7 +1089,7 @@ export const EmployeeDashboardView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
-                  {activeSprint ? (activeSprint.sprintCode ? `${activeSprint.sprintCode}: ${activeSprint.name}` : activeSprint.name) : 'Active Sprint Cycle'}
+                  {activeSprintName}
                 </span>
               </div>
               <h3 className="text-lg font-bold text-gray-900 tracking-tight">My Active Sprint Deliverables</h3>
@@ -944,8 +1102,14 @@ export const EmployeeDashboardView: React.FC = () => {
           </div>
 
           {/* Active Sprint Tasks List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeSprintTasks.map((t) => (
+          {activeSprintTasks.length === 0 ? (
+            <div className="p-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+              <p className="text-xs font-bold text-gray-500">No active sprint deliverables assigned to your workspace.</p>
+              <p className="text-[11px] text-gray-400 mt-1">When your manager assigns sprint tasks to you, they will show up here automatically.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {activeSprintTasks.map((t) => (
               <div
                 key={t.id}
                 className="p-4 border border-gray-200 rounded-2xl bg-white shadow-2xs hover:border-emerald-300 transition-all space-y-3"
@@ -998,6 +1162,7 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
             ))}
           </div>
+        )}
         </div>
       )}
 
