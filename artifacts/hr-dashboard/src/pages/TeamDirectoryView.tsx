@@ -45,9 +45,9 @@ export const TeamDirectoryView: React.FC = () => {
   const [editEntity, setEditEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const loadTeam = async () => {
+  const loadTeam = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await fetchApi<any[]>('/api/employees');
 
       if (Array.isArray(data)) {
@@ -82,12 +82,34 @@ export const TeamDirectoryView: React.FC = () => {
     } catch (err) {
       console.error('[TEAM DIRECTORY FETCH ERROR]:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadTeam();
+
+    // Auto-refresh interval (10s) and on tab focus
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadTeam(true);
+      }
+    }, 10000);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadTeam(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, []);
 
   const filtered = team.filter(t => matchesEntityFilter(t, selectedEntity));
@@ -341,20 +363,6 @@ export const TeamDirectoryView: React.FC = () => {
                     </span>
 
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      {/* Copy Direct Link Button */}
-                      <button
-                        onClick={() => {
-                          const directUrl = `${window.location.origin}/accept-invite?email=${encodeURIComponent(member.email)}`;
-                          navigator.clipboard.writeText(directUrl);
-                          toast.success(`Direct activation link for ${member.name} copied!`);
-                        }}
-                        className="flex items-center gap-1 text-[11px] font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-300 px-2.5 py-1 rounded-xl transition-colors cursor-pointer"
-                        title="Copy direct activation URL for this employee"
-                      >
-                        <Copy className="w-3 h-3 text-gray-600" />
-                        <span>Copy Link</span>
-                      </button>
-
                       {/* Re-invite Button */}
                       <button
                         onClick={() => handleReinviteEmployee(member.id, member.email, member.name)}

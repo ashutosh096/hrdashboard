@@ -148,7 +148,7 @@ export const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <EntityProvider>
-            <Toaster position="top-right" richColors />
+            <Toaster position="top-right" richColors closeButton duration={3500} />
             <MainContent />
           </EntityProvider>
         </AuthProvider>

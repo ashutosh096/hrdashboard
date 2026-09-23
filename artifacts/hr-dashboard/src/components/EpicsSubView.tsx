@@ -135,8 +135,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     }
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [epicsData, initsData, tasksData] = await Promise.all([
         fetchApi<EpicItem[]>('/api/epics'),
@@ -152,14 +152,31 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         if (!selectedInitiativeId) setSelectedInitiativeId(sortedInits[0].id);
       }
     } catch {
-      setEpics([]);
+      if (!silent) setEpics([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
+
+    // Silent background refresh every 10s and on tab focus
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isModalOpen && !editingEpic) {
+        loadData(true);
+      }
+    }, 10000);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' && !isModalOpen && !editingEpic) {
+        loadData(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
     const handleInitsUpdate = () => {
       fetchApi<InitiativeOption[]>('/api/initiatives').then((initsData) => {
         if (initsData && initsData.length > 0) {
@@ -169,10 +186,16 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       }).catch(() => {});
     };
     window.addEventListener('initiatives-updated', handleInitsUpdate);
+    window.addEventListener('epics-updated', () => loadData(true));
+
     return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
       window.removeEventListener('initiatives-updated', handleInitsUpdate);
+      window.removeEventListener('epics-updated', () => loadData(true));
     };
-  }, []);
+  }, [isModalOpen, editingEpic]);
 
   // When Create or Edit modal opens, always fetch freshest initiatives list
   useEffect(() => {
@@ -576,6 +599,18 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                         {isDone ? 'Done' : isInProgress ? 'In Progress' : 'Planned'}
                       </span>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setViewingEpic(epic);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-gray-200"
+                      title="View Epic Details"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
 
                     <button
                       type="button"

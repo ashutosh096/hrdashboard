@@ -128,21 +128,43 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     });
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const initData = await fetchApi<InitiativeItem[]>('/api/initiatives');
       setInitiatives(initData || []);
     } catch (err) {
-      setInitiatives([]);
+      if (!silent) setInitiatives([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+
+    // Silent background refresh every 10s and on tab focus
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isModalOpen && !isEditMode) {
+        loadData(true);
+      }
+    }, 10000);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' && !isModalOpen && !isEditMode) {
+        loadData(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [isModalOpen, isEditMode]);
 
   useEffect(() => {
     if (selectedInitiativeIdToView && initiatives.length > 0) {

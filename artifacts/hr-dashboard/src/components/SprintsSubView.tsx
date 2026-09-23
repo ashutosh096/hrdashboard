@@ -259,8 +259,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     setModalNewCommentText('');
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [sprintsData, empData, epicsData, tasksData] = await Promise.all([
         fetchApi<SprintItem[]>('/api/sprints'),
@@ -320,13 +320,35 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     } catch (err) {
       console.error('[FETCH SPRINTS DATA ERROR]:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+
+    // Silent background refresh every 10s and on tab focus
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isModalOpen && !selectedTaskToUpdate) {
+        loadData(true);
+      }
+    }, 10000);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' && !isModalOpen && !selectedTaskToUpdate) {
+        loadData(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [isModalOpen, selectedTaskToUpdate]);
 
   const getTaskColumn = (task: any): string => {
     const status = (task.status || '').toUpperCase();
