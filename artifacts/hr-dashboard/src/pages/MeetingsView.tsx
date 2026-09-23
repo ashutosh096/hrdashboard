@@ -43,7 +43,8 @@ import { matchesEntityFilter } from '../utils/entityUtils';
 
 type CalendarViewMode = 'WEEK' | 'DAY' | 'MONTH' | 'SCHEDULE';
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 8 AM to 9 PM (8..21)
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // Full 24 Hours: 0 to 23 (12 AM to 11 PM)
+const HOUR_HEIGHT = 48; // 48px per hour matching Google Calendar style
 
 export const MeetingsView: React.FC = () => {
   const { user } = useAuth();
@@ -207,9 +208,11 @@ export const MeetingsView: React.FC = () => {
   // Open Create Modal for specific slot
   const openCreateModal = (dateStr?: string, hour?: number) => {
     const d = dateStr || currentDate.toISOString().split('T')[0];
-    const h = hour !== undefined ? hour : 11;
+    const h = hour !== undefined ? Math.max(0, Math.min(23, hour)) : 11;
     const startStr = `${h < 10 ? '0' : ''}${h}:00`;
-    const endStr = `${h + 1 < 10 ? '0' : ''}${h + 1}:00`;
+    const nextH = h === 23 ? 23 : h + 1;
+    const nextMin = h === 23 ? '59' : '00';
+    const endStr = `${nextH < 10 ? '0' : ''}${nextH}:${nextMin}`;
 
     setEventTitle('');
     setEventDate(d);
@@ -671,7 +674,24 @@ export const MeetingsView: React.FC = () => {
   const todayIso = new Date().toISOString().split('T')[0];
   const nowHour = new Date().getHours();
   const nowMin = new Date().getMinutes();
-  const currentMinutesFrom8AM = (nowHour - 8) * 60 + nowMin;
+  const currentMinutesFromMidnight = nowHour * 60 + nowMin;
+  const currentRedLineTopPx = (currentMinutesFromMidnight / 60) * HOUR_HEIGHT;
+
+  // Calendar Scroll container ref for smooth positioning to business/current hours
+  const calendarScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (viewMode === 'WEEK' && activeTab === 'CALENDAR') {
+      const timer = setTimeout(() => {
+        if (calendarScrollRef.current) {
+          const currentH = new Date().getHours();
+          const targetH = Math.max(0, Math.min(18, currentH >= 8 && currentH <= 21 ? currentH - 1 : 8));
+          calendarScrollRef.current.scrollTop = targetH * HOUR_HEIGHT;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, activeTab, currentDate]);
 
   // Filtered employees for search people in sidebar
   const filteredSearchPeople = useMemo(() => {
@@ -919,14 +939,14 @@ export const MeetingsView: React.FC = () => {
             </div>
           </div>
 
-          {/* RIGHT CALENDAR TIME GRID (Matches Image 2 & Compact 1-Screen View in Image 3) */}
-          <div className="flex-1 flex flex-col overflow-y-auto bg-white select-none">
+          {/* RIGHT CALENDAR TIME GRID (Full 24-Hour Scrollable View matching Google Calendar in Image 2 & 3) */}
+          <div ref={calendarScrollRef} className="flex-1 flex flex-col overflow-y-auto bg-white select-none custom-scrollbar">
             {/* WEEK VIEW */}
             {viewMode === 'WEEK' && (
               <div className="flex flex-col min-w-[750px]">
                 {/* Day Header Row */}
-                <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-gray-200 sticky top-0 bg-white z-20">
-                  <div className="p-2 border-r border-gray-200 flex flex-col items-end justify-end pr-2 pb-1.5 select-none">
+                <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-gray-200 sticky top-0 bg-white z-20 shadow-2xs">
+                  <div className="p-2 border-r border-gray-200 flex flex-col items-end justify-end pr-2 pb-1.5 select-none bg-white">
                     <span className="text-[10px] text-gray-400 font-medium">GMT+05:30</span>
                   </div>
                   {weekDays.map((dayItem) => {
@@ -936,7 +956,7 @@ export const MeetingsView: React.FC = () => {
                     return (
                       <div
                         key={dayItem.dateStr}
-                        className="p-2 text-center border-r border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50/50"
+                        className="p-2 text-center border-r border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50/50 bg-white"
                         onClick={() => {
                           setCurrentDate(dayItem.date);
                           setMiniNavMonth(new Date(dayItem.date));
@@ -962,20 +982,22 @@ export const MeetingsView: React.FC = () => {
                   })}
                 </div>
 
-                {/* Compact Hourly Time Grid (44px/hour to fit in one screen like Image 3) */}
+                {/* Full 24-Hour Time Grid (48px/hour) */}
                 <div className="relative grid grid-cols-[64px_repeat(7,1fr)]">
-                  {/* Hours Label Column (Aligned with grid line, no internal horizontal borders) */}
+                  {/* Hours Label Column (Aligned with grid line, Google Calendar styling) */}
                   <div className="border-r border-gray-200 select-none bg-white relative">
                     {HOURS.map((hour) => {
-                      const hourStr = hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+                      const hourStr = hour === 0 ? '' : hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
                       return (
                         <div
                           key={hour}
-                          className="h-[44px] relative"
+                          className="h-[48px] relative"
                         >
-                          <span className="absolute -top-2.5 right-2 text-[10px] font-medium text-gray-400 text-right select-none">
-                            {hourStr}
-                          </span>
+                          {hourStr && (
+                            <span className="absolute -top-2.5 right-2 text-[10px] font-medium text-gray-400 text-right select-none">
+                              {hourStr}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -993,27 +1015,27 @@ export const MeetingsView: React.FC = () => {
                           isToday ? 'bg-blue-50/15' : ''
                         }`}
                       >
-                        {/* 44px Hour Slots */}
+                        {/* 48px Hour Slots across all 24 hours */}
                         {HOURS.map((hour) => (
                           <div
                             key={hour}
                             onClick={() => openCreateModal(dayItem.dateStr, hour)}
-                            className="h-[44px] border-b border-gray-100 hover:bg-amber-50/20 cursor-pointer transition-colors"
+                            className="h-[48px] border-b border-gray-100 hover:bg-amber-50/20 cursor-pointer transition-colors"
                           />
                         ))}
 
-                        {/* Live Current Time Red Line Indicator (IST time indicator) */}
-                        {isToday && currentMinutesFrom8AM >= 0 && currentMinutesFrom8AM <= 14 * 60 && (
+                        {/* Live Current Time Red Line Indicator (IST time indicator across 24h) */}
+                        {isToday && (
                           <div
                             className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
-                            style={{ top: `${(currentMinutesFrom8AM / (14 * 60)) * (14 * 44)}px` }}
+                            style={{ top: `${currentRedLineTopPx}px` }}
                           >
                             <span className="w-2.5 h-2.5 rounded-full bg-red-600 -ml-1.25" />
                             <div className="w-full h-0.5 bg-red-600" />
                           </div>
                         )}
 
-                        {/* Meeting Events Overlay (Matches Google Calendar styling in Image 2) */}
+                        {/* Meeting Events Overlay (Matches Google Calendar styling in Image 2 & 3) */}
                         {dayMeetings.map((m: any, mIdx: number) => {
                           const start = m.startTime ? new Date(m.startTime) : new Date();
                           const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60000);
@@ -1021,13 +1043,11 @@ export const MeetingsView: React.FC = () => {
                           const startHours = start.getHours() + start.getMinutes() / 60;
                           const endHours = end.getHours() + end.getMinutes() / 60;
 
-                          const durationHours = Math.max(0.4, endHours - startHours);
-                          const topMinutes = (startHours - 8) * 60;
-                          const topPx = (topMinutes / 60) * 44;
-                          const heightPx = Math.max(22, durationHours * 44 - 3);
+                          const durationHours = Math.max(0.35, endHours - startHours);
+                          const topPx = startHours * HOUR_HEIGHT;
+                          const heightPx = Math.max(22, durationHours * HOUR_HEIGHT - 3);
 
                           const timeFormatted = formatISTTimeShort(start);
-
                           const isSolidCard = m.title?.toLowerCase().includes('discovery');
 
                           return (
