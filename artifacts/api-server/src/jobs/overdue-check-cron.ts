@@ -109,13 +109,18 @@ export async function runOverdueAndTokenChecks() {
     console.error('[OVERDUE CRON ERROR]:', err);
   }
 
-  // 2. Google Token Expiry Reminder Check (Next 24 Hours)
+  // 2. Google Token Expiry Reminder Check (Only alert if no refreshToken is available to auto-renew)
   try {
     const future24h = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const expiringTokens = await db
       .select()
       .from(googleTokens)
-      .where(and(gt(googleTokens.expiry, now), lt(googleTokens.expiry, future24h)));
+      .where(
+        and(
+          sql`(${googleTokens.refreshToken} IS NULL OR ${googleTokens.refreshToken} = '')`,
+          lt(googleTokens.expiry, future24h)
+        )
+      );
 
     for (const tokenRow of expiringTokens) {
       const recentNotifs = await db
@@ -136,7 +141,8 @@ export async function runOverdueAndTokenChecks() {
             userId: targetUser.id,
             type: 'CALENDAR_RECONNECT',
             payload: {
-              message: 'Your Google Calendar OAuth integration token will expire within 24 hours. Please reconnect in Settings.',
+              title: 'Action Required: Reconnect Google Calendar',
+              message: 'Your Google Calendar integration requires manual reconnection in Settings to continue syncing meetings.',
             },
           });
 
