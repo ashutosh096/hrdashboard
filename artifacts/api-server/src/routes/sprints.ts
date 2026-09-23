@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, sprints, employees, entities, epics, tasks, taskChecklists, taskComments, taskNotes, entityCounters, eq, inArray, sql, and } from '@workspace/db';
+import { db, sprints, employees, entities, epics, tasks, users, notifications, taskChecklists, taskComments, taskNotes, entityCounters, eq, inArray, sql, and } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -106,6 +106,30 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           goal: goal || '',
         })
         .returning();
+
+      // 4. Dispatch notification to Sprint Owner Employee
+      const [empUser] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.employeeId, emp.id));
+
+      if (empUser) {
+        await tx.insert(notifications).values({
+          userId: empUser.id,
+          type: 'TASK_ASSIGNED',
+          payload: {
+            sprintId: newSprint.id,
+            sprintCode: newSprint.sprintCode,
+            taskCode: newSprint.sprintCode,
+            title: `New Sprint Assigned: [${newSprint.sprintCode}] "${newSprint.name}"`,
+            message: `You have been assigned to a new personal sprint: [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
+            taskTitle: newSprint.name,
+            assigneeId: emp.id,
+            assigneeName: `${emp.firstName} ${emp.lastName}`.trim(),
+            tagged: true,
+          },
+        });
+      }
 
       return newSprint;
     });

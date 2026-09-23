@@ -268,12 +268,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         fetchApi<any[]>('/api/epics'),
         fetchApi<any[]>('/api/tasks'),
       ]);
-      setSprints(sprintsData || []);
-      
-      const merged = [...CREATED_TASKS_CACHE, ...(tasksData || [])];
-      const uniqueTasks = Array.from(new Map(merged.map(t => [t.id, t])).values());
-      setAllTasks(uniqueTasks);
-
       const formattedEmps = (empData || []).map(e => ({
         id: e.id,
         firstName: e.firstName,
@@ -283,6 +277,35 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         email: e.email || '',
       }));
       setEmployees(formattedEmps);
+
+      const enrichedTasks = (tasksData || []).map((t: any) => {
+        const assignedEmp = formattedEmps.find(e => e.id === t.assigneeId || e.employeeCode === t.assigneeId);
+        const leadEmp = formattedEmps.find(e => e.id === t.reviewingLeadId || e.employeeCode === t.reviewingLeadId);
+        const parentEpic = (epicsData || []).find((ep: any) => ep.id === t.epicId);
+
+        const assigneeName = (t.assigneeName && t.assigneeName !== 'Unassigned')
+          ? t.assigneeName
+          : (assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}`.trim() : 'Unassigned');
+
+        const reviewingLead = (t.reviewingLead && t.reviewingLead !== 'Manager lead')
+          ? t.reviewingLead
+          : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Manager lead');
+
+        const epicCode = t.epicCode || parentEpic?.epicCode || (t.taskCode?.startsWith('CAG') ? 'CAG-EPIC-001' : 'EHM-EPIC-001');
+
+        return {
+          ...t,
+          assigneeName,
+          assigneeEmail: t.assigneeEmail || assignedEmp?.email || '',
+          reviewingLead,
+          epicCode,
+          epicTitle: t.epicTitle || parentEpic?.title || '',
+        };
+      });
+
+      const merged = [...CREATED_TASKS_CACHE, ...enrichedTasks];
+      const uniqueTasks = Array.from(new Map(merged.map(t => [t.id, t])).values());
+      setAllTasks(uniqueTasks);
 
       if (formattedEmps.length > 0) {
         if (selectedEmpIds.length === 0) setSelectedEmpIds([formattedEmps[0].id]);
@@ -674,6 +697,17 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       toast.error('You can only edit tasks assigned to you.');
     }
 
+    const assignedEmp = employees.find(e => e.id === task.assigneeId || e.employeeCode === task.assigneeId);
+    const leadEmp = employees.find(e => e.id === task.reviewingLeadId || e.employeeCode === task.reviewingLeadId);
+
+    const resolvedAssignee = (task.assigneeName && task.assigneeName !== 'Unassigned')
+      ? task.assigneeName
+      : (assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}`.trim() : task.assignee || 'Unassigned');
+
+    const resolvedLead = (task.reviewingLead && task.reviewingLead !== 'Manager lead')
+      ? task.reviewingLead
+      : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : task.reviewingLead || 'Manager Lead');
+
     const isCag = (task.taskCode || '').startsWith('CAG') || (task.assigneeCode || '').startsWith('CAG') || (task.entity || '').toLowerCase().includes('cag') || (task.entity || '').toLowerCase().includes('climagro');
 
     setIsModalReadOnly(readOnly);
@@ -682,10 +716,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       taskId: task.taskCode || task.id,
       title: task.title || '',
       entity: isCag ? 'CLIMAGRO' : 'EHM',
-      assignee: task.assigneeName || task.assignee || 'Unassigned',
-      assigneeId: task.assigneeId || '',
-      reviewingLead: task.reviewingLead || 'Manager Lead',
-      reviewingLeadId: task.reviewingLeadId || '',
+      assignee: resolvedAssignee,
+      assigneeId: task.assigneeId || (assignedEmp?.id || ''),
+      reviewingLead: resolvedLead,
+      reviewingLeadId: task.reviewingLeadId || (leadEmp?.id || ''),
       status: task.status === 'DONE' || task.status === 'COMPLETED' ? 'Done' :
               task.status === 'IN_REVIEW' || task.status === 'TO_REVIEW' ? 'To Review' :
               task.status === 'PLANNED' ? 'Planned' :
@@ -1221,11 +1255,18 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
                       return sortedColumnTasks.map(t => {
                         const entityName = (t.taskCode || '').startsWith('CAG') || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
-                        const isUnassigned = !t.assigneeName || t.assigneeName === 'Unassigned' || t.assigneeName === 'Assignee' || !t.assigneeId;
+                        const assignedEmp = employees.find(e => e.id === t.assigneeId || e.employeeCode === t.assigneeId);
+                        const leadEmp = employees.find(e => e.id === t.reviewingLeadId || e.employeeCode === t.reviewingLeadId);
+
+                        const resolvedAssigneeName = (t.assigneeName && t.assigneeName !== 'Unassigned')
+                          ? t.assigneeName
+                          : (assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}`.trim() : 'Unassigned');
+
+                        const isUnassigned = !t.assigneeId || resolvedAssigneeName === 'Unassigned';
 
                         let assigneeInitials = 'U';
-                        if (!isUnassigned && t.assigneeName) {
-                          const parts = t.assigneeName.trim().split(' ');
+                        if (!isUnassigned && resolvedAssigneeName) {
+                          const parts = resolvedAssigneeName.trim().split(' ');
                           assigneeInitials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0].slice(0, 2);
                         }
 
@@ -1256,8 +1297,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         const priorityBarColor = (priorityLabel === 'P1') ? 'bg-red-500' : (priorityLabel === 'P2') ? 'bg-rose-500' : (priorityLabel === 'P3') ? 'bg-amber-500' : 'bg-slate-400';
 
                         const createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '16 Sep';
-                        const reviewerLead = t.reviewingLead || t.lead || 'Manager lead';
-                        const assigneeDisplayName = isUnassigned ? 'Unassigned' : (t.assigneeName || 'Team member');
+                        const reviewerLead = (t.reviewingLead && t.reviewingLead !== 'Manager lead')
+                          ? t.reviewingLead
+                          : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Manager lead');
+                        const assigneeDisplayName = isUnassigned ? 'Unassigned' : resolvedAssigneeName;
 
                         return (
                           <div

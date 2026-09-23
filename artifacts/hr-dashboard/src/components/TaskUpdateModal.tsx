@@ -194,12 +194,14 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setTaskName(task.title || '');
       
       const cleanAssignee = (task.assignee || 'Unassigned').replace(/\(.*?\)/g, '').trim();
-      setAssignee(cleanAssignee);
-      setAssigneeId(task.assigneeId || '');
+      const matchedAssignee = employeesList.find(e => e.id === task.assigneeId || e.name.toLowerCase() === cleanAssignee.toLowerCase());
+      setAssignee(matchedAssignee ? matchedAssignee.name : cleanAssignee);
+      setAssigneeId(task.assigneeId || matchedAssignee?.id || '');
 
       const cleanLead = (task.reviewingLead || 'Manager Lead').replace(/\(.*?\)/g, '').trim();
-      setReviewingLead(cleanLead);
-      setReviewingLeadId(task.reviewingLeadId || '');
+      const matchedLead = employeesList.find(e => e.id === task.reviewingLeadId || e.name.toLowerCase() === cleanLead.toLowerCase());
+      setReviewingLead(matchedLead ? matchedLead.name : cleanLead);
+      setReviewingLeadId(task.reviewingLeadId || matchedLead?.id || '');
 
       setOutputUrl(task.outputUrl || '');
       setStatus(task.status || 'In Progress');
@@ -210,7 +212,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setDueDate(parseDateForInput(task.dueDate));
       loadTaskData();
     }
-  }, [task]);
+  }, [task, employeesList]);
 
   if (!isOpen || !task) return null;
 

@@ -139,19 +139,39 @@ export const NotificationsView: React.FC = () => {
     }
 
     if (type === 'TASK_ASSIGNED') {
+      const code = payload.taskCode || payload.sprintCode || 'TASK';
+      const name = payload.taskTitle || payload.title || '';
+      const displayTitle = (notif.title && (notif.title.includes('Assigned') || notif.title.includes('[')))
+        ? notif.title
+        : (payload.title && (payload.title.includes('Assigned') || payload.title.includes('[')))
+        ? payload.title
+        : `New Sprint Task Assigned: [${code}] ${name ? `"${name}"` : ''}`.trim();
+
+      const displayDesc = (notif.message && notif.message !== name && notif.message !== notif.title)
+        ? notif.message
+        : (payload.message && payload.message !== name)
+        ? payload.message
+        : `You have been assigned to sprint task [${code}] ${name ? `"${name}"` : ''}.`.trim();
+
       return {
         icon: CheckSquare,
         iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-        title: notif.title || `Task Assigned: [${payload.taskCode || 'TASK'}] ${payload.title || ''}`,
-        desc: notif.message || payload.message || `Assigned deliverable in Sprint cycle.`,
+        title: displayTitle,
+        desc: displayDesc,
       };
     }
+
+    const rawTitle = notif.title || payload.title || 'System Notification';
+    const rawDesc = notif.message || payload.message || 'Notification alert received';
+    const finalDesc = (rawTitle === rawDesc && (payload.taskCode || payload.sprintCode))
+      ? `Activity update on task [${payload.taskCode || payload.sprintCode}]`
+      : rawDesc;
 
     return {
       icon: Bell,
       iconBg: 'bg-gray-50 text-gray-600 border-gray-200',
-      title: notif.title || payload.title || 'System Notification',
-      desc: notif.message || payload.message || 'Notification alert received',
+      title: rawTitle,
+      desc: finalDesc,
     };
   };
 

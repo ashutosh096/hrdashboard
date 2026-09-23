@@ -72,14 +72,24 @@ export interface EmployeeDeliverableTask {
   sprintWeek?: string;
 }
 
-// Recharts Personal Employee Data Analytics
-
-const PERSONAL_VELOCITY_TREND = [
-  { sprint: 'Sprint 1', velocity: 88, quality: 92 },
-  { sprint: 'Sprint 2', velocity: 91, quality: 94 },
-  { sprint: 'Sprint 3', velocity: 93, quality: 96 },
-  { sprint: 'Active Sprint', velocity: 95, quality: 98 },
-];
+export const calculateTaskProgress = (taskStatus: string, checklists?: any[]): number => {
+  const s = String(taskStatus || '').toUpperCase().replace(/[^A-Z_]/g, '_');
+  if (s.includes('DONE') || s.includes('COMPLETED') || s.includes('APPROVED')) return 100;
+  if (s.includes('REVIEW')) return 85;
+  if (s.includes('PROGRESS')) {
+    if (Array.isArray(checklists) && checklists.length > 0) {
+      const completed = checklists.filter((c: any) => c.isCompleted).length;
+      return Math.round((completed / checklists.length) * 100);
+    }
+    return 50;
+  }
+  if (s.includes('TODO')) return 25;
+  if (s.includes('PLANNED')) return 10;
+  if (s.includes('DELAYED')) return 40;
+  if (s.includes('BLOCKED')) return 20;
+  if (s.includes('BACKLOG')) return 0;
+  return 0;
+};
 
 export const EmployeeDashboardView: React.FC = () => {
   const { user } = useAuth();
@@ -241,7 +251,7 @@ export const EmployeeDashboardView: React.FC = () => {
               notes: t.description || '',
               delayRequested: false,
               sprintWeek: resolvedSprintName || 'Active Sprint',
-              completionPct: t.status === 'DONE' ? 100 : 65,
+              completionPct: calculateTaskProgress(t.status, t.checklists),
             };
           });
 
@@ -347,7 +357,7 @@ export const EmployeeDashboardView: React.FC = () => {
               outputUrl: updated.outputUrl || '',
               waitingOn: updated.waitingOn || 'None (Self)',
               notes: updated.notes || '',
-              completionPct: updated.status === 'Done' ? 100 : t.completionPct,
+              completionPct: calculateTaskProgress(updated.status),
             }
             : t
         )
@@ -406,8 +416,12 @@ export const EmployeeDashboardView: React.FC = () => {
     if (activeSprint?.id && (t as any).sprintId === activeSprint.id) return true;
     if (activeSprint?.name && (t.sprintWeek || '').toLowerCase().includes(activeSprint.name.toLowerCase())) return true;
     if (activeSprint?.targetWeek && (t.sprintWeek || '').toLowerCase().includes(activeSprint.targetWeek.toLowerCase())) return true;
-    return (t.sprintWeek || '').toLowerCase() !== 'backlog' && t.status !== 'Done';
+    return (t.sprintWeek || '').toLowerCase() !== 'backlog';
   });
+
+  const overallSprintCompletionPct = activeSprintTasks.length > 0
+    ? Math.round(activeSprintTasks.reduce((sum, t) => sum + (t.completionPct || 0), 0) / activeSprintTasks.length)
+    : (activeSprint?.status === 'DONE' ? 100 : 0);
 
   // Filter Team Members table search from live database
   const mappedTeamMembers = dbEmployees.map((emp) => ({
@@ -925,7 +939,7 @@ export const EmployeeDashboardView: React.FC = () => {
             </div>
             <div className="text-right">
               <span className="text-xs font-bold text-gray-400 block">Overall Sprint Completion</span>
-              <span className="text-lg font-extrabold text-emerald-600">75% Completed</span>
+              <span className="text-lg font-extrabold text-emerald-600">{overallSprintCompletionPct}% Completed</span>
             </div>
           </div>
 

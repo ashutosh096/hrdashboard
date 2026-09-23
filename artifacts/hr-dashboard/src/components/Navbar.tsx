@@ -179,10 +179,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                       const matchesEntity = matchesEntityFilter(n, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
                       if (!isEmployee) return matchesEntity;
 
-                      const userName = (user?.name || 'Ashutosh Mishra').toLowerCase();
+                      const userId = user?.id;
+                      const empId = user?.employeeId;
+                      const userName = (user?.name || '').toLowerCase();
+                      const userEmail = (user?.email || '').toLowerCase();
+
+                      const isDirect = n.userId === userId || (empId && n.userId === empId);
+                      const isTagged = Array.isArray(payload.taggedUserIds) && (
+                        (userId && payload.taggedUserIds.includes(userId)) ||
+                        (empId && payload.taggedUserIds.includes(empId))
+                      );
+                      const isAssignee =
+                        (userId && payload.assigneeId === userId) ||
+                        (empId && payload.assigneeId === empId) ||
+                        (userEmail && payload.assigneeEmail?.toLowerCase() === userEmail) ||
+                        (userName && payload.assigneeName && payload.assigneeName.toLowerCase().trim() === userName);
+
                       const msgLower = (n.message || '').toLowerCase();
                       const titleLower = (n.title || '').toLowerCase();
-                      const isUserMatch = n.tagged || msgLower.includes(userName) || titleLower.includes(userName) || msgLower.includes('ashutosh') || msgLower.includes('alex') || msgLower.includes('priyanka');
+                      const isUserMatch = isDirect || isTagged || isAssignee || n.tagged || (userName && (msgLower.includes(userName) || titleLower.includes(userName)));
                       return matchesEntity && isUserMatch;
                     });
 

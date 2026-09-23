@@ -12,11 +12,54 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
   try {
     const allTasks = await db.select().from(tasks);
-    res.json(allTasks);
+    const enriched = await enrichTasks(allTasks);
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch tasks' });
   }
 });
+
+export async function enrichTasks(tasksList: any[]) {
+  if (!Array.isArray(tasksList) || tasksList.length === 0) return [];
+  const allEmployees = await db.select().from(employees);
+  const allEpics = await db.select().from(epics);
+  const allInitiatives = await db.select().from(initiatives);
+  const allEntities = await db.select().from(entities);
+
+  return tasksList.map(t => {
+    const assigneeEmp = allEmployees.find(e => e.id === t.assigneeId);
+    const leadEmp = allEmployees.find(e => e.id === t.reviewingLeadId);
+    const creatorEmp = allEmployees.find(e => e.id === t.creatorId);
+    const parentEpic = allEpics.find(e => e.id === t.epicId);
+    const parentInit = allInitiatives.find(i => i.id === (t.initiativeId || parentEpic?.initiativeId));
+    const entity = allEntities.find(ent => ent.id === t.entityId);
+
+    const assigneeName = assigneeEmp 
+      ? `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim() || assigneeEmp.employeeCode 
+      : 'Unassigned';
+
+    const reviewingLead = leadEmp 
+      ? `${leadEmp.firstName || ''} ${leadEmp.lastName || ''}`.trim() || leadEmp.employeeCode 
+      : 'Manager Lead';
+
+    return {
+      ...t,
+      assigneeName,
+      assigneeEmail: assigneeEmp?.email || '',
+      assigneeCode: assigneeEmp?.employeeCode || '',
+      reviewingLead,
+      reviewingLeadName: reviewingLead,
+      reviewingLeadEmail: leadEmp?.email || '',
+      creatorName: creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin',
+      epicCode: parentEpic?.epicCode || null,
+      epicTitle: parentEpic?.title || null,
+      initiativeCode: parentInit?.initiativeCode || null,
+      initiativeTitle: parentInit?.title || null,
+      entityCode: entity?.code || (t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM'),
+      entityName: entity?.name || (t.taskCode?.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'),
+    };
+  });
+}
 
 function normalizeTaskPriority(priority: any): 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' {
   if (!priority) return 'MEDIUM';
@@ -284,14 +327,21 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           .where(eq(users.employeeId, assignee.id));
 
         if (assigneeUser) {
+          const notifTitle = `New Sprint Task Assigned: [${newTask.taskCode}] "${newTask.title}"`;
+          const notifMsg = `You have been assigned to sprint task [${newTask.taskCode}] "${newTask.title}". Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.`;
           await tx.insert(notifications).values({
             userId: assigneeUser.id,
             type: 'TASK_ASSIGNED',
             payload: {
               taskId: newTask.id,
               taskCode: newTask.taskCode,
-              title: newTask.title,
+              taskTitle: newTask.title,
+              title: notifTitle,
+              message: notifMsg,
+              assigneeId: assignee.id,
+              assigneeName: `${assignee.firstName} ${assignee.lastName}`.trim(),
               dueDate: dueDateVal.toISOString().split('T')[0],
+              tagged: true,
             },
           });
         }
@@ -311,7 +361,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       createdTasks.push(taskResult.newTask);
     }
 
-    res.status(201).json(isGroupTask ? createdTasks : createdTasks[0]);
+    const enrichedList = await enrichTasks(createdTasks);
+    res.status(201).json(isGroupTask ? enrichedList : enrichedList[0]);
   } catch (err: any) {
     console.error('[TASK CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create task' });
@@ -542,7 +593,8 @@ const handleTaskUpdate = async (req: any, res: any) => {
       }).catch(console.error);
     }
 
-    res.json(updatedTask);
+    const [enriched] = await enrichTasks([updatedTask]);
+    res.json(enriched || updatedTask);
   } catch (err: any) {
     console.error('[TASK UPDATE ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update task' });
@@ -618,7 +670,8 @@ router.patch('/:id/status', async (req, res) => {
       }).catch(console.error);
     }
 
-    res.json(updatedTask);
+    const [enriched] = await enrichTasks([updatedTask]);
+    res.json(enriched || updatedTask);
   } catch (err: any) {
     console.error('[TASK STATUS UPDATE ERROR]:', err);
     res.status(500).json({ message: 'Failed to update task status' });
