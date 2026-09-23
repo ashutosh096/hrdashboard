@@ -54,9 +54,16 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     clearApiCache(rootPath);
   }
 
+  const API_BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) 
+    ? (import.meta as any).env.VITE_API_URL.replace(/\/$/, '') 
+    : '';
+  const requestUrl = endpoint.startsWith('http') 
+    ? endpoint 
+    : `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+
   const fetchPromise = (async () => {
     try {
-      const res = await fetch(endpoint, { ...options, headers });
+      const res = await fetch(requestUrl, { ...options, headers });
       if (!res.ok) {
         if (res.status === 401 && endpoint.startsWith('/api/auth/me')) {
           localStorage.removeItem('hros_token');
