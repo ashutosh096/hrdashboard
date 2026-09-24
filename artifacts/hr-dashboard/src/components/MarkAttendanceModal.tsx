@@ -23,8 +23,31 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   const [workMode, setWorkMode] = useState<'IN_OFFICE' | 'REMOTE'>('IN_OFFICE');
   const [note, setNote] = useState('');
   const [showConfirmStep, setShowConfirmStep] = useState(false);
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+
+  // Automatically update the date live and advance to new day at 12:00 AM midnight
+  React.useEffect(() => {
+    setCurrentDate(new Date());
+    const interval = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const formattedDate = currentDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const formattedTime = currentDate.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 
   const handleInitialSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +78,10 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-gray-900 text-base">Mark Attendance Today</h3>
-              <p className="text-[11px] text-gray-400 font-semibold">August 31, 2026</p>
+              <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1.5">
+                <span>{formattedDate}</span>
+                <span className="text-[10px] text-gray-400 font-mono">({formattedTime})</span>
+              </p>
             </div>
           </div>
           <button

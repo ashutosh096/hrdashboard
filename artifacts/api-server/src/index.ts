@@ -20,9 +20,11 @@ import reportsRouter from './routes/reports.js';
 import initiativesRouter from './routes/initiatives.js';
 import epicsRouter from './routes/epics.js';
 import sprintsRouter from './routes/sprints.js';
+import projectsRouter from './routes/projects.js';
 import { startSyncCron } from './jobs/sync-cron.js';
 import { startDigestCron } from './jobs/digest-cron.js';
 import { startOverdueCheckCron } from './jobs/overdue-check-cron.js';
+import { db, sql } from '@workspace/db';
 
 import notificationsRouter from './routes/notifications.js';
 
@@ -30,6 +32,40 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Safe non-destructive table initialization for Render startup
+async function ensureTablesExist() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS projects (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        code TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        entity TEXT NOT NULL DEFAULT 'EHM',
+        entity_name TEXT,
+        category TEXT NOT NULL DEFAULT 'Technology & Systems',
+        lead TEXT NOT NULL DEFAULT 'Dr. Harshit Mishra',
+        team JSONB DEFAULT '[]'::jsonb,
+        budget TEXT DEFAULT '$45,000',
+        start_date TEXT DEFAULT '2026-09-01',
+        target_date TEXT DEFAULT '2026-12-15',
+        status TEXT NOT NULL DEFAULT 'Planning',
+        priority TEXT NOT NULL DEFAULT 'High',
+        tech_stack TEXT DEFAULT 'React, Node.js, Python, GIS',
+        milestones_count INTEGER DEFAULT 0,
+        description TEXT DEFAULT '',
+        checkpoints JSONB DEFAULT '[]'::jsonb,
+        comments JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,
+        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
+      );
+    `);
+    console.log('✅ [DATABASE] Schema verified on startup.');
+  } catch (err) {
+    console.error('[DATABASE STARTUP NOTICE]:', err);
+  }
+}
+ensureTablesExist();
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
@@ -57,6 +93,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/initiatives', initiativesRouter);
 app.use('/api/epics', epicsRouter);
 app.use('/api/sprints', sprintsRouter);
+app.use('/api/projects', projectsRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });

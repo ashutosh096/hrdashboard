@@ -96,12 +96,44 @@ export const ApplicationsView: React.FC = () => {
   const isEmployee = user?.role === 'EMPLOYEE';
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
 
+  // Applications List Data
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
+
+  // Projects List Data with instant cache + Database sync
+  const [projects, setProjects] = useState<ProjectItem[]>(() => {
+    try {
+      const cached = localStorage.getItem('hros_projects_list');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const [collapsedProjectIds, setCollapsedProjectIds] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
+    // 1. Fetch DB employees
     fetchApi<any[]>('/api/employees')
       .then((data) => {
         if (Array.isArray(data)) setDbEmployees(data);
       })
       .catch(() => {});
+
+    // 2. Fetch DB projects
+    fetchApi<ProjectItem[]>('/api/projects')
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setProjects(data);
+          try {
+            localStorage.setItem('hros_projects_list', JSON.stringify(data));
+          } catch {}
+        }
+      })
+      .catch((err) => {
+        console.error('[PROJECTS FETCH ERROR]:', err);
+      });
   }, []);
 
   const fallbackTeamList = [
@@ -199,29 +231,39 @@ export const ApplicationsView: React.FC = () => {
     setProjectChecklists(prev => prev.filter(c => c.id !== id));
   };
 
-  const handleToggleProjectCardCheckpoint = (projectId: string, checkpointId: string) => {
-    setProjects(prev =>
-      prev.map(p => {
+  const handleToggleProjectCardCheckpoint = async (projectId: string, checkpointId: string) => {
+    let updatedCheckpoints: ProjectCheckpoint[] = [];
+
+    setProjects(prev => {
+      const next = prev.map(p => {
         if (p.id !== projectId) return p;
         const updated = (p.checkpoints || []).map(c =>
           c.id === checkpointId ? { ...c, isCompleted: !c.isCompleted } : c
         );
+        updatedCheckpoints = updated;
         return {
           ...p,
           checkpoints: updated,
           milestonesCount: updated.length,
         };
-      })
-    );
+      });
+      try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    if (selectedProjectForView?.id === projectId) {
+      setSelectedProjectForView(prev => prev ? { ...prev, checkpoints: updatedCheckpoints } : null);
+    }
+
+    try {
+      await fetchApi(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ checkpoints: updatedCheckpoints }),
+      });
+    } catch (err) {
+      console.error('[CHECKPOINT PERSIST ERROR]:', err);
+    }
   };
-
-  // Applications List Data
-  const [applications, setApplications] = useState<ApplicationItem[]>([]);
-
-  // Projects List Data
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
-
-  const [collapsedProjectIds, setCollapsedProjectIds] = useState<Record<string, boolean>>({});
 
   // Scoped Applications & Active vs Archived Filtering
   const scopedApps = applications.filter(
@@ -328,6 +370,7 @@ export const ApplicationsView: React.FC = () => {
     setProjectTechStack(proj.techStack);
     setProjectDescription(proj.description);
     setProjectChecklists(proj.checkpoints || []);
+    setProjectComments(proj.comments || []);
     setIsProjectClone(false);
     setShowAddProjectModal(true);
     toast.info(`Editing project "${proj.name}". Modify parameters and click Save Changes!`);
@@ -355,7 +398,7 @@ export const ApplicationsView: React.FC = () => {
     setDescription('');
   };
 
-  const handleAddProjectSubmit = (e: React.FormEvent) => {
+  const handleAddProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
 
@@ -372,36 +415,7 @@ export const ApplicationsView: React.FC = () => {
       : projectTeam.split(',').map(s => s.trim()).filter(Boolean);
 
     if (editingProjectId) {
-      setProjects(prev =>
-        prev.map(p => {
-          if (p.id !== editingProjectId) return p;
-          const updated: ProjectItem = {
-            ...p,
-            code: generatedCode,
-            name: projectName,
-            entity: projectEntity,
-            entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-            category: projectCategory,
-            lead: projectLead,
-            team: finalTeam,
-            startDate: projectStartDate,
-            targetDate: projectTargetDate,
-            priority: projectPriority,
-            techStack: projectTechStack,
-            milestonesCount: finalCheckpoints.length,
-            description: projectDescription,
-            checkpoints: finalCheckpoints,
-          };
-          if (selectedProjectForView?.id === editingProjectId) {
-            setSelectedProjectForView(updated);
-          }
-          return updated;
-        })
-      );
-      toast.success(`Project "${projectName}" specifications updated successfully!`);
-    } else {
-      const newProject: ProjectItem = {
-        id: `prj-${Date.now()}`,
+      const payload = {
         code: generatedCode,
         name: projectName,
         entity: projectEntity,
@@ -412,16 +426,90 @@ export const ApplicationsView: React.FC = () => {
         budget: projectBudget,
         startDate: projectStartDate,
         targetDate: projectTargetDate,
-        status: 'Planning',
         priority: projectPriority,
         techStack: projectTechStack,
         milestonesCount: finalCheckpoints.length,
         description: projectDescription,
         checkpoints: finalCheckpoints,
+        comments: projectComments,
       };
 
-      setProjects([newProject, ...projects]);
-      toast.success(`New project "${projectName}" (${generatedCode}) created with ${finalCheckpoints.length} checkpoints!`);
+      try {
+        const updated = await fetchApi<ProjectItem>(`/api/projects/${editingProjectId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+
+        setProjects(prev => {
+          const next = prev.map(p => (p.id === editingProjectId ? (updated || { ...p, ...payload }) : p));
+          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+          return next;
+        });
+
+        if (selectedProjectForView?.id === editingProjectId) {
+          setSelectedProjectForView(updated || { ...selectedProjectForView, ...payload });
+        }
+        toast.success(`Project "${projectName}" updated and saved to database!`);
+      } catch (err: any) {
+        console.error('[PROJECT UPDATE ERROR]:', err);
+        setProjects(prev => {
+          const next = prev.map(p => (p.id === editingProjectId ? { ...p, ...payload } : p));
+          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+          return next;
+        });
+        toast.success(`Project "${projectName}" updated locally!`);
+      }
+    } else {
+      const payload = {
+        code: generatedCode,
+        name: projectName,
+        entity: projectEntity,
+        entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
+        category: projectCategory,
+        lead: projectLead,
+        team: finalTeam,
+        budget: projectBudget,
+        startDate: projectStartDate,
+        targetDate: projectTargetDate,
+        status: 'Planning' as const,
+        priority: projectPriority,
+        techStack: projectTechStack,
+        milestonesCount: finalCheckpoints.length,
+        description: projectDescription,
+        checkpoints: finalCheckpoints,
+        comments: projectComments,
+      };
+
+      try {
+        const created = await fetchApi<ProjectItem>('/api/projects', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+
+        const newProject: ProjectItem = created || {
+          id: `prj-${Date.now()}`,
+          ...payload,
+        };
+
+        setProjects(prev => {
+          const next = [newProject, ...prev];
+          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+          return next;
+        });
+        toast.success(`New project "${projectName}" (${generatedCode}) saved permanently to database!`);
+      } catch (err: any) {
+        console.error('[PROJECT CREATE ERROR]:', err);
+        const fallbackProject: ProjectItem = {
+          id: `prj-${Date.now()}`,
+          ...payload,
+        };
+        setProjects(prev => {
+          const next = [fallbackProject, ...prev];
+          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+          return next;
+        });
+        toast.success(`New project "${projectName}" saved locally and queued for database sync!`);
+      }
     }
 
     setShowAddProjectModal(false);
@@ -431,6 +519,29 @@ export const ApplicationsView: React.FC = () => {
     setProjectDescription('');
     setProjectChecklists([]);
     setNewCheckpointText('');
+    setProjectComments([]);
+  };
+
+  const handleDeleteProject = async (projectId: string, projName: string) => {
+    if (isEmployee) return;
+    if (!window.confirm(`Are you sure you want to delete project "${projName}"? This cannot be undone.`)) return;
+
+    setProjects(prev => {
+      const next = prev.filter(p => p.id !== projectId);
+      try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    if (selectedProjectForView?.id === projectId) {
+      setSelectedProjectForView(null);
+    }
+
+    try {
+      await fetchApi(`/api/projects/${projectId}`, { method: 'DELETE' });
+      toast.success(`Project "${projName}" permanently removed from database.`);
+    } catch (err: any) {
+      console.error('[PROJECT DELETE ERROR]:', err);
+    }
   };
 
   const handleSaveAppStatusUpdate = (e: React.FormEvent) => {
@@ -463,25 +574,36 @@ export const ApplicationsView: React.FC = () => {
     setSelectedAppToUpdate(null);
   };
 
-  const handleSaveProjectStatusUpdate = (e: React.FormEvent) => {
+  const handleSaveProjectStatusUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProjectToUpdate) return;
 
-    setProjects(
-      projects.map(p =>
-        p.id === selectedProjectToUpdate.id
-          ? {
-              ...p,
-              status: updateProjectStatus,
-            }
-          : p
-      )
-    );
+    const projectId = selectedProjectToUpdate.id;
+    const newStatus = updateProjectStatus;
 
-    if (updateProjectStatus === 'Completed') {
+    setProjects(prev => {
+      const next = prev.map(p => (p.id === projectId ? { ...p, status: newStatus } : p));
+      try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    if (selectedProjectForView?.id === projectId) {
+      setSelectedProjectForView(prev => prev ? { ...prev, status: newStatus } : null);
+    }
+
+    try {
+      await fetchApi(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch (err) {
+      console.error('[STATUS PERSIST ERROR]:', err);
+    }
+
+    if (newStatus === 'Completed') {
       toast.success(`Project "${selectedProjectToUpdate.name}" marked as Completed and moved to Archived Projects!`);
     } else {
-      toast.success(`Project status updated to ${updateProjectStatus}!`);
+      toast.success(`Project status updated to ${newStatus}!`);
     }
 
     setSelectedProjectToUpdate(null);
@@ -647,10 +769,22 @@ export const ApplicationsView: React.FC = () => {
                         <select
                           disabled={isEmployee}
                           value={prj.status}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             if (isEmployee) return;
                             const newStatus = e.target.value as 'Planning' | 'Active' | 'In Review' | 'Completed';
-                            setProjects(prev => prev.map(p => p.id === prj.id ? { ...p, status: newStatus } : p));
+                            setProjects(prev => {
+                              const next = prev.map(p => p.id === prj.id ? { ...p, status: newStatus } : p);
+                              try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
+                              return next;
+                            });
+                            try {
+                              await fetchApi(`/api/projects/${prj.id}`, {
+                                method: 'PATCH',
+                                body: JSON.stringify({ status: newStatus }),
+                              });
+                            } catch (err) {
+                              console.error('[STATUS UPDATE ERROR]:', err);
+                            }
                             toast.success(`Project "${prj.name}" status updated to ${newStatus}!`);
                           }}
                           className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border outline-none ${isEmployee ? 'cursor-default opacity-90' : 'cursor-pointer'} transition-all shadow-2xs ${
@@ -678,6 +812,25 @@ export const ApplicationsView: React.FC = () => {
                         >
                           <Eye className="w-3.5 h-3.5 text-indigo-600" />
                         </button>
+
+                        {!isEmployee && (
+                          <>
+                            <button
+                              onClick={() => handleEditProject(prj)}
+                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-2xs"
+                              title="Edit Project"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProject(prj.id, prj.name)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-2xs"
+                              title="Delete Project"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 

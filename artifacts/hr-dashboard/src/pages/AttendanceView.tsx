@@ -28,9 +28,31 @@ export const AttendanceView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('September 2026');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Generate dynamic rolling list of months (current month + past 5 months)
+  const availableMonths = React.useMemo(() => {
+    const list: string[] = [];
+    const now = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      list.push(d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+    }
+    return list;
+  }, []);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  });
+
+  const [todayDateKey, setTodayDateKey] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  const [todayDateFormatted, setTodayDateFormatted] = useState<string>(() => {
+    return new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  });
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
@@ -47,23 +69,57 @@ export const AttendanceView: React.FC = () => {
   const activeRole = localStorage.getItem('hros_active_role') || user?.role || 'EMPLOYEE';
   const isEmployeeMode = activeRole === 'EMPLOYEE';
 
-  useEffect(() => {
-    async function loadAttendanceData() {
-      try {
-        const [empData, attData] = await Promise.all([
-          fetchApi<any[]>('/api/employees'),
-          fetchApi<any[]>('/api/attendance'),
-        ]);
-        setEmployees(Array.isArray(empData) ? empData : []);
-        setAttendanceRecords(Array.isArray(attData) ? attData : []);
-      } catch (err) {
-        console.error('[ATTENDANCE FETCH ERROR]:', err);
-      } finally {
-        setLoading(false);
-      }
+  const loadAttendanceData = async () => {
+    try {
+      const [empData, attData] = await Promise.all([
+        fetchApi<any[]>('/api/employees'),
+        fetchApi<any[]>('/api/attendance'),
+      ]);
+      setEmployees(Array.isArray(empData) ? empData : []);
+      setAttendanceRecords(Array.isArray(attData) ? attData : []);
+    } catch (err) {
+      console.error('[ATTENDANCE FETCH ERROR]:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadAttendanceData();
   }, []);
+
+  // Monitor midnight 12:00 AM date change to automatically roll over today's date & attendance
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentIso = new Date().toISOString().split('T')[0];
+      if (currentIso !== todayDateKey) {
+        setTodayDateKey(currentIso);
+        setTodayDateFormatted(new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
+        setSelectedMonth(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+        setTodayAttendance({ marked: false });
+        loadAttendanceData();
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [todayDateKey]);
+
+  // Sync today's attendance status from loaded records
+  useEffect(() => {
+    if (attendanceRecords.length > 0 && user) {
+      const todayIso = new Date().toISOString().split('T')[0];
+      const foundToday = attendanceRecords.find(a => 
+        (a.date === todayIso || (a.createdAt && String(a.createdAt).startsWith(todayIso))) &&
+        (a.employeeId === user.employeeId || (user.email && a.employeeName?.toLowerCase() === user.email.toLowerCase()))
+      );
+      if (foundToday) {
+        setTodayAttendance({
+          marked: true,
+          status: (foundToday.status as any) || 'PRESENT',
+          workMode: (foundToday.workMode as any) || 'IN_OFFICE',
+        });
+      }
+    }
+  }, [attendanceRecords, user]);
 
   const handleMarkAttendance = async (data: {
     status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
@@ -74,7 +130,11 @@ export const AttendanceView: React.FC = () => {
     try {
       await fetchApi('/api/attendance/clock-in', {
         method: 'POST',
-        body: JSON.stringify({ workMode: data.workMode || 'IN_OFFICE', employeeName: user?.email }),
+        body: JSON.stringify({
+          workMode: data.workMode || 'IN_OFFICE',
+          status: data.status,
+          employeeName: user?.email,
+        }),
       });
       setTodayAttendance({
         marked: true,
@@ -82,6 +142,7 @@ export const AttendanceView: React.FC = () => {
         halfDayType: data.halfDayType,
         workMode: data.workMode,
       });
+      loadAttendanceData();
     } catch (err) {
       console.error('[CLOCK IN ERROR]:', err);
     }
@@ -168,16 +229,21 @@ export const AttendanceView: React.FC = () => {
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="text-xs font-bold text-gray-800 bg-transparent outline-none cursor-pointer pr-2"
               >
-                <option value="September 2026">September 2026</option>
-                <option value="August 2026">August 2026</option>
-                <option value="July 2026">July 2026</option>
+                {availableMonths.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
               </select>
             </div>
           </div>
 
-          {todayAttendance.marked && (
-            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs">
-              ● Today Marked ({todayAttendance.workMode || 'IN_OFFICE'})
+          {todayAttendance.marked ? (
+            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Today Marked ({todayAttendance.workMode || 'IN_OFFICE'}) &bull; {todayDateFormatted}</span>
+            </span>
+          ) : (
+            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs">
+              Today: {todayDateFormatted}
             </span>
           )}
 

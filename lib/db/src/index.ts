@@ -31,6 +31,7 @@ export * from './schema/initiatives.js';
 export * from './schema/epics.js';
 export * from './schema/sprints.js';
 export * from './schema/password_reset_otps.js';
+export * from './schema/projects.js';
 
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DB_URL;
 

@@ -81,8 +81,13 @@ router.post('/clock-in', async (req, res) => {
       return res.status(409).json({ message: 'Already clocked in for today' });
     }
 
-    const { workMode } = req.body;
+    const { workMode, status } = req.body;
     const now = new Date();
+
+    let finalStatus: 'PRESENT' | 'LATE' | 'HALF_DAY' | 'ABSENT' = 'PRESENT';
+    if (status === 'HALF_DAY') finalStatus = 'HALF_DAY';
+    else if (status === 'ABSENT' || status === 'LEAVE') finalStatus = 'ABSENT';
+    else if (status === 'LATE') finalStatus = 'LATE';
 
     const [newRecord] = await db
       .insert(attendance)
@@ -91,8 +96,8 @@ router.post('/clock-in', async (req, res) => {
         date: todayStr,
         clockIn: now,
         workMode: workMode && ['IN_OFFICE', 'REMOTE', 'HYBRID'].includes(workMode) ? workMode : 'IN_OFFICE',
-        status: 'PRESENT',
-        totalHours: '0.00',
+        status: finalStatus,
+        totalHours: finalStatus === 'HALF_DAY' ? '4.00' : finalStatus === 'ABSENT' ? '0.00' : '8.00',
       })
       .returning();
 
