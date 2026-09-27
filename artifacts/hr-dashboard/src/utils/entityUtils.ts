@@ -84,3 +84,150 @@ export function matchesEntityFilter(item: any, selectedEntity: string): boolean 
 
   return false;
 }
+
+export function isCAGEntity(item: any): boolean {
+  if (!item) return false;
+  if (typeof item === 'string') {
+    const s = item.toUpperCase();
+    return s === 'CAG' || s === 'CLIMAGRO' || s.startsWith('CAG') || s.startsWith('CLIMAGRO') || s.includes('CLIMAGRO');
+  }
+  const entity = (item.entity || '').toUpperCase();
+  const entityCode = (item.entityCode || '').toUpperCase();
+  const entityName = (item.entityName || '').toLowerCase();
+  const entityId = (item.entityId || '').toLowerCase();
+
+  // 1. Direct entity property (CAG vs EHM vs COMMON)
+  if (entity === 'CAG' || entity === 'CLIMAGRO' || entityCode === 'CAG' || entityCode === 'CLIMAGRO' || entityId === 'ebbf77f7-c1ac-423d-a29d-8db50beac25f') return true;
+  if (entity === 'EHM' || entityCode === 'EHM' || entityId === '886d7680-6a7c-482e-ae61-159ec359f881') return false;
+  if (entityId === 'cag' || entityId === 'climagroanalytics' || entityName.includes('climagro')) return true;
+  if (entityId === 'ehm' || entityId === 'ehmconsultancy' || entityName.includes('ehm')) return false;
+
+  // 2. Code prefix fallback
+  const code = (
+    item.taskCode ||
+    item.initiativeCode ||
+    item.epicCode ||
+    item.sprintCode ||
+    item.taskId ||
+    item.code ||
+    (typeof item.id === 'string' ? item.id : '')
+  ).toUpperCase();
+
+  if (code.startsWith('CAG') || code.startsWith('CLIMAGRO')) return true;
+  return false;
+}
+
+export interface EntityBadgeInfo {
+  label: 'CLIMAGRO' | 'EHM' | 'EHM & CLIMAGRO';
+  isCAG: boolean;
+  isCommon: boolean;
+  className: string;
+  dotColor: string;
+}
+
+export function getEntityBadge(item: any): EntityBadgeInfo {
+  if (!item) {
+    return {
+      label: 'EHM',
+      isCAG: false,
+      isCommon: false,
+      className: 'bg-amber-50 text-amber-800 border-amber-200 font-extrabold',
+      dotColor: 'bg-amber-500',
+    };
+  }
+
+  // Handle primitive string items
+  if (typeof item === 'string') {
+    const s = item.toUpperCase();
+    if (s === 'COMMON' || s === 'BOTH' || s.includes('EHM & CLIMAGRO') || s.startsWith('COM')) {
+      return {
+        label: 'EHM & CLIMAGRO',
+        isCAG: false,
+        isCommon: true,
+        className: 'bg-purple-50 text-purple-700 border-purple-200 font-extrabold',
+        dotColor: 'bg-purple-500',
+      };
+    }
+    if (s === 'CAG' || s === 'CLIMAGRO' || s.startsWith('CAG') || s.includes('CLIMAGRO')) {
+      return {
+        label: 'CLIMAGRO',
+        isCAG: true,
+        isCommon: false,
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold',
+        dotColor: 'bg-emerald-500',
+      };
+    }
+    return {
+      label: 'EHM',
+      isCAG: false,
+      isCommon: false,
+      className: 'bg-amber-50 text-amber-800 border-amber-200 font-extrabold',
+      dotColor: 'bg-amber-500',
+    };
+  }
+
+  const entity = (item.entity || item.entityCode || '').toUpperCase();
+  const entityName = (item.entityName || '').toLowerCase();
+  const entityId = (item.entityId || '').toLowerCase();
+  const code = (
+    item.taskCode ||
+    item.employeeCode ||
+    item.initiativeCode ||
+    item.epicCode ||
+    item.sprintCode ||
+    item.taskId ||
+    item.code ||
+    (typeof item.id === 'string' ? item.id : '')
+  ).toUpperCase();
+
+  // 1. Check COMMON / BOTH (Mixed EHM & ClimAgro Pool)
+  if (
+    entity === 'COMMON' ||
+    entity === 'BOTH' ||
+    entity === 'EHM & CLIMAGRO' ||
+    entity.includes('COMMON') ||
+    entity.includes('BOTH') ||
+    entityId === '539ba160-88b8-4fdd-a5ef-39c09c97516a' ||
+    entityName.includes('common') ||
+    entityName.includes('&') ||
+    code.startsWith('COMMON') ||
+    code.startsWith('COM-')
+  ) {
+    return {
+      label: 'EHM & CLIMAGRO',
+      isCAG: false,
+      isCommon: true,
+      className: 'bg-purple-50 text-purple-700 border-purple-200 font-extrabold',
+      dotColor: 'bg-purple-500',
+    };
+  }
+
+  // 2. Check CLIMAGRO
+  if (
+    entity === 'CAG' ||
+    entity === 'CLIMAGRO' ||
+    entityId === 'ebbf77f7-c1ac-423d-a29d-8db50beac25f' ||
+    entityName.includes('climagro') ||
+    entityId.includes('climagro') ||
+    entityId === 'cag' ||
+    code.startsWith('CAG') ||
+    code.startsWith('CLIMAGRO')
+  ) {
+    return {
+      label: 'CLIMAGRO',
+      isCAG: true,
+      isCommon: false,
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold',
+      dotColor: 'bg-emerald-500',
+    };
+  }
+
+  // 3. Default to EHM
+  return {
+    label: 'EHM',
+    isCAG: false,
+    isCommon: false,
+    className: 'bg-amber-50 text-amber-800 border-amber-200 font-extrabold',
+    dotColor: 'bg-amber-500',
+  };
+}

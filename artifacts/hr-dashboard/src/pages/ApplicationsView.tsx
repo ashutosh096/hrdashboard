@@ -23,13 +23,19 @@ import {
   Sparkles,
   Eye,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
+  MoreHorizontal,
+  Link as LinkIcon,
+  Copy,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { RichTextEditor } from '../components/RichTextEditor';
-import { matchesEntityFilter } from '../utils/entityUtils';
+import { SearchableSelect, SelectOption } from '../components/SearchableSelect';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { formatAuthorDisplayName } from '../components/TaskUpdateModal';
 
@@ -46,6 +52,16 @@ export interface ApplicationItem {
   description: string;
   createdAt: string;
 }
+
+export const PROJECT_CATEGORY_OPTIONS = [
+  'Sustainability Assessment & Reporting',
+  'Sustainable Environmental Management',
+  'Climate Risk Intelligence',
+  'Geophysical Investigation',
+  'Urban Planning & Management',
+  'Training & Capacity Building',
+  'Other',
+];
 
 export interface ProjectCheckpoint {
   id: string;
@@ -68,9 +84,11 @@ export interface ProjectItem {
   status: 'Planning' | 'Active' | 'In Review' | 'Completed';
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   techStack: string;
+  deliverableUrl?: string;
   milestonesCount: number;
   description: string;
   checkpoints?: ProjectCheckpoint[];
+  comments?: { id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[];
 }
 
 export const ApplicationsView: React.FC = () => {
@@ -84,14 +102,32 @@ export const ApplicationsView: React.FC = () => {
   const [appSubTab, setAppSubTab] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
   const [projectSubTab, setProjectSubTab] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
 
-  // Modals & Search State
+  // Scalable Server-Side Filtering & Pagination States for Projects
+  const [entityFilter, setEntityFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [leadFilter, setLeadFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProjectsCount, setTotalProjectsCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [projectStats, setProjectStats] = useState({
+    total: 0,
+    active: 0,
+    planningOrReview: 0,
+    archived: 0,
+  });
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [activeOverflowMenuId, setActiveOverflowMenuId] = useState<string | null>(null);
+  const pageSize = 25;
+
+  // Modals State
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [selectedAppToUpdate, setSelectedAppToUpdate] = useState<ApplicationItem | null>(null);
   const [selectedProjectToUpdate, setSelectedProjectToUpdate] = useState<ProjectItem | null>(null);
   const [selectedProjectForView, setSelectedProjectForView] = useState<ProjectItem | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
 
   const isEmployee = user?.role === 'EMPLOYEE';
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
@@ -113,6 +149,53 @@ export const ApplicationsView: React.FC = () => {
 
   const [collapsedProjectIds, setCollapsedProjectIds] = useState<Record<string, boolean>>({});
 
+  // Debounce search input (~300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load projects from live database with true server pagination
+  const loadProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const queryParams = new URLSearchParams({
+        page: String(currentPage),
+        pageSize: String(pageSize),
+        subTab: projectSubTab,
+        entity: entityFilter,
+        status: statusFilter,
+        lead: leadFilter,
+        search: debouncedSearch,
+        paginate: 'true',
+      });
+
+      const res = await fetchApi<any>(`/api/projects?${queryParams.toString()}`);
+      if (res && res.projects) {
+        setProjects(res.projects);
+        setTotalProjectsCount(res.totalCount || 0);
+        setTotalPages(res.totalPages || Math.max(1, Math.ceil((res.totalCount || 0) / pageSize)));
+        if (res.stats) {
+          setProjectStats(res.stats);
+        }
+        try {
+          localStorage.setItem('hros_projects_list', JSON.stringify(res.projects));
+        } catch {}
+      } else if (Array.isArray(res)) {
+        setProjects(res);
+        setTotalProjectsCount(res.length);
+        setTotalPages(Math.max(1, Math.ceil(res.length / pageSize)));
+      }
+    } catch (err) {
+      console.error('[PROJECTS FETCH ERROR]:', err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
   useEffect(() => {
     // 1. Fetch DB employees
     fetchApi<any[]>('/api/employees')
@@ -121,19 +204,14 @@ export const ApplicationsView: React.FC = () => {
       })
       .catch(() => {});
 
-    // 2. Fetch DB projects
-    fetchApi<ProjectItem[]>('/api/projects')
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setProjects(data);
-          try {
-            localStorage.setItem('hros_projects_list', JSON.stringify(data));
-          } catch {}
-        }
-      })
-      .catch((err) => {
-        console.error('[PROJECTS FETCH ERROR]:', err);
-      });
+    loadProjects();
+  }, [currentPage, projectSubTab, entityFilter, statusFilter, leadFilter, debouncedSearch]);
+
+  // Close overflow menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = () => setActiveOverflowMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
   const fallbackTeamList = [
@@ -176,14 +254,18 @@ export const ApplicationsView: React.FC = () => {
   const [projectName, setProjectName] = useState('');
   const [projectCode, setProjectCode] = useState('');
   const [projectEntity, setProjectEntity] = useState<'EHM' | 'CAG'>('EHM');
-  const [projectCategory, setProjectCategory] = useState('Environmental Compliance');
-  const [projectLead, setProjectLead] = useState('Dr. Harshit Mishra');
-  const [projectTeam, setProjectTeam] = useState('Ashutosh Mishra, Pranshu Dubey');
-  const [projectBudget] = useState('$45,000');
-  const [projectStartDate, setProjectStartDate] = useState('2026-09-01');
-  const [projectTargetDate, setProjectTargetDate] = useState('2026-12-15');
-  const [projectPriority, setProjectPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('High');
-  const [projectTechStack, setProjectTechStack] = useState('React, Node.js, Python, GIS');
+  const [projectCategory, setProjectCategory] = useState('');
+  const [selectedCategoryType, setSelectedCategoryType] = useState('');
+  const [customCategoryText, setCustomCategoryText] = useState('');
+  const [selectedProjectLeads, setSelectedProjectLeads] = useState<string[]>([]);
+  const [projectLead, setProjectLead] = useState('');
+  const [projectTeam, setProjectTeam] = useState('');
+  const [projectBudget, setProjectBudget] = useState('');
+  const [projectStartDate, setProjectStartDate] = useState('');
+  const [projectTargetDate, setProjectTargetDate] = useState('');
+  const [projectPriority, setProjectPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
+  const [projectTechStack, setProjectTechStack] = useState('');
+  const [projectDeliverableUrl, setProjectDeliverableUrl] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
 
   // Checkpoints Checklist Form State
@@ -191,10 +273,7 @@ export const ApplicationsView: React.FC = () => {
   const [newCheckpointText, setNewCheckpointText] = useState('');
 
   // Multi-select Team Members State
-  const [selectedTeamMemberNames, setSelectedTeamMemberNames] = useState<string[]>([
-    'Ashutosh Mishra',
-    'Pranshu Dubey',
-  ]);
+  const [selectedTeamMemberNames, setSelectedTeamMemberNames] = useState<string[]>([]);
 
   // Project Clone & Comments Modal State
   const [isProjectClone, setIsProjectClone] = useState(false);
@@ -321,11 +400,6 @@ export const ApplicationsView: React.FC = () => {
   const highPriorityAppsCount = scopedApps.filter(a => a.priority === 'High' || a.priority === 'Urgent').length;
   const pendingAppsCount = scopedApps.filter(a => a.status === 'Pending' || a.status === 'Delayed').length;
 
-  // Project Stats
-  const totalProjectsCount = scopedProjects.length;
-  const activeProjectsCount = activeProjectsList.filter(p => p.status === 'Active').length;
-  const planningProjectsCount = activeProjectsList.filter(p => p.status === 'Planning' || p.status === 'In Review').length;
-
   const handleCloneApplication = (app: ApplicationItem) => {
     setTitle(`[CLONE] ${app.title}`);
     setUrlLink(app.urlLink);
@@ -342,12 +416,25 @@ export const ApplicationsView: React.FC = () => {
     setProjectName(`[CLONE] ${proj.name}`);
     setProjectCode(`${proj.code}-CLONE`);
     setProjectEntity(proj.entity);
-    setProjectCategory(proj.category);
+    const isKnown = PROJECT_CATEGORY_OPTIONS.slice(0, 6).includes(proj.category);
+    if (isKnown) {
+      setSelectedCategoryType(proj.category);
+      setCustomCategoryText('');
+    } else if (proj.category) {
+      setSelectedCategoryType('Other');
+      setCustomCategoryText(proj.category);
+    } else {
+      setSelectedCategoryType('');
+      setCustomCategoryText('');
+    }
+    setProjectCategory(proj.category || '');
+    setSelectedProjectLeads(proj.lead ? proj.lead.split(',').map((s) => s.trim()).filter(Boolean) : []);
     setProjectLead(proj.lead);
     setSelectedTeamMemberNames(proj.team);
     setProjectTeam(proj.team.join(', '));
     setProjectPriority(proj.priority);
-    setProjectTechStack(proj.techStack);
+    setProjectTechStack(proj.techStack || '');
+    setProjectDeliverableUrl(proj.deliverableUrl || proj.techStack || '');
     setProjectDescription(proj.description);
     setProjectChecklists(proj.checkpoints ? proj.checkpoints.map(c => ({ ...c, isCompleted: false })) : []);
     setIsProjectClone(true);
@@ -360,14 +447,27 @@ export const ApplicationsView: React.FC = () => {
     setProjectName(proj.name);
     setProjectCode(proj.code);
     setProjectEntity(proj.entity);
-    setProjectCategory(proj.category);
+    const isKnown = PROJECT_CATEGORY_OPTIONS.slice(0, 6).includes(proj.category);
+    if (isKnown) {
+      setSelectedCategoryType(proj.category);
+      setCustomCategoryText('');
+    } else if (proj.category) {
+      setSelectedCategoryType('Other');
+      setCustomCategoryText(proj.category);
+    } else {
+      setSelectedCategoryType('');
+      setCustomCategoryText('');
+    }
+    setProjectCategory(proj.category || '');
+    setSelectedProjectLeads(proj.lead ? proj.lead.split(',').map((s) => s.trim()).filter(Boolean) : []);
     setProjectLead(proj.lead);
     setSelectedTeamMemberNames(proj.team);
     setProjectTeam(proj.team.join(', '));
     setProjectStartDate(proj.startDate);
     setProjectTargetDate(proj.targetDate);
     setProjectPriority(proj.priority);
-    setProjectTechStack(proj.techStack);
+    setProjectTechStack(proj.techStack || '');
+    setProjectDeliverableUrl(proj.deliverableUrl || proj.techStack || '');
     setProjectDescription(proj.description);
     setProjectChecklists(proj.checkpoints || []);
     setProjectComments(proj.comments || []);
@@ -402,32 +502,29 @@ export const ApplicationsView: React.FC = () => {
     e.preventDefault();
     const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
 
-    const defaultCheckpoints: ProjectCheckpoint[] = [
-      { id: `c-${Date.now()}-1`, title: 'Requirement Spec Approval', isCompleted: false },
-      { id: `c-${Date.now()}-2`, title: 'Environment & Tech Stack Setup', isCompleted: false },
-      { id: `c-${Date.now()}-3`, title: 'Core Deliverables Implementation', isCompleted: false },
-      { id: `c-${Date.now()}-4`, title: 'QA & Final Project Delivery', isCompleted: false },
-    ];
-
-    const finalCheckpoints = projectChecklists.length > 0 ? projectChecklists : defaultCheckpoints;
-    const finalTeam = selectedTeamMemberNames.length > 0
-      ? selectedTeamMemberNames
-      : projectTeam.split(',').map(s => s.trim()).filter(Boolean);
+    const finalCheckpoints = projectChecklists;
+    const finalTeam = selectedTeamMemberNames;
+    const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : projectLead;
+    const finalDeliverableUrl = projectDeliverableUrl || projectTechStack;
+    const finalCategory = selectedCategoryType === 'Other'
+      ? (customCategoryText.trim() || 'Other')
+      : (selectedCategoryType || projectCategory);
 
     if (editingProjectId) {
       const payload = {
-        code: generatedCode,
+        code: projectCode.trim() || undefined,
         name: projectName,
         entity: projectEntity,
         entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-        category: projectCategory,
-        lead: projectLead,
+        category: finalCategory,
+        lead: finalLead,
         team: finalTeam,
         budget: projectBudget,
         startDate: projectStartDate,
         targetDate: projectTargetDate,
         priority: projectPriority,
-        techStack: projectTechStack,
+        techStack: finalDeliverableUrl,
+        deliverableUrl: finalDeliverableUrl,
         milestonesCount: finalCheckpoints.length,
         description: projectDescription,
         checkpoints: finalCheckpoints,
@@ -440,40 +537,31 @@ export const ApplicationsView: React.FC = () => {
           body: JSON.stringify(payload),
         });
 
-        setProjects(prev => {
-          const next = prev.map(p => (p.id === editingProjectId ? (updated || { ...p, ...payload }) : p));
-          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
-          return next;
-        });
-
+        toast.success(`Project "${projectName}" updated and saved to database!`);
+        await loadProjects();
         if (selectedProjectForView?.id === editingProjectId) {
           setSelectedProjectForView(updated || { ...selectedProjectForView, ...payload });
         }
-        toast.success(`Project "${projectName}" updated and saved to database!`);
       } catch (err: any) {
         console.error('[PROJECT UPDATE ERROR]:', err);
-        setProjects(prev => {
-          const next = prev.map(p => (p.id === editingProjectId ? { ...p, ...payload } : p));
-          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
-          return next;
-        });
-        toast.success(`Project "${projectName}" updated locally!`);
+        toast.error(`Failed to update project: ${err?.message || 'Server error'}`);
       }
     } else {
       const payload = {
-        code: generatedCode,
+        code: projectCode.trim() || undefined,
         name: projectName,
         entity: projectEntity,
         entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-        category: projectCategory,
-        lead: projectLead,
+        category: finalCategory,
+        lead: finalLead,
         team: finalTeam,
         budget: projectBudget,
         startDate: projectStartDate,
         targetDate: projectTargetDate,
         status: 'Planning' as const,
         priority: projectPriority,
-        techStack: projectTechStack,
+        techStack: finalDeliverableUrl,
+        deliverableUrl: finalDeliverableUrl,
         milestonesCount: finalCheckpoints.length,
         description: projectDescription,
         checkpoints: finalCheckpoints,
@@ -486,29 +574,11 @@ export const ApplicationsView: React.FC = () => {
           body: JSON.stringify(payload),
         });
 
-        const newProject: ProjectItem = created || {
-          id: `prj-${Date.now()}`,
-          ...payload,
-        };
-
-        setProjects(prev => {
-          const next = [newProject, ...prev];
-          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
-          return next;
-        });
-        toast.success(`New project "${projectName}" (${generatedCode}) saved permanently to database!`);
+        toast.success(`New project "${projectName}" (${created?.code || 'Created'}) saved permanently to database!`);
+        await loadProjects();
       } catch (err: any) {
         console.error('[PROJECT CREATE ERROR]:', err);
-        const fallbackProject: ProjectItem = {
-          id: `prj-${Date.now()}`,
-          ...payload,
-        };
-        setProjects(prev => {
-          const next = [fallbackProject, ...prev];
-          try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
-          return next;
-        });
-        toast.success(`New project "${projectName}" saved locally and queued for database sync!`);
+        toast.error(`Failed to create project: ${err?.message || 'Server error'}`);
       }
     }
 
@@ -516,6 +586,16 @@ export const ApplicationsView: React.FC = () => {
     setEditingProjectId(null);
     setProjectName('');
     setProjectCode('');
+    setProjectLead('');
+    setSelectedProjectLeads([]);
+    setSelectedTeamMemberNames([]);
+    setProjectStartDate('');
+    setProjectTargetDate('');
+    setProjectTechStack('');
+    setProjectDeliverableUrl('');
+    setProjectCategory('');
+    setSelectedCategoryType('');
+    setCustomCategoryText('');
     setProjectDescription('');
     setProjectChecklists([]);
     setNewCheckpointText('');
@@ -526,12 +606,6 @@ export const ApplicationsView: React.FC = () => {
     if (isEmployee) return;
     if (!window.confirm(`Are you sure you want to delete project "${projName}"? This cannot be undone.`)) return;
 
-    setProjects(prev => {
-      const next = prev.filter(p => p.id !== projectId);
-      try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
-      return next;
-    });
-
     if (selectedProjectForView?.id === projectId) {
       setSelectedProjectForView(null);
     }
@@ -539,8 +613,10 @@ export const ApplicationsView: React.FC = () => {
     try {
       await fetchApi(`/api/projects/${projectId}`, { method: 'DELETE' });
       toast.success(`Project "${projName}" permanently removed from database.`);
+      await loadProjects();
     } catch (err: any) {
       console.error('[PROJECT DELETE ERROR]:', err);
+      toast.error(`Failed to delete project: ${err?.message || 'Server error'}`);
     }
   };
 
@@ -581,23 +657,19 @@ export const ApplicationsView: React.FC = () => {
     const projectId = selectedProjectToUpdate.id;
     const newStatus = updateProjectStatus;
 
-    setProjects(prev => {
-      const next = prev.map(p => (p.id === projectId ? { ...p, status: newStatus } : p));
-      try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
-      return next;
-    });
-
-    if (selectedProjectForView?.id === projectId) {
-      setSelectedProjectForView(prev => prev ? { ...prev, status: newStatus } : null);
-    }
-
     try {
       await fetchApi(`/api/projects/${projectId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus }),
       });
-    } catch (err) {
+      await loadProjects();
+    } catch (err: any) {
       console.error('[STATUS PERSIST ERROR]:', err);
+      toast.error(`Failed to update project status: ${err?.message || 'Server error'}`);
+    }
+
+    if (selectedProjectForView?.id === projectId) {
+      setSelectedProjectForView(prev => prev ? { ...prev, status: newStatus } : null);
     }
 
     if (newStatus === 'Completed') {
@@ -611,15 +683,12 @@ export const ApplicationsView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none">
-      {/* Dedicated Projects Header */}
+      {/* Top Controls Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <FolderKanban className="w-6 h-6 text-emerald-600" />
-            <span>Projects & Specifications</span>
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Projects and specifications</h2>
           <p className="text-xs text-gray-500 font-medium mt-0.5">
-            Manage company project proposals, technical specifications, status lifecycles, and project archives.
+            Manage company project proposals, technical specifications, and archives.
           </p>
         </div>
 
@@ -629,329 +698,515 @@ export const ApplicationsView: React.FC = () => {
               setEditingProjectId(null);
               setProjectName('');
               setProjectCode('');
+              setProjectLead('');
+              setSelectedProjectLeads([]);
+              setSelectedTeamMemberNames([]);
+              setProjectStartDate('');
+              setProjectTargetDate('');
+              setProjectTechStack('');
+              setProjectDeliverableUrl('');
+              setProjectCategory('');
+              setSelectedCategoryType('');
+              setCustomCategoryText('');
               setProjectDescription('');
               setProjectChecklists([]);
-              setSelectedTeamMemberNames(['Ashutosh Mishra', 'Priyanka Sharma']);
+              setNewCheckpointText('');
+              setProjectComments([]);
               setShowAddProjectModal(true);
             }}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>{isEmployee ? '+ Propose Project' : '+ Add New Project'}</span>
+            <span>{isEmployee ? '+ Propose Project' : '+ Add new project'}</span>
           </button>
         </div>
       </div>
+
       {/* PROJECTS & SPECIFICATIONS VIEW */}
       <div className="space-y-6">
-        {/* Project Summary Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Project Summary Stats Cards from Live Database COUNT(*) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs">
             <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">
-              TOTAL PROJECTS
+              Total projects
             </span>
-            <span className="text-3xl font-extrabold text-gray-900">{totalProjectsCount}</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+              {projectStats.total || totalProjectsCount}
+            </span>
           </div>
 
-          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 shadow-2xs">
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs">
             <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider block mb-1">
-              ACTIVE PROJECTS
+              Active
             </span>
-            <span className="text-3xl font-extrabold text-emerald-900">{activeProjectsCount}</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-800">
+              {projectStats.active}
+            </span>
           </div>
 
-          <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-5 shadow-2xs">
-            <span className="text-[11px] font-extrabold text-blue-700 uppercase tracking-wider block mb-1">
-              IN PLANNING / REVIEW
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs">
+            <span className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider block mb-1">
+              In planning / review
             </span>
-            <span className="text-3xl font-extrabold text-blue-900">{planningProjectsCount}</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-amber-800">
+              {projectStats.planningOrReview}
+            </span>
           </div>
 
-          <div className="bg-purple-50/60 border border-purple-200/80 rounded-2xl p-5 shadow-2xs">
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-2xs">
             <span className="text-[11px] font-extrabold text-purple-700 uppercase tracking-wider block mb-1">
-              COMPLETED / ARCHIVED
+              Completed / archived
             </span>
-            <span className="text-3xl font-extrabold text-purple-900">{archivedProjectsList.length}</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-purple-800">
+              {projectStats.archived}
+            </span>
           </div>
         </div>
 
-          {/* Sub-Tab Switcher for Projects: Active Projects vs Archived Projects */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 border-t border-gray-200/60">
-            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl border border-gray-200 w-fit">
+        {/* Filter Toolbar & Debounced Search */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Active / Archived Pill Toggle */}
+            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl border border-gray-200">
               <button
-                onClick={() => setProjectSubTab('ACTIVE')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  projectSubTab === 'ACTIVE' ? 'bg-white text-emerald-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                onClick={() => {
+                  setProjectSubTab('ACTIVE');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  projectSubTab === 'ACTIVE'
+                    ? 'bg-white text-emerald-900 shadow-2xs'
+                    : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <FolderKanban className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Active Projects ({activeProjectsList.length})</span>
+                Active ({projectStats.active})
               </button>
 
               <button
-                onClick={() => setProjectSubTab('ARCHIVED')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  projectSubTab === 'ARCHIVED' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500 hover:text-gray-800'
+                onClick={() => {
+                  setProjectSubTab('ARCHIVED');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  projectSubTab === 'ARCHIVED'
+                    ? 'bg-white text-gray-900 shadow-2xs'
+                    : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Archive className="w-3.5 h-3.5 text-gray-600" />
-                <span>Archived Projects ({archivedProjectsList.length})</span>
+                Archived ({projectStats.archived})
               </button>
             </div>
 
-            {/* Search Bar for Projects */}
-            <div className="max-w-md w-full relative">
-              <div className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-200/90 rounded-xl shadow-2xs focus-within:border-emerald-500 transition-all">
-                <Search className="w-4 h-4 text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search projects by code, name, category, lead..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent font-medium"
-                />
+            {/* Entity Filter Dropdown */}
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-2xs">
+              <select
+                value={entityFilter}
+                onChange={(e) => {
+                  setEntityFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
+              >
+                <option value="ALL">All entities</option>
+                <option value="EHM">EHM</option>
+                <option value="CAG">CLIMAGRO</option>
+              </select>
+            </div>
+
+            {/* Status Filter Dropdown */}
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-2xs">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
+              >
+                <option value="ALL">All statuses</option>
+                <option value="Active">In progress</option>
+                <option value="In Review">Reviewing</option>
+                <option value="Planning">Planning</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+
+            {/* Lead Filter Dropdown */}
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-2xs">
+              <select
+                value={leadFilter}
+                onChange={(e) => {
+                  setLeadFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer max-w-[150px] truncate"
+              >
+                <option value="ALL">All leads</option>
+                {availableTeamMembers.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Full-width Debounced Search Input */}
+          <div className="relative w-full">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by code, name, category, lead..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200/90 rounded-xl text-xs font-medium text-gray-800 placeholder-gray-400 outline-none focus:border-emerald-500 shadow-2xs transition-all"
+            />
+          </div>
+        </div>
+
+        {/* High-Performance Paginated Projects Table */}
+        {loadingProjects ? (
+          <div className="py-16 text-center text-xs font-semibold text-gray-400 bg-white rounded-2xl border border-gray-200/80">
+            Loading projects page {currentPage} from live database...
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200/80 rounded-2xl shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-extrabold text-gray-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Project</th>
+                    <th className="py-3 px-3">Entity</th>
+                    <th className="py-3 px-3">Progress</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-4 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                  {projects.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-xs text-gray-400 font-medium">
+                        No projects found matching criteria. Click "+ Add new project" to create one.
+                      </td>
+                    </tr>
+                  ) : (
+                    projects.map((prj, idx) => {
+                      const isExpanded = collapsedProjectIds[prj.id] === true;
+                      const completedCheckpoints = prj.checkpoints ? prj.checkpoints.filter((c) => c.isCompleted).length : 0;
+                      const totalCheckpoints = prj.checkpoints ? prj.checkpoints.length : 0;
+                      const checkpointPercent = totalCheckpoints > 0 ? Math.round((completedCheckpoints / totalCheckpoints) * 100) : 0;
+
+                      const isCAG = prj.entity === 'CAG' || prj.code?.startsWith('CAG') || prj.entityName?.toLowerCase().includes('cag');
+                      const entityLabel = isCAG ? 'CLIMAGRO' : 'EHM';
+
+                      const statusLower = (prj.status || '').toLowerCase();
+                      const statusDisplay =
+                        statusLower === 'active' || statusLower === 'in progress' || statusLower === 'in_progress'
+                          ? 'In progress'
+                          : statusLower === 'in review' || statusLower === 'in_review' || statusLower === 'reviewing'
+                          ? 'Reviewing'
+                          : statusLower === 'planning'
+                          ? 'Planning'
+                          : 'Completed';
+
+                      const isBottomRow = idx >= Math.max(0, projects.length - 2) || projects.length <= 3;
+
+                      return (
+                        <React.Fragment key={prj.id}>
+                          <tr className="hover:bg-gray-50/80 transition-colors group">
+                            {/* Column 1: Expand Chevron + Stacked Code & Name */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setCollapsedProjectIds((prev) => ({ ...prev, [prj.id]: !prev[prj.id] }))}
+                                  className="p-1 text-gray-400 hover:text-gray-800 rounded transition-colors cursor-pointer shrink-0"
+                                  title={isExpanded ? 'Collapse Inline Details' : 'Expand Inline Details'}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-4 h-4 text-emerald-600" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                                  )}
+                                </button>
+                                <div className="space-y-0.5 min-w-0">
+                                  <span className="font-mono text-[10px] font-semibold text-gray-400 tracking-wider block">
+                                    {prj.code}
+                                  </span>
+                                  <span
+                                    onClick={() => setSelectedProjectForView(prj)}
+                                    className="font-bold text-xs text-gray-900 hover:text-emerald-700 cursor-pointer transition-colors block truncate"
+                                    title={prj.name}
+                                  >
+                                    {prj.name}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Column 2: Entity */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              {(() => {
+                                const badge = getEntityBadge(prj);
+                                return (
+                                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wide shrink-0 ${badge.className}`}>
+                                    {badge.label}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+
+                            {/* Column 3: Progress */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <span className="text-xs font-semibold text-gray-600">
+                                {totalCheckpoints > 0
+                                  ? `${completedCheckpoints} of ${totalCheckpoints} done (${checkpointPercent}%)`
+                                  : '0 of 0 done (0%)'}
+                              </span>
+                            </td>
+
+                            {/* Column 4: Status */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                                  statusDisplay === 'In progress'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : statusDisplay === 'Reviewing'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : statusDisplay === 'Planning'
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                }`}
+                              >
+                                {statusDisplay}
+                              </span>
+                            </td>
+
+                            {/* Column 5: Single Overflow Menu Button (⋯) */}
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveOverflowMenuId(activeOverflowMenuId === prj.id ? null : prj.id)}
+                                  className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                                  title="Project Options"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </button>
+
+                                {activeOverflowMenuId === prj.id && (
+                                  <div
+                                    className={`absolute right-0 w-44 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50 text-left ${
+                                      isBottomRow
+                                        ? 'bottom-full mb-1.5 origin-bottom-right'
+                                        : 'top-full mt-1.5 origin-top-right'
+                                    } animate-in fade-in zoom-in-95 duration-100`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveOverflowMenuId(null);
+                                        setSelectedProjectForView(prj);
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    >
+                                      <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                                      <span>View details</span>
+                                    </button>
+
+                                    {!isEmployee && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveOverflowMenuId(null);
+                                            handleEditProject(prj);
+                                          }}
+                                          className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                                          <span>Edit project</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveOverflowMenuId(null);
+                                            handleDeleteProject(prj.id, prj.name);
+                                          }}
+                                          className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                          <span>Delete project</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Inline Collapsible Accordion Row */}
+                          {isExpanded && (
+                            <tr className="bg-gray-50/50">
+                              <td colSpan={5} className="p-4 border-t border-gray-100">
+                                <div className="space-y-3 bg-white p-4 rounded-xl border border-gray-200/80 shadow-2xs">
+                                  {prj.description && (
+                                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
+                                      {prj.description}
+                                    </p>
+                                  )}
+
+                                  {/* Info Grid */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-gray-100 text-xs">
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                                        <Tag className="w-3 h-3 text-emerald-600" /> Category
+                                      </span>
+                                      <span className="font-semibold text-gray-800 block">{prj.category || 'General'}</span>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                                        <User className="w-3 h-3 text-indigo-600" /> Project Lead
+                                      </span>
+                                      <span className="font-bold text-indigo-700 block">{prj.lead || 'Unassigned'}</span>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                                        <Calendar className="w-3 h-3 text-blue-600" /> Target Deadline
+                                      </span>
+                                      <span className="font-semibold text-gray-800 block">{prj.targetDate || '—'}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Deliverable URL & Team Info */}
+                                  <div className="bg-gray-50/70 p-3 rounded-xl border border-gray-100 space-y-1.5 text-xs">
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="font-bold text-gray-500 flex items-center gap-1">
+                                        <Layers className="w-3 h-3 text-purple-600" /> Deliverable URL(s) / Links:
+                                      </span>
+                                      {(prj.deliverableUrl || prj.techStack) && (prj.deliverableUrl || prj.techStack)?.startsWith('http') ? (
+                                        <a
+                                          href={prj.deliverableUrl || prj.techStack}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="font-extrabold text-emerald-600 hover:underline flex items-center gap-1"
+                                        >
+                                          <span className="max-w-[200px] truncate">{prj.deliverableUrl || prj.techStack}</span>
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      ) : (
+                                        <span className="font-extrabold text-purple-700">{prj.deliverableUrl || prj.techStack || '—'}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center justify-between text-[11px] text-gray-600">
+                                      <span>Assigned Team ({Array.isArray(prj.team) ? prj.team.length : 0}):</span>
+                                      <span className="font-semibold">{Array.isArray(prj.team) ? prj.team.join(', ') : '—'}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Checkpoints Checklist */}
+                                  {prj.checkpoints && prj.checkpoints.length > 0 && (
+                                    <div className="bg-emerald-50/40 p-3 rounded-xl border border-emerald-100/80 space-y-2 text-xs">
+                                      <div className="flex items-center justify-between text-[11px] font-bold">
+                                        <span className="text-gray-700 flex items-center gap-1.5">
+                                          <ListChecks className="w-3.5 h-3.5 text-emerald-600" />
+                                          <span>Project Checkpoint Checklist</span>
+                                        </span>
+                                        <span className="text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-full font-extrabold text-[10px]">
+                                          {completedCheckpoints} of {totalCheckpoints} Done ({checkpointPercent}%)
+                                        </span>
+                                      </div>
+
+                                      {/* Progress Bar */}
+                                      <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                                        <div
+                                          className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                                          style={{ width: `${checkpointPercent}%` }}
+                                        />
+                                      </div>
+
+                                      {/* Interactive Checkpoints */}
+                                      <div className="space-y-1 pt-1 max-h-36 overflow-y-auto pr-0.5">
+                                        {prj.checkpoints.map((chk) => (
+                                          <label
+                                            key={chk.id}
+                                            className={`flex items-center justify-between p-1.5 rounded-lg border text-[11px] font-semibold transition-colors cursor-pointer ${
+                                              chk.isCompleted
+                                                ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <input
+                                                type="checkbox"
+                                                disabled={isEmployee}
+                                                checked={chk.isCompleted}
+                                                onChange={() => {
+                                                  if (isEmployee) return;
+                                                  handleToggleProjectCardCheckpoint(prj.id, chk.id);
+                                                }}
+                                                className={`w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 ${
+                                                  isEmployee ? 'cursor-default' : 'cursor-pointer'
+                                                }`}
+                                              />
+                                              <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
+                                                {chk.title}
+                                              </span>
+                                            </div>
+                                            {chk.isCompleted && (
+                                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                            )}
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Server-Side Pagination Controls */}
+            <div className="p-3.5 bg-gray-50/90 border-t border-gray-200 flex items-center justify-between text-xs font-bold text-gray-600">
+              <div>
+                Showing {totalProjectsCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}–
+                {Math.min(currentPage * pageSize, totalProjectsCount)} of {totalProjectsCount.toLocaleString()}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="p-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer transition-colors"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="px-2 font-bold text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="p-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer transition-colors"
+                  title="Next Page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
-
-          {/* Projects Specifications List View (Collapsible like Initiative View, Closed by default) */}
-          {displayedProjectsList.length > 0 ? (
-            <div className="space-y-3">
-              {displayedProjectsList.map((prj) => {
-                const isCollapsed = collapsedProjectIds[prj.id] !== false;
-                const completedCheckpoints = prj.checkpoints ? prj.checkpoints.filter(c => c.isCompleted).length : 0;
-                const totalCheckpoints = prj.checkpoints ? prj.checkpoints.length : 0;
-                const checkpointPercent = totalCheckpoints > 0 ? Math.round((completedCheckpoints / totalCheckpoints) * 100) : 0;
-
-                return (
-                  <div
-                    key={prj.id}
-                    className="bg-white border border-gray-200/80 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all"
-                  >
-                    {/* Collapsible Project Header Bar (Simple View) */}
-                    <div className="p-4 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between gap-3 select-none">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => setCollapsedProjectIds(prev => ({ ...prev, [prj.id]: !prev[prj.id] }))}
-                          className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 rounded-lg transition-colors shrink-0 cursor-pointer"
-                          title={isCollapsed ? 'Expand Project Details' : 'Collapse Project Details'}
-                        >
-                          {isCollapsed ? (
-                            <ChevronRight className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-emerald-600" />
-                          )}
-                        </button>
-
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 uppercase shrink-0">
-                          {prj.code}
-                        </span>
-
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase shrink-0">
-                          {(prj.entity === 'CAG' || prj.code?.startsWith('CAG') || prj.entityName?.toLowerCase().includes('cag') || prj.entityName?.toLowerCase().includes('climagro')) ? 'CLIMAGRO' : 'EHM'}
-                        </span>
-
-                        <h3 
-                          onClick={() => setCollapsedProjectIds(prev => ({ ...prev, [prj.id]: !prev[prj.id] }))}
-                          className="text-xs sm:text-sm font-bold text-gray-900 truncate cursor-pointer hover:text-emerald-700 transition-colors"
-                        >
-                          {prj.name}
-                        </h3>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {totalCheckpoints > 0 && (
-                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200 hidden sm:inline-block">
-                            {completedCheckpoints} of {totalCheckpoints} Done ({checkpointPercent}%)
-                          </span>
-                        )}
-
-                        <select
-                          disabled={isEmployee}
-                          value={prj.status}
-                          onChange={async (e) => {
-                            if (isEmployee) return;
-                            const newStatus = e.target.value as 'Planning' | 'Active' | 'In Review' | 'Completed';
-                            setProjects(prev => {
-                              const next = prev.map(p => p.id === prj.id ? { ...p, status: newStatus } : p);
-                              try { localStorage.setItem('hros_projects_list', JSON.stringify(next)); } catch {}
-                              return next;
-                            });
-                            try {
-                              await fetchApi(`/api/projects/${prj.id}`, {
-                                method: 'PATCH',
-                                body: JSON.stringify({ status: newStatus }),
-                              });
-                            } catch (err) {
-                              console.error('[STATUS UPDATE ERROR]:', err);
-                            }
-                            toast.success(`Project "${prj.name}" status updated to ${newStatus}!`);
-                          }}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border outline-none ${isEmployee ? 'cursor-default opacity-90' : 'cursor-pointer'} transition-all shadow-2xs ${
-                            prj.status === 'Active'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                              : prj.status === 'Planning'
-                              ? 'bg-blue-50 text-blue-800 border-blue-300'
-                              : prj.status === 'In Review'
-                              ? 'bg-amber-50 text-amber-800 border-amber-300'
-                              : 'bg-purple-50 text-purple-800 border-purple-300'
-                          }`}
-                          title={isEmployee ? "Project Status (View Only)" : "Change Project Status"}
-                        >
-                          <option value="Active">🔄 In Progress</option>
-                          <option value="In Review">🔍 Reviewing</option>
-                          <option value="Planning">📋 Planned</option>
-                          <option value="Completed">✅ Completed</option>
-                        </select>
-
-                        {/* View Details Icon Button */}
-                        <button
-                          onClick={() => setSelectedProjectForView(prj)}
-                          className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-2xs"
-                          title="View Full Project Details"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                        </button>
-
-                        {!isEmployee && (
-                          <>
-                            <button
-                              onClick={() => handleEditProject(prj)}
-                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-2xs"
-                              title="Edit Project"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteProject(prj.id, prj.name)}
-                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-2xs"
-                              title="Delete Project"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Expanded Project Details Body */}
-                    {!isCollapsed && (
-                      <div className="p-4 space-y-3 bg-white border-t border-gray-100">
-                        <p className="text-xs text-gray-600 font-medium leading-relaxed">{prj.description}</p>
-
-                        {/* Basic Information Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-gray-100 text-xs">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                              <Tag className="w-3 h-3 text-emerald-600" /> Category
-                            </span>
-                            <span className="font-semibold text-gray-800 block">{prj.category}</span>
-                          </div>
-
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                              <User className="w-3 h-3 text-indigo-600" /> Project Lead
-                            </span>
-                            <span className="font-bold text-indigo-700 block">{prj.lead}</span>
-                          </div>
-
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-blue-600" /> Target Deadline
-                            </span>
-                            <span className="font-semibold text-gray-800 block">{prj.targetDate}</span>
-                          </div>
-                        </div>
-
-                        {/* Tech Stack & Team Info */}
-                        <div className="bg-gray-50/70 p-3 rounded-xl border border-gray-100 space-y-1.5 text-xs">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-bold text-gray-500 flex items-center gap-1">
-                              <Layers className="w-3 h-3 text-purple-600" /> Tech Stack / Deliverables:
-                            </span>
-                            <span className="font-extrabold text-purple-700">{prj.techStack}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] text-gray-600">
-                            <span>Assigned Team ({prj.team.length}):</span>
-                            <span className="font-semibold">{prj.team.join(', ')}</span>
-                          </div>
-                        </div>
-
-                        {/* Checkpoints & Milestones Checklist Section */}
-                        {prj.checkpoints && prj.checkpoints.length > 0 && (
-                          <div className="bg-emerald-50/40 p-3 rounded-xl border border-emerald-100/80 space-y-2 text-xs">
-                            <div className="flex items-center justify-between text-[11px] font-bold">
-                              <span className="text-gray-700 flex items-center gap-1.5">
-                                <ListChecks className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Project Checkpoint Checklist</span>
-                              </span>
-                              <span className="text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-full font-extrabold text-[10px]">
-                                {completedCheckpoints} of {totalCheckpoints} Done ({checkpointPercent}%)
-                              </span>
-                            </div>
-
-                            {/* Progress Bar */}
-                            <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                              <div
-                                className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                                style={{ width: `${checkpointPercent}%` }}
-                              />
-                            </div>
-
-                            {/* Interactive Checkpoints */}
-                            <div className="space-y-1 pt-1 max-h-36 overflow-y-auto pr-0.5">
-                              {prj.checkpoints.map(chk => (
-                                <label
-                                  key={chk.id}
-                                  className={`flex items-center justify-between p-1.5 rounded-lg border text-[11px] font-semibold transition-colors cursor-pointer ${
-                                    chk.isCompleted
-                                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-                                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      disabled={isEmployee}
-                                      checked={chk.isCompleted}
-                                      onChange={() => {
-                                        if (isEmployee) return;
-                                        handleToggleProjectCardCheckpoint(prj.id, chk.id);
-                                      }}
-                                      className={`w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 ${isEmployee ? 'cursor-default' : 'cursor-pointer'}`}
-                                    />
-                                    <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
-                                      {chk.title}
-                                    </span>
-                                  </div>
-                                  {chk.isCompleted && (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                  )}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="py-16 text-center bg-white border border-gray-200/80 rounded-2xl">
-              <FolderKanban className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h4 className="text-base font-bold text-gray-600">
-                {projectSubTab === 'ARCHIVED' ? 'No archived projects found.' : 'No active projects found.'}
-              </h4>
-              <p className="text-xs text-gray-400 mt-1">
-                {projectSubTab === 'ARCHIVED'
-                  ? 'Projects marked as "Completed" will automatically appear here.'
-                  : 'Click "+ Add New Project" above to create a project specification.'}
-              </p>
-            </div>
-          )}
-        </div>
+        )}
+      </div>
 
       {/* Add New Application Modal */}
       {showAddModal && (
@@ -1132,90 +1387,105 @@ export const ApplicationsView: React.FC = () => {
                   />
                 </div>
 
-                {/* Assign Team Members (Multi-Select Enabled) */}
+                {/* Assign Team Members (Multi-Select Dropdown) */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
-                    Assign Team Members * (Multi-Select Enabled)
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between">
+                    <span>Assign Team Members (Optional)</span>
+                    <span className="text-[10px] font-mono text-gray-400">Multi-select dropdown</span>
                   </label>
-                  <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50 space-y-1.5">
-                    {availableTeamMembers.map((emp) => {
-                      const isChecked = selectedTeamMemberNames.includes(emp.name);
-                      return (
-                        <label
-                          key={emp.id}
-                          className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                            isChecked ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-white hover:bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => {
-                                if (isChecked) {
-                                  setSelectedTeamMemberNames(selectedTeamMemberNames.filter(n => n !== emp.name));
-                                } else {
-                                  setSelectedTeamMemberNames([...selectedTeamMemberNames, emp.name]);
-                                }
-                              }}
-                              className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                            />
-                            <span>{emp.name}</span>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <SearchableSelect
+                    options={availableTeamMembers.map((emp) => ({
+                      id: emp.name,
+                      code: emp.code,
+                      label: emp.name,
+                    }))}
+                    isMulti={true}
+                    multiValues={selectedTeamMemberNames}
+                    onMultiChange={setSelectedTeamMemberNames}
+                    placeholder="Select Team Members (Optional)..."
+                    searchPlaceholder="Search team members..."
+                  />
                 </div>
 
                 {/* Reviewing Lead / Manager */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Project Lead / Manager *</label>
-                  <select
-                    required
-                    value={projectLead}
-                    onChange={(e) => setProjectLead(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white text-gray-900 cursor-pointer"
-                  >
-                    {dbEmployees.length === 0 ? (
-                      <option value="Ashutosh Mishra">Ashutosh Mishra</option>
-                    ) : (
-                      dbEmployees.map((emp) => {
-                        const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
-                        return (
-                          <option key={emp.id} value={name}>
-                            {name}
-                          </option>
-                        );
-                      })
-                    )}
-                  </select>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between">
+                    <span>Project Lead / Manager (Optional)</span>
+                    <span className="text-[10px] font-mono text-gray-400">Multi-select dropdown</span>
+                  </label>
+                  <SearchableSelect
+                    options={availableTeamMembers.map((emp) => ({
+                      id: emp.name,
+                      code: emp.code,
+                      label: emp.name,
+                    }))}
+                    isMulti={true}
+                    multiValues={selectedProjectLeads}
+                    onMultiChange={setSelectedProjectLeads}
+                    placeholder="Select Project Lead(s) (Optional)..."
+                    searchPlaceholder="Search project leads..."
+                  />
                 </div>
 
                 {/* Company Entity & Category */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Company / Entity</label>
-                    <select
-                      value={projectEntity}
-                      onChange={(e) => setProjectEntity(e.target.value as any)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
-                    >
-                      <option value="EHM">EHM</option>
-                      <option value="CAG">CLIMAGRO</option>
-                    </select>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Company / Entity</label>
+                      <select
+                        value={projectEntity}
+                        onChange={(e) => setProjectEntity(e.target.value as any)}
+                        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
+                      >
+                        <option value="EHM">EHM</option>
+                        <option value="CAG">CLIMAGRO</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Category / Domain</label>
+                      <select
+                        value={selectedCategoryType}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedCategoryType(val);
+                          if (val === 'Other') {
+                            setProjectCategory(customCategoryText);
+                          } else {
+                            setProjectCategory(val);
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
+                      >
+                        <option value="">-- Select Category / Domain --</option>
+                        {PROJECT_CATEGORY_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Category / Domain</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Environmental Compliance"
-                      value={projectCategory}
-                      onChange={(e) => setProjectCategory(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
-                    />
-                  </div>
+                  {selectedCategoryType === 'Other' && (
+                    <div className="bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-200/80 space-y-1 animate-in fade-in duration-150">
+                      <label className="block text-[11px] font-bold text-emerald-900 flex items-center justify-between">
+                        <span>Specify Custom Category / Domain *</span>
+                        <span className="text-[10px] text-emerald-700 font-mono">Custom write-in</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter your custom category or domain name..."
+                        value={customCategoryText}
+                        onChange={(e) => {
+                          setCustomCategoryText(e.target.value);
+                          setProjectCategory(e.target.value);
+                        }}
+                        className="w-full px-3 py-2 text-xs border border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 placeholder-gray-400"
+                        autoFocus
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Timeline Dates */}
@@ -1241,16 +1511,37 @@ export const ApplicationsView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Tech Stack & Key Tools */}
+                {/* Deliverable URL(s) / Links */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Tech Stack & Key Tools</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. React, Node.js, Python, GIS, PostgreSQL"
-                    value={projectTechStack}
-                    onChange={(e) => setProjectTechStack(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Deliverable URL(s) / Links
+                    </label>
+                    {projectDeliverableUrl && projectDeliverableUrl.startsWith('http') && (
+                      <a
+                        href={projectDeliverableUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Open Link</span>
+                      </a>
+                    )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="e.g. https://github.com/org/repo or https://figma.com/file/... or live URL"
+                      value={projectDeliverableUrl}
+                      onChange={(e) => {
+                        setProjectDeliverableUrl(e.target.value);
+                        setProjectTechStack(e.target.value);
+                      }}
+                      className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium pl-8"
+                    />
+                    <LinkIcon className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" />
+                  </div>
                 </div>
 
                 {/* Deliverable Goal / Scope Overview (Rich Text Editor) */}
@@ -1274,27 +1565,6 @@ export const ApplicationsView: React.FC = () => {
                     <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                       {projectChecklists.filter(c => c.isCompleted).length} of {projectChecklists.length} Completed
                     </span>
-                  </div>
-
-                  {/* Quick Presets */}
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    <span className="text-[10px] font-bold text-gray-400 self-center">Quick Add:</span>
-                    {[
-                      'Requirement Spec Approval',
-                      'System Architecture Setup',
-                      'Environment & DB Setup',
-                      'QA & Testing Delivery',
-                      'Final Client Sign-off',
-                    ].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => handleAddProjectCheckpoint(preset)}
-                        className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
-                      >
-                        + {preset}
-                      </button>
-                    ))}
                   </div>
 
                   {/* Checkpoints items list */}
@@ -1406,11 +1676,24 @@ export const ApplicationsView: React.FC = () => {
                               setProjectName(`${source.name} (Clone)`);
                               setProjectCode(`${source.code}-CLONE`);
                               setProjectEntity(source.entity);
-                              setProjectCategory(source.category);
-                              setProjectLead(source.lead);
-                              setSelectedTeamMemberNames(source.team);
-                              setProjectTechStack(source.techStack);
-                              setProjectDescription(source.description);
+                              const isKnown = PROJECT_CATEGORY_OPTIONS.slice(0, 6).includes(source.category);
+                              if (isKnown) {
+                                setSelectedCategoryType(source.category);
+                                setCustomCategoryText('');
+                              } else if (source.category) {
+                                setSelectedCategoryType('Other');
+                                setCustomCategoryText(source.category);
+                              } else {
+                                setSelectedCategoryType('');
+                                setCustomCategoryText('');
+                              }
+                              setProjectCategory(source.category || '');
+                              setSelectedProjectLeads(source.lead ? source.lead.split(',').map((s) => s.trim()).filter(Boolean) : []);
+                              setProjectLead(source.lead || '');
+                              setSelectedTeamMemberNames(source.team || []);
+                              setProjectTechStack(source.techStack || '');
+                              setProjectDeliverableUrl(source.deliverableUrl || source.techStack || '');
+                              setProjectDescription(source.description || '');
                               if (source.checkpoints) {
                                 setProjectChecklists(source.checkpoints.map(c => ({ ...c, isCompleted: false })));
                               }
@@ -1650,186 +1933,225 @@ export const ApplicationsView: React.FC = () => {
       )}
 
       {/* Expanded View Project Details Modal Popup */}
-      {selectedProjectForView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 select-none overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 my-8 space-y-6">
-            {/* Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-gray-100">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-800 border border-gray-200 uppercase">
-                    {selectedProjectForView.code}
+      {selectedProjectForView && (() => {
+        const p = selectedProjectForView;
+        const isCAG = p.entity === 'CAG' || p.code?.startsWith('CAG') || p.entityName?.toLowerCase().includes('cag');
+        const entityLabel = isCAG ? 'CLIMAGROANALYTICS' : 'EHMCONSULTANCY';
+
+        const priorityColor =
+          p.priority === 'Urgent'
+            ? 'bg-rose-50 text-rose-700 border-rose-200'
+            : p.priority === 'High'
+            ? 'bg-amber-50 text-amber-700 border-amber-200'
+            : p.priority === 'Low'
+            ? 'bg-gray-100 text-gray-700 border-gray-200'
+            : 'bg-blue-50 text-blue-700 border-blue-200';
+
+        const teamList = Array.isArray(p.team) ? p.team : [];
+        const checkpointsList = Array.isArray(p.checkpoints) ? p.checkpoints : [];
+        const doneCount = checkpointsList.filter(c => c.isCompleted).length;
+        const totalCount = checkpointsList.length;
+        const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+        const deliverable = p.deliverableUrl || p.techStack;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200/90 animate-in fade-in zoom-in-95 duration-200 my-8 space-y-4 text-left">
+              
+              {/* Header Badges & Close */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-gray-100 text-gray-700 border border-gray-200 tracking-wide">
+                    {p.code}
                   </span>
-                  <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase">
-                    {selectedProjectForView.entityName}
-                  </span>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
-                    {selectedProjectForView.priority} Priority
+                  {(() => {
+                    const badge = getEntityBadge(p);
+                    return (
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold uppercase tracking-wider border ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${priorityColor}`}>
+                    {p.priority || 'Medium'} priority
                   </span>
                 </div>
-                <h2 className="text-xl font-extrabold text-gray-900 tracking-tight pt-1">
-                  {selectedProjectForView.name}
-                </h2>
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                {!isEmployee && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedProjectForView) handleEditProject(selectedProjectForView);
-                    }}
-                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                    title="Edit Project Specifications"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-white" />
-                    <span>Edit Project</span>
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => setSelectedProjectForView(null)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors cursor-pointer ml-1"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-            </div>
 
-            {/* Grid Content */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column: Details */}
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
-                    Project Description
-                  </h4>
-                  <p className="text-xs text-gray-700 font-medium leading-relaxed bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100">
-                    {selectedProjectForView.description}
-                  </p>
-                </div>
+              {/* Title */}
+              <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+                {p.name}
+              </h2>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                      <Tag className="w-3 h-3 text-emerald-600" /> Category
-                    </span>
-                    <span className="font-bold text-gray-800 block">{selectedProjectForView.category}</span>
+              {/* Project Description */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block">
+                  PROJECT DESCRIPTION
+                </span>
+                <p className="text-xs font-medium text-gray-700 leading-relaxed">
+                  {p.description && p.description.trim() ? (
+                    p.description
+                  ) : (
+                    <span className="italic text-gray-400">No description added yet.</span>
+                  )}
+                </p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* 2-Column Grid: Lead & Target Deadline */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Project Lead */}
+                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    <span>PROJECT LEAD</span>
                   </div>
-
-                  <div className="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                      <User className="w-3 h-3 text-indigo-600" /> Project Lead
-                    </span>
-                    <span className="font-bold text-indigo-700 block">{selectedProjectForView.lead}</span>
-                  </div>
-
-                  <div className="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-blue-600" /> Target Deadline
-                    </span>
-                    <span className="font-semibold text-gray-800 block">{selectedProjectForView.targetDate}</span>
-                  </div>
-
-                  <div className="bg-white p-3 rounded-xl border border-gray-200 space-y-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-600" /> Start Date
-                    </span>
-                    <span className="font-semibold text-gray-800 block">{selectedProjectForView.startDate}</span>
+                  <div className="text-xs font-bold text-gray-800">
+                    {p.lead && p.lead.trim() ? (
+                      p.lead
+                    ) : (
+                      <span className="italic font-normal text-gray-400">No lead assigned</span>
+                    )}
                   </div>
                 </div>
 
-                <div className="bg-purple-50/50 p-3.5 rounded-2xl border border-purple-100 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-purple-900 flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-purple-600" /> Tech Stack & Deliverables
-                    </span>
+                {/* Target Deadline */}
+                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    <span>TARGET DEADLINE</span>
                   </div>
-                  <p className="font-extrabold text-purple-800">{selectedProjectForView.techStack}</p>
-                  <div className="pt-2 border-t border-purple-100 flex items-center justify-between text-[11px] text-purple-950 font-medium">
-                    <span>Assigned Team ({selectedProjectForView.team.length}):</span>
-                    <span className="font-bold">{selectedProjectForView.team.join(', ')}</span>
+                  <div className="text-xs font-bold text-gray-800">
+                    {p.targetDate && p.targetDate.trim() ? (
+                      p.targetDate
+                    ) : (
+                      <span className="italic font-normal text-gray-400">Not set</span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Checkpoints & Live Interactions */}
-              <div className="space-y-4">
-                <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 space-y-3 text-xs">
-                  <div className="flex items-center justify-between font-bold">
-                    <span className="text-gray-800 flex items-center gap-1.5">
-                      <ListChecks className="w-4 h-4 text-emerald-600" />
-                      <span>Checkpoint Checklist</span>
-                    </span>
-                    {selectedProjectForView.checkpoints && selectedProjectForView.checkpoints.length > 0 && (() => {
-                      const doneCount = selectedProjectForView.checkpoints.filter(c => c.isCompleted).length;
-                      const totalCount = selectedProjectForView.checkpoints.length;
-                      const pct = Math.round((doneCount / totalCount) * 100);
-                      return (
-                        <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full font-extrabold text-[11px]">
-                          {doneCount} / {totalCount} ({pct}%)
-                        </span>
-                      );
-                    })()}
-                  </div>
-
-                  {selectedProjectForView.checkpoints && selectedProjectForView.checkpoints.length > 0 ? (
-                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                      {selectedProjectForView.checkpoints.map((chk) => (
-                        <label
-                          key={chk.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                            chk.isCompleted
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                              : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <input
-                              type="checkbox"
-                              checked={chk.isCompleted}
-                              onChange={() => {
-                                handleToggleProjectCardCheckpoint(selectedProjectForView.id, chk.id);
-                                setSelectedProjectForView(prev => {
-                                  if (!prev) return null;
-                                  const updated = (prev.checkpoints || []).map(c =>
-                                    c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
-                                  );
-                                  return { ...prev, checkpoints: updated };
-                                });
-                              }}
-                              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
-                            />
-                            <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
-                              {chk.title}
-                            </span>
-                          </div>
-                          {chk.isCompleted && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
-                        </label>
-                      ))}
-                    </div>
+              {/* Deliverable URL(s) / Links */}
+              <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
+                <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                  <LinkIcon className="w-3.5 h-3.5 text-gray-400" />
+                  <span>DELIVERABLE URL(S) / LINKS</span>
+                </div>
+                <div>
+                  {deliverable && deliverable.trim() ? (
+                    deliverable.startsWith('http') ? (
+                      <a
+                        href={deliverable}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1 break-all"
+                      >
+                        <span>{deliverable}</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </a>
+                    ) : (
+                      <span className="text-xs font-bold text-gray-800 break-all">{deliverable}</span>
+                    )
                   ) : (
-                    <p className="text-xs text-gray-400 font-medium py-4 text-center">No checkpoints defined for this project.</p>
+                    <span className="text-xs italic font-normal text-gray-400">No links added yet.</span>
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-              {!isEmployee && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedProjectForView) handleEditProject(selectedProjectForView);
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit Project</span>
-                  </button>
+              {/* Assigned Team */}
+              <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                  <Users className="w-3.5 h-3.5 text-gray-400" />
+                  <span>ASSIGNED TEAM ({teamList.length})</span>
+                </div>
+                {teamList.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {teamList.map((m: string) => (
+                      <span
+                        key={m}
+                        className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-800 shadow-2xs"
+                      >
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs italic font-normal text-gray-400">No team members assigned yet.</span>
+                )}
+              </div>
 
+              {/* Checkpoint Checklist Box (Application Clean Emerald Theme) */}
+              <div className="bg-emerald-50/50 border border-emerald-200/90 rounded-xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                    <ListChecks className="w-4 h-4 text-emerald-600" />
+                    <span>Checkpoint checklist</span>
+                  </div>
+                  {checkpointsList.length > 0 && (
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {doneCount} of {totalCount} done ({pct}%)
+                    </span>
+                  )}
+                </div>
+
+                {checkpointsList.length > 0 ? (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {checkpointsList.map((chk) => (
+                      <label
+                        key={chk.id}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs font-medium transition-colors ${
+                          chk.isCompleted
+                            ? 'bg-emerald-100/60 border-emerald-300 text-emerald-950 font-semibold'
+                            : 'bg-white border-emerald-200 text-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={chk.isCompleted}
+                            disabled={isEmployee}
+                            onChange={() => {
+                              if (isEmployee) return;
+                              handleToggleProjectCardCheckpoint(p.id, chk.id);
+                              setSelectedProjectForView(prev => {
+                                if (!prev) return null;
+                                const updated = (prev.checkpoints || []).map(c =>
+                                  c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                );
+                                return { ...prev, checkpoints: updated };
+                              });
+                            }}
+                            className={`w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 ${
+                              isEmployee ? 'cursor-default' : 'cursor-pointer'
+                            }`}
+                          />
+                          <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
+                            {chk.title}
+                          </span>
+                        </div>
+                        {chk.isCompleted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-emerald-800/80 italic font-medium">
+                    No checkpoints defined for this project.
+                  </p>
+                )}
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                {!isEmployee ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -1837,26 +2159,43 @@ export const ApplicationsView: React.FC = () => {
                       setSelectedProjectForView(null);
                       if (current) handleCloneProject(current);
                     }}
-                    className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                    <span>Clone Project</span>
+                    <Copy className="w-3.5 h-3.5 text-gray-500" />
+                    <span>Clone project</span>
                   </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectForView(null)}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  >
+                    Close
+                  </button>
+
+                  {!isEmployee && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedProjectForView) handleEditProject(selectedProjectForView);
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-white" />
+                      <span>Edit project</span>
+                    </button>
+                  )}
                 </div>
-              )}
-              <div className="flex items-center gap-3 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => setSelectedProjectForView(null)}
-                  className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
-                >
-                  Close
-                </button>
               </div>
+
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

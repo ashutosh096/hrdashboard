@@ -39,7 +39,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
-import { matchesEntityFilter } from '../utils/entityUtils';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 type CalendarViewMode = 'WEEK' | 'DAY' | 'MONTH' | 'SCHEDULE';
 
@@ -108,7 +108,15 @@ export const MeetingsView: React.FC = () => {
         fetchApi<any[]>('/api/employees'),
         fetchApi<any[]>('/api/meetings/availability').catch(() => []),
       ]);
-      setMeetings(Array.isArray(meetingsData) ? meetingsData : []);
+      const cutoffDate = new Date(Date.now() - 3 * 86400000);
+      cutoffDate.setHours(0, 0, 0, 0);
+
+      const activeMeetings = (Array.isArray(meetingsData) ? meetingsData : []).filter((m) => {
+        const mEnd = new Date(m.endTime || m.startTime);
+        return mEnd >= cutoffDate;
+      });
+
+      setMeetings(activeMeetings);
       setEmployees(Array.isArray(employeesData) ? employeesData : []);
       setAvailability(Array.isArray(availabilityData) ? availabilityData : []);
     } catch (err) {
@@ -1279,9 +1287,14 @@ export const MeetingsView: React.FC = () => {
                         </div>
                       </div>
 
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase tracking-wide border bg-emerald-50 text-emerald-700 border-emerald-200">
-                        {item.entity === 'CAG' ? 'Climagro' : 'EHM'}
-                      </span>
+                      {(() => {
+                        const badge = getEntityBadge(item);
+                        return (
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase tracking-wide border ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     {/* Single Clean Presence Status Pill */}

@@ -68,4 +68,18 @@ router.post('/read-all', async (req, res) => {
   }
 });
 
+router.post('/:id/read', async (req, res) => {
+  const rawId = req.params.id;
+  try {
+    await db
+      .update(notifications)
+      .set({ readAt: new Date() })
+      .where(eq(notifications.id, rawId));
+    res.json({ success: true, message: 'Notification marked as read' });
+  } catch (err) {
+    console.error('[NOTIFICATIONS READ SINGLE ERROR]:', err);
+    res.status(500).json({ message: 'Failed to mark notification read' });
+  }
+});
+
 export default router;

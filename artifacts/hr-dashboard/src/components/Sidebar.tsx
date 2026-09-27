@@ -17,7 +17,9 @@ import {
   Zap,
   PanelLeftClose,
   PanelLeftOpen,
+  Lock,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useEntity } from '../contexts/EntityContext';
 
 export const Sidebar: React.FC = () => {
@@ -63,7 +65,7 @@ export const Sidebar: React.FC = () => {
     {
       title: 'People',
       items: [
-        { label: 'Attendance', path: '/attendance', icon: Clock },
+        { label: 'Attendance', path: '/attendance', icon: Clock, isLocked: true },
         { label: 'Team', path: '/team', icon: Users },
         { label: 'Notifications', path: '/notifications', icon: Bell },
       ],
@@ -95,8 +97,8 @@ export const Sidebar: React.FC = () => {
             </div>
             {!isCollapsed && (
               <div className="min-w-0 transition-opacity duration-200">
-                <span className="font-bold text-gray-900 tracking-tight text-lg truncate block">Workspace</span>
-                <span className="text-xs block text-emerald-600 font-bold -mt-1 truncate">EHM-Climagro OS</span>
+                <span className="font-bold text-gray-900 tracking-tight text-lg truncate block">HIVE Dashboard</span>
+                <span className="text-xs block text-emerald-600 font-bold -mt-1 truncate">EHM & CLIMAGRO</span>
               </div>
             )}
           </div>
@@ -171,28 +173,39 @@ export const Sidebar: React.FC = () => {
                   <div className="w-6 h-[1px] bg-gray-200 mx-auto my-1.5" />
                 ) : null}
 
-                {section.items.map((item) => {
+                {section.items.map((item: any) => {
                   const Icon = item.icon;
                   const isActive = location === item.path;
+                  const isLocked = item.isLocked === true;
 
                   return (
                     <div key={item.path} className="w-full flex justify-center">
                       <Link
-                        href={item.path}
+                        href={isLocked ? '#' : item.path}
+                        onClick={(e) => {
+                          if (isLocked) {
+                            e.preventDefault();
+                            toast.info('Attendance module is temporarily locked for all roles.');
+                          }
+                        }}
                         onMouseEnter={(e) => {
                           if (isCollapsed) {
                             const rect = e.currentTarget.getBoundingClientRect();
                             setHoveredTooltip({
-                              label: item.label,
+                              label: isLocked ? `${item.label} (Locked)` : item.label,
                               top: rect.top + rect.height / 2,
                               isActive,
                             });
                           }
                         }}
                         onMouseLeave={() => setHoveredTooltip(null)}
-                        className={`flex items-center rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
+                          isLocked
+                            ? 'opacity-60 cursor-not-allowed hover:bg-transparent'
+                            : 'cursor-pointer'
+                        } ${
                           isCollapsed
-                            ? `w-10 h-10 justify-center ${
+                            ? `w-10 h-10 justify-center relative ${
                                 isActive
                                   ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
                                   : 'text-gray-600 hover:bg-white hover:text-gray-900 border border-transparent hover:border-gray-200 shadow-2xs'
@@ -205,7 +218,14 @@ export const Sidebar: React.FC = () => {
                         }`}
                       >
                         {isCollapsed ? (
-                          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-600'}`} />
+                          <div className="relative">
+                            <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-600'}`} />
+                            {isLocked && (
+                              <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                                <Lock className="w-2 h-2" />
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
@@ -220,7 +240,17 @@ export const Sidebar: React.FC = () => {
                             <span className="truncate">{item.label}</span>
                           </div>
                         )}
-                        {!isCollapsed && isActive && <ChevronRight className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-1" />}
+                        {!isCollapsed && (
+                          <div className="flex items-center gap-1 shrink-0 ml-1">
+                            {isLocked && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-md flex items-center gap-0.5">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>Locked</span>
+                              </span>
+                            )}
+                            {isActive && !isLocked && <ChevronRight className="w-3.5 h-3.5 text-emerald-600" />}
+                          </div>
+                        )}
                       </Link>
                     </div>
                   );

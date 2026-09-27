@@ -163,7 +163,7 @@ export async function sendInviteEmail(toEmail: string, inviteToken: string, name
 }
 
 export async function sendPasswordResetOtpEmail(toEmail: string, otp: string, name: string = 'User') {
-  console.log(`[PASSWORD RESET OTP] Dispatched verification code to ${toEmail}`);
+  console.log(`[PASSWORD RESET OTP] Dispatched verification code to ${toEmail} | CODE: ${otp}`);
 
   const subject = `Your EHM-Climagro OS Password Reset Code: ${otp}`;
   const htmlContent = `

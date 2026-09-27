@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Eye, RotateCcw, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,7 +10,7 @@ export const RolePreviewBanner: React.FC = () => {
     return null;
   }
 
-  const roleLabel = previewRole === 'EMPLOYEE' ? 'Employee View' : 'Manager / Lead View';
+  const roleLabel = previewRole === 'EMPLOYEE' ? 'Team Member View' : 'Manager / Lead View';
 
   return (
     <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md select-none border-b border-amber-400 shrink-0">
@@ -31,3 +31,4 @@ export const RolePreviewBanner: React.FC = () => {
     </div>
   );
 };
+

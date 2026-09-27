@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, clearApiCache } from '@workspace/api-client-react';
 
 export type UserRole = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
 
@@ -223,6 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string, rememberMe: boolean = true) => {
     setIsLoading(true);
     try {
+      clearApiCache();
       const res = await fetchApi<{ token: string; user: User }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password: pass, rememberMe }),
@@ -238,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setUserSession = (userData: User, authToken: string) => {
+    clearApiCache();
     localStorage.removeItem('hros_preview_role');
     localStorage.removeItem('hros_active_role');
     localStorage.setItem('hros_token', authToken);
@@ -265,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    clearApiCache();
     localStorage.removeItem('hros_token');
     localStorage.removeItem('hros_preview_role');
     localStorage.removeItem('hros_active_role');

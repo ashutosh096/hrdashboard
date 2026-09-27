@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { DollarSign, Download, CreditCard, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,7 +39,7 @@ export const SalaryView: React.FC = () => {
 
   const payroll = (employees.length > 0
     ? employees.map((emp, i) => {
-        const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee';
+        const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member';
         const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM');
         const entity = rawEntity === 'CAG' ? 'CAG' : 'EHM';
         const matchingFallback = fallbackPayroll.find(f => f.name.toLowerCase() === name.toLowerCase());
@@ -73,7 +73,7 @@ export const SalaryView: React.FC = () => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-              <th className="py-3 px-3">Employee</th>
+              <th className="py-3 px-3">Team Member</th>
               <th className="py-3 px-3">Entity</th>
               <th className="py-3 px-3">Base Salary</th>
               <th className="py-3 px-3">Allowances</th>
@@ -104,3 +104,4 @@ export const SalaryView: React.FC = () => {
     </div>
   );
 };
+

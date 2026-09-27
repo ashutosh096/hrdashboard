@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles } from 'lucide-react';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles, ArrowRight, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, clearApiCache } from '@workspace/api-client-react';
+import { useLocation } from 'wouter';
+import { toast } from 'sonner';
+import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
 import { ProfileModal } from './ProfileModal';
 import { SearchModal } from './SearchModal';
@@ -51,6 +54,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   useEffect(() => {
     loadNotifications();
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
   // Close notifications dropdown when clicking outside
@@ -68,6 +80,114 @@ export const Navbar: React.FC<NavbarProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showNotificationsDropdown]);
+
+  const [, setLocation] = useLocation();
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskItem | null>(null);
+  const [isLoadingTaskModal, setIsLoadingTaskModal] = useState(false);
+
+  const getNotificationTarget = (n: any) => {
+    const payload = n.payload || {};
+    let taskCode = payload.taskCode || null;
+    if (!taskCode) {
+      const match = (n.title || '').match(/\[([A-Z0-9_-]+)\]/i) || (n.message || '').match(/\[([A-Z0-9_-]+)\]/i);
+      if (match) taskCode = match[1];
+    }
+    const taskId = payload.taskId || null;
+    const isSprint = Boolean(
+      payload.sprintId ||
+      n.type?.includes('SPRINT') ||
+      (taskCode && (taskCode.includes('SPR') || taskCode.includes('-SP-') || taskCode.includes('-S-')))
+    );
+    const isMeeting = Boolean(payload.meetingId || n.type?.includes('MEETING'));
+    const isAnnouncement = Boolean(payload.announcementId || n.type?.includes('ANNOUNCEMENT'));
+
+    let label = 'Details';
+    if (isSprint) label = 'Sprint Task';
+    else if (taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')) label = 'Task';
+    else if (isMeeting) label = 'Meeting';
+    else if (isAnnouncement) label = 'Announcement';
+
+    return {
+      taskId,
+      taskCode,
+      isSprint,
+      isMeeting,
+      isAnnouncement,
+      isTask: Boolean(taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')),
+      label,
+    };
+  };
+
+  const handleNotificationAction = async (n: any) => {
+    const target = getNotificationTarget(n);
+
+    // 1. Mark as read immediately in state & DB
+    if (!n.isRead) {
+      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
+      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
+      setUnreadNotificationsCount((prev) => Math.max(0, prev - 1));
+    }
+
+    // 2. Close notifications dropdown
+    setShowNotificationsDropdown(false);
+
+    // 3. Handle Meeting
+    if (target.isMeeting) {
+      setLocation('/meetings');
+      return;
+    }
+
+    // 4. Handle Announcement
+    if (target.isAnnouncement) {
+      setLocation('/announcements');
+      return;
+    }
+
+    // 5. Handle Task / Sprint Task
+    if (target.isTask && (target.taskId || target.taskCode)) {
+      const identifier = target.taskId || target.taskCode;
+      setIsLoadingTaskModal(true);
+      try {
+        let taskData: any = null;
+        try {
+          taskData = await fetchApi<any>(`/api/tasks/${identifier}`);
+        } catch {}
+
+        if (!taskData || !taskData.id) {
+          const allTasks = await fetchApi<any[]>('/api/tasks').catch(() => []);
+          taskData = allTasks.find(
+            (t) =>
+              t.id === target.taskId ||
+              (target.taskCode && t.taskCode?.toLowerCase() === target.taskCode.toLowerCase())
+          );
+        }
+
+        if (taskData && taskData.id) {
+          const resolvedCode = taskData.taskCode || taskData.taskId || target.taskCode || target.taskId || '';
+          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || (resolvedCode.startsWith('CAG') ? 'CLIMAGRO' : resolvedCode.startsWith('COMMON') || resolvedCode.startsWith('COM-') ? 'COMMON' : 'EHM');
+
+          setSelectedTaskForModal({
+            ...taskData,
+            taskId: resolvedCode,
+            taskCode: resolvedCode,
+            entity: resolvedEntity,
+          });
+        } else {
+          setLocation(target.isSprint ? '/sprints' : '/tasks');
+          toast.info(`Redirected to ${target.isSprint ? 'Sprints' : 'Tasks'} view.`);
+        }
+      } catch (err) {
+        console.warn('[NOTIFICATION OPEN TASK ERROR]:', err);
+        setLocation(target.isSprint ? '/sprints' : '/tasks');
+      } finally {
+        setIsLoadingTaskModal(false);
+      }
+      return;
+    }
+
+    // Default fallback
+    setLocation('/notifications');
+  };
 
   const handleMarkAllRead = async () => {
     try {
@@ -102,7 +222,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="w-full flex items-center gap-2 px-3.5 py-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100/80 transition-colors shadow-2xs cursor-pointer"
           >
             <Search className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium">Search tasks, employees, meetings...</span>
+            <span className="font-medium">Search tasks, team members, meetings...</span>
             <kbd className="ml-auto text-[10px] font-mono bg-white text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 shadow-2xs">
               ⌘K
             </kbd>
@@ -117,7 +237,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-colors shadow-2xs cursor-pointer"
             >
               <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Add Employee</span>
+              <span>Add Team Member</span>
             </button>
           )}
 
@@ -205,22 +325,55 @@ export const Navbar: React.FC<NavbarProps> = ({
                       return <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>;
                     }
 
-                    return displayNotifications.map(n => (
-                      <div
-                        key={n.id}
-                        className={`p-2.5 rounded-xl border text-xs space-y-1 transition-colors ${
-                          n.isRead ? 'bg-white border-gray-100 opacity-60' : 'bg-emerald-50/50 border-emerald-100'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-gray-900">{n.title}</span>
-                          <span className="text-[10px] text-gray-400 font-bold">
-                            {formatDateTime(n.createdAt)}
-                          </span>
+                    return displayNotifications.map((n) => {
+                      const target = getNotificationTarget(n);
+
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => handleNotificationAction(n)}
+                          className={`p-3 rounded-2xl border text-xs space-y-1.5 transition-all cursor-pointer hover:shadow-xs group/card ${
+                            n.isRead
+                              ? 'bg-white border-gray-100 hover:border-gray-200 opacity-75 hover:opacity-100'
+                              : 'bg-emerald-50/50 border-emerald-100/90 hover:border-emerald-200 shadow-2xs'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-gray-900 group-hover/card:text-emerald-700 transition-colors line-clamp-1">
+                              {n.title}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-bold shrink-0">
+                              {formatDateTime(n.createdAt)}
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{n.message}</p>
+
+                          {/* Arrow at bottom to redirect and open in popup mode */}
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleNotificationAction(n);
+                            }}
+                            className="mt-2 pt-1.5 border-t border-gray-100/80 flex items-center justify-between text-[11px] font-bold text-emerald-700 group-hover/card:text-emerald-800 select-none transition-colors"
+                            title="Click to view details in popup mode"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="truncate">Open {target.label}</span>
+                              {target.taskCode && (
+                                <span className="text-[9.5px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-mono font-bold tracking-tight shrink-0">
+                                  {target.taskCode}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="w-5 h-5 rounded-full bg-emerald-100/90 group-hover/card:bg-emerald-200 flex items-center justify-center text-emerald-700 transition-all shrink-0 shadow-2xs group-hover/card:translate-x-0.5">
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{n.message}</p>
-                      </div>
-                    ));
+                      );
+                    });
                   })()}
                 </div>
               </div>
@@ -253,6 +406,41 @@ export const Navbar: React.FC<NavbarProps> = ({
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
       />
+
+      {/* Global Task Details Popup Modal from Notification Click */}
+      {selectedTaskForModal && (
+        <TaskUpdateModal
+          isOpen={!!selectedTaskForModal}
+          task={selectedTaskForModal}
+          onClose={() => setSelectedTaskForModal(null)}
+          onSave={async (updatedTask) => {
+            try {
+              await fetchApi(`/api/tasks/${updatedTask.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(updatedTask),
+              });
+              toast.success(`Task ${updatedTask.taskCode || ''} updated successfully!`);
+              clearApiCache('/api/tasks');
+              clearApiCache('/api/sprints');
+              setSelectedTaskForModal(null);
+            } catch (err: any) {
+              toast.error(err?.message || 'Failed to update task');
+            }
+          }}
+          onDelete={async (deletedId) => {
+            try {
+              await fetchApi(`/api/tasks/${deletedId}`, { method: 'DELETE' });
+              toast.success('Task removed');
+              clearApiCache('/api/tasks');
+              clearApiCache('/api/sprints');
+              setSelectedTaskForModal(null);
+            } catch (err: any) {
+              toast.error(err?.message || 'Failed to delete task');
+            }
+          }}
+        />
+      )}
     </>
   );
 };
+

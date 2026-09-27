@@ -33,9 +33,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Safe non-destructive table initialization for Render startup
+// Safe non-destructive table initialization & schema migration on startup
 async function ensureTablesExist() {
   try {
+    // 1. Projects table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS projects (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -60,7 +61,62 @@ async function ensureTablesExist() {
         updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL
       );
     `);
-    console.log('✅ [DATABASE] Schema verified on startup.');
+
+    // 2. Epics table schema non-destructive updates (nullable initiative_id + project_id column)
+    await db.execute(sql`
+      DO $$ 
+      BEGIN
+        -- Make initiative_id optional (nullable)
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'epics' AND column_name = 'initiative_id' AND is_nullable = 'NO'
+        ) THEN
+          ALTER TABLE epics ALTER COLUMN initiative_id DROP NOT NULL;
+        END IF;
+
+        -- Ensure project_id column exists on epics
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'epics' AND column_name = 'project_id'
+        ) THEN
+          ALTER TABLE epics ADD COLUMN project_id UUID REFERENCES projects(id);
+        END IF;
+
+        -- Ensure project_id column exists on tasks
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'tasks' AND column_name = 'project_id'
+        ) THEN
+          ALTER TABLE tasks ADD COLUMN project_id UUID REFERENCES projects(id);
+        END IF;
+
+        -- Ensure deliverable_url column exists on projects
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'projects' AND column_name = 'deliverable_url'
+        ) THEN
+          ALTER TABLE projects ADD COLUMN deliverable_url TEXT DEFAULT '';
+        END IF;
+
+        -- Ensure checkpoints column exists on projects
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'projects' AND column_name = 'checkpoints'
+        ) THEN
+          ALTER TABLE projects ADD COLUMN checkpoints JSONB DEFAULT '[]'::jsonb;
+        END IF;
+
+        -- Ensure comments column exists on projects
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'projects' AND column_name = 'comments'
+        ) THEN
+          ALTER TABLE projects ADD COLUMN comments JSONB DEFAULT '[]'::jsonb;
+        END IF;
+      END $$;
+    `);
+
+    console.log('✅ [DATABASE] Schema verified & non-destructive migrations completed on startup.');
   } catch (err) {
     console.error('[DATABASE STARTUP NOTICE]:', err);
   }

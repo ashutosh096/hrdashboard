@@ -9,5 +9,17 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "src/cleanup_*.ts",
+    "src/e2e_*.ts",
+    "src/test_*.ts",
+    "src/qa_*.ts",
+    "src/run_*.ts",
+    "src/dump_*.ts",
+    "src/db_*.ts",
+    "src/check_*.ts",
+    "src/export_*.ts",
+    "src/generate_*.ts"
+  ]
 }

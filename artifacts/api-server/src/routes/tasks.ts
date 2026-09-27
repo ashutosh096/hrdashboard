@@ -1,6 +1,6 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import crypto from 'node:crypto';
-import { db, tasks, employees, entities, users, notifications, sprints, epics, entityCounters, initiatives, taskChecklists, taskComments, taskNotes, eq, sql, asc } from '@workspace/db';
+import { db, tasks, employees, entities, users, notifications, sprints, epics, initiatives, projects, entityCounters, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, sql, asc, desc } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
@@ -10,12 +10,174 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/', async (req, res) => {
+  const {
+    page,
+    pageSize,
+    limit,
+    employeeId,
+    priority,
+    status,
+    search,
+    epicId,
+    initiativeId,
+    projectId,
+    entityCode,
+    paginate,
+  } = req.query;
+
   try {
-    const allTasks = await db.select().from(tasks);
-    const enriched = await enrichTasks(allTasks);
-    res.json(enriched);
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch tasks' });
+    const isPaginatedRequest =
+      paginate === 'true' ||
+      page !== undefined ||
+      pageSize !== undefined ||
+      limit !== undefined ||
+      employeeId !== undefined ||
+      priority !== undefined ||
+      status !== undefined ||
+      search !== undefined;
+
+    const conditions: any[] = [];
+
+    // 1. Employee Filter
+    if (employeeId && employeeId !== 'ALL') {
+      conditions.push(eq(tasks.assigneeId, String(employeeId)));
+    }
+
+    // 2. Priority Filter
+    if (priority && priority !== 'ALL') {
+      const p = String(priority).toUpperCase().trim();
+      if (p === 'P1' || p === 'URGENT') {
+        conditions.push(sql`UPPER(${tasks.priority}::text) IN ('P1', '1', 'URGENT', 'CRITICAL')`);
+      } else if (p === 'P2' || p === 'HIGH') {
+        conditions.push(sql`UPPER(${tasks.priority}::text) IN ('P2', '2', 'HIGH')`);
+      } else if (p === 'P3' || p === 'MEDIUM') {
+        conditions.push(sql`UPPER(${tasks.priority}::text) IN ('P3', '3', 'MEDIUM')`);
+      } else if (p === 'P4' || p === 'LOW') {
+        conditions.push(sql`UPPER(${tasks.priority}::text) IN ('P4', '4', 'LOW')`);
+      } else {
+        conditions.push(sql`UPPER(${tasks.priority}::text) = ${p}`);
+      }
+    }
+
+    // 3. Status Filter
+    if (status && status !== 'ALL') {
+      const s = String(status).toUpperCase().trim();
+      if (s === 'DONE') {
+        conditions.push(sql`UPPER(${tasks.status}::text) IN ('DONE', 'COMPLETED', 'APPROVED')`);
+      } else if (s === 'IN_PROGRESS') {
+        conditions.push(sql`UPPER(${tasks.status}::text) IN ('IN_PROGRESS', 'IN PROGRESS', 'ACTIVE')`);
+      } else if (s === 'PLANNED') {
+        conditions.push(sql`UPPER(${tasks.status}::text) IN ('PLANNED', 'TODO', 'TO DO')`);
+      } else if (s === 'BACKLOG') {
+        conditions.push(sql`UPPER(${tasks.status}::text) IN ('BACKLOG')`);
+      } else {
+        conditions.push(sql`UPPER(${tasks.status}::text) = ${s}`);
+      }
+    }
+
+    // 4. Search Filter (search across title, taskCode, description)
+    if (search && typeof search === 'string' && search.trim()) {
+      const searchPattern = `%${search.trim().toLowerCase()}%`;
+      conditions.push(
+        sql`(LOWER(${tasks.title}) LIKE ${searchPattern} OR LOWER(${tasks.taskCode}) LIKE ${searchPattern} OR LOWER(COALESCE(${tasks.description}, '')) LIKE ${searchPattern})`
+      );
+    }
+
+    // 5. Epic / Initiative / Project Filter
+    if (epicId && typeof epicId === 'string' && epicId !== 'ALL') {
+      conditions.push(eq(tasks.epicId, epicId));
+    }
+    if (initiativeId && typeof initiativeId === 'string' && initiativeId !== 'ALL') {
+      conditions.push(eq(tasks.initiativeId, initiativeId));
+    }
+    if (projectId && typeof projectId === 'string' && projectId !== 'ALL') {
+      conditions.push(eq(tasks.projectId, projectId));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    if (!isPaginatedRequest) {
+      const allTasks = whereClause
+        ? await db.select().from(tasks).where(whereClause).orderBy(sql`${tasks.createdAt} DESC`)
+        : await db.select().from(tasks).orderBy(sql`${tasks.createdAt} DESC`);
+      const enriched = await enrichTasks(allTasks);
+      return res.json(enriched);
+    }
+
+    // Server-side Pagination with real COUNT(*) query
+    const targetPage = Math.max(1, parseInt(String(page || 1), 10) || 1);
+    const targetPageSize = Math.max(1, Math.min(100, parseInt(String(pageSize || limit || 25), 10) || 25));
+    const offset = (targetPage - 1) * targetPageSize;
+
+    const [countRow] = whereClause
+      ? await db.select({ count: sql<number>`count(*)` }).from(tasks).where(whereClause)
+      : await db.select({ count: sql<number>`count(*)` }).from(tasks);
+
+    const totalCount = Number(countRow?.count || 0);
+
+    const taskRows = whereClause
+      ? await db
+          .select()
+          .from(tasks)
+          .where(whereClause)
+          .orderBy(sql`${tasks.createdAt} DESC`)
+          .limit(targetPageSize)
+          .offset(offset)
+      : await db
+          .select()
+          .from(tasks)
+          .orderBy(sql`${tasks.createdAt} DESC`)
+          .limit(targetPageSize)
+          .offset(offset);
+
+    const enriched = await enrichTasks(taskRows);
+
+    return res.json({
+      tasks: enriched,
+      totalCount,
+      page: targetPage,
+      pageSize: targetPageSize,
+      totalPages: Math.max(1, Math.ceil(totalCount / targetPageSize)),
+    });
+  } catch (err: any) {
+    console.error('[GET TASKS ERROR]:', err);
+    res.status(500).json({ message: 'Failed to fetch tasks', error: err?.message });
+  }
+});
+
+// GET /api/tasks/:id - Fetch single task by UUID or taskCode
+router.get('/:id', async (req, res) => {
+  const rawId = req.params.id?.trim();
+  if (!rawId) {
+    return res.status(400).json({ message: 'Task ID or taskCode required' });
+  }
+
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId);
+    let targetTask: any = null;
+
+    if (isUuid) {
+      const [taskRow] = await db.select().from(tasks).where(eq(tasks.id, rawId));
+      targetTask = taskRow;
+    }
+
+    if (!targetTask) {
+      const [taskRow] = await db
+        .select()
+        .from(tasks)
+        .where(sql`LOWER(${tasks.taskCode}) = ${rawId.toLowerCase()}`);
+      targetTask = taskRow;
+    }
+
+    if (!targetTask) {
+      return res.status(404).json({ message: `Task not found for identifier: ${rawId}` });
+    }
+
+    const [enriched] = await enrichTasks([targetTask]);
+    return res.json(enriched || targetTask);
+  } catch (err: any) {
+    console.error('[GET TASK BY ID ERROR]:', err);
+    res.status(500).json({ message: 'Failed to fetch task', error: err?.message });
   }
 });
 
@@ -24,6 +186,7 @@ export async function enrichTasks(tasksList: any[]) {
   const allEmployees = await db.select().from(employees);
   const allEpics = await db.select().from(epics);
   const allInitiatives = await db.select().from(initiatives);
+  const allProjects = await db.select().from(projects);
   const allEntities = await db.select().from(entities);
 
   return tasksList.map(t => {
@@ -32,6 +195,7 @@ export async function enrichTasks(tasksList: any[]) {
     const creatorEmp = allEmployees.find(e => e.id === t.creatorId);
     const parentEpic = allEpics.find(e => e.id === t.epicId);
     const parentInit = allInitiatives.find(i => i.id === (t.initiativeId || parentEpic?.initiativeId));
+    const parentProj = allProjects.find(p => p.id === (t.projectId || parentEpic?.projectId));
     const entity = allEntities.find(ent => ent.id === t.entityId);
 
     const assigneeName = assigneeEmp 
@@ -55,7 +219,13 @@ export async function enrichTasks(tasksList: any[]) {
       epicTitle: parentEpic?.title || null,
       initiativeCode: parentInit?.initiativeCode || null,
       initiativeTitle: parentInit?.title || null,
-      entityCode: entity?.code || (t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM'),
+      projectCode: parentProj?.code || null,
+      projectName: parentProj?.name || null,
+      projectId: t.projectId || parentEpic?.projectId || null,
+      taskId: t.taskCode || t.id,
+      taskCode: t.taskCode,
+      entity: entity?.code === 'CAG' || t.taskCode?.startsWith('CAG') ? 'CLIMAGRO' : entity?.code === 'COMMON' || t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-') ? 'COMMON' : 'EHM',
+      entityCode: entity?.code || (t.taskCode?.startsWith('CAG') ? 'CAG' : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-')) ? 'COMMON' : 'EHM'),
       entityName: entity?.name || (t.taskCode?.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'),
     };
   });
@@ -152,11 +322,14 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
     sprintId,
     initiativeId,
     epicId,
+    projectId,
     storyPoints,
     priority,
     status,
     dueDate,
     deliverableUrl,
+    checklists,
+    comments,
   } = req.body;
 
   // Resolve array of target assignees
@@ -196,22 +369,33 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
           throw new Error(`Assignee employee not found for ID: ${empId}`);
         }
 
-        const [entity] = await tx
-          .select({ code: entities.code })
-          .from(entities)
-          .where(eq(entities.id, assignee.entityId));
-
-        if (!entity) {
-          throw new Error(`Entity not found for ID: ${assignee.entityId}`);
+        let targetEntityId = assignee.entityId;
+        if (req.body.entityId) {
+          targetEntityId = req.body.entityId;
+        } else if (req.body.entityCode) {
+          const entCodeUpper = String(req.body.entityCode).toUpperCase().trim();
+          const mappedCode = entCodeUpper === 'CLIMAGRO' ? 'CAG' : entCodeUpper;
+          const [foundEnt] = await tx.select().from(entities).where(eq(entities.code, mappedCode));
+          if (foundEnt) targetEntityId = foundEnt.id;
         }
 
-        const entityCode = entity.code; // "EHM" or "CAG"
+        const [entity] = await tx
+          .select({ code: entities.code, id: entities.id })
+          .from(entities)
+          .where(eq(entities.id, targetEntityId));
+
+        if (!entity) {
+          throw new Error(`Entity not found for ID: ${targetEntityId}`);
+        }
+
+        const entityCode = entity.code; // "EHM" or "CAG" or "COMMON"
 
         // 2. Lineage Derivation & Task Code Generation
         let taskType: 'EPIC_TASK' | 'SPRINT_TASK' | 'BACKLOG' = 'BACKLOG';
         let finalEpicId: string | null = null;
         let finalSprintId: string | null = null;
         let finalInitiativeId: string | null = initiativeId || null;
+        let finalProjectId: string | null = projectId || null;
         let generatedTaskCode = '';
 
         if (epicId) {
@@ -220,7 +404,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
           finalEpicId = epicId;
           finalSprintId = null;
 
-          // Lock Epic row & auto-derive Initiative ID
+          // Lock Epic row & auto-derive Initiative ID & Project ID
           const [parentEpic] = await tx
             .select()
             .from(epics)
@@ -230,6 +414,9 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
           if (!parentEpic) throw new Error(`Parent Epic not found for ID: ${epicId}`);
 
           finalInitiativeId = parentEpic.initiativeId;
+          if (!finalProjectId && parentEpic.projectId) {
+            finalProjectId = parentEpic.projectId;
+          }
 
           const seqNumber = parentEpic.nextTaskSeq;
           generatedTaskCode = `${parentEpic.epicCode}-T${String(seqNumber).padStart(3, '0')}`;
@@ -303,13 +490,14 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
             taskCode: generatedTaskCode,
             title: title || 'Untitled Task',
             description: description || '',
-            entityId: assignee.entityId,
+            entityId: entity.id,
             departmentId: departmentId || assignee.departmentId,
             taskType,
             sprintWeek: sprintWeekStr,
             sprintId: finalSprintId,
             initiativeId: finalInitiativeId,
             epicId: finalEpicId,
+            projectId: finalProjectId,
             groupTaskId,
             storyPoints: storyPoints ? Number(storyPoints) : null,
             assigneeId: assignee.id,
@@ -321,6 +509,37 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
             deliverableUrl: deliverableUrl || null,
           })
           .returning();
+
+        // 5a. Persist Initial Checklists (Subtasks) if provided
+        if (Array.isArray(checklists) && checklists.length > 0) {
+          for (let i = 0; i < checklists.length; i++) {
+            const chk = checklists[i];
+            const text = typeof chk === 'string' ? chk : (chk.itemText || chk.title || '');
+            if (text && text.trim()) {
+              await tx.insert(taskChecklists).values({
+                taskId: newTask.id,
+                itemText: text.trim(),
+                isCompleted: typeof chk === 'object' ? Boolean(chk.isCompleted) : false,
+                sortOrder: i + 1,
+              });
+            }
+          }
+        }
+
+        // 5b. Persist Initial Comments if provided
+        if (Array.isArray(comments) && comments.length > 0) {
+          for (const c of comments) {
+            const content = typeof c === 'string' ? c : (c.content || '');
+            if (content && content.trim()) {
+              await tx.insert(taskComments).values({
+                taskId: newTask.id,
+                authorName: typeof c === 'object' ? (c.authorName || 'User') : 'User',
+                content: content.trim(),
+                isSystemLog: typeof c === 'object' ? Boolean(c.isSystemLog) : false,
+              });
+            }
+          }
+        }
 
         // 6. Insert notification for assignee
         const [assigneeUser] = await tx
@@ -385,6 +604,7 @@ const handleTaskUpdate = async (req: any, res: any) => {
     priority,
     epicId,
     sprintId,
+    projectId,
     title,
     assigneeId,
     assigneeName,
@@ -394,6 +614,8 @@ const handleTaskUpdate = async (req: any, res: any) => {
     entityId,
     entity,
     waitingOn,
+    checklists,
+    comments,
   } = req.body;
 
   try {
@@ -438,6 +660,9 @@ const handleTaskUpdate = async (req: any, res: any) => {
       }
       if (waitingOn !== undefined) {
         updateData.waitingOn = String(waitingOn).trim() || 'None (Self)';
+      }
+      if (projectId !== undefined) {
+        updateData.projectId = projectId || null;
       }
 
       // Handle Assignee ID / Name
@@ -497,7 +722,8 @@ const handleTaskUpdate = async (req: any, res: any) => {
             e.code.toLowerCase() === entity.toLowerCase() ||
             e.name.toLowerCase().includes(entity.toLowerCase()) ||
             (entity.toLowerCase().includes('ehm') && e.code === 'EHM') ||
-            (entity.toLowerCase().includes('climagro') && e.code === 'CAG')
+            ((entity.toLowerCase().includes('cag') || entity.toLowerCase().includes('climagro')) && e.code === 'CAG') ||
+            ((entity.toLowerCase().includes('common') || entity.toLowerCase().includes('both')) && (e.code === 'COMMON' || e.name.toLowerCase().includes('common')))
         );
         if (matchedEnt) {
           updateData.entityId = matchedEnt.id;
@@ -514,6 +740,9 @@ const handleTaskUpdate = async (req: any, res: any) => {
           updateData.sprintId = null;
           updateData.taskType = 'EPIC_TASK';
           updateData.initiativeId = newEpic.initiativeId;
+          if (!updateData.projectId && newEpic.projectId) {
+            updateData.projectId = newEpic.projectId;
+          }
         } else {
           updateData.epicId = null;
           updateData.taskType = 'BACKLOG';
@@ -539,6 +768,46 @@ const handleTaskUpdate = async (req: any, res: any) => {
         .set(updateData)
         .where(eq(tasks.id, taskId))
         .returning();
+
+      // Persist Checklists if provided
+      if (Array.isArray(checklists) && checklists.length > 0) {
+        for (let i = 0; i < checklists.length; i++) {
+          const chk = checklists[i];
+          if (chk.id && chk.id.length === 36) {
+            await tx.update(taskChecklists)
+              .set({
+                itemText: chk.itemText || chk.title,
+                isCompleted: Boolean(chk.isCompleted),
+                sortOrder: i + 1,
+              })
+              .where(eq(taskChecklists.id, chk.id));
+          } else if (chk.itemText || chk.title) {
+            await tx.insert(taskChecklists).values({
+              taskId: taskId,
+              itemText: (chk.itemText || chk.title).trim(),
+              isCompleted: Boolean(chk.isCompleted),
+              sortOrder: i + 1,
+            });
+          }
+        }
+      }
+
+      // Persist Comments if provided
+      if (Array.isArray(comments) && comments.length > 0) {
+        for (const c of comments) {
+          if (!c.id || c.id.startsWith('cmt-') || c.id.startsWith('temp-')) {
+            const content = typeof c === 'string' ? c : (c.content || '');
+            if (content && content.trim()) {
+              await tx.insert(taskComments).values({
+                taskId: taskId,
+                authorName: typeof c === 'object' ? (c.authorName || 'User') : 'User',
+                content: content.trim(),
+                isSystemLog: typeof c === 'object' ? Boolean(c.isSystemLog) : false,
+              });
+            }
+          }
+        }
+      }
 
       return resTask;
     });
@@ -740,6 +1009,109 @@ router.post('/:id/delay-request', async (req, res) => {
   } catch (err: any) {
     console.error('[DELAY REQUEST ERROR]:', err);
     res.status(500).json({ message: 'Failed to submit delay request' });
+  }
+});
+
+// POST /api/tasks/:id/clone
+router.post('/:id/clone', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const id = req.params.id as string;
+  try {
+    const [sourceTask] = await db.select().from(tasks).where(eq(tasks.id, id));
+    if (!sourceTask) {
+      return res.status(404).json({ message: 'Source task not found' });
+    }
+
+    // Preserve exact entity from source task
+    const [sourceEntity] = await db.select().from(entities).where(eq(entities.id, sourceTask.entityId));
+    const entityCode = sourceEntity?.code || 'CAG';
+
+    // Derive new task code
+    let generatedTaskCode = '';
+    if (sourceTask.epicId) {
+      const [parentEpic] = await db.select().from(epics).where(eq(epics.id, sourceTask.epicId));
+      if (parentEpic) {
+        const seq = parentEpic.nextTaskSeq;
+        generatedTaskCode = `${parentEpic.epicCode}-T${String(seq).padStart(3, '0')}`;
+        await db.update(epics).set({ nextTaskSeq: sql`${epics.nextTaskSeq} + 1` }).where(eq(epics.id, parentEpic.id));
+      }
+    }
+    if (!generatedTaskCode) {
+      await db
+        .insert(entityCounters)
+        .values({ entityId: sourceTask.entityId, nextBacklogTaskSeq: 1 })
+        .onConflictDoNothing();
+      const [counter] = await db
+        .update(entityCounters)
+        .set({ nextBacklogTaskSeq: sql`${entityCounters.nextBacklogTaskSeq} + 1` })
+        .where(eq(entityCounters.entityId, sourceTask.entityId))
+        .returning();
+      const seqNumber = (counter?.nextBacklogTaskSeq || 2) - 1;
+      generatedTaskCode = `${entityCode}-T${String(seqNumber).padStart(3, '0')}`;
+    }
+
+    // Insert cloned task
+    const [clonedTask] = await db
+      .insert(tasks)
+      .values({
+        taskCode: generatedTaskCode,
+        title: `[CLONE] ${sourceTask.title}`,
+        description: sourceTask.description ? `[Cloned from ${sourceTask.taskCode}]\n\n${sourceTask.description}` : `Cloned from ${sourceTask.taskCode}`,
+        entityId: sourceTask.entityId,
+        departmentId: sourceTask.departmentId,
+        taskType: sourceTask.taskType,
+        sprintWeek: sourceTask.sprintWeek,
+        sprintId: sourceTask.sprintId,
+        initiativeId: sourceTask.initiativeId,
+        epicId: sourceTask.epicId,
+        projectId: sourceTask.projectId,
+        storyPoints: sourceTask.storyPoints,
+        assigneeId: sourceTask.assigneeId,
+        creatorId: req.user?.employeeId || sourceTask.creatorId,
+        reviewingLeadId: sourceTask.reviewingLeadId,
+        status: 'BACKLOG',
+        priority: sourceTask.priority,
+        dueDate: sourceTask.dueDate,
+        deliverableUrl: sourceTask.deliverableUrl,
+      })
+      .returning();
+
+    // Clone checklists from source task
+    const sourceChecklists = await db
+      .select()
+      .from(taskChecklists)
+      .where(eq(taskChecklists.taskId, sourceTask.id))
+      .orderBy(asc(taskChecklists.sortOrder));
+
+    const clonedChecklists = [];
+    for (const c of sourceChecklists) {
+      const [clonedItem] = await db
+        .insert(taskChecklists)
+        .values({
+          taskId: clonedTask.id,
+          itemText: c.itemText,
+          isCompleted: false, // Reset completion for clone
+          sortOrder: c.sortOrder,
+        })
+        .returning();
+      clonedChecklists.push(clonedItem);
+    }
+
+    // Add initial system comment
+    await db.insert(taskComments).values({
+      taskId: clonedTask.id,
+      authorName: 'System Log',
+      content: `Cloned from task [${sourceTask.taskCode}] "${sourceTask.title}"`,
+      isSystemLog: true,
+    });
+
+    res.status(201).json({
+      ...clonedTask,
+      entity: entityCode,
+      checklists: clonedChecklists,
+    });
+  } catch (err: any) {
+    console.error('[TASK CLONE ERROR]:', err);
+    res.status(500).json({ message: 'Failed to clone task', error: err.message });
   }
 });
 

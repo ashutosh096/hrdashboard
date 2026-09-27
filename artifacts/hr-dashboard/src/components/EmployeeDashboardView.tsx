@@ -51,6 +51,7 @@ import { fetchApi } from '@workspace/api-client-react';
 import { matchesEntityFilter } from '../utils/entityUtils';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { TaskProgressSprintAnalytics } from './TaskProgressSprintAnalytics';
+import { PinnedAnnouncementBanner } from './PinnedAnnouncementBanner';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 
 export interface EmployeeDeliverableTask {
@@ -94,7 +95,6 @@ export const calculateTaskProgress = (taskStatus: string, checklists?: any[]): n
 export const EmployeeDashboardView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
-  const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'BACKLOG' | 'SPRINT'>('OVERVIEW');
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [myTasks, setMyTasks] = useState<EmployeeDeliverableTask[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -118,10 +118,10 @@ export const EmployeeDashboardView: React.FC = () => {
   const [newDept, setNewDept] = useState('Product & Tech');
   const [newPriority, setNewPriority] = useState('HIGH');
   const [newLead, setNewLead] = useState('Dr. Harshit Mishra');
-  const [newDueDate, setNewDueDate] = useState('2026-09-12');
+  const [newDueDate, setNewDueDate] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [newOutputUrl, setNewOutputUrl] = useState('');
-  const [newSprintWeek, setNewSprintWeek] = useState('Week 1 (Days 1–7)');
+  const [newSprintWeek, setNewSprintWeek] = useState('');
 
   // Resolve currently selected active employee (For non-admin, strictly lock to logged-in user!)
   const isAdmin = user?.role === 'ADMIN';
@@ -133,7 +133,7 @@ export const EmployeeDashboardView: React.FC = () => {
 
   const activeEmpName = activeEmployee
     ? `${activeEmployee.firstName} ${activeEmployee.lastName}`
-    : user?.name || user?.email?.split('@')[0] || 'Employee Workspace';
+    : user?.name || user?.email?.split('@')[0] || 'Team Workspace';
   const activeEmpEmail = activeEmployee?.email || user?.email || '';
   const activeEmpCode = activeEmployee?.employeeCode || (user?.employeeId ? `EMP-${user.employeeId.slice(0, 4)}` : 'EHM-E01');
   const activeEmpDesignation = activeEmployee?.designation || 'Senior Team Member';
@@ -231,13 +231,14 @@ export const EmployeeDashboardView: React.FC = () => {
             return {
               id: t.id,
               taskId: t.taskCode || t.id,
+              taskCode: t.taskCode || t.id,
               title: t.title,
               dept: currentTargetEmp?.departmentName || 'Product & Tech',
-              entity: t.taskCode?.startsWith('CAG') ? 'CAG' : 'EHM',
+              entity: t.entity === 'COMMON' || t.entityCode === 'COMMON' || t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-') ? 'COMMON' : (t.entity === 'CLIMAGRO' || t.entityCode === 'CAG' || t.taskCode?.startsWith('CAG')) ? 'CLIMAGRO' : 'EHM',
               priority: t.priority || 'MEDIUM',
               lead: leadName,
               reviewingLeadId: t.reviewingLeadId || matchedLeadEmp?.id,
-              assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Employee'),
+              assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Team Member'),
               assigneeId: t.assigneeId,
               status: (t.status === 'DONE'
                 ? 'Done'
@@ -325,6 +326,7 @@ export const EmployeeDashboardView: React.FC = () => {
     setSelectedTask({
       id: t.id,
       taskId: t.taskId,
+      taskCode: t.taskId,
       title: t.title,
       entity: t.entity,
       assignee: t.assigneeName,
@@ -477,7 +479,7 @@ export const EmployeeDashboardView: React.FC = () => {
   // Filter Team Members table search from live database
   const mappedTeamMembers = dbEmployees.map((emp) => ({
     id: emp.id,
-    name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee',
+    name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member',
     role: emp.designation || 'Specialist',
     dept: emp.departmentName || 'Engineering',
     entity: emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM',
@@ -493,39 +495,16 @@ export const EmployeeDashboardView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none">
+      {/* PINNED ANNOUNCEMENT TOP CAPSULE BANNER */}
+      <PinnedAnnouncementBanner />
+
       {/* SUB-NAVIGATION TAB BAR */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
         <div className="flex items-center gap-2 bg-gray-100/80 p-1 rounded-xl border border-gray-200">
-          <button
-            onClick={() => setActiveSubTab('OVERVIEW')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'OVERVIEW'
-                ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/60'
-                : 'text-gray-600 hover:text-gray-900'
-              }`}
-          >
+          <div className="px-3.5 py-1.5 text-xs font-extrabold rounded-lg bg-white text-emerald-800 shadow-2xs border border-gray-200/60 flex items-center gap-1.5">
             <BarChart2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>My Overview & Analytics</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('BACKLOG')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'BACKLOG'
-                ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/60'
-                : 'text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-blue-600" />
-            <span>My Product Backlog ({myTasks.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('SPRINT')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeSubTab === 'SPRINT'
-                ? 'bg-white text-emerald-800 shadow-2xs font-extrabold border border-gray-200/60'
-                : 'text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            <Flame className="w-3.5 h-3.5 text-amber-600" />
-            <span>My Active Sprint Week ({activeSprintTasks.length})</span>
-          </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -558,7 +537,7 @@ export const EmployeeDashboardView: React.FC = () => {
                 Your Mail
               </span>
               <span className="text-xs sm:text-sm font-semibold text-emerald-50">
-                {activeEmpEmail || user?.email || 'employee@example.com'}
+                {activeEmpEmail || user?.email || 'team@example.com'}
               </span>
             </div>
           </div>
@@ -567,7 +546,7 @@ export const EmployeeDashboardView: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Role:</span>
             <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-xs rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/25 shadow-2xs">
-              {user?.role === 'ADMIN' ? 'ADMIN' : user?.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'}
+              {user?.role === 'ADMIN' ? 'ADMIN' : user?.role === 'MANAGER' ? 'MANAGER' : 'TEAM MEMBER'}
             </span>
           </div>
         </div>
@@ -607,9 +586,8 @@ export const EmployeeDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 1: OVERVIEW & VISUAL ANALYTICS */}
-      {activeSubTab === 'OVERVIEW' && (
-        <div className="space-y-6">
+      {/* OVERVIEW & VISUAL ANALYTICS */}
+      <div className="space-y-6">
           {/* STAT TILES — 4 tiles total, in exact order with top-right logos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Tile 1: Task (Pending / Total) with click-to-filter & Top-Right Logo */}
@@ -777,6 +755,7 @@ export const EmployeeDashboardView: React.FC = () => {
                             setSelectedTask({
                               id: t.id,
                               taskId: t.taskId,
+                              taskCode: t.taskId,
                               title: t.title,
                               entity: t.entity,
                               assignee: t.assigneeName,
@@ -971,200 +950,8 @@ export const EmployeeDashboardView: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
 
-      {/* TAB 2: MY PRODUCT BACKLOG (ONLY MY TASKS) */}
-      {activeSubTab === 'BACKLOG' && (
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 tracking-tight">My Product Backlog Tasks</h3>
-              <p className="text-xs text-gray-500 font-medium">
-                Filtered view showing ONLY tasks assigned to <strong className="text-emerald-700">{activeEmpName}</strong>.
-              </p>
-            </div>
 
-            {/* Filter and Search Bar */}
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search my tasks..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500 w-48"
-                />
-              </div>
-
-              <select
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-bold border border-gray-200 rounded-xl bg-gray-50 text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-              >
-                <option value="ALL">All Priorities</option>
-                <option value="URGENT">P1 (Top Priority)</option>
-                <option value="HIGH">P2 (High Priority)</option>
-                <option value="MEDIUM">P3 (Medium Priority)</option>
-                <option value="LOW">P4 (Low Priority)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/80">
-                  <th className="py-3 px-4">Task ID & Title</th>
-                  <th className="py-3 px-4">Priority</th>
-                  <th className="py-3 px-4">Reviewing Lead</th>
-                  <th className="py-3 px-4">Due Date</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-                {filteredBacklogTasks.map((t) => (
-                  <tr key={t.id} className="hover:bg-emerald-50/20 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
-                          {t.taskId}
-                        </span>
-                        <div>
-                          <span className="font-bold text-gray-900 block text-sm">{t.title}</span>
-                          <span className="text-[11px] text-gray-400 font-medium">{t.sprintWeek}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {(() => {
-                        const p = (t.priority || '').toUpperCase();
-                        const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
-                        const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
-                        return (
-                          <span className={`px-2 py-0.5 text-[10px] rounded border ${color}`}>
-                            {label}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-gray-800">{t.lead}</td>
-                    <td className="py-3.5 px-4 font-medium text-gray-600">{t.dueDate}</td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${t.status === 'Done'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                            : t.status === 'Delayed'
-                              ? 'bg-amber-100 text-amber-900 border-amber-400'
-                              : t.status === 'Blocked'
-                                ? 'bg-red-50 text-red-800 border-red-300'
-                                : 'bg-blue-50 text-blue-800 border-blue-300'
-                          }`}
-                      >
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleOpenTaskUpdate(t)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1 shadow-2xs"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>Update Task</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: MY ACTIVE SPRINT WEEK */}
-      {activeSubTab === 'SPRINT' && (
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
-                  {activeSprintName}
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 tracking-tight">My Active Sprint Deliverables</h3>
-              <p className="text-xs text-gray-500 font-medium">Sprint execution matrix assigned to {activeEmpName}.</p>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-gray-400 block">Overall Sprint Completion</span>
-              <span className="text-lg font-extrabold text-emerald-600">{overallSprintCompletionPct}% Completed</span>
-            </div>
-          </div>
-
-          {/* Active Sprint Tasks List */}
-          {activeSprintTasks.length === 0 ? (
-            <div className="p-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-              <p className="text-xs font-bold text-gray-500">No active sprint deliverables assigned to your workspace.</p>
-              <p className="text-[11px] text-gray-400 mt-1">When your manager assigns sprint tasks to you, they will show up here automatically.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activeSprintTasks.map((t) => (
-              <div
-                key={t.id}
-                className="p-4 border border-gray-200 rounded-2xl bg-white shadow-2xs hover:border-emerald-300 transition-all space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    {t.taskId}
-                  </span>
-                  {(() => {
-                    const p = (t.priority || '').toUpperCase();
-                    const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
-                    const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
-                    return (
-                      <span className={`px-2 py-0.5 text-[10px] rounded border ${color}`}>
-                        {label}
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-gray-900 text-sm">{t.title}</h4>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{t.notes}</p>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] font-bold text-gray-600">
-                    <span>Progress: {t.completionPct}%</span>
-                    <span>Due: {t.dueDate}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${t.completionPct}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <span className="text-[11px] font-semibold text-gray-500">Lead: {t.lead}</span>
-                  <button
-                    onClick={() => handleOpenTaskUpdate(t)}
-                    className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Update Progress</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        </div>
-      )}
 
       {/* 🚀 RESPONSIVE MINIMAL CLEAN KPI CARD DETAIL MODALS (MATCHING REFERENCE IMAGE 1 & 2) */}
       {activeModalType && (

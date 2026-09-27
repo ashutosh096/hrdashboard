@@ -1,105 +1,82 @@
-# EHM-Climagro OS — Full Project Codebase & Technical Specification
+﻿# HROS Project — Quick Reference Summary
+> Last updated: 2026-09-28
 
-> **Platform Name**: EHM-Climagro OS (HR, Operations, Agile Deliverables & Meeting Management System)  
-> **Entities Supported**: `ehmconsultancy` and `climagroanalytics`  
-> **Target Audience**: Management Team, Team Leads, Employees  
+## Stack
+- Backend: Express.js + TypeScript + Drizzle ORM (Neon PostgreSQL)
+- Frontend: React 18 + Vite + TypeScript + React Router v6
+- Shared libs: lib/db (schema), lib/api-client-react (HTTP+cache), lib/api-zod (validation)
+- Package manager: pnpm monorepo
 
----
+## Ports
+- API: http://localhost:3001
+- Frontend: http://localhost:5173
 
-## 📋 Executive Overview
+## Database (24 tables, Neon PostgreSQL)
+Live counts as of 2026-09-28:
+  users=18 (ADMIN:7, EMPLOYEE:11)
+  employees=17
+  initiatives=20
+  epics=24
+  tasks=37
+  task_checklists=46
+  task_comments=26
+  sprints=10
+  announcements=15
+  notifications=146
+  meetings=483
+  projects=14
+  invites=15
+  attendance=7
+  audit_logs=105
+  entities=3 (CAG, EHM, COMMON)
+  departments=16
 
-**EHM-Climagro OS** is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, Agile Hierarchy, and Meeting Management platform designed for cross-entity team collaboration between **ehmconsultancy** and **climagroanalytics**.
+## Core Hierarchy
+Entity → Initiative (CAG-I22) → Epic (CAG-I22-EP20) → Task (CAG-I22-EP20-T001)
+Employee → Sprint (COM-E01-W1) → Task (COM-E01-W1-T001)
 
-### Key System Capabilities:
+## Code Generation (via entity_counters atomic increment)
+- Initiative: {entityCode}-I{seq}
+- Epic:       {parentInitiativeCode}-EP{seq}
+- Sprint:     {employeeCode}-W{week}-{seq}
+- Task:       {parentCode}-T{seq padded 3}
 
-1. **Full 4-Level Agile Hierarchy & Lineage Model (Initiatives ➔ Epics ➔ Sprints ➔ Tasks)**:
-   - **Level 1: Strategic Initiatives (`InitiativesSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}` (e.g. `EHM-I01`, `CAG-I01`).
-     - Form fields: Title, Brand/Entity (`ehmconsultancy`, `climagroanalytics`), Department, Sub-Department/Track, Target Deliverable Metric, Target Month, Epics division count (`1` to `8`).
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 2: Feature Epics (`EpicsSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}-EP{seq2}` (e.g. `EHM-I01-EP01`).
-     - Nests under parent Initiative. Includes `next_task_seq` counter for scoped task numbering resetting at `T001`.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 3: Personal Sprints (`SprintsSubView.tsx`)**:
-     - 6-column Kanban Board View (`BACKLOG`, `PLANNED`, `TODO`, `IN_PROGRESS`, `TO_REVIEW`, `DONE`).
-     - Product Backlog and Planned columns stay visible across all sprint week filters.
-     - Includes HTML5 Drag-and-Drop (sliding cards between columns) and status dropdown transitions.
-     - Status transition workflows:
-       - **Shift to Planned**: Triggers confirmation modal (*"Are you sure you want to shift task to Planned?"*).
-       - **Assign Task & Configure Sprint Parameters**: Moving from Backlog/Planned to active columns opens assignment modal (Assignee, Reviewing Lead, Sprint Week, Due Date, Priority).
-     - Dedicated `👁 View` button on task cards to open details pop-up modal.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside sprint task creation form.
-   - **Level 4: Deliverable Tasks (`TasksView.tsx` & `TaskAssignModal.tsx`)**:
-     - **Epic Task**: `{ENTITY}-I{seq2}-EP{seq2}-T{seq3}` (e.g. `EHM-I01-EP01-T001`). Auto-derives parent `initiative_id` from parent epic.
-     - **Sprint Task**: `{ENTITY}-E{seq2}-W{weekNum}-T{seq3}` (e.g. `EHM-E01-W1-T001`). Multi-employee assignments clone tasks per assignee linked via `group_task_id`.
-     - **Backlog Task**: `{ENTITY}-T{seq3}` (e.g. `EHM-T001`).
-     - **Immutable Task Codes**: Reassigning a task's epic or sprint updates the foreign keys only, keeping `task_code` immutable.
-     - **Optional Parent Epic & Sprint Selection**: Parent Epic field is optional across task creation forms. Target Sprint dropdown presents clean `Active Sprint` vs `Future Sprint` options.
-     - **Subtask Checklist & Activity Comments**: Integrated 2-column task assignment modals (`TaskAssignModal.tsx` & `SprintsSubView.tsx`) with real-time subtask checklists (`X of Y Completed`) and Activity & Comments feed.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside task creation form.
+## Key Fixes (regression-confirmed)
+1. Initiative delete: detaches epics/tasks (null FK), does NOT cascade-delete
+2. Task filter enum cast: UPPER(tasks.priority::text) required for PostgreSQL
+3. Cache maxAge check: getCachedApi(endpoint, maxAgeMs) returns null if stale
+4. Stale-while-revalidate: pages show cache instantly, refetch in background
+5. Sprint task epicId: standalone sprint tasks have epicId=null
 
-2. **Dashboard & Performance Operations (`DashboardView.tsx` & `EmployeeDashboardView.tsx`)**:
-   - Clean, header workspace status banner (removed clocked in/clock out text widget).
-   - 5 Featured Responsive KPI Tiles:
-     1. **Today's Tasks & Pending**
-     2. **Active Sprint Cycles**
-     3. **Google Meetings Scheduled**
-     4. **Deliverable Completion Rate**
-     5. **Completed Tasks**
-   - Interactive Detail Pop-up Modals: Clicking any tile opens a big responsive pop-up modal with complete details, tasks, meeting links, or completion deliverables.
-   - Customizable Analytics View: Dropdown selector to switch between **Sprint Velocity & Quality Trend**, **Priority Distribution**, and **Daily Sprint Completion Pacing**.
+## API Routes Summary
+POST   /api/auth/login
+POST   /api/auth/accept-invite
+GET    /api/auth/me
+GET    /api/initiatives     (ADMIN+MANAGER)
+POST   /api/initiatives     (ADMIN+MANAGER)
+DELETE /api/initiatives/:id (ADMIN)
+GET    /api/epics            (ADMIN+MANAGER)
+POST   /api/epics            (ADMIN+MANAGER)
+GET    /api/tasks            (all auth, paginated, filtered)
+POST   /api/tasks            (all auth)
+POST   /api/tasks/:id/clone  (all auth)
+POST   /api/tasks/:id/comments (all auth)
+PUT    /api/tasks/:id/checklists/:cid (all auth)
+GET    /api/sprints          (all auth)
+POST   /api/sprints          (ADMIN+MANAGER)
+DELETE /api/sprints/:id      (ADMIN+MANAGER, cascade-deletes tasks)
+GET    /api/employees        (all auth)
+POST   /api/employees/invite (ADMIN+MANAGER)
+GET    /api/announcements    (all auth)
+POST   /api/announcements/:id/dismiss (all auth)
+GET    /api/notifications    (all auth, own only)
+PATCH  /api/notifications/:id/read (all auth)
+GET    /api/dashboard        (all auth)
+GET    /api/meetings         (all auth)
+GET    /api/projects         (all auth, scoped by team for employees)
 
-3. **100% Live Database API Wiring (Zero Mock Data)**:
-   - All components fetch real records from Express API endpoints (`/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`, `/api/attendance`, `/api/meetings`, `/api/reports`).
-   - Completion velocity rates are calculated dynamically from database counts and hard-capped at $\le 100\%$.
-
-4. **Supabase PostgreSQL & Official Drizzle Migration**:
-   - Official checked-in Drizzle migration: [`lib/db/drizzle/0004_agile_schema_alignment.sql`](file:///c:/hrdashboard/lib/db/drizzle/0004_agile_schema_alignment.sql).
-   - Enforced database constraints (`NOT NULL UNIQUE` on `initiative_code` and `sprint_code`, `NOT NULL` on `employee_id`).
-   - Symmetric DB `CHECK` constraint `chk_task_type_lineage` ensuring `task_type` strictly matches foreign key states (`EPIC_TASK`, `SPRINT_TASK`, `BACKLOG`).
-
-5. **Security & Middleware Protection**:
-   - `requireAuth` applied across all protected backend routes.
-   - `requireRole(['ADMIN', 'MANAGER'])` applied to POST/PUT on `/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`.
-
-6. **Employee Onboarding, Gmail SMTP & Supabase Admin Email Integration**:
-   - **Add Employee Modal**: Support for Personal Email (`personalEmail`), optional Work Email (`email`), and explicit Role selector (`EMPLOYEE` / `MANAGER`) in `TeamDirectoryView.tsx`.
-   - **Submit Loading State & Double-Click Protection**: Submit button disables immediately upon click, displaying `Adding & Sending Invite...` with a `Loader2` spinning icon to prevent duplicate submissions during email dispatch.
-   - **Dual-Port Fast SMTP Email Service (`email.ts`)**: Built-in Nodemailer dual-port (Port 465 SSL & Port 587 STARTTLS) failover with strict 4-second timeouts. Includes embedded base64 fallback credentials (`ashutoshmishraup78@gmail.com` / `wjwvyziipwcvnyxv`) and auto-sanitization of spaces in Google App Passwords (`SMTP_PASS`).
-   - **Real-Time Toast Delivery Status**: Displays explicit success notification (`Employee added! Invitation email sent to [email]`) or warning toast if email delivery fails.
-   - **Comprehensive Multi-Table Cascade Delete (`DELETE /api/employees/:id`)**: Transactional cascade delete cleaning up notifications, google tokens, users, task checklists/comments/notes, tasks, sprints (and sprint tasks), epics/initiatives owner references, task templates, applications, meeting attendees, meetings, attendance, invites, employee records, and Supabase Auth admin users.
-
----
-
-## 🔑 Database Authentication Credentials
-
-| Role | Email | Password | Access Rights |
-| :--- | :--- | :--- | :--- |
-| **Admin / Manager** | `admin@example.com` | `admin123` | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Create/Edit Initiatives, Epics & Sprints |
-
----
-
-## 🛠️ Complete Technology Stack
-
-| Layer | Technology Used | Description |
-| :--- | :--- | :--- |
-| **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture (0 TS errors) |
-| **Build Tool & Server** | **Vite 6** | Fast HMR dev server & asset bundling |
-| **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens (75% font-size density) |
-| **Iconography** | **Lucide React** | Modern vector icon library |
-| **Routing** | **Wouter** | Lightweight hooks-based SPA router |
-| **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
-| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on Render |
-| **Database & ORM** | **Supabase PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Email Transports** | **Gmail SMTP (Nodemailer)** + **Resend API** | Dual-port 465/587 fast failover email delivery |
-
----
-
-## 🚀 Verification & Build Status
-
-- **Supabase Connection**: Verified (`SELECT 1` ➔ `connected: 1, current_database: "postgres"`)
-- **TypeScript Compilation**: `pnpm build` ➔ **PASSED (0 Errors)**
-- **Render Production App**: `https://hrdashboard-3s1m.onrender.com`
-- **GitHub Push Status**: Pushed to `origin/main` (`https://github.com/ashutosh096/hrdashboard.git`)
-- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md)
+## Regression Test
+File: artifacts/api-server/src/e2e_regression_runner.ts
+Run:  npx tsx src/e2e_regression_runner.ts
+Last: 2026-09-27 — 36/36 PASS — 0 orphans
+Full report: REGRESSION_AUDIT_REPORT.md

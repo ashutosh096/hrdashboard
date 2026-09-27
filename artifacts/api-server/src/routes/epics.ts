@@ -1,19 +1,22 @@
 import { Router } from 'express';
-import { db, epics, initiatives, entityCounters, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql } from '@workspace/db';
+import { db, epics, initiatives, projects, entityCounters, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
 router.use(requireAuth);
+router.use(requireRole(['ADMIN', 'MANAGER']));
 
 // GET /api/epics - List epics with linked sprints and tasks summary
 router.get('/', async (req, res) => {
-  const { initiativeId } = req.query;
+  const { initiativeId, projectId } = req.query;
 
   try {
     let query = db.select().from(epics);
     if (initiativeId && typeof initiativeId === 'string') {
       query = db.select().from(epics).where(eq(epics.initiativeId, initiativeId)) as any;
+    } else if (projectId && typeof projectId === 'string') {
+      query = db.select().from(epics).where(eq(epics.projectId, projectId)) as any;
     }
 
     const allEpics = await query;
@@ -39,27 +42,53 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/epics - Manager protected epic creation with atomic code sequence (EHM-EPIC-001)
+// POST /api/epics - Manager protected epic creation with atomic code sequence
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const { title, description, initiativeId, entityId, department, targetWeek, sprintsCountTarget, ownerId, targetDate, status } = req.body;
-
-  if (!initiativeId) {
-    return res.status(400).json({ message: 'initiativeId is required' });
-  }
+  const { title, description, initiativeId, projectId, entityId, department, targetWeek, sprintsCountTarget, ownerId, targetDate, status } = req.body;
 
   try {
     const created = await db.transaction(async (tx) => {
-      // 1. Resolve Initiative & Entity
-      const [init] = await tx.select().from(initiatives).where(eq(initiatives.id, initiativeId));
-      if (!init) throw new Error('Parent initiative not found');
+      let targetEntityId = entityId;
+      let prefixCode = 'EP';
 
-      const targetEntityId = entityId || init.entityId;
+      // 1. Resolve Initiative if provided
+      if (initiativeId) {
+        const [init] = await tx.select().from(initiatives).where(eq(initiatives.id, initiativeId));
+        if (init) {
+          targetEntityId = targetEntityId || init.entityId;
+          prefixCode = init.initiativeCode || 'INIT';
+        }
+      }
+
+      // 2. Resolve Project if provided
+      if (projectId) {
+        const [proj] = await tx.select().from(projects).where(eq(projects.id, projectId));
+        if (proj) {
+          if (!initiativeId) {
+            prefixCode = proj.code || 'PRJ';
+          }
+          if (!targetEntityId) {
+            const entCode = proj.entity === 'CAG' ? 'CAG' : 'EHM';
+            const [matchedEnt] = await tx.select().from(entities).where(eq(entities.code, entCode));
+            if (matchedEnt) targetEntityId = matchedEnt.id;
+          }
+        }
+      }
+
+      // 3. Fallback entity resolution
+      if (!targetEntityId) {
+        const [firstEntity] = await tx.select().from(entities);
+        targetEntityId = firstEntity?.id;
+      }
+
+      if (!targetEntityId) {
+        throw new Error('Could not resolve entity for epic creation');
+      }
+
       const [entity] = await tx.select().from(entities).where(eq(entities.id, targetEntityId));
-      if (!entity) throw new Error('Entity not found');
+      const entityCode = entity?.code || 'EHM';
 
-      const entityCode = entity.code; // "EHM" or "CAG"
-
-      // 2. Concurrency-safe atomic counter update
+      // 4. Concurrency-safe atomic counter update
       await tx
         .insert(entityCounters)
         .values({ entityId: targetEntityId, nextEpicSeq: 1 })
@@ -72,17 +101,22 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .returning();
 
       const seqNumber = (counter?.nextEpicSeq || 2) - 1;
-      const initCode = init.initiativeCode || 'EHM-I01';
-      const epicCode = `${initCode}-EP${String(seqNumber).padStart(2, '0')}`;
+      let epicCode = '';
+      if (prefixCode && prefixCode !== 'EP') {
+        epicCode = `${prefixCode}-EP${String(seqNumber).padStart(2, '0')}`;
+      } else {
+        epicCode = `${entityCode}-EPIC-${String(seqNumber).padStart(2, '0')}`;
+      }
 
-      // 3. Insert Epic
+      // 5. Insert Epic
       const [newEpic] = await tx
         .insert(epics)
         .values({
           epicCode,
           title: title || 'Untitled Epic',
           description: description || '',
-          initiativeId,
+          initiativeId: initiativeId || null,
+          projectId: projectId || null,
           entityId: targetEntityId,
           department: department || '',
           targetWeek: targetWeek || 'Week 1 (Days 1–7)',
@@ -106,7 +140,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // PUT /api/epics/:id - Update Epic details
 router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const epicId = req.params.id as string;
-  const { title, description, initiativeId, department, targetWeek, sprintsCountTarget, status } = req.body;
+  const { title, description, initiativeId, projectId, department, targetWeek, sprintsCountTarget, status } = req.body;
 
   let mappedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | undefined = undefined;
   if (status !== undefined) {
@@ -122,7 +156,8 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       .set({
         title: title !== undefined ? title : undefined,
         description: description !== undefined ? description : undefined,
-        initiativeId: initiativeId !== undefined ? initiativeId : undefined,
+        initiativeId: initiativeId !== undefined ? (initiativeId || null) : undefined,
+        projectId: projectId !== undefined ? (projectId || null) : undefined,
         department: department !== undefined ? department : undefined,
         targetWeek: targetWeek !== undefined ? targetWeek : undefined,
         sprintsCountTarget: sprintsCountTarget !== undefined ? Number(sprintsCountTarget) : undefined,
@@ -145,7 +180,7 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // PATCH /api/epics/:id - Update Epic details
 router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const epicId = req.params.id as string;
-  const { title, description, initiativeId, department, targetWeek, sprintsCountTarget, status } = req.body;
+  const { title, description, initiativeId, projectId, department, targetWeek, sprintsCountTarget, status } = req.body;
 
   let mappedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | undefined = undefined;
   if (status !== undefined) {
@@ -161,7 +196,8 @@ router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       .set({
         title: title !== undefined ? title : undefined,
         description: description !== undefined ? description : undefined,
-        initiativeId: initiativeId !== undefined ? initiativeId : undefined,
+        initiativeId: initiativeId !== undefined ? (initiativeId || null) : undefined,
+        projectId: projectId !== undefined ? (projectId || null) : undefined,
         department: department !== undefined ? department : undefined,
         targetWeek: targetWeek !== undefined ? targetWeek : undefined,
         sprintsCountTarget: sprintsCountTarget !== undefined ? Number(sprintsCountTarget) : undefined,

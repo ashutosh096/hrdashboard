@@ -670,6 +670,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       }
     }
 
+    let generatedOtp: string | null = null;
     if (user) {
       let userName = 'Team Member';
       if (user.employeeId) {
@@ -681,6 +682,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       }
 
       const otp = crypto.randomInt(100000, 1000000).toString();
+      generatedOtp = otp;
       const otpHash = await bcrypt.hash(otp, 10);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
@@ -702,7 +704,10 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       });
     }
 
-    return res.json({ message: 'If that email is registered, a verification code has been sent.' });
+    return res.json({ 
+      message: 'If that email is registered, a verification code has been sent.',
+      ...(process.env.NODE_ENV !== 'production' && generatedOtp ? { debugOtp: generatedOtp } : {})
+    });
   } catch (err) {
     console.error('[FORGOT-PASSWORD ERROR]:', err);
     return res.status(500).json({ message: 'Failed to process password reset request' });

@@ -85,7 +85,15 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         if (match) weekNum = match[0];
       }
       const empCodeFormatted = emp.employeeCode.replace('-EMP', '-E');
-      const sprintCode = `${empCodeFormatted}-W${weekNum}`;
+      let sprintCode = `${empCodeFormatted}-W${weekNum}`;
+      const [existingWithCode] = await tx
+        .select({ id: sprints.id })
+        .from(sprints)
+        .where(eq(sprints.sprintCode, sprintCode))
+        .limit(1);
+      if (existingWithCode) {
+        sprintCode = `${empCodeFormatted}-W${weekNum}-${counter?.nextSprintSeq || Date.now().toString().slice(-4)}`;
+      }
 
       // 3. Insert Personal Sprint
       const [newSprint] = await tx

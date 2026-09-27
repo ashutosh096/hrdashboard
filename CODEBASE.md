@@ -1,102 +1,346 @@
-# EHM-Climagro OS — Full Project Codebase & Technical Specification
-
-> **Platform Name**: EHM-Climagro OS (HR, Operations, Agile Deliverables & Meeting Management System)  
-> **Entities Supported**: `ehmconsultancy` and `climagroanalytics`  
-> **Target Audience**: Management Team, Team Leads, Employees  
+﻿# HROS — Full Codebase & Database Reference
+> Last updated: 2026-09-28 (post regression audit)
 
 ---
 
-## 📋 Executive Overview
+## 1. Monorepo Structure
 
-**EHM-Climagro OS** is an enterprise-grade HR, Attendance, Operations, Sprint Deliverable, Agile Hierarchy, and Meeting Management platform designed for cross-entity team collaboration between **ehmconsultancy** and **climagroanalytics**.
+```
+c:\hrdashboard\
+├── artifacts/
+│   ├── api-server/          ← Express + Drizzle ORM backend (Node.js)
+│   └── hr-dashboard/        ← React + Vite frontend
+├── lib/
+│   ├── db/                  ← Drizzle schema definitions + DB client (shared)
+│   ├── api-client-react/    ← Shared fetch utility + React Query hooks
+│   └── api-zod/             ← Zod validation schemas (shared)
+├── scripts/                 ← Utility scripts (migrations, seeds)
+├── drizzle.config.ts        ← Root drizzle config (points to lib/db)
+├── pnpm-workspace.yaml      ← pnpm monorepo workspace config
+└── package.json             ← Root package
+```
 
-### Key System Capabilities:
-
-1. **Full 4-Level Agile Hierarchy & Lineage Model (Initiatives ➔ Epics ➔ Sprints ➔ Tasks)**:
-   - **Level 1: Strategic Initiatives (`InitiativesSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}` (e.g. `EHM-I01`, `CAG-I01`).
-     - Form fields: Title, Brand/Entity (`ehmconsultancy`, `climagroanalytics`), Department, Sub-Department/Track, Target Deliverable Metric, Target Month, Epics division count (`1` to `8`).
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 2: Feature Epics (`EpicsSubView.tsx`)**:
-     - Short atomic ID format: `{ENTITY}-I{seq2}-EP{seq2}` (e.g. `EHM-I01-EP01`).
-     - Nests under parent Initiative. Includes `next_task_seq` counter for scoped task numbering resetting at `T001`.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox with template selector.
-   - **Level 3: Personal Sprints (`SprintsSubView.tsx`)**:
-     - 6-column Kanban Board View (`BACKLOG`, `PLANNED`, `TODO`, `IN_PROGRESS`, `TO_REVIEW`, `DONE`).
-     - Product Backlog and Planned columns stay visible across all sprint week filters.
-     - Includes HTML5 Drag-and-Drop (sliding cards between columns) and status dropdown transitions.
-     - Status transition workflows:
-       - **Shift to Planned**: Triggers confirmation modal (*"Are you sure you want to shift task to Planned?"*).
-       - **Assign Task & Configure Sprint Parameters**: Moving from Backlog/Planned to active columns opens assignment modal (Assignee, Reviewing Lead, Sprint Week, Due Date, Priority).
-     - Dedicated `👁 View` button on task cards to open details pop-up modal.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside sprint task creation form.
-   - **Level 4: Deliverable Tasks (`TasksView.tsx` & `TaskAssignModal.tsx`)**:
-     - **Epic Task**: `{ENTITY}-I{seq2}-EP{seq2}-T{seq3}` (e.g. `EHM-I01-EP01-T001`). Auto-derives parent `initiative_id` from parent epic.
-     - **Sprint Task**: `{ENTITY}-E{seq2}-W{weekNum}-T{seq3}` (e.g. `EHM-E01-W1-T001`). Multi-employee assignments clone tasks per assignee linked via `group_task_id`.
-     - **Backlog Task**: `{ENTITY}-T{seq3}` (e.g. `EHM-T001`).
-     - **Immutable Task Codes**: Reassigning a task's epic or sprint updates the foreign keys only, keeping `task_code` immutable.
-     - **Optional Parent Epic & Sprint Selection**: Parent Epic field is optional across task creation forms. Target Sprint dropdown presents clean `Active Sprint` vs `Future Sprint` options.
-     - **Subtask Checklist & Activity Comments**: Integrated 2-column task assignment modals (`TaskAssignModal.tsx` & `SprintsSubView.tsx`) with real-time subtask checklists (`X of Y Completed`) and Activity & Comments feed.
-     - Includes inline `☑ Make Clone / Duplicate Copy` checkbox inside task creation form.
-
-2. **Dashboard & Performance Operations (`DashboardView.tsx` & `EmployeeDashboardView.tsx`)**:
-   - Clean, header workspace status banner (removed clocked in/clock out text widget).
-   - 5 Featured Responsive KPI Tiles:
-     1. **Today's Tasks & Pending**
-     2. **Active Sprint Cycles**
-     3. **Google Meetings Scheduled**
-     4. **Deliverable Completion Rate**
-     5. **Completed Tasks**
-   - Interactive Detail Pop-up Modals: Clicking any tile opens a big responsive pop-up modal with complete details, tasks, meeting links, or completion deliverables.
-   - Customizable Analytics View: Dropdown selector to switch between **Sprint Velocity & Quality Trend**, **Priority Distribution**, and **Daily Sprint Completion Pacing**.
-
-3. **100% Live Database API Wiring (Zero Mock Data)**:
-   - All components fetch real records from Express API endpoints (`/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`, `/api/attendance`, `/api/meetings`, `/api/reports`).
-   - Completion velocity rates are calculated dynamically from database counts and hard-capped at $\le 100\%$.
-
-4. **Supabase PostgreSQL & Official Drizzle Migration**:
-   - Official checked-in Drizzle migration: [`lib/db/drizzle/0004_agile_schema_alignment.sql`](file:///c:/hrdashboard/lib/db/drizzle/0004_agile_schema_alignment.sql).
-   - Enforced database constraints (`NOT NULL UNIQUE` on `initiative_code` and `sprint_code`, `NOT NULL` on `employee_id`).
-   - Symmetric DB `CHECK` constraint `chk_task_type_lineage` ensuring `task_type` strictly matches foreign key states (`EPIC_TASK`, `SPRINT_TASK`, `BACKLOG`).
-
-5. **Security & Middleware Protection**:
-   - `requireAuth` applied across all protected backend routes.
-   - `requireRole(['ADMIN', 'MANAGER'])` applied to POST/PUT on `/api/employees`, `/api/tasks`, `/api/initiatives`, `/api/epics`, `/api/sprints`.
-
-6. **Employee Onboarding & Supabase Admin Email Integration**:
-   - **Add Employee Modal**: Support for Personal Email (`personalEmail`), optional Work Email (`email`), and explicit Role selector (`EMPLOYEE` / `MANAGER`) in `TeamDirectoryView.tsx`.
-   - **Supabase Admin Client (`supabase-admin.ts`)**: Initialized `@supabase/supabase-js` admin client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `src/services/supabase-admin.ts`.
-   - **Automated Invitations**: `POST /api/employees` triggers `supabaseAdmin.auth.admin.inviteUserByEmail(targetEmail, { redirectTo: `${appUrl}/accept-invite?token=${inviteToken}` })`.
+### Startup Commands
+```bash
+pnpm dev                           # Full stack
+cd artifacts/api-server && pnpm dev  # API only (port 3001)
+cd artifacts/hr-dashboard && pnpm dev # Frontend only (port 5173)
+```
 
 ---
 
-## 🔑 Database Authentication Credentials
+## 2. Database — Live State (2026-09-28)
 
-| Role | Email | Password | Access Rights |
-| :--- | :--- | :--- | :--- |
-| **Admin / Manager** | `admin@example.com` | `admin123` | Full workspace access, Add Employee, Assign Task, Delay Alerts, Submission Reviews, Create/Edit Initiatives, Epics & Sprints |
+**Database:** PostgreSQL (Neon serverless)
+**ORM:** Drizzle ORM
+**Total Tables:** 24
+
+### 2.1 All 24 Tables + Row Counts
+
+| # | Table | Rows | Purpose |
+|---|---|---|---|
+| 1 | announcements | 15 | Company-wide pinned + regular announcements |
+| 2 | applications | 0 | Job/HR applications (future) |
+| 3 | attendance | 7 | Employee attendance records |
+| 4 | audit_logs | 105 | System audit trail |
+| 5 | departments | 16 | Departments within entities |
+| 6 | employees | 17 | Employee profiles |
+| 7 | entities | 3 | Business entities (CAG, EHM, COMMON) |
+| 8 | entity_counters | 3 | Atomic sequence counters per entity |
+| 9 | epics | 24 | Epics linked to initiatives |
+| 10 | google_tokens | 5 | OAuth tokens for Google Calendar sync |
+| 11 | initiatives | 20 | Top-level strategic initiatives |
+| 12 | invites | 15 | Pending/accepted employee invites |
+| 13 | meeting_attendees | 0 | Meeting RSVP records |
+| 14 | meetings | 483 | Calendar meetings (synced + manual) |
+| 15 | notifications | 146 | In-app notification queue |
+| 16 | password_reset_otps | 0 | OTP tokens for password reset |
+| 17 | projects | 14 | Team projects (separate from initiatives) |
+| 18 | sprints | 10 | Personal employee sprints |
+| 19 | task_checklists | 46 | Checklist items (subtasks) within tasks |
+| 20 | task_comments | 26 | Comments on tasks |
+| 21 | task_notes | 0 | Private notes on tasks |
+| 22 | task_templates | 0 | Reusable task templates |
+| 23 | tasks | 37 | All tasks (EPIC_TASK, SPRINT_TASK, PROJECT_TASK) |
+| 24 | users | 18 | Auth user accounts |
+
+### 2.2 Entities (3 rows)
+
+| Name | Code | ID |
+|---|---|---|
+| Climagro Analytics | CAG | ebbf77f7-c1ac-423d-a29d-8db50beac25f |
+| EHM & CLIMAGRO (COMMON) | COMMON | 539ba160-88b8-4fdd-a5ef-39c09c97516a |
+| EHM Consultancy | EHM | 886d7680-6a7c-482e-ae61-159ec359f881 |
+
+### 2.3 User Role Breakdown (18 users)
+
+| Role | Count |
+|---|---|
+| ADMIN | 7 |
+| EMPLOYEE | 11 |
+
+Note: No MANAGER role users currently in DB. MANAGER is schema-defined and middleware-enforced.
+
+### 2.4 Core Data Hierarchy
+
+```
+Entity (CAG / EHM / COMMON)
+  └── Initiative  [initiativeCode: CAG-I01, EHM-I01]
+        └── Epic  [epicCode: CAG-I01-EP01]
+              └── Task (EPIC_TASK)  [taskCode: CAG-I01-EP01-T001]
+                    ├── task_checklists
+                    ├── task_comments
+                    └── task_notes
+
+Employee
+  └── Sprint  [sprintCode: EHM-E01-W1]
+        └── Task (SPRINT_TASK)  [taskCode: EHM-E01-W1-T001]
+
+Project
+  └── Task (PROJECT_TASK)
+```
+
+### 2.5 Key Schema Constraints
+
+tasks.taskType enum: EPIC_TASK | SPRINT_TASK | PROJECT_TASK
+tasks.status enum:   BACKLOG | IN_PROGRESS | DONE | REVIEW | BLOCKED | PLANNED
+tasks.priority enum: URGENT | HIGH | MEDIUM | LOW
+
+IMPORTANT — enum cast required for UPPER():
+  UPPER(tasks.priority::text) IN ('URGENT','P1')   -- correct
+  UPPER(tasks.priority) IN ('URGENT')              -- error 42883
+
+initiatives.status enum: PLANNED | ACTIVE | DONE
+  (IN_PROGRESS and ACTIVE both map to ACTIVE, COMPLETED maps to DONE)
+
+announcements.priority: NORMAL | IMPORTANT | URGENT
+  (input LOW is normalized to NORMAL by the route)
+
+Initiative DELETE: sets epics.initiativeId=null + tasks.initiativeId=null,
+  then deletes ONLY the initiative row (no cascade-delete of children).
+
+Sprint DELETE: cascade-deletes all linked tasks + their checklists/comments/notes.
 
 ---
 
-## 🛠️ Complete Technology Stack
+## 3. API Server
 
-| Layer | Technology Used | Description |
-| :--- | :--- | :--- |
-| **Frontend Framework** | **React 19** + **TypeScript** | UI Component Architecture (0 TS errors) |
-| **Build Tool & Server** | **Vite 6** | Fast HMR dev server & asset bundling |
-| **Styling & Theme** | **Tailwind CSS v4** | Utility-first styling & custom HSL color tokens (75% font-size density) |
-| **Iconography** | **Lucide React** | Modern vector icon library |
-| **Routing** | **Wouter** | Lightweight hooks-based SPA router |
-| **State & Data** | **TanStack React Query (v5)** + **React Context API** | Caching, server-state sync & global auth/entity state |
-| **Backend API** | **Node.js** + **Express.js v5** | RESTful API server running on port `5000` / `10000` |
-| **Database & ORM** | **Supabase PostgreSQL** + **Drizzle ORM** | Type-safe SQL schema & relational data management |
-| **Third-Party Integrations** | **Google Calendar API v3** + **Resend API** | OAuth 2.0 Meet link generation & notification emails |
+Location: artifacts/api-server/
+Port: 3001
+Framework: Express.js + TypeScript
+Auth: JWT Bearer tokens via middleware/auth.ts
+
+### 3.1 Route Files
+
+| File | Mount | RBAC |
+|---|---|---|
+| routes/auth.ts | /api/auth | Public (login, OTP) + requireAuth (me, refresh) |
+| routes/initiatives.ts | /api/initiatives | ADMIN + MANAGER (read/write) |
+| routes/epics.ts | /api/epics | ADMIN + MANAGER |
+| routes/tasks.ts | /api/tasks | All auth |
+| routes/sprints.ts | /api/sprints | Read: all auth; Write: ADMIN+MANAGER |
+| routes/projects.ts | /api/projects | All auth; scoped by team membership for employees |
+| routes/employees.ts | /api/employees | ADMIN+MANAGER write; all auth read |
+| routes/announcements.ts | /api/announcements | ADMIN write; all auth read+dismiss |
+| routes/notifications.ts | /api/notifications | All auth (own notifications only) |
+| routes/meetings.ts | /api/meetings | All auth |
+| routes/attendance.ts | /api/attendance | All auth |
+| routes/dashboard.ts | /api/dashboard | All auth |
+| routes/reports.ts | /api/reports | All auth |
+| routes/applications.ts | /api/applications | ADMIN |
+
+### 3.2 Tasks Endpoint — Filters
+
+GET /api/tasks supports:
+  ?paginate=true          → returns { totalCount, tasks, totalPages }
+  ?page=1&pageSize=5      → pagination
+  ?priority=URGENT|P1    → priority filter (with enum cast fix)
+  ?status=BACKLOG        → status filter (with enum cast fix)
+  ?search=keyword        → ILIKE search across title, taskCode, description
+  ?employeeId=uuid       → filter by assignee
+  ?epicId=uuid           → filter by parent epic
+  ?initiativeId=uuid     → filter by initiative
+  ?projectId=uuid        → filter by project
+  ?entityCode=CAG|EHM|COMMON → entity filter
+
+### 3.3 Services & Middleware
+
+middleware/auth.ts       → requireAuth (JWT validate), requireRole([roles])
+services/email.ts        → sendTaskAssignedEmail, sendDelayRequestEmail
+services/googleCalendar.ts → OAuth2 client, event sync, token refresh
 
 ---
 
-## 🚀 Verification & Build Status
+## 4. Frontend (React + Vite)
 
-- **Supabase Connection**: Verified (`SELECT 1` ➔ `connected: 1, current_database: "postgres"`)
-- **TypeScript Compilation**: `npx tsc --noEmit` ➔ **PASSED (0 Errors)**
-- **GitHub Push Status**: Pushed to `origin/main` (`https://github.com/ashutosh096/hrdashboard.git`)
-- **Full Codebase Bundle**: [`FULL_CODEBASE_UNABRIDGED.md`](file:///c:/hrdashboard/FULL_CODEBASE_UNABRIDGED.md)
+Location: artifacts/hr-dashboard/
+Port: 5173
+Framework: React 18 + Vite + TypeScript
+Routing: React Router v6
+
+### 4.1 Pages
+
+| File | Route | Description |
+|---|---|---|
+| LoginView.tsx | /login | Login form |
+| AcceptInviteView.tsx | /accept-invite | Invite acceptance + password set |
+| DashboardView.tsx | / | Stats, sprint summary, attendance |
+| TasksView.tsx | /tasks | Tasks (filters, search 300ms debounce, pagination, group-by-epic, initiatives/epics/sprints tabs) |
+| SprintsView.tsx | /sprints | Sprint shell (delegates to SprintsSubView) |
+| MeetingsView.tsx | /meetings | Meetings + Google Calendar sync |
+| TeamDirectoryView.tsx | /team | Employee directory |
+| ApplicationsView.tsx | /applications | Job applications (ADMIN) |
+| AnnouncementsView.tsx | /announcements | Announcements feed |
+| NotificationsView.tsx | /notifications | Notification feed + mark-read |
+| PerformanceView.tsx | /performance | Analytics |
+| AttendanceView.tsx | /attendance | Attendance |
+| OfficeTodayView.tsx | /office-today | Who is in office |
+| SalaryView.tsx | /salary | Salary (ADMIN) |
+
+### 4.2 Key Components
+
+| Component | Purpose |
+|---|---|
+| Sidebar.tsx | Nav sidebar, role-gated menu |
+| Navbar.tsx | Top bar: notifications, profile, search |
+| InitiativesSubView.tsx | Initiatives tab — full CRUD |
+| EpicsSubView.tsx | Epics tab — full CRUD |
+| SprintsSubView.tsx | Sprints tab — full CRUD + sprint task management |
+| TaskAssignModal.tsx | Create/assign task modal |
+| TaskUpdateModal.tsx | Full task edit modal |
+| TaskCloneModal.tsx | Clone task + checklists |
+| PinnedAnnouncementBanner.tsx | Auto-dismissable pinned announcement banner |
+| EmployeeDashboardView.tsx | Employee own-tasks + sprint view |
+| SearchModal.tsx | Global search (Cmd+K) |
+| ProfileModal.tsx | Profile edit modal |
+| ForgotPasswordModal.tsx | OTP password reset flow |
+| CalendarPicker.tsx | Date picker |
+| SearchableSelect.tsx | Searchable dropdown |
+| MarkAttendanceModal.tsx | Attendance marking |
+
+### 4.3 Contexts & Utils
+
+| File | Purpose |
+|---|---|
+| contexts/AuthContext.tsx | Auth state (user, role, employeeId); login/logout |
+| utils/entityUtils.ts | Entity code/name resolution |
+| utils/dateUtils.ts | Date formatting |
+
+---
+
+## 5. Shared Libraries (lib/)
+
+### 5.1 lib/db/ — Schema + DB Client
+
+Exports from lib/db/src/index.ts:
+  db            — Drizzle client (Neon HTTP adapter)
+  All table refs: users, employees, entities, departments, initiatives,
+    epics, tasks, sprints, projects, taskChecklists, taskComments,
+    taskNotes, taskTemplates, announcements, notifications, invites,
+    meetings, meetingAttendees, attendance, googleTokens, entityCounters,
+    auditLogs, applications, passwordResetOtps
+  Operators: eq, and, or, inArray, sql, asc, desc, isNull, isNotNull
+
+### 5.2 lib/api-client-react/ — HTTP + React Query
+
+Exports:
+  fetchApi<T>(endpoint, options)          — base HTTP with JWT auth + cache
+  getCachedApi<T>(endpoint, maxAgeMs)    — timestamp-aware read (null if stale)
+  setCachedApi<T>(endpoint, data)        — write with timestamp
+  clearApiCache(prefix?)                  — invalidate on mutation
+  useDashboardData(entityCode?)          — React Query hook
+  useTasks(entityCode?)                  — React Query hook
+  useCreateTask()                        — mutation hook
+  useMeetings()                          — React Query hook
+  useEmployees(entityCode?)              — React Query hook
+
+Cache behavior:
+  CACHE_TTL_MS = 60000ms (60 seconds)
+  GET requests: deduplication via inFlightRequests Map
+  Mutation (POST/PUT/DELETE): auto-invalidates cache for that route prefix
+
+### 5.3 lib/api-zod/ — Zod Validation Schemas
+
+Input validation schemas used in API server.
+
+---
+
+## 6. Code Generation Logic
+
+All entity codes generated atomically via entity_counters table:
+
+Pattern: INSERT ... ON CONFLICT DO NOTHING
+         UPDATE ... SET seq = seq + 1 RETURNING *
+         Code = entityCode + prefix + paddedSeq
+
+Initiative: CAG-I22, EHM-I21    (nextInitiativeSeq)
+Epic:       CAG-I22-EP20         (nextEpicSeq, derived from parent initiative code)
+Sprint:     COM-ADM02-W1-11      (nextSprintSeq, derived from employeeCode + targetWeek)
+Task:       CAG-I22-EP20-T001    (nextTaskSeq on parent epic/sprint)
+
+---
+
+## 7. Known Bugs Fixed (Regression-Confirmed)
+
+Fix 1 — Initiative Delete (no cascade):
+  File: routes/initiatives.ts DELETE /:id
+  Was: deletes epics, sprints, tasks, checklists, comments, notes
+  Now: epics.initiativeId = null, tasks.initiativeId = null, delete only initiative row
+
+Fix 2 — Task Filter Enum Cast:
+  File: routes/tasks.ts GET /
+  Was: UPPER(tasks.priority) — PostgreSQL error 42883
+  Now: UPPER(tasks.priority::text) — explicit cast for enum columns
+
+Fix 3 — Cache Age Check:
+  File: lib/api-client-react/src/index.ts
+  Was: getCachedApi() returned data regardless of age
+  Now: accepts maxAgeMs param; returns null if stale
+
+Fix 4 — Stale-While-Revalidate:
+  Files: TasksView.tsx, DashboardView.tsx
+  Was: setLoading(true) unconditionally on mount
+  Now: checks cache first; shows cached data immediately; background refetch
+
+Fix 5 — Sprint Task Epic Field:
+  File: SprintsSubView.tsx
+  Was: sprint tasks inherited epicId from parent scope
+  Now: sprint tasks have epicId: null unless explicitly linked
+
+---
+
+## 8. Environment Variables
+
+API Server (.env):
+  DATABASE_URL        — Neon PostgreSQL connection string
+  JWT_SECRET          — JWT signing secret
+  JWT_REFRESH_SECRET  — Refresh token secret
+  SMTP_USER           — Optional SMTP email
+  SMTP_PASS           — Optional SMTP password
+  RESEND_API_KEY      — Optional Resend email service
+  GOOGLE_CLIENT_ID    — Google Calendar OAuth
+  GOOGLE_CLIENT_SECRET
+  GOOGLE_REDIRECT_URI
+
+Frontend (.env):
+  VITE_API_URL=http://localhost:3001
+
+---
+
+## 9. Regression Test Suite
+
+Runner: artifacts/api-server/src/e2e_regression_runner.ts
+Run:    npx tsx src/e2e_regression_runner.ts
+
+36-step coverage:
+  Part 1 (Steps 1-5):   Core hierarchy CREATE
+  Part 2 (Steps 6-10):  Edit integrity (mutations do not wipe children)
+  Part 3 (Steps 11-14): Sprints
+  Part 4 (Steps 15-17): Notifications
+  Part 5 (Steps 18-21): Announcements
+  Part 6 (Steps 22-24): Employee invite flow
+  Part 7 (Steps 25-28): RBAC scoping
+  Part 8 (Steps 29-33): Filters, search, pagination, group-by-epic
+  Part 9 (Steps 34-36): Row-count reconciliation + orphan integrity check
+
+Last run: 2026-09-27 — 36/36 PASS — Zero orphans — All deltas reconciled

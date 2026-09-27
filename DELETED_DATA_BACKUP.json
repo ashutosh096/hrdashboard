@@ -1,0 +1,219 @@
+{
+  "_info": "Deleted test/regression data backup — created 2026-09-28",
+  "_instructions": "Run: npx tsx src/restore_deleted_data.ts to restore all items",
+  "initiatives": [],
+  "epics": [],
+  "tasks": [],
+  "task_checklists": [],
+  "task_comments": [],
+  "sprints": [],
+  "employees": [],
+  "users": [],
+  "invites": [
+    {
+      "id": "1d57af6a-c006-4690-9213-d7619ad02945",
+      "email": "regression.qa.1790536849790@ehmconsultancy.co.in",
+      "token": "3eb1de6489d94bacbd74fb3f6c0f1e94b6190816b0a010bd8d554aafb37085ac",
+      "role": "EMPLOYEE",
+      "employee_id": "98f120da-1442-495c-98d4-1b190cfa0b3c",
+      "status": "ACCEPTED",
+      "expires_at": "2026-10-04 19:20:51.242",
+      "created_at": "2026-09-27 19:20:50.062051"
+    },
+    {
+      "id": "70c88831-323f-4188-86b5-fe19ee7542e4",
+      "email": "regression.qa.1790536954216@ehmconsultancy.co.in",
+      "token": "3bcb0b44f13326c78dbd1ae1cbde5063d3eae368ea76dbe8781c8ea7f567df53",
+      "role": "EMPLOYEE",
+      "employee_id": "cd81fc76-9699-4f82-adab-35aa0ff9a001",
+      "status": "ACCEPTED",
+      "expires_at": "2026-10-04 19:22:35.727",
+      "created_at": "2026-09-27 19:22:34.46252"
+    },
+    {
+      "id": "a8fe7a33-c4f4-491a-9f01-5fda94f83537",
+      "email": "regression.qa.1790537104607@ehmconsultancy.co.in",
+      "token": "f995f14f2ead5218f3be40020169aa66098f1945b249af51f2b66e8a55d0ab86",
+      "role": "EMPLOYEE",
+      "employee_id": "6b92d4a9-8fea-42a1-ae0d-1738ab6a7999",
+      "status": "ACCEPTED",
+      "expires_at": "2026-10-04 19:25:06.127",
+      "created_at": "2026-09-27 19:25:04.876999"
+    },
+    {
+      "id": "e8dc6d6b-f66b-4354-b653-7f5190f41635",
+      "email": "regression.qa.1790536746821@ehmconsultancy.co.in",
+      "token": "698aad503e196faba4a5183633c54721cb7616de9a938cc38d5cc7040e938705",
+      "role": "EMPLOYEE",
+      "employee_id": "0fb0b14d-aa81-4b92-8b8d-79ea209eecff",
+      "status": "ACCEPTED",
+      "expires_at": "2026-10-04 19:19:08.32",
+      "created_at": "2026-09-27 19:19:07.096426"
+    }
+  ],
+  "announcements": [
+    {
+      "id": "4fbc1a45-08eb-4636-be6e-9c326f743bc6",
+      "title": "Company-Wide System Upgrade Notice",
+      "content": "Scheduled infrastructure maintenance across all telemetry clusters.",
+      "priority": "IMPORTANT",
+      "is_pinned": true,
+      "target_entity_id": null,
+      "seen_by": [
+        "6df0b051-0183-414d-96df-b32a19a24cf2",
+        "ashutoshmishraup78@mpgi.edu.in",
+        "e6efb986-4f3d-40ac-bfe7-120fbd9d022d"
+      ],
+      "created_at": "2026-09-27 19:20:47.972928",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "d321aace-5496-4df8-b71f-a4915f5ed09f",
+      "title": "Urgent Security Advisory — Rotate API Credentials",
+      "content": "All service keys must be rotated prior to midnight UTC.",
+      "priority": "URGENT",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:20:49.172212",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "325c3324-3776-4dbb-a3cd-4de063bd1516",
+      "title": "Coffee Machine Restocked on 3rd Floor",
+      "content": "New roast available in the main cafeteria.",
+      "priority": "NORMAL",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:20:49.352265",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "ad58823e-2998-409d-b781-53cc45069474",
+      "title": "Company-Wide System Upgrade Notice",
+      "content": "Scheduled infrastructure maintenance across all telemetry clusters.",
+      "priority": "IMPORTANT",
+      "is_pinned": true,
+      "target_entity_id": null,
+      "seen_by": [
+        "6df0b051-0183-414d-96df-b32a19a24cf2",
+        "ashutoshmishraup78@mpgi.edu.in",
+        "e6efb986-4f3d-40ac-bfe7-120fbd9d022d"
+      ],
+      "created_at": "2026-09-27 19:22:32.288159",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "c7f0e0eb-9b7e-4804-9d91-fbcb6a7676c8",
+      "title": "Urgent Security Advisory — Rotate API Credentials",
+      "content": "All service keys must be rotated prior to midnight UTC.",
+      "priority": "URGENT",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:22:33.408173",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "7382e08c-8e0d-4bad-bd20-a59268ec2685",
+      "title": "Coffee Machine Restocked on 3rd Floor",
+      "content": "New roast available in the main cafeteria.",
+      "priority": "NORMAL",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:22:33.588178",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "ce60861e-114a-42f5-82c6-7b47f38f2f82",
+      "title": "Audit Test Announcement",
+      "content": "Testing announcement body",
+      "priority": "NORMAL",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [
+        "6df0b051-0183-414d-96df-b32a19a24cf2",
+        "ashutoshmishraup78@mpgi.edu.in",
+        "e6efb986-4f3d-40ac-bfe7-120fbd9d022d"
+      ],
+      "created_at": "2026-09-21 06:43:44.234888",
+      "created_by": "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7"
+    },
+    {
+      "id": "1787a96a-e7ce-43fd-b0cc-7e83917c7d4e",
+      "title": "Company-Wide System Upgrade Notice",
+      "content": "Scheduled infrastructure maintenance across all telemetry clusters.",
+      "priority": "IMPORTANT",
+      "is_pinned": true,
+      "target_entity_id": null,
+      "seen_by": [
+        "6df0b051-0183-414d-96df-b32a19a24cf2",
+        "ashutoshmishraup78@mpgi.edu.in",
+        "e6efb986-4f3d-40ac-bfe7-120fbd9d022d"
+      ],
+      "created_at": "2026-09-27 19:19:04.852044",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "b5f75428-778a-4064-b642-0ccca7b754c0",
+      "title": "Urgent Security Advisory — Rotate API Credentials",
+      "content": "All service keys must be rotated prior to midnight UTC.",
+      "priority": "URGENT",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:19:06.161551",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "f67cc4b2-6cca-41c9-a256-3af757eb171d",
+      "title": "Coffee Machine Restocked on 3rd Floor",
+      "content": "New roast available in the main cafeteria.",
+      "priority": "NORMAL",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:19:06.352005",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "10daee6a-0d6c-4488-a965-004acb1c7240",
+      "title": "Company-Wide System Upgrade Notice",
+      "content": "Scheduled infrastructure maintenance across all telemetry clusters.",
+      "priority": "IMPORTANT",
+      "is_pinned": true,
+      "target_entity_id": null,
+      "seen_by": [
+        "6df0b051-0183-414d-96df-b32a19a24cf2",
+        "ashutoshmishraup78@mpgi.edu.in",
+        "e6efb986-4f3d-40ac-bfe7-120fbd9d022d"
+      ],
+      "created_at": "2026-09-27 19:25:02.832178",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "22f5904c-401d-4e63-9850-eb7be729c4c6",
+      "title": "Urgent Security Advisory — Rotate API Credentials",
+      "content": "All service keys must be rotated prior to midnight UTC.",
+      "priority": "URGENT",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:25:03.942179",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    },
+    {
+      "id": "e770624c-c297-4eca-806b-69305d6f615b",
+      "title": "Coffee Machine Restocked on 3rd Floor",
+      "content": "New roast available in the main cafeteria.",
+      "priority": "NORMAL",
+      "is_pinned": false,
+      "target_entity_id": null,
+      "seen_by": [],
+      "created_at": "2026-09-27 19:25:04.142063",
+      "created_by": "fa0289e6-0109-4228-9f3d-f54b7164773c"
+    }
+  ]
+}

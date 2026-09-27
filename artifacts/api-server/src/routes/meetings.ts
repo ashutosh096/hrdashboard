@@ -1,19 +1,63 @@
 import { Router, Request, Response } from 'express';
-import { db, meetings, meetingAttendees, employees, users, eq, ne, and, gte, lte, inArray } from '@workspace/db';
+import { db, meetings, meetingAttendees, employees, users, eq, ne, and, gte, lte, lt, inArray } from '@workspace/db';
 import { refreshAccessToken } from './auth.js';
 import { requireAuth } from '../middleware/auth.js';
 import { pullGoogleCalendarEvents } from '../services/calendar-sync.js';
+
+/**
+ * Automatically purges meetings older than 3 days from the database.
+ * Keeps calendar view visible for the last 3 days + upcoming days.
+ * Any meeting older than 3 days (endTime before start of 3 days ago) is automatically deleted from PostgreSQL.
+ */
+export async function cleanupOldMeetings() {
+  try {
+    const cutoffDate = new Date(Date.now() - 3 * 86400000);
+    cutoffDate.setHours(0, 0, 0, 0);
+
+    const expired = await db
+      .select({ id: meetings.id })
+      .from(meetings)
+      .where(lt(meetings.endTime, cutoffDate));
+
+    if (expired.length > 0) {
+      const expiredIds = expired.map((m) => m.id);
+      await db.delete(meetingAttendees).where(inArray(meetingAttendees.meetingId, expiredIds));
+      await db.delete(meetings).where(inArray(meetings.id, expiredIds));
+      console.log(`[MEETINGS PURGE]: Automatically cleared ${expiredIds.length} expired meeting(s) older than 3 days.`);
+    }
+  } catch (err) {
+    console.error('[MEETINGS AUTO-PURGE ERROR]:', err);
+  }
+}
+
+// Run purge periodically every 15 minutes and immediately on load
+setInterval(cleanupOldMeetings, 15 * 60 * 1000);
+cleanupOldMeetings().catch(() => {});
 
 const router = Router();
 router.use(requireAuth);
 
 router.get('/', async (req: Request, res: Response) => {
   try {
+    await cleanupOldMeetings();
+
     const userId = (req as any).user?.id;
     const empId = (req as any).user?.employeeId;
     const userEmail = ((req as any).user?.email || '').toLowerCase();
 
-    const allMeetings = await db.select().from(meetings).where(ne(meetings.status, 'CANCELLED'));
+    // Retain and show meetings for the last 3 days + future
+    const cutoffDate = new Date(Date.now() - 3 * 86400000);
+    cutoffDate.setHours(0, 0, 0, 0);
+
+    const allMeetings = await db
+      .select()
+      .from(meetings)
+      .where(
+        and(
+          ne(meetings.status, 'CANCELLED'),
+          gte(meetings.endTime, cutoffDate)
+        )
+      );
 
     const userAttendeeRecords = await db
       .select({ meetingId: meetingAttendees.meetingId })
@@ -54,7 +98,6 @@ router.get('/', async (req: Request, res: Response) => {
       return isOrganizer || isAttendeeInTable || isInvited;
     });
 
-
     res.json(scopedMeetings);
   } catch (err) {
     console.error('[MEETINGS GET ROUTE ERROR]:', err);
@@ -65,10 +108,14 @@ router.get('/', async (req: Request, res: Response) => {
 // GET /api/meetings/availability
 router.get('/availability', async (req: Request, res: Response) => {
   try {
+    await cleanupOldMeetings();
+
     const now = new Date();
-    // Default to start of 7 days ago to 14 days in future so all today's past and upcoming meetings are included
-    const defaultFrom = new Date(Date.now() - 7 * 86400000);
-    defaultFrom.setHours(0, 0, 0, 0);
+    // Keep availability visible for the last 3 days and upcoming 14 days
+    const cutoffDate = new Date(Date.now() - 3 * 86400000);
+    cutoffDate.setHours(0, 0, 0, 0);
+
+    const defaultFrom = cutoffDate;
     const defaultTo = new Date(Date.now() + 14 * 86400000);
 
     const fromQuery = req.query.from ? new Date(req.query.from as string) : defaultFrom;
@@ -234,6 +281,7 @@ router.post('/', async (req: Request, res: Response) => {
   const callerRole = (callerUser?.role || '').toUpperCase();
 
   try {
+    await cleanupOldMeetings();
     // Prevent organizer spoofing and ensure valid employeeId foreign key
     let resolvedOrganizerId = callerUser?.employeeId;
     if (!resolvedOrganizerId && callerUser?.email) {

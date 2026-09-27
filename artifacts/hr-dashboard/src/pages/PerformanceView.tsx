@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -204,7 +204,7 @@ export const PerformanceView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1">
-              <TrendingUp className="w-4 h-4 text-emerald-600" /> Team & Employee Performance
+              <TrendingUp className="w-4 h-4 text-emerald-600" /> Team Performance
             </span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Performance Analytics & Productivity</h2>
@@ -390,13 +390,13 @@ export const PerformanceView: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
           <div>
             <h3 className="text-base font-bold text-gray-900">Team Roster Performance Summary</h3>
-            <p className="text-xs text-gray-400 font-medium">Individual employee deliverable tracking & capacity status</p>
+            <p className="text-xs text-gray-400 font-medium">Individual team member deliverable tracking & capacity status</p>
           </div>
           <div className="relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search employee..."
+              placeholder="Search team member..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-emerald-500 w-full sm:w-64"
@@ -408,7 +408,7 @@ export const PerformanceView: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-3 px-3">Employee Name</th>
+                <th className="py-3 px-3">Team Member Name</th>
                 <th className="py-3 px-3">Role / Department</th>
                 <th className="py-3 px-3">Entity</th>
                 <th className="py-3 px-3 text-center">Assigned</th>
@@ -461,3 +461,4 @@ export const PerformanceView: React.FC = () => {
     </div>
   );
 };
+

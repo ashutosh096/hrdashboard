@@ -35,6 +35,8 @@ const EXCLUDED_FILES = new Set([
   'yarn.lock',
   'FULL_CODEBASE_UNABRIDGED.md',
   '.env',
+  'DATABASE_BACKUP.json',
+  'DATABASE_BACKUP.md',
 ]);
 
 function getLanguage(filePath: string): string {

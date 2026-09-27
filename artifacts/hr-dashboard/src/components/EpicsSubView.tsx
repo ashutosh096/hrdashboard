@@ -6,9 +6,12 @@ import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
+import { TaskAssignModal } from './TaskAssignModal';
 import { CalendarPicker } from './CalendarPicker';
+import { SearchableSelect } from './SearchableSelect';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
+import { getEntityBadge } from '../utils/entityUtils';
 
 interface EpicItem {
   id: string;
@@ -16,7 +19,8 @@ interface EpicItem {
   title: string;
   description: string;
   status: string;
-  initiativeId: string;
+  initiativeId?: string | null;
+  projectId?: string | null;
   department?: string | null;
   targetWeek?: string | null;
   sprintsCountTarget?: number;
@@ -32,6 +36,13 @@ interface InitiativeOption {
   id: string;
   initiativeCode: string;
   title: string;
+}
+
+interface ProjectOption {
+  id: string;
+  code: string;
+  name: string;
+  entity: string;
 }
 
 interface Props {
@@ -66,6 +77,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [showDeleteInitiativeConfirm, setShowDeleteInitiativeConfirm] = useState(false);
   const [isDeletingInitiative, setIsDeletingInitiative] = useState(false);
   const [initiatives, setInitiatives] = useState<InitiativeOption[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,10 +92,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   // New Epic Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInitiativeId, setSelectedInitiativeId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [department, setDepartment] = useState('Product & Tech');
-  const [targetWeek, setTargetWeek] = useState('Week 1 (Days 1–7)');
+  const [targetWeek, setTargetWeek] = useState('');
   const [sprintsCountTarget, setSprintsCountTarget] = useState<number>(0);
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
@@ -96,19 +109,57 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editInitiativeId, setEditInitiativeId] = useState('');
+  const [editProjectId, setEditProjectId] = useState('');
   const [editDepartment, setEditDepartment] = useState('');
   const [editTargetWeek, setEditTargetWeek] = useState('');
   const [editSprintsCountTarget, setEditSprintsCountTarget] = useState<number>(0);
   const [editStatus, setEditStatus] = useState('PLANNED');
   const [selectedTaskToView, setSelectedTaskToView] = useState<TaskItem | null>(null);
 
+  // Task Creation Modal & Quick Inline Task Creation State
+  const [isTaskAssignModalOpen, setIsTaskAssignModalOpen] = useState(false);
+  const [taskAssignEpic, setTaskAssignEpic] = useState<EpicItem | null>(null);
+  const [quickSlotIdx, setQuickSlotIdx] = useState<number | null>(null);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [isSubmittingQuickTask, setIsSubmittingQuickTask] = useState(false);
+
+  const initiativeOptions = React.useMemo(() => {
+    return initiatives.map((init) => ({
+      id: init.id,
+      code: init.initiativeCode,
+      label: init.title,
+    }));
+  }, [initiatives]);
+
+  const projectOptions = React.useMemo(() => {
+    return projects.map((proj) => ({
+      id: proj.id,
+      code: proj.code,
+      label: proj.name,
+      subtitle: proj.entity,
+    }));
+  }, [projects]);
+
+  const epicCloneOptions = React.useMemo(() => {
+    return epics.map((ep) => ({
+      id: ep.id,
+      code: ep.epicCode,
+      label: ep.title,
+    }));
+  }, [epics]);
+
   const handleOpenTaskModal = (taskItem: any) => {
-    const isCAG = taskItem.entityId === 'cag' || taskItem.taskCode?.startsWith('CAG');
+    const code = taskItem.taskCode || taskItem.taskId || taskItem.id || 'CAG-EMP01-001';
+    const isCommon = taskItem.entity === 'COMMON' || taskItem.entityCode === 'COMMON' || code.startsWith('COMMON') || code.startsWith('COM-');
+    const isCAG = !isCommon && (taskItem.entityId === 'cag' || code.startsWith('CAG') || taskItem.entity === 'CLIMAGRO' || taskItem.entityCode === 'CAG');
+    const resolvedEntity = isCommon ? 'COMMON' : isCAG ? 'CLIMAGRO' : 'EHM';
     setSelectedTaskToView({
       id: taskItem.id || 'tsk-1',
-      taskId: taskItem.taskCode || taskItem.id || 'CAG-EMP01-001',
+      taskId: code,
+      taskCode: code,
       title: taskItem.title || 'Task Deliverable',
-      entity: isCAG ? 'climagroanalytics' : 'ehmconsultancy',
+      entity: resolvedEntity,
+      entityCode: isCommon ? 'COMMON' : isCAG ? 'CAG' : 'EHM',
       assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
       status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
@@ -135,21 +186,97 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     }
   };
 
+  const handleOpenCreateTaskForEpic = (epic: EpicItem) => {
+    setTaskAssignEpic(epic);
+    setIsTaskAssignModalOpen(true);
+  };
+
+  const handleCreateTaskForEpic = async (newTaskData: any) => {
+    const targetEpic = taskAssignEpic || viewingEpic;
+    if (!targetEpic) return;
+    try {
+      const isEpicCAG = (targetEpic.epicCode || '').startsWith('CAG');
+      const created = await fetchApi<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...newTaskData,
+          epicId: targetEpic.id,
+          initiativeId: targetEpic.initiativeId || newTaskData.initiativeId,
+          entityCode: isEpicCAG ? 'CAG' : (newTaskData.entityCode || 'EHM'),
+          status: 'BACKLOG',
+        }),
+      });
+      toast.success(`Task ${created.taskCode || ''} created and linked to ${targetEpic.epicCode}!`);
+      setIsTaskAssignModalOpen(false);
+      setTaskAssignEpic(null);
+
+      // Immediately append to local state so slot updates instantly
+      setAllTasks(prev => [created, ...prev]);
+      if (viewingEpic && (viewingEpic.id === targetEpic.id || viewingEpic.epicCode === targetEpic.epicCode)) {
+        setViewingEpic(prev => prev ? {
+          ...prev,
+          tasks: [...(prev.tasks || []), created],
+        } : null);
+      }
+      loadData(true);
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create task');
+    }
+  };
+
+  const handleQuickCreateTaskSlot = async (slotIdx: number) => {
+    if (!viewingEpic || !quickTaskTitle.trim()) return;
+    try {
+      setIsSubmittingQuickTask(true);
+      const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
+      const created = await fetchApi<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: quickTaskTitle.trim(),
+          epicId: viewingEpic.id,
+          initiativeId: viewingEpic.initiativeId,
+          entityCode: isEpicCAG ? 'CAG' : 'EHM',
+          department: viewingEpic.department || 'Operations & Delivery',
+          status: 'BACKLOG',
+          priority: 'P3',
+        }),
+      });
+      toast.success(`Task ${created.taskCode || ''} created and linked to ${viewingEpic.epicCode}!`);
+      setQuickSlotIdx(null);
+      setQuickTaskTitle('');
+
+      // Immediately append to local state
+      setAllTasks(prev => [created, ...prev]);
+      setViewingEpic(prev => prev ? {
+        ...prev,
+        tasks: [...(prev.tasks || []), created],
+      } : null);
+      loadData(true);
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create task');
+    } finally {
+      setIsSubmittingQuickTask(false);
+    }
+  };
+
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [epicsData, initsData, tasksData] = await Promise.all([
+      const [epicsData, initsData, tasksData, projsData] = await Promise.all([
         fetchApi<EpicItem[]>('/api/epics'),
         fetchApi<InitiativeOption[]>('/api/initiatives'),
         fetchApi<any[]>('/api/tasks'),
+        fetchApi<ProjectOption[]>('/api/projects'),
       ]);
       setEpics(epicsData || []);
       setAllTasks(tasksData || []);
+      setProjects(projsData || []);
 
       if (initsData && initsData.length > 0) {
         const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
         setInitiatives(sortedInits);
-        if (!selectedInitiativeId) setSelectedInitiativeId(sortedInits[0].id);
       }
     } catch {
       if (!silent) setEpics([]);
@@ -184,6 +311,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           setInitiatives(sortedInits);
         }
       }).catch(() => {});
+      fetchApi<ProjectOption[]>('/api/projects').then((projsData) => {
+        if (projsData) setProjects(projsData);
+      }).catch(() => {});
     };
     window.addEventListener('initiatives-updated', handleInitsUpdate);
     window.addEventListener('epics-updated', () => loadData(true));
@@ -197,17 +327,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     };
   }, [isModalOpen, editingEpic]);
 
-  // When Create or Edit modal opens, always fetch freshest initiatives list
+  // When Create or Edit modal opens, always fetch freshest initiatives & projects list
   useEffect(() => {
     if (isModalOpen || editingEpic) {
       fetchApi<InitiativeOption[]>('/api/initiatives').then((initsData) => {
         if (initsData && initsData.length > 0) {
           const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
           setInitiatives(sortedInits);
-          if (!selectedInitiativeId && sortedInits[0]) {
-            setSelectedInitiativeId(sortedInits[0].id);
-          }
         }
+      }).catch(() => {});
+      fetchApi<ProjectOption[]>('/api/projects').then((projsData) => {
+        if (projsData) setProjects(projsData);
       }).catch(() => {});
     }
   }, [isModalOpen, editingEpic]);
@@ -225,7 +355,6 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const handleCreateEpic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error('Please enter an epic title');
-    if (!selectedInitiativeId) return toast.error('Please select a parent initiative');
 
     setIsSubmitting(true);
     try {
@@ -234,7 +363,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         body: JSON.stringify({
           title,
           description,
-          initiativeId: selectedInitiativeId,
+          initiativeId: selectedInitiativeId || undefined,
+          projectId: selectedProjectId || undefined,
           department,
           targetWeek,
           sprintsCountTarget: sprintsCountTarget > 0 ? sprintsCountTarget : undefined,
@@ -243,6 +373,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       toast.success(`Epic ${created.epicCode} created successfully!`);
       setTitle('');
       setDescription('');
+      setSelectedInitiativeId('');
+      setSelectedProjectId('');
+      setTargetWeek('');
       setSprintsCountTarget(0);
       setIsModalOpen(false);
       window.dispatchEvent(new CustomEvent('epics-updated'));
@@ -258,9 +391,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     setEditingEpic(epic);
     setEditTitle(epic.title);
     setEditDescription(epic.description || '');
-    setEditInitiativeId(epic.initiativeId);
+    setEditInitiativeId(epic.initiativeId || '');
+    setEditProjectId(epic.projectId || '');
     setEditDepartment(epic.department || 'Product & Tech');
-    setEditTargetWeek(epic.targetWeek || 'Week 1 (Days 1–7)');
+    setEditTargetWeek(epic.targetWeek || '');
     setEditSprintsCountTarget(epic.sprintsCountTarget || 0);
     setEditStatus(epic.status === 'COMPLETED' ? 'DONE' : (epic.status || 'PLANNED'));
   };
@@ -278,7 +412,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
-          initiativeId: editInitiativeId,
+          initiativeId: editInitiativeId || null,
+          projectId: editProjectId || null,
           department: editDepartment,
           targetWeek: editTargetWeek,
           sprintsCountTarget: editSprintsCountTarget > 0 ? editSprintsCountTarget : 0,
@@ -540,6 +675,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               : `${totalTasks} task${totalTasks > 1 ? 's' : ''}`;
 
             const parentInit = initiatives.find((i) => i.id === epic.initiativeId || i.initiativeCode === epic.initiativeId);
+            const parentProj = projects.find((p) => p.id === epic.projectId || p.code === epic.projectId);
             const isCollapsed = collapsedEpicIds[epic.id] !== false;
 
             return (
@@ -554,11 +690,24 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   >
                     <Layers className="w-4 h-4 text-emerald-600 shrink-0 group-hover:scale-110 transition-transform" />
                     <div className="min-w-0">
-                      <h4 className="font-bold text-gray-900 group-hover:text-emerald-700 text-sm truncate transition-colors">
-                        {epic.title}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono font-bold text-gray-500 shrink-0">
+                          {epic.epicCode}
+                        </span>
+                        {(() => {
+                          const badge = getEntityBadge(epic);
+                          return (
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wide shrink-0 ${badge.className}`}>
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
+                        <h4 className="font-bold text-gray-900 group-hover:text-emerald-700 text-sm truncate transition-colors">
+                          {epic.title}
+                        </h4>
+                      </div>
                       <p className="text-xs text-gray-400 font-medium truncate mt-0.5">
-                        {epic.epicCode} • {parentInit?.title ? `${parentInit.title} • ` : ''}{epic.department || 'Product & Tech'} • {tasksSummary}
+                        {parentInit?.title ? `Init: ${parentInit.title} • ` : ''}{parentProj?.name ? `Project: ${parentProj.name} • ` : ''}{epic.department || 'Product & Tech'} • {tasksSummary}
                       </p>
                     </div>
                   </div>
@@ -744,36 +893,55 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               {/* Breadcrumb & Badges */}
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId || i.initiativeCode === viewingEpic.initiativeId);
-                const parentTitle = parentInit?.title || 'Initiative';
-                const parentCode = parentInit?.initiativeCode || (viewingEpic.epicCode ? viewingEpic.epicCode.split('-').slice(0, 2).join('-') : 'INIT');
-                const isCAG = (viewingEpic.epicCode || '').startsWith('CAG') || (parentInit?.initiativeCode || '').startsWith('CAG');
+                const parentProj = projects.find((p) => p.id === viewingEpic.projectId || p.code === viewingEpic.projectId);
+                const isCAG = (viewingEpic.epicCode || '').startsWith('CAG') || (parentInit?.initiativeCode || '').startsWith('CAG') || (parentProj?.entity === 'CAG');
                 const rawStatus = viewingEpic.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
                 return (
                   <div className="space-y-3">
-                    {/* Breadcrumb with Linkable Parent Initiative Code & Title */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-gray-500">
-                      <span className="text-gray-400 font-medium">Parent Initiative:</span>
-                      {parentInit ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setViewingInitiativeInEpics(parentInit);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg border border-blue-200 transition-all cursor-pointer shadow-2xs group"
-                          title="Open Initiative in Pop-up Modal (Epic remains open in background)"
-                        >
-                          <Target className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
-                          <span className="font-mono">{parentCode}</span>
-                          <span className="text-gray-600 font-semibold truncate max-w-[240px] sm:max-w-md">
-                            • {parentTitle}
+                    {/* Breadcrumb with Linkable Parent Initiative and Parent Project */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-gray-500">
+                      {parentInit && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-400 font-medium">Initiative:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewingInitiativeInEpics(parentInit);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                            title="Open Initiative in Pop-up Modal"
+                          >
+                            <Target className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                            <span className="font-mono">{parentInit.initiativeCode}</span>
+                            <span className="text-gray-600 font-semibold truncate max-w-[200px] sm:max-w-xs">
+                              • {parentInit.title}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+
+                      {parentProj && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-400 font-medium">Project:</span>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 font-bold text-xs rounded-lg border border-purple-200 shadow-2xs">
+                            <Layers className="w-3.5 h-3.5 text-purple-600" />
+                            <span className="font-mono">{parentProj.code}</span>
+                            <span className="text-gray-700 font-semibold truncate max-w-[200px] sm:max-w-xs">
+                              • {parentProj.name}
+                            </span>
                           </span>
-                        </button>
-                      ) : (
-                        <span className="font-mono font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
-                          {parentCode}
-                        </span>
+                        </div>
+                      )}
+
+                      {!parentInit && !parentProj && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-400 font-medium">Hierarchy:</span>
+                          <span className="font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                            Standalone Epic
+                          </span>
+                        </div>
                       )}
                     </div>
 
@@ -782,9 +950,14 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       <span className="text-xs font-mono font-bold text-gray-700 bg-gray-100 px-2.5 py-0.5 rounded-lg border border-gray-200">
                         {viewingEpic.epicCode}
                       </span>
-                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
-                        {isCAG ? 'Climagro' : 'EHM'}
-                      </span>
+                      {(() => {
+                        const badge = getEntityBadge(viewingEpic);
+                        return (
+                          <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-md border uppercase tracking-wide ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                       {(isManager || isAdmin) ? (
                         <div className="relative inline-flex items-center">
                           <select
@@ -895,7 +1068,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                               <button
                                 type="button"
                                 onClick={() => handleAdjustTasksCount(Math.max(0, (viewingEpic.sprintsCountTarget || linkedTasks.length) - 1))}
-                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-colors"
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-colors cursor-pointer"
                                 title="Decrease Target Tasks Count"
                               >
                                 -
@@ -906,12 +1079,23 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                               <button
                                 type="button"
                                 onClick={() => handleAdjustTasksCount((viewingEpic.sprintsCountTarget || linkedTasks.length) + 1)}
-                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-emerald-700 hover:bg-emerald-100/70 rounded transition-colors"
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-emerald-700 hover:bg-emerald-100/70 rounded transition-colors cursor-pointer"
                                 title="Increase Target Tasks Count"
                               >
                                 +
                               </button>
                             </div>
+                          )}
+                          {(isAdmin || isManager) && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCreateTaskForEpic(viewingEpic)}
+                              className="px-2.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-300 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                              title="Add new task directly to this epic"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add Task</span>
+                            </button>
                           )}
                         </div>
 
@@ -974,18 +1158,76 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
                       {/* Uncreated Task Slots if configured target > linked tasks */}
                       {configuredTarget > linkedTasks.length && Array.from({ length: configuredTarget - linkedTasks.length }).map((_, idx) => (
-                        <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-400 font-medium">
-                          <span>Task slot {linkedTasks.length + idx + 1} — not created yet</span>
-                          {isManager && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                toast.info(`Creating Task slot ${linkedTasks.length + idx + 1} for ${viewingEpic.epicCode}`);
-                              }}
-                              className="px-3 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
-                            >
-                              Add
-                            </button>
+                        <div key={idx} className="py-3 flex items-center justify-between text-xs text-gray-500 font-medium">
+                          {quickSlotIdx === idx ? (
+                            <div className="flex items-center gap-2 flex-1 max-w-lg animate-in fade-in duration-150">
+                              <input
+                                type="text"
+                                autoFocus
+                                placeholder={`Task slot ${linkedTasks.length + idx + 1} deliverable title...`}
+                                value={quickTaskTitle}
+                                onChange={(e) => setQuickTaskTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleQuickCreateTaskSlot(idx);
+                                  if (e.key === 'Escape') setQuickSlotIdx(null);
+                                }}
+                                className="flex-1 px-3 py-1.5 text-xs border border-emerald-400 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-medium text-gray-900"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleQuickCreateTaskSlot(idx)}
+                                disabled={isSubmittingQuickTask || !quickTaskTitle.trim()}
+                                className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                {isSubmittingQuickTask ? 'Adding...' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleOpenCreateTaskForEpic(viewingEpic);
+                                  setQuickSlotIdx(null);
+                                }}
+                                className="px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer border border-emerald-200"
+                                title="Open full assignment form with assignees and dates"
+                              >
+                                Full Form
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setQuickSlotIdx(null)}
+                                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg cursor-pointer"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-gray-400">Task slot {linkedTasks.length + idx + 1} — not created yet</span>
+                              {isManager && (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setQuickSlotIdx(idx);
+                                      setQuickTaskTitle('');
+                                    }}
+                                    className="px-3 py-1 text-xs font-bold rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                                    title="Quick add task deliverable title"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Add</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenCreateTaskForEpic(viewingEpic)}
+                                    className="px-2.5 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer border border-gray-200"
+                                    title="Open full task assignment modal"
+                                  >
+                                    Full Form
+                                  </button>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       ))}
@@ -1076,21 +1318,37 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4">
-              {/* Parent Initiative */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Parent Initiative *</label>
-                <select
-                  required
-                  value={editInitiativeId}
-                  onChange={(e) => setEditInitiativeId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                >
-                  {initiatives.map((init) => (
-                    <option key={init.id} value={init.id}>
-                      [{init.initiativeCode}] {init.title}
-                    </option>
-                  ))}
-                </select>
+              {/* Parent Initiative & Parent Project (Optional - Stacked on dedicated lines for maximum visibility) */}
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Parent Initiative</label>
+                    <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <SearchableSelect
+                    options={initiativeOptions}
+                    value={editInitiativeId}
+                    onChange={setEditInitiativeId}
+                    placeholder="Select Parent Initiative (Optional)..."
+                    noneLabel="-- No Initiative (Standalone) --"
+                    searchPlaceholder="Search initiatives..."
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Parent Project</label>
+                    <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <SearchableSelect
+                    options={projectOptions}
+                    value={editProjectId}
+                    onChange={setEditProjectId}
+                    placeholder="Select Parent Project (Optional)..."
+                    noneLabel="-- No Project (Standalone) --"
+                    searchPlaceholder="Search projects..."
+                  />
+                </div>
               </div>
 
               {/* Title */}
@@ -1228,21 +1486,37 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
             </div>
 
             <form onSubmit={handleCreateEpic} className="space-y-4">
-              {/* Parent Initiative Selection (Alphabetical Order) */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Parent Initiative *</label>
-                <select
-                  required
-                  value={selectedInitiativeId}
-                  onChange={(e) => setSelectedInitiativeId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
-                >
-                  {initiatives.map((init) => (
-                    <option key={init.id} value={init.id}>
-                      [{init.initiativeCode}] {init.title}
-                    </option>
-                  ))}
-                </select>
+              {/* Parent Initiative & Parent Project (Optional - Stacked on dedicated lines for maximum visibility) */}
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Parent Initiative</label>
+                    <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <SearchableSelect
+                    options={initiativeOptions}
+                    value={selectedInitiativeId}
+                    onChange={setSelectedInitiativeId}
+                    placeholder="Select Parent Initiative (Optional)..."
+                    noneLabel="-- No Initiative (Standalone) --"
+                    searchPlaceholder="Search initiatives..."
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Parent Project</label>
+                    <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <SearchableSelect
+                    options={projectOptions}
+                    value={selectedProjectId}
+                    onChange={setSelectedProjectId}
+                    placeholder="Select Parent Project (Optional)..."
+                    noneLabel="-- No Project (Standalone) --"
+                    searchPlaceholder="Search projects..."
+                  />
+                </div>
               </div>
 
               {/* Title */}
@@ -1350,7 +1624,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   <div>
                     <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
                     <p className="text-[10px] text-purple-700 font-semibold leading-snug">
-                      Check this box to duplicate an existing Feature Epic configuration into a new sequence code under this initiative.
+                      Check this box to duplicate an existing Feature Epic configuration into a new sequence code.
                     </p>
                   </div>
                 </label>
@@ -1360,30 +1634,27 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     <label className="block text-[11px] font-bold text-purple-900 mb-1">
                       Select Existing Feature Epic to Clone From (Optional):
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={epicCloneOptions}
                       value={cloneSourceId}
-                      onChange={(e) => {
-                        setCloneSourceId(e.target.value);
-                        const source = epics.find(ep => ep.id === e.target.value);
+                      onChange={(newVal) => {
+                        setCloneSourceId(newVal);
+                        const source = epics.find(ep => ep.id === newVal);
                         if (source) {
                           setTitle(`${source.title} (Clone)`);
                           setDescription(source.description || '');
                           if (source.initiativeId) setSelectedInitiativeId(source.initiativeId);
+                          if (source.projectId) setSelectedProjectId(source.projectId);
                           if (source.department) setDepartment(source.department);
                           if (source.targetWeek) setTargetWeek(source.targetWeek);
                           if (source.sprintsCountTarget) setSprintsCountTarget(source.sprintsCountTarget);
                           toast.success(`Form pre-filled with data from "${source.title}"!`);
                         }
                       }}
-                      className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
-                    >
-                      <option value="">-- Choose Existing Epic to Auto-Fill --</option>
-                      {epics.map(ep => (
-                        <option key={ep.id} value={ep.id}>
-                          [{ep.epicCode}] {ep.title}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="-- Choose Existing Epic to Auto-Fill --"
+                      noneLabel="-- None / Don't Clone --"
+                      searchPlaceholder="Search epics to clone..."
+                    />
                   </div>
                 )}
               </div>
@@ -1720,6 +1991,19 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           </div>
         </div>
       )}
+
+      {/* Task Creation Modal for Epics */}
+      <TaskAssignModal
+        isOpen={isTaskAssignModalOpen}
+        onClose={() => {
+          setIsTaskAssignModalOpen(false);
+          setTaskAssignEpic(null);
+        }}
+        onSubmit={handleCreateTaskForEpic}
+        initialEpicId={taskAssignEpic?.id || viewingEpic?.id}
+        initialEntityId={(taskAssignEpic?.epicCode || viewingEpic?.epicCode || '').startsWith('CAG') ? 'CAG' : 'EHM'}
+        initialDepartment={taskAssignEpic?.department || viewingEpic?.department || 'Operations & Delivery'}
+      />
     </div>
   );
 };

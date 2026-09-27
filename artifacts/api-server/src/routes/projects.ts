@@ -1,20 +1,301 @@
 import { Router } from 'express';
-import { db, projects, eq, desc } from '@workspace/db';
+import { db, projects, employees, tasks, eq, desc, sql, and, or, inArray } from '@workspace/db';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
 router.use(requireAuth);
 
-// GET /api/projects - Fetch list of all projects
+// GET /api/projects - Fetch list of projects with server-side filtering & pagination
 router.get('/', async (req, res) => {
   try {
-    const allProjects = await db
-      .select()
-      .from(projects)
-      .orderBy(desc(projects.createdAt));
+    const {
+      page,
+      pageSize,
+      limit,
+      paginate,
+      entity,
+      status,
+      lead,
+      subTab,
+      search,
+    } = req.query;
 
-    res.json(allProjects);
+    const isPaginatedRequest =
+      paginate === 'true' ||
+      page !== undefined ||
+      pageSize !== undefined ||
+      limit !== undefined ||
+      entity !== undefined ||
+      status !== undefined ||
+      lead !== undefined ||
+      subTab !== undefined ||
+      search !== undefined;
+
+    const conditions: any[] = [];
+
+    // 0. Employee Scoping: If user is EMPLOYEE, restrict to projects where they are lead, team member, or have assigned tasks
+    const isEmployee = req.user?.role === 'EMPLOYEE';
+    if (isEmployee) {
+      const userEmail = (req.user?.email || '').toLowerCase().trim();
+      const userEmpId = req.user?.employeeId || req.user?.id;
+
+      let empName = '';
+      let empCode = '';
+      if (userEmpId || userEmail) {
+        const [emp] = await db
+          .select()
+          .from(employees)
+          .where(
+            userEmpId
+              ? eq(employees.id, userEmpId)
+              : eq(sql`LOWER(${employees.email})`, userEmail)
+          )
+          .limit(1);
+
+        if (emp) {
+          empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim().toLowerCase();
+          empCode = (emp.employeeCode || '').toLowerCase();
+        }
+      }
+
+      // Collect project IDs where this employee has tasks assigned
+      const linkedTaskProjects = await db
+        .select({ projectId: tasks.projectId })
+        .from(tasks)
+        .where(
+          and(
+            sql`${tasks.projectId} IS NOT NULL`,
+            or(
+              userEmpId ? eq(tasks.assigneeId, userEmpId) : sql`false`,
+              userEmpId ? eq(tasks.creatorId, userEmpId) : sql`false`
+            )
+          )
+        );
+
+      const linkedProjectIds = linkedTaskProjects
+        .map(t => t.projectId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+      const empOrConditions = [];
+      if (empName) {
+        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${empName}%`}`);
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${empName}%`})`);
+      }
+      if (empCode) {
+        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${empCode}%`}`);
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${empCode}%`})`);
+      }
+      if (userEmail) {
+        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${userEmail}%`}`);
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${userEmail}%`})`);
+      }
+      if (userEmpId) {
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE member = ${userEmpId})`);
+      }
+      if (linkedProjectIds.length > 0) {
+        empOrConditions.push(inArray(projects.id, linkedProjectIds));
+      }
+
+      if (empOrConditions.length > 0) {
+        conditions.push(or(...empOrConditions));
+      } else {
+        conditions.push(sql`1 = 0`);
+      }
+    }
+
+    // 1. Entity Filter
+    if (entity && entity !== 'ALL') {
+      const entUpper = String(entity).toUpperCase().trim();
+      if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
+        conditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO')`);
+      } else if (entUpper === 'EHM') {
+        conditions.push(sql`UPPER(${projects.entity}) = 'EHM'`);
+      }
+    }
+
+    // 2. SubTab (Active vs Archived)
+    if (subTab === 'ARCHIVED') {
+      conditions.push(sql`UPPER(${projects.status}) IN ('COMPLETED', 'ARCHIVED')`);
+    } else if (subTab === 'ACTIVE') {
+      conditions.push(sql`UPPER(${projects.status}) NOT IN ('COMPLETED', 'ARCHIVED')`);
+    }
+
+    // 3. Status Filter
+    if (status && status !== 'ALL') {
+      const st = String(status).toUpperCase().trim();
+      if (st === 'ACTIVE' || st === 'IN_PROGRESS' || st === 'IN PROGRESS') {
+        conditions.push(sql`UPPER(${projects.status}) IN ('ACTIVE', 'IN PROGRESS', 'IN_PROGRESS')`);
+      } else if (st === 'PLANNING') {
+        conditions.push(sql`UPPER(${projects.status}) = 'PLANNING'`);
+      } else if (st === 'IN_REVIEW' || st === 'IN REVIEW' || st === 'REVIEWING') {
+        conditions.push(sql`UPPER(${projects.status}) IN ('IN REVIEW', 'IN_REVIEW', 'REVIEWING')`);
+      } else if (st === 'COMPLETED' || st === 'ARCHIVED') {
+        conditions.push(sql`UPPER(${projects.status}) IN ('COMPLETED', 'ARCHIVED')`);
+      } else {
+        conditions.push(sql`UPPER(${projects.status}) = ${st}`);
+      }
+    }
+
+    // 4. Lead Filter
+    if (lead && lead !== 'ALL' && typeof lead === 'string' && lead.trim() !== '') {
+      conditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${lead.trim().toLowerCase()}%`}`);
+    }
+
+    // 5. Search Filter (code, name, category, lead, description)
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      const searchPattern = `%${search.trim().toLowerCase()}%`;
+      conditions.push(
+        sql`(LOWER(${projects.code}) LIKE ${searchPattern} OR LOWER(${projects.name}) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.category}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.lead}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.description}, '')) LIKE ${searchPattern})`
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Stat tiles queries - compute across the entity/role/lead/search scope WITHOUT being restricted by subTab (Active vs Archived)
+    const statConditions: any[] = [];
+    if (isEmployee) {
+      // Re-use employee scoping for stats
+      const userEmail = (req.user?.email || '').toLowerCase().trim();
+      const userEmpId = req.user?.employeeId || req.user?.id;
+      let empName = '';
+      let empCode = '';
+      if (userEmpId || userEmail) {
+        const [emp] = await db
+          .select()
+          .from(employees)
+          .where(
+            userEmpId
+              ? eq(employees.id, userEmpId)
+              : eq(sql`LOWER(${employees.email})`, userEmail)
+          )
+          .limit(1);
+        if (emp) {
+          empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim().toLowerCase();
+          empCode = (emp.employeeCode || '').toLowerCase();
+        }
+      }
+      const linkedTaskProjects = await db
+        .select({ projectId: tasks.projectId })
+        .from(tasks)
+        .where(
+          and(
+            sql`${tasks.projectId} IS NOT NULL`,
+            or(
+              userEmpId ? eq(tasks.assigneeId, userEmpId) : sql`false`,
+              userEmpId ? eq(tasks.creatorId, userEmpId) : sql`false`
+            )
+          )
+        );
+      const linkedProjectIds = linkedTaskProjects
+        .map(t => t.projectId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+      const empOrConditions = [];
+      if (empName) {
+        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${empName}%`}`);
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${empName}%`})`);
+      }
+      if (empCode) {
+        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${empCode}%`}`);
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${empCode}%`})`);
+      }
+      if (userEmail) {
+        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${userEmail}%`}`);
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${userEmail}%`})`);
+      }
+      if (userEmpId) {
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE member = ${userEmpId})`);
+      }
+      if (linkedProjectIds.length > 0) {
+        empOrConditions.push(inArray(projects.id, linkedProjectIds));
+      }
+      if (empOrConditions.length > 0) {
+        statConditions.push(or(...empOrConditions));
+      } else {
+        statConditions.push(sql`1 = 0`);
+      }
+    }
+
+    if (entity && entity !== 'ALL') {
+      const entUpper = String(entity).toUpperCase().trim();
+      if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
+        statConditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO')`);
+      } else if (entUpper === 'EHM') {
+        statConditions.push(sql`UPPER(${projects.entity}) = 'EHM'`);
+      }
+    }
+
+    if (lead && lead !== 'ALL' && typeof lead === 'string' && lead.trim() !== '') {
+      statConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${lead.trim().toLowerCase()}%`}`);
+    }
+
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      const searchPattern = `%${search.trim().toLowerCase()}%`;
+      statConditions.push(
+        sql`(LOWER(${projects.code}) LIKE ${searchPattern} OR LOWER(${projects.name}) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.category}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.lead}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.description}, '')) LIKE ${searchPattern})`
+      );
+    }
+
+    const statWhereClause = statConditions.length > 0 ? and(...statConditions) : undefined;
+
+    const statQuery = db.select({
+      total: sql<number>`count(*)`,
+      active: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) NOT IN ('COMPLETED', 'ARCHIVED'))`,
+      planningOrReview: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) IN ('PLANNING', 'IN REVIEW', 'IN_REVIEW', 'REVIEWING'))`,
+      archived: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) IN ('COMPLETED', 'ARCHIVED'))`,
+    }).from(projects);
+
+    const [statsRow] = statWhereClause ? await statQuery.where(statWhereClause) : await statQuery;
+
+    const stats = {
+      total: Number(statsRow?.total || 0),
+      active: Number(statsRow?.active || 0),
+      planningOrReview: Number(statsRow?.planningOrReview || 0),
+      archived: Number(statsRow?.archived || 0),
+    };
+
+    if (!isPaginatedRequest) {
+      const allProjects = whereClause
+        ? await db.select().from(projects).where(whereClause).orderBy(desc(projects.createdAt))
+        : await db.select().from(projects).orderBy(desc(projects.createdAt));
+      return res.json(allProjects);
+    }
+
+    // Server-Side Pagination with real COUNT(*)
+    const targetPage = Math.max(1, parseInt(String(page || 1), 10) || 1);
+    const targetPageSize = Math.max(1, Math.min(100, parseInt(String(pageSize || limit || 25), 10) || 25));
+    const offset = (targetPage - 1) * targetPageSize;
+
+    const [countRow] = whereClause
+      ? await db.select({ count: sql<number>`count(*)` }).from(projects).where(whereClause)
+      : await db.select({ count: sql<number>`count(*)` }).from(projects);
+
+    const totalCount = Number(countRow?.count || 0);
+
+    const projectRows = whereClause
+      ? await db
+          .select()
+          .from(projects)
+          .where(whereClause)
+          .orderBy(desc(projects.createdAt))
+          .limit(targetPageSize)
+          .offset(offset)
+      : await db
+          .select()
+          .from(projects)
+          .orderBy(desc(projects.createdAt))
+          .limit(targetPageSize)
+          .offset(offset);
+
+    return res.json({
+      projects: projectRows,
+      totalCount,
+      stats,
+      page: targetPage,
+      pageSize: targetPageSize,
+      totalPages: Math.max(1, Math.ceil(totalCount / targetPageSize)),
+    });
   } catch (err: any) {
     console.error('[FETCH PROJECTS ERROR]:', err);
     res.status(500).json({ message: 'Failed to fetch projects', error: err?.message });
@@ -38,6 +319,7 @@ router.post('/', async (req, res) => {
       status,
       priority,
       techStack,
+      deliverableUrl,
       milestonesCount,
       description,
       checkpoints,
@@ -51,22 +333,23 @@ router.post('/', async (req, res) => {
     const finalEntity = (entity === 'CAG' ? 'CAG' : 'EHM') as 'EHM' | 'CAG';
     const finalEntityName = entityName || (finalEntity === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy');
 
-    // Generate unique code if not provided
-    let finalCode = code;
-    if (!finalCode || !finalCode.trim()) {
+    // Auto-generate guaranteed unique code if code is missing or already exists in DB
+    const allExisting = await db.select({ code: projects.code }).from(projects);
+    const existingCodes = new Set(allExisting.map(p => p.code.toLowerCase().trim()));
+
+    let finalCode = (code || '').trim();
+    if (!finalCode || existingCodes.has(finalCode.toLowerCase())) {
       const year = new Date().getFullYear();
-      const existingCount = await db.select().from(projects);
-      finalCode = `${finalEntity}-PRJ-${year}-${String(existingCount.length + 1).padStart(2, '0')}`;
+      let nextNum = allExisting.length + 1;
+      let candidate = `${finalEntity}-PRJ-${year}-${String(nextNum).padStart(2, '0')}`;
+      while (existingCodes.has(candidate.toLowerCase())) {
+        nextNum++;
+        candidate = `${finalEntity}-PRJ-${year}-${String(nextNum).padStart(2, '0')}`;
+      }
+      finalCode = candidate;
     }
 
-    const defaultCheckpoints = [
-      { id: `c-${Date.now()}-1`, title: 'Requirement Spec Approval', isCompleted: false },
-      { id: `c-${Date.now()}-2`, title: 'Environment & Tech Stack Setup', isCompleted: false },
-      { id: `c-${Date.now()}-3`, title: 'Core Deliverables Implementation', isCompleted: false },
-      { id: `c-${Date.now()}-4`, title: 'QA & Final Project Delivery', isCompleted: false },
-    ];
-
-    const finalCheckpoints = Array.isArray(checkpoints) && checkpoints.length > 0 ? checkpoints : defaultCheckpoints;
+    const finalCheckpoints = Array.isArray(checkpoints) ? checkpoints : [];
     const finalTeam = Array.isArray(team) ? team : [];
     const finalComments = Array.isArray(comments) ? comments : [];
 
@@ -77,15 +360,16 @@ router.post('/', async (req, res) => {
         name: name.trim(),
         entity: finalEntity,
         entityName: finalEntityName,
-        category: category || 'Technology & Systems',
-        lead: lead || req.user?.email || 'Dr. Harshit Mishra',
+        category: category || 'General',
+        lead: lead || '',
         team: finalTeam,
-        budget: budget || '$45,000',
-        startDate: startDate || '2026-09-01',
-        targetDate: targetDate || '2026-12-15',
+        budget: budget || '',
+        startDate: startDate || null,
+        targetDate: targetDate || null,
         status: status || 'Planning',
-        priority: priority || 'High',
-        techStack: techStack || 'React, Node.js, Python, GIS',
+        priority: priority || 'Medium',
+        techStack: techStack || '',
+        deliverableUrl: deliverableUrl || techStack || '',
         milestonesCount: finalCheckpoints.length,
         description: description || '',
         checkpoints: finalCheckpoints,
@@ -120,6 +404,7 @@ router.patch('/:id', async (req, res) => {
       status,
       priority,
       techStack,
+      deliverableUrl,
       milestonesCount,
       description,
       checkpoints,
@@ -148,10 +433,11 @@ router.patch('/:id', async (req, res) => {
     if (status !== undefined) updatePayload.status = status;
     if (priority !== undefined) updatePayload.priority = priority;
     if (techStack !== undefined) updatePayload.techStack = techStack;
+    if (deliverableUrl !== undefined) updatePayload.deliverableUrl = deliverableUrl;
     if (description !== undefined) updatePayload.description = description;
     if (checkpoints !== undefined) {
       updatePayload.checkpoints = checkpoints;
-      updatePayload.milestonesCount = checkpoints.length;
+      updatePayload.milestonesCount = Array.isArray(checkpoints) ? checkpoints.length : 0;
     }
     if (comments !== undefined) updatePayload.comments = comments;
 

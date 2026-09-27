@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, User, Calendar, Layers, Clock, Copy, Plus, CheckCircle, ShieldCheck, Sparkles, ListChecks, MessageSquare, Send } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { RichTextEditor } from './RichTextEditor';
 import { CalendarPicker } from './CalendarPicker';
+import { SearchableSelect } from './SearchableSelect';
 import { formatAuthorDisplayName } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
 
@@ -11,6 +12,10 @@ interface TaskAssignModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (task: any) => void;
+  initialEpicId?: string;
+  initialEntityId?: 'EHM' | 'CAG';
+  initialDepartment?: string;
+  initialTitle?: string;
 }
 
 interface EpicOption {
@@ -51,8 +56,17 @@ const PREVIOUS_CLONE_TASKS = [
   { id: 'cl-5', title: 'Agri-Tech Subsidy & Government Compliance Report', dept: 'Grants & Governance', priority: 'HIGH', desc: 'Government subsidy compliance and field telemetry.' },
 ];
 
-export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClose, onSubmit }) => {
+export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialEpicId,
+  initialEntityId,
+  initialDepartment,
+  initialTitle,
+}) => {
   const [epics, setEpics] = useState<EpicOption[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [sprints, setSprints] = useState<SprintOption[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,15 +76,14 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
   const [selectedEpicId, setSelectedEpicId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [assignToSprint, setAssignToSprint] = useState(false);
   const [selectedSprintId, setSelectedSprintId] = useState('');
   const [title, setTitle] = useState('');
   const [department, setDepartment] = useState('Product & Tech');
   const [assigneeId, setAssigneeId] = useState('');
   const [reviewingLeadId, setReviewingLeadId] = useState('');
-  const [dueDate, setDueDate] = useState(
-    new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
-  );
+  const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
 
@@ -80,6 +93,40 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
 
   const [comments, setComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
+
+  const epicOptions = React.useMemo(() => {
+    return epics.map((ep) => ({
+      id: ep.id,
+      code: ep.epicCode,
+      label: ep.title,
+    }));
+  }, [epics]);
+
+  const projectOptions = React.useMemo(() => {
+    return projects.map((proj) => ({
+      id: proj.id,
+      code: proj.code,
+      label: proj.name,
+      subtitle: proj.entity,
+    }));
+  }, [projects]);
+
+  const employeeOptions = React.useMemo(() => {
+    return employees.map((emp) => ({
+      id: emp.id,
+      code: emp.employeeCode,
+      label: `${emp.firstName} ${emp.lastName}`,
+      subtitle: emp.designation,
+    }));
+  }, [employees]);
+
+  const cloneTaskOptions = React.useMemo(() => {
+    return PREVIOUS_CLONE_TASKS.map((ct) => ({
+      id: ct.id,
+      code: ct.dept,
+      label: ct.title,
+    }));
+  }, []);
 
   const handleCloneSelect = (taskId: string) => {
     setCloneSourceId(taskId);
@@ -135,26 +182,25 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
   const loadOptions = async () => {
     setLoading(true);
     try {
-      const [epicsData, sprintsData, empsData] = await Promise.all([
+      const [epicsData, sprintsData, empsData, projsData] = await Promise.all([
         fetchApi<any[]>('/api/epics'),
         fetchApi<any[]>('/api/sprints'),
         fetchApi<any[]>('/api/employees'),
+        fetchApi<any[]>('/api/projects'),
       ]);
 
-      const sortedEpics = [...epicsData].sort((a, b) =>
+      const sortedEpics = [...(epicsData || [])].sort((a, b) =>
         (a.epicCode || a.title || '').localeCompare(b.epicCode || b.title || '')
       );
       setEpics(sortedEpics);
 
-      const sortedSprints = [...sprintsData].sort((a, b) =>
+      const sortedSprints = [...(sprintsData || [])].sort((a, b) =>
         (a.name || '').localeCompare(b.name || '')
       );
       setSprints(sortedSprints);
-      if (sortedSprints.length > 0 && !selectedSprintId) {
-        setSelectedSprintId(sortedSprints[0].id);
-      }
+      setProjects(projsData || []);
 
-      const formattedEmps = empsData.map(e => ({
+      const formattedEmps = (empsData || []).map(e => ({
         id: e.id,
         firstName: e.firstName,
         lastName: e.lastName,
@@ -162,10 +208,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
         designation: e.designation || 'Team Member',
       }));
       setEmployees(formattedEmps);
-      if (formattedEmps.length > 0 && !assigneeId) {
-        setAssigneeId(formattedEmps[0].id);
-        setReviewingLeadId(formattedEmps[0].id);
-      }
+      // Keep assigneeId, reviewingLeadId, selectedSprintId, selectedEpicId, selectedProjectId EMPTY by default
     } catch (err) {
       console.error('[TASK MODAL OPTIONS FETCH ERROR]:', err);
     } finally {
@@ -175,6 +218,38 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
 
   useEffect(() => {
     if (!isOpen) return;
+    if (initialEpicId) {
+      setSelectedEpicId(initialEpicId);
+    } else {
+      setSelectedEpicId('');
+    }
+    if (initialEntityId) {
+      setSelectedEntityId(initialEntityId);
+    } else {
+      setSelectedEntityId('EHM');
+    }
+    if (initialDepartment) {
+      setDepartment(initialDepartment);
+    } else {
+      setDepartment('Product & Tech');
+    }
+    if (initialTitle) {
+      setTitle(initialTitle);
+    } else {
+      setTitle('');
+    }
+    setDescription('');
+    setDueDate('');
+    setAssigneeId('');
+    setReviewingLeadId('');
+    setChecklists([]);
+    setComments([]);
+    setIsClone(false);
+    setCloneSourceId('');
+    setAssignToSprint(false);
+    setSelectedSprintId('');
+    setSelectedProjectId('');
+
     loadOptions();
 
     const handleSync = () => {
@@ -189,7 +264,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
       window.removeEventListener('initiatives-updated', handleSync);
       window.removeEventListener('sprints-updated', handleSync);
     };
-  }, [isOpen]);
+  }, [isOpen, initialEpicId, initialEntityId, initialDepartment, initialTitle]);
 
   if (!isOpen) return null;
 
@@ -200,8 +275,6 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
     if (assignToSprint && !selectedSprintId) {
       return toast.error('Please select a Sprint');
     }
-
-    if (!assigneeId) return toast.error('Please select an assignee');
 
     const selectedEpic = epics.find(ep => ep.id === selectedEpicId);
 
@@ -217,11 +290,12 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
     onSubmit({
       title,
       epicId: selectedEpicId || null,
+      projectId: selectedProjectId || null,
       initiativeId: selectedEpic?.initiativeId || null,
       sprintId: assignToSprint ? resolvedSprintId : null,
       sprintCategory: assignToSprint ? selectedSprintId : null,
-      assigneeId,
-      reviewingLeadId: reviewingLeadId || assigneeId,
+      assigneeId: assigneeId || null,
+      reviewingLeadId: reviewingLeadId || null,
       department,
       dueDate,
       description,
@@ -258,8 +332,8 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
           {/* Left Column (Main Form Fields & Subtask Checklist) */}
           <div className="lg:col-span-7 space-y-4 text-left">
             
-            {/* Entity & Parent Epic Selectors */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Entity, Parent Epic & Parent Project Selectors (Stacked on dedicated lines for maximum visibility) */}
+            <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -270,7 +344,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                 <select
                   value={selectedEntityId}
                   onChange={(e) => setSelectedEntityId(e.target.value as 'EHM' | 'CAG')}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                 >
                   <option value="EHM">EHM</option>
                   <option value="CAG">CLIMAGRO</option>
@@ -281,24 +355,40 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                 <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-purple-600" />
-                    <span>Parent Epic (Optional)</span>
+                    <span>Parent Epic</span>
                   </span>
-                  <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                  <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
                     Optional
                   </span>
                 </label>
-                <select
+                <SearchableSelect
+                  options={epicOptions}
                   value={selectedEpicId}
-                  onChange={(e) => setSelectedEpicId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
-                >
-                  <option value="">Select Parent Epic (Optional)...</option>
-                  {epics.map((ep) => (
-                    <option key={ep.id} value={ep.id}>
-                      [{ep.epicCode}] {ep.title}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedEpicId}
+                  placeholder="Select Parent Epic..."
+                  noneLabel="-- No Epic (Standalone) --"
+                  searchPlaceholder="Search epics..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Parent Project</span>
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                    Optional
+                  </span>
+                </label>
+                <SearchableSelect
+                  options={projectOptions}
+                  value={selectedProjectId}
+                  onChange={setSelectedProjectId}
+                  placeholder="Select Parent Project..."
+                  noneLabel="-- No Project (Standalone) --"
+                  searchPlaceholder="Search projects..."
+                />
               </div>
             </div>
 
@@ -394,43 +484,42 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
             {/* Assigned To & Reviewing Lead */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Assigned To *</label>
-                <select
-                  required
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Assigned To</label>
+                  <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+                </div>
+                <SearchableSelect
+                  options={employeeOptions}
                   value={assigneeId}
-                  onChange={(e) => setAssigneeId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
-                >
-                  <option value="">Select Employee...</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setAssigneeId}
+                  placeholder="Select Team Member (Optional)..."
+                  noneLabel="-- Unassigned (None) --"
+                  searchPlaceholder="Search team members..."
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Reviewing Lead *</label>
-                <select
-                  required
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Reviewing Lead</label>
+                  <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+                </div>
+                <SearchableSelect
+                  options={employeeOptions}
                   value={reviewingLeadId}
-                  onChange={(e) => setReviewingLeadId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
-                >
-                  <option value="">Select Lead / Manager...</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setReviewingLeadId}
+                  placeholder="Select Lead / Manager (Optional)..."
+                  noneLabel="-- Unassigned Lead --"
+                  searchPlaceholder="Search managers..."
+                />
               </div>
             </div>
 
             {/* Target Date / Due Date */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Date / Due Date *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Target Date / Due Date</label>
+                <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
+              </div>
               <CalendarPicker
                 value={dueDate}
                 onChange={(formatted, rawDate) => {
@@ -443,7 +532,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                     setDueDate(formatted);
                   }
                 }}
-                placeholder="Select Due Date..."
+                placeholder="Select Due Date (Optional)..."
                 formatMode="date"
               />
             </div>
@@ -558,18 +647,14 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
                     <label className="block text-[11px] font-bold text-purple-900 mb-1">
                       Select Task Template to Clone From (Optional):
                     </label>
-                    <select
+                    <SearchableSelect
+                      options={cloneTaskOptions}
                       value={cloneSourceId}
-                      onChange={(e) => handleCloneSelect(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs border border-purple-300 rounded-xl bg-white font-bold text-purple-950 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
-                    >
-                      <option value="">-- Choose Task Template to Auto-Fill --</option>
-                      {PREVIOUS_CLONE_TASKS.map((ct) => (
-                        <option key={ct.id} value={ct.id}>
-                          [{ct.dept}] {ct.title}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(newVal) => handleCloneSelect(newVal)}
+                      placeholder="-- Choose Task Template to Auto-Fill --"
+                      noneLabel="-- None / Don't Clone --"
+                      searchPlaceholder="Search task templates to clone..."
+                    />
                   </div>
                 )}
               </div>
@@ -670,4 +755,5 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({ isOpen, onClos
     </div>
   );
 };
+
 

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
-import { matchesEntityFilter } from '../utils/entityUtils';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 const formatISTTime = (d: Date | string): string => {
   if (!d) return '';
@@ -267,13 +267,14 @@ export const OfficeTodayView: React.FC = () => {
                     </div>
                   </div>
 
-                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase tracking-wide border ${
-                    item.entity === 'CAG'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  }`}>
-                    {item.entity === 'CAG' ? 'Climagro' : 'EHM'}
-                  </span>
+                  {(() => {
+                    const badge = getEntityBadge(item);
+                    return (
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase tracking-wide border ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Single Clean Presence Status Badge */}

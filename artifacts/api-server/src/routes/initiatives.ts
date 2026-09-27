@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { db, initiatives, entityCounters, entities, departments, employees, epics, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql } from '@workspace/db';
+import { db, initiatives, entityCounters, entities, departments, employees, epics, tasks, eq, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
 router.use(requireAuth);
+router.use(requireRole(['ADMIN', 'MANAGER']));
 
 // GET /api/initiatives - Fetch list of initiatives with linked epics count
 router.get('/', async (req, res) => {
@@ -229,50 +230,19 @@ router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
-      // 1. Find all linked epics
-      const linkedEpics = await tx.select({ id: epics.id }).from(epics).where(eq(epics.initiativeId, initId));
-      const epicIds = linkedEpics.map(e => e.id);
+      // 1. Detach all linked epics (set initiativeId = null)
+      await tx
+        .update(epics)
+        .set({ initiativeId: null })
+        .where(eq(epics.initiativeId, initId));
 
-      // 2. Find all linked sprints
-      const linkedSprints = epicIds.length > 0
-        ? await tx.select({ id: sprints.id }).from(sprints).where(inArray(sprints.epicId, epicIds))
-        : [];
-      const sprintIds = linkedSprints.map(s => s.id);
+      // 2. Detach any tasks referencing this initiative directly (set initiativeId = null)
+      await tx
+        .update(tasks)
+        .set({ initiativeId: null })
+        .where(eq(tasks.initiativeId, initId));
 
-      // 3. Find all linked tasks
-      let taskIds: string[] = [];
-      if (epicIds.length > 0 && sprintIds.length > 0) {
-        const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(
-          or(inArray(tasks.epicId, epicIds), inArray(tasks.sprintId, sprintIds))
-        );
-        taskIds = linkedTasks.map(t => t.id);
-      } else if (epicIds.length > 0) {
-        const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(inArray(tasks.epicId, epicIds));
-        taskIds = linkedTasks.map(t => t.id);
-      } else if (sprintIds.length > 0) {
-        const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(inArray(tasks.sprintId, sprintIds));
-        taskIds = linkedTasks.map(t => t.id);
-      }
-
-      // 4. Delete task child items
-      if (taskIds.length > 0) {
-        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
-        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
-        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
-        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
-      }
-
-      // 5. Delete sprints
-      if (sprintIds.length > 0) {
-        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
-      }
-
-      // 6. Delete epics
-      if (epicIds.length > 0) {
-        await tx.delete(epics).where(inArray(epics.id, epicIds));
-      }
-
-      // 7. Delete initiative
+      // 3. Delete the initiative row itself
       await tx.delete(initiatives).where(eq(initiatives.id, initId));
     });
 

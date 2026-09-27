@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import {
   Users,
@@ -41,6 +41,7 @@ import { ScheduleWidget } from '../components/ScheduleWidget';
 import { TaskAnalyticsPanel } from '../components/TaskAnalyticsPanel';
 import { TaskProgressSprintAnalytics } from '../components/TaskProgressSprintAnalytics';
 import { EmployeeDashboardView } from '../components/EmployeeDashboardView';
+import { PinnedAnnouncementBanner } from '../components/PinnedAnnouncementBanner';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi, getCachedApi } from '@workspace/api-client-react';
@@ -102,6 +103,7 @@ export const DashboardView: React.FC = () => {
 
   useEffect(() => {
     async function loadDashboardData() {
+      if (!getCachedApi('/api/tasks') || !getCachedApi('/api/employees')) setLoading(true);
       try {
         const [empData, taskData, initData, sprintData, attData] = await Promise.all([
           fetchApi('/api/employees'),
@@ -188,6 +190,9 @@ export const DashboardView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 select-none">
+      {/* PINNED ANNOUNCEMENT TOP CAPSULE BANNER */}
+      <PinnedAnnouncementBanner />
+
       {/* COMPACT GREEN CAPSULE HEADER BANNER */}
       <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-4 sm:p-5 text-white shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -216,7 +221,7 @@ export const DashboardView: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Role:</span>
             <span className="px-3.5 py-1.5 bg-white/20 backdrop-blur-xs rounded-full text-xs font-black uppercase tracking-wider text-white border border-white/25 shadow-2xs">
-              {user?.role === 'ADMIN' ? 'ADMIN' : user?.role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE'}
+              {user?.role === 'ADMIN' ? 'ADMIN' : user?.role === 'MANAGER' ? 'MANAGER' : 'TEAM MEMBER'}
             </span>
           </div>
         </div>
@@ -451,7 +456,7 @@ export const DashboardView: React.FC = () => {
                           <div className="space-y-0.5">
                             <h4 className="text-xs font-bold text-gray-900">{task.title}</h4>
                             <p className="text-[11px] text-red-600 font-medium">
-                              {getAssigneeName(task.assigneeId)} • overdue since {task.dueDate}
+                              {getAssigneeName(task.assigneeId)} • overdue since {task.dueDate ? (String(task.dueDate).includes('T') ? String(task.dueDate).split('T')[0] : String(task.dueDate).split(' ')[0]) : ''}
                             </p>
                           </div>
                           <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
@@ -601,3 +606,4 @@ export const DashboardView: React.FC = () => {
     </div>
   );
 };
+

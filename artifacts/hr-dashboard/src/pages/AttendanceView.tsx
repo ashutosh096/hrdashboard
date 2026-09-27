@@ -1,333 +1,39 @@
-import React, { useEffect, useState } from 'react';
-import { Clock, Search } from 'lucide-react';
-import { MarkAttendanceModal } from '../components/MarkAttendanceModal';
-import { useEntity } from '../contexts/EntityContext';
-import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
-import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
-import { matchesEntityFilter } from '../utils/entityUtils';
-
-interface MonthlyEmployeeAttendance {
-  id: string;
-  employeeName: string;
-  email?: string;
-  role: string;
-  dept: string;
-  entity: 'EHM' | 'CAG';
-  avatar: string;
-  totalWorkingDays: number;
-  presentDays: number;
-  absentDays: number;
-  halfDays: number;
-  leaveDays: number;
-  attendanceRate: number;
-  workModeBreakdown: string;
-}
+import React from 'react';
+import { Lock } from 'lucide-react';
+import { Link } from 'wouter';
 
 export const AttendanceView: React.FC = () => {
-  const { user } = useAuth();
-  const { selectedEntity } = useEntity();
-  const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  // Generate dynamic rolling list of months (current month + past 5 months)
-  const availableMonths = React.useMemo(() => {
-    const list: string[] = [];
-    const now = new Date();
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      list.push(d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
-    }
-    return list;
-  }, []);
-
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  });
-
-  const [todayDateKey, setTodayDateKey] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
-  });
-
-  const [todayDateFormatted, setTodayDateFormatted] = useState<string>(() => {
-    return new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  });
-
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
-
-  const [todayAttendance, setTodayAttendance] = useState<{
-    marked: boolean;
-    status?: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
-    halfDayType?: 'FIRST_HALF' | 'SECOND_HALF';
-    workMode?: 'IN_OFFICE' | 'REMOTE' | 'HYBRID';
-  }>({
-    marked: false,
-  });
-
-  const activeRole = localStorage.getItem('hros_active_role') || user?.role || 'EMPLOYEE';
-  const isEmployeeMode = activeRole === 'EMPLOYEE';
-
-  const loadAttendanceData = async () => {
-    try {
-      const [empData, attData] = await Promise.all([
-        fetchApi<any[]>('/api/employees'),
-        fetchApi<any[]>('/api/attendance'),
-      ]);
-      setEmployees(Array.isArray(empData) ? empData : []);
-      setAttendanceRecords(Array.isArray(attData) ? attData : []);
-    } catch (err) {
-      console.error('[ATTENDANCE FETCH ERROR]:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAttendanceData();
-  }, []);
-
-  // Monitor midnight 12:00 AM date change to automatically roll over today's date & attendance
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentIso = new Date().toISOString().split('T')[0];
-      if (currentIso !== todayDateKey) {
-        setTodayDateKey(currentIso);
-        setTodayDateFormatted(new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
-        setSelectedMonth(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
-        setTodayAttendance({ marked: false });
-        loadAttendanceData();
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [todayDateKey]);
-
-  // Sync today's attendance status from loaded records
-  useEffect(() => {
-    if (attendanceRecords.length > 0 && user) {
-      const todayIso = new Date().toISOString().split('T')[0];
-      const foundToday = attendanceRecords.find(a => 
-        (a.date === todayIso || (a.createdAt && String(a.createdAt).startsWith(todayIso))) &&
-        (a.employeeId === user.employeeId || (user.email && a.employeeName?.toLowerCase() === user.email.toLowerCase()))
-      );
-      if (foundToday) {
-        setTodayAttendance({
-          marked: true,
-          status: (foundToday.status as any) || 'PRESENT',
-          workMode: (foundToday.workMode as any) || 'IN_OFFICE',
-        });
-      }
-    }
-  }, [attendanceRecords, user]);
-
-  const handleMarkAttendance = async (data: {
-    status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
-    halfDayType?: 'FIRST_HALF' | 'SECOND_HALF';
-    workMode?: 'IN_OFFICE' | 'REMOTE' | 'HYBRID';
-    notes?: string;
-  }) => {
-    try {
-      await fetchApi('/api/attendance/clock-in', {
-        method: 'POST',
-        body: JSON.stringify({
-          workMode: data.workMode || 'IN_OFFICE',
-          status: data.status,
-          employeeName: user?.email,
-        }),
-      });
-      setTodayAttendance({
-        marked: true,
-        status: data.status,
-        halfDayType: data.halfDayType,
-        workMode: data.workMode,
-      });
-      loadAttendanceData();
-    } catch (err) {
-      console.error('[CLOCK IN ERROR]:', err);
-    }
-  };
-
-  const liveAttendanceData: MonthlyEmployeeAttendance[] = employees.map((emp, idx) => {
-    const entity = emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM';
-    const empAtt = attendanceRecords.filter(
-      (a) => a.employeeId === emp.id || (emp.email && a.employeeName?.toLowerCase() === emp.email.toLowerCase())
-    );
-    const presentDays = empAtt.length;
-    const hasRecords = empAtt.length > 0;
-    const totalWorkingDays = hasRecords ? 22 : 0;
-    const absentDays = hasRecords ? Math.max(0, totalWorkingDays - presentDays) : 0;
-    const rate = totalWorkingDays > 0 ? Math.min(100, Math.round((presentDays / totalWorkingDays) * 100)) : 0;
-
-    return {
-      id: emp.id,
-      employeeName: `${emp.firstName} ${emp.lastName}`,
-      email: emp.email,
-      role: emp.designation || 'Specialist',
-      dept: emp.departmentName || 'Product & Tech',
-      entity,
-      avatar: idx % 2 === 0 ? MALE_AVATAR : FEMALE_AVATAR,
-      totalWorkingDays,
-      presentDays,
-      absentDays,
-      halfDays: 0,
-      leaveDays: 0,
-      attendanceRate: rate,
-      workModeBreakdown: hasRecords ? `${presentDays} Office / ${absentDays} Hybrid` : 'No attendance marked yet',
-    };
-  });
-
-  // Find exact employee profile for the current user
-  const targetEmployee =
-    employees.find((e) => e.id === user?.employeeId) ||
-    employees.find((e) => e.email?.toLowerCase() === user?.email?.toLowerCase()) ||
-    employees[0];
-
-  const filteredAttendance = liveAttendanceData.filter((att) => {
-    const matchesEntity = matchesEntityFilter(att, selectedEntity);
-    const matchesSearch =
-      att.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      att.dept.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      att.role.toLowerCase().includes(searchTerm.toLowerCase());
-
-    if (isEmployeeMode) {
-      // In Employee mode, ONLY show his/her own monthly attendance record!
-      const isSelf = targetEmployee
-        ? att.id === targetEmployee.id
-        : (user?.employeeId && att.id === user.employeeId) ||
-          (user?.email && att.email?.toLowerCase() === user.email.toLowerCase()) ||
-          (user?.name && att.employeeName.toLowerCase().includes(user.name.toLowerCase()));
-
-      return matchesEntity && matchesSearch && isSelf;
-    }
-
-    return matchesEntity && matchesSearch;
-  });
-
-  if (loading) {
-    return (
-      <div className="p-6 text-xs font-semibold text-gray-400">Loading attendance records from database...</div>
-    );
-  }
-
   return (
-    <div className="p-6 space-y-6 select-none">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Monthly Attendance & Presence Records</h2>
-          <p className="text-xs text-gray-500 font-medium">
-            Monthly working days summary, presence percentage, leave counts, and work mode breakdown per employee (Live Database).
+    <div className="p-6 max-w-4xl mx-auto space-y-6 select-none my-8">
+      <div className="bg-white border border-gray-200/90 rounded-3xl p-8 sm:p-12 text-center space-y-6 shadow-2xs">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+          <Lock className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-2 max-w-md mx-auto">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold uppercase tracking-wider">
+            <Lock className="w-3 h-3" />
+            <span>Module Temporarily Locked</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+            Attendance Tracking Paused
+          </h2>
+          <p className="text-xs text-gray-500 font-medium leading-relaxed">
+            The Attendance module is currently locked for all roles. Team attendance tracking and check-ins are temporarily paused and will resume soon.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200/90 rounded-2xl shadow-2xs hover:border-gray-300 transition-all cursor-pointer">
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="text-xs font-bold text-gray-800 bg-transparent outline-none cursor-pointer pr-2"
-              >
-                {availableMonths.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {todayAttendance.marked ? (
-            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Today Marked ({todayAttendance.workMode || 'IN_OFFICE'}) &bull; {todayDateFormatted}</span>
-            </span>
-          ) : (
-            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs">
-              Today: {todayDateFormatted}
-            </span>
-          )}
-
-          <button
-            onClick={() => setIsMarkModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-xs transition-all cursor-pointer"
+        <div className="pt-2">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
           >
-            <Clock className="w-4 h-4" />
-            <span>Mark Today's Attendance</span>
-          </button>
+            Return to Dashboard
+          </Link>
         </div>
       </div>
-
-      {/* Attendance Table */}
-      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-          <div>
-            <h3 className="text-base font-bold text-gray-900">Attendance Summary Table</h3>
-            <p className="text-xs text-gray-400 font-medium">Present, absent, half-day breakdown per employee</p>
-          </div>
-
-          <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by name or department..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-emerald-500 w-full sm:w-64"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-3 px-3">Employee Name</th>
-                <th className="py-3 px-3">Entity</th>
-                <th className="py-3 px-3 text-center">Working Days</th>
-                <th className="py-3 px-3 text-center">Present</th>
-                <th className="py-3 px-3 text-center">Absent</th>
-                <th className="py-3 px-3 text-center">Work Mode</th>
-                <th className="py-3 px-3 text-right">Attendance %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-xs font-medium text-gray-700">
-              {filteredAttendance.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-xs text-gray-400">
-                    No attendance records found.
-                  </td>
-                </tr>
-              ) : (
-                filteredAttendance.map((att) => (
-                  <tr key={att.id} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-2.5">
-                        <img src={att.avatar} alt={att.employeeName} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
-                        <div>
-                          <span className="font-bold text-gray-900 block">{att.employeeName}</span>
-                          <span className="text-[10px] text-gray-400">{att.role}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-mono font-bold text-emerald-700">{att.entity}</td>
-                    <td className="py-3 px-3 text-center font-bold text-gray-800">{att.totalWorkingDays}</td>
-                    <td className="py-3 px-3 text-center font-bold text-emerald-600">{att.presentDays}</td>
-                    <td className="py-3 px-3 text-center font-bold text-red-600">{att.absentDays}</td>
-                    <td className="py-3 px-3 text-center text-xs text-gray-500 font-medium">{att.workModeBreakdown}</td>
-                    <td className="py-3 px-3 text-right font-extrabold text-gray-900">{att.attendanceRate}%</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <MarkAttendanceModal
-        isOpen={isMarkModalOpen}
-        onClose={() => setIsMarkModalOpen(false)}
-        onSubmitAttendance={handleMarkAttendance}
-     />
     </div>
   );
 };
+
+export default AttendanceView;

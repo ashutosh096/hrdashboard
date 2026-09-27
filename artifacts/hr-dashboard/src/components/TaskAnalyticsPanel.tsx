@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { BarChart3, Calendar, CheckCircle2, Clock, Search } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
-import { matchesEntityFilter } from '../utils/entityUtils';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 interface EmployeeRecord {
   id: string;
@@ -160,10 +160,10 @@ export const TaskAnalyticsPanel: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-emerald-600" />
-            <h3 className="text-base font-bold text-gray-900 tracking-tight">Task Analytics & Employee Performance</h3>
+            <h3 className="text-base font-bold text-gray-900 tracking-tight">Task Analytics & Team Performance</h3>
           </div>
           <p className="text-xs text-gray-400 font-medium mt-0.5">
-            Completion rate, pending tasks, and deliverable throughput per employee (Live Database).
+            Completion rate, pending tasks, and deliverable throughput per team member (Live Database).
           </p>
         </div>
 
@@ -206,7 +206,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search employee..."
+              placeholder="Search team member..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-emerald-500 w-full sm:w-44"
@@ -238,7 +238,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-              <th className="py-3 px-3">Employee Name</th>
+              <th className="py-3 px-3">Team Member Name</th>
               <th className="py-3 px-3">Entity</th>
               <th className="py-3 px-3 text-center">Total Tasks</th>
               <th className="py-3 px-3 text-center">Completed</th>
@@ -258,7 +258,16 @@ export const TaskAnalyticsPanel: React.FC = () => {
               filteredEmpAnalytics.map((emp) => (
                 <tr key={emp.id} className="hover:bg-gray-50/80 transition-colors">
                   <td className="py-3.5 px-3 font-bold text-gray-900">{emp.name}</td>
-                  <td className="py-3.5 px-3 font-semibold text-gray-500">{emp.entity === 'EHM' ? 'EHM' : 'CLIMAGRO'}</td>
+                  <td className="py-3.5 px-3 whitespace-nowrap">
+                    {(() => {
+                      const badge = getEntityBadge(emp);
+                      return (
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wide shrink-0 ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="py-3.5 px-3 text-center font-semibold text-gray-800">{emp.total}</td>
                   <td className="py-3.5 px-3 text-center font-bold text-emerald-600">{emp.completed}</td>
                   <td className="py-3.5 px-3 text-center font-bold text-amber-600">{emp.pending}</td>
@@ -295,3 +304,4 @@ export const TaskAnalyticsPanel: React.FC = () => {
     </div>
   );
 };
+

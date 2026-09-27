@@ -7,12 +7,16 @@ import { RichTextEditor } from './RichTextEditor';
 import { MarkdownViewer } from './MarkdownViewer';
 import { CalendarPicker } from './CalendarPicker';
 import { formatDateTime } from '../utils/dateUtils';
+import { getEntityBadge } from '../utils/entityUtils';
 
 export interface TaskItem {
   id: string;
-  taskId: string; // e.g. CA-MAR-01 or EHM-MAR-672
+  taskId: string; // e.g. CA-MAR-01 or EHM-MAR-672 or CAG-I10-EP05-T002
+  taskCode?: string;
   title: string;
-  entity: string; // EHM or CLIMAGRO / CAG
+  entity: string; // EHM or CLIMAGRO / CAG or COMMON
+  entityCode?: string;
+  entityName?: string;
   assignee: string;
   assigneeId?: string;
   reviewingLead: string;
@@ -145,7 +149,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [status, setStatus] = useState<string>('In Progress');
   const [waitingOn, setWaitingOn] = useState('None (Self)');
   const [notes, setNotes] = useState('');
-  const [targetWeek, setTargetWeek] = useState('Week 1 (Days 1–7)');
+  const [targetWeek, setTargetWeek] = useState('');
   const [priority, setPriority] = useState('P3');
   const [dueDate, setDueDate] = useState('');
 
@@ -163,7 +167,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           if (Array.isArray(data)) {
             const list = data.map((e) => ({
               id: e.id,
-              name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Employee',
+              name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Team Member',
               designation: e.designation || 'Team Member',
             }));
             setEmployeesList(list);
@@ -177,11 +181,24 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
     if (!task?.id) return;
     try {
       const [checklistsData, commentsData] = await Promise.all([
-        fetchApi<ChecklistItem[]>(`/api/tasks/${task.id}/checklists`),
-        fetchApi<CommentItem[]>(`/api/tasks/${task.id}/comments`),
+        fetchApi<ChecklistItem[]>(`/api/tasks/${task.id}/checklists`).catch(() => []),
+        fetchApi<CommentItem[]>(`/api/tasks/${task.id}/comments`).catch(() => []),
       ]);
-      setChecklists(checklistsData || []);
-      setComments(commentsData || []);
+      if (checklistsData && checklistsData.length > 0) {
+        setChecklists(checklistsData);
+      } else if (Array.isArray((task as any).checklists) && (task as any).checklists.length > 0) {
+        setChecklists((task as any).checklists);
+      } else {
+        setChecklists([]);
+      }
+
+      if (commentsData && commentsData.length > 0) {
+        setComments(commentsData);
+      } else if (Array.isArray((task as any).comments) && (task as any).comments.length > 0) {
+        setComments((task as any).comments);
+      } else {
+        setComments([]);
+      }
     } catch (err) {
       console.error('[TASK SUB-RESOURCES FETCH ERROR]:', err);
     }
@@ -189,8 +206,33 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   useEffect(() => {
     if (task) {
-      setEntity(task.entity || 'EHM');
-      setParentTaskId(task.taskId || 'TSK-001');
+      // 1. Resolve exact task code from any possible property
+      const realCode = (
+        task.taskCode ||
+        task.taskId ||
+        (task as any).code ||
+        (task as any).task_code ||
+        ''
+      ).trim();
+
+      // 2. Resolve entity accurately using getEntityBadge & explicit properties
+      const badge = getEntityBadge({
+        ...task,
+        taskCode: realCode || task.taskCode,
+        taskId: realCode || task.taskId,
+      });
+
+      let isEnt = 'EHM';
+      if (badge.isCommon) {
+        isEnt = 'COMMON';
+      } else if (badge.isCAG) {
+        isEnt = 'CLIMAGRO';
+      } else {
+        isEnt = 'EHM';
+      }
+
+      setEntity(isEnt);
+      setParentTaskId(realCode || (task.id ? `TSK-${task.id.slice(0, 6)}` : 'TSK-001'));
       setTaskName(task.title || '');
       
       const cleanAssignee = (task.assignee || 'Unassigned').replace(/\(.*?\)/g, '').trim();
@@ -212,7 +254,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setDueDate(parseDateForInput(task.dueDate));
       loadTaskData();
     }
-  }, [task, employeesList]);
+  }, [task?.id, isOpen]);
 
   if (!isOpen || !task) return null;
 
@@ -280,6 +322,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
         setIsSavingTask(true);
         await onSave({
           ...task,
+          taskId: parentTaskId,
+          taskCode: parentTaskId,
           title: taskName,
           entity,
           assignee,
@@ -293,6 +337,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           outputUrl,
           waitingOn,
           notes,
+          checklists,
+          comments,
         });
         onClose();
       } catch (err: any) {
@@ -477,7 +523,13 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     <input
                       type="text"
                       disabled
-                      value={entity === 'ehmconsultancy' || entity === 'EHM' ? 'EHM' : entity === 'climagroanalytics' || entity === 'CAG' || entity === 'CLIMAGRO' ? 'CLIMAGRO' : entity}
+                      value={
+                        entity === 'COMMON' || entity === 'BOTH' || entity.includes('COMMON')
+                          ? 'EHM & CLIMAGRO'
+                          : entity === 'CAG' || entity === 'CLIMAGRO' || entity.includes('climagro')
+                          ? 'CLIMAGRO'
+                          : 'EHM'
+                      }
                       className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                     />
                   ) : (
@@ -488,6 +540,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     >
                       <option value="EHM">EHM</option>
                       <option value="CLIMAGRO">CLIMAGRO</option>
+                      <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
                     </select>
                   )}
                 </div>
@@ -700,7 +753,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   <input
                     type="text"
                     readOnly={readOnlyMode}
-                    placeholder={readOnlyMode ? "No deliverable link attached by employee" : "https://canva.link/... or https://github.com/..."}
+                    placeholder={readOnlyMode ? "No deliverable link attached by team member" : "https://canva.link/... or https://github.com/..."}
                     value={outputUrl}
                     onChange={e => setOutputUrl(e.target.value)}
                     className={`w-full text-xs border rounded-xl py-2.5 pl-9 pr-3 outline-none font-medium ${
@@ -768,7 +821,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 </label>
                 {readOnlyMode ? (
                   <MarkdownViewer
-                    content={notes || 'No progress notes filled by employee.'}
+                    content={notes || 'No progress notes filled by team member.'}
                     className="bg-gray-50 p-3 rounded-xl border border-gray-200"
                   />
                 ) : (

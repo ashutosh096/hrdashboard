@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { formatDateTime } from '../utils/dateUtils';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, clearApiCache } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
+import { useLocation } from 'wouter';
+import { toast } from 'sonner';
+import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
 export const NotificationsView: React.FC = () => {
+  const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskItem | null>(null);
   const pageSize = 10;
 
   const isEmployee = user?.role === 'EMPLOYEE';
@@ -61,6 +66,96 @@ export const NotificationsView: React.FC = () => {
   const totalPages = Math.ceil(filteredNotifications.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedNotifications = filteredNotifications.slice(startIndex, startIndex + pageSize);
+
+  const getNotificationTarget = (n: any) => {
+    const payload = n.payload || {};
+    let taskCode = payload.taskCode || null;
+    if (!taskCode) {
+      const match = (n.title || '').match(/\[([A-Z0-9_-]+)\]/i) || (n.message || '').match(/\[([A-Z0-9_-]+)\]/i);
+      if (match) taskCode = match[1];
+    }
+    const taskId = payload.taskId || null;
+    const isSprint = Boolean(
+      payload.sprintId ||
+      n.type?.includes('SPRINT') ||
+      (taskCode && (taskCode.includes('SPR') || taskCode.includes('-SP-') || taskCode.includes('-S-')))
+    );
+    const isMeeting = Boolean(payload.meetingId || n.type?.includes('MEETING'));
+    const isAnnouncement = Boolean(payload.announcementId || n.type?.includes('ANNOUNCEMENT'));
+
+    let label = 'Details';
+    if (isSprint) label = 'Sprint Task';
+    else if (taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')) label = 'Task';
+    else if (isMeeting) label = 'Meeting';
+    else if (isAnnouncement) label = 'Announcement';
+
+    return {
+      taskId,
+      taskCode,
+      isSprint,
+      isMeeting,
+      isAnnouncement,
+      isTask: Boolean(taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')),
+      label,
+    };
+  };
+
+  const handleNotificationAction = async (n: any) => {
+    const target = getNotificationTarget(n);
+
+    if (!n.isRead) {
+      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
+      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
+    }
+
+    if (target.isMeeting) {
+      setLocation('/meetings');
+      return;
+    }
+
+    if (target.isAnnouncement) {
+      setLocation('/announcements');
+      return;
+    }
+
+    if (target.isTask && (target.taskId || target.taskCode)) {
+      const identifier = target.taskId || target.taskCode;
+      try {
+        let taskData: any = null;
+        try {
+          taskData = await fetchApi<any>(`/api/tasks/${identifier}`);
+        } catch {}
+
+        if (!taskData || !taskData.id) {
+          const allTasks = await fetchApi<any[]>('/api/tasks').catch(() => []);
+          taskData = allTasks.find(
+            (t) =>
+              t.id === target.taskId ||
+              (target.taskCode && t.taskCode?.toLowerCase() === target.taskCode.toLowerCase())
+          );
+        }
+
+        if (taskData && taskData.id) {
+          const resolvedCode = taskData.taskCode || taskData.taskId || target.taskCode || target.taskId || '';
+          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || (resolvedCode.startsWith('CAG') ? 'CLIMAGRO' : resolvedCode.startsWith('COMMON') || resolvedCode.startsWith('COM-') ? 'COMMON' : 'EHM');
+
+          setSelectedTaskForModal({
+            ...taskData,
+            taskId: resolvedCode,
+            taskCode: resolvedCode,
+            entity: resolvedEntity,
+          });
+        } else {
+          setLocation(target.isSprint ? '/sprints' : '/tasks');
+        }
+      } catch (err) {
+        setLocation(target.isSprint ? '/sprints' : '/tasks');
+      }
+      return;
+    }
+
+    setLocation('/tasks');
+  };
 
   const renderNotifItem = (notif: any) => {
     const type = notif.type;
@@ -190,7 +285,7 @@ export const NotificationsView: React.FC = () => {
         {isEmployee && (
           <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200 flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Tagged Employee Alerts</span>
+            <span>Tagged Team Member Alerts</span>
           </span>
         )}
       </div>
@@ -208,26 +303,51 @@ export const NotificationsView: React.FC = () => {
               paginatedNotifications.map((n) => {
                 const item = renderNotifItem(n);
                 const Icon = item.icon;
+                const target = getNotificationTarget(n);
+
                 return (
-                  <div key={n.id} className="bg-white border border-gray-200/80 p-4 rounded-2xl shadow-xs flex items-center justify-between transition-all hover:border-gray-300">
-                    <div className="flex items-center gap-3.5">
+                  <div
+                    key={n.id}
+                    onClick={() => handleNotificationAction(n)}
+                    className="bg-white border border-gray-200/80 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all hover:border-emerald-300 hover:shadow-sm cursor-pointer group/card"
+                  >
+                    <div className="flex items-start sm:items-center gap-3.5 flex-1 min-w-0">
                       <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold shadow-2xs shrink-0 ${item.iconBg}`}>
                         <Icon className="w-5 h-5" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-gray-900">{item.title}</h4>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-xs font-bold text-gray-900 group-hover/card:text-emerald-700 transition-colors">
+                            {item.title}
+                          </h4>
                           <span className="text-[9px] bg-purple-100 text-purple-800 font-extrabold px-1.5 py-0.5 rounded">
                             @{n.payload?.assigneeName || user?.name || 'Assigned'}
                           </span>
                         </div>
-                        <p className="text-[11px] font-medium text-gray-500">{item.desc}</p>
+                        <p className="text-[11px] font-medium text-gray-500 mt-0.5 leading-relaxed">{item.desc}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400 shrink-0 ml-3 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-emerald-600" />
-                      {formatDateTime(n.createdAt)}
-                    </span>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                      <span className="text-[10px] font-bold text-gray-400 shrink-0 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-emerald-600" />
+                        {formatDateTime(n.createdAt)}
+                      </span>
+
+                      {/* Arrow Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNotificationAction(n);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 text-xs font-bold transition-all shadow-2xs cursor-pointer group-hover/card:bg-emerald-600 group-hover/card:text-white"
+                        title="Open in popup mode & redirect"
+                      >
+                        <span>Open {target.label}</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-0.5 transition-transform" />
+                      </button>
+                    </div>
                   </div>
                 );
               })
@@ -267,6 +387,41 @@ export const NotificationsView: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Global Task Details Popup Modal from Notification Click */}
+      {selectedTaskForModal && (
+        <TaskUpdateModal
+          isOpen={!!selectedTaskForModal}
+          task={selectedTaskForModal}
+          onClose={() => setSelectedTaskForModal(null)}
+          onSave={async (updatedTask) => {
+            try {
+              await fetchApi(`/api/tasks/${updatedTask.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(updatedTask),
+              });
+              toast.success(`Task ${updatedTask.taskCode || ''} updated successfully!`);
+              clearApiCache('/api/tasks');
+              clearApiCache('/api/sprints');
+              setSelectedTaskForModal(null);
+            } catch (err: any) {
+              toast.error(err?.message || 'Failed to update task');
+            }
+          }}
+          onDelete={async (deletedId) => {
+            try {
+              await fetchApi(`/api/tasks/${deletedId}`, { method: 'DELETE' });
+              toast.success('Task removed');
+              clearApiCache('/api/tasks');
+              clearApiCache('/api/sprints');
+              setSelectedTaskForModal(null);
+            } catch (err: any) {
+              toast.error(err?.message || 'Failed to delete task');
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
+

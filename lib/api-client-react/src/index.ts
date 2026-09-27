@@ -5,9 +5,9 @@ const apiCache = new Map<string, { data: any; timestamp: number }>();
 const inFlightRequests = new Map<string, Promise<any>>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds fresh cache
 
-export function getCachedApi<T = any>(endpoint: string): T | null {
+export function getCachedApi<T = any>(endpoint: string, maxAgeMs: number = 60000): T | null {
   const entry = apiCache.get(endpoint);
-  if (entry) {
+  if (entry && (Date.now() - entry.timestamp) < maxAgeMs) {
     return entry.data as T;
   }
   return null;

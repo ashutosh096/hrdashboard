@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight } from 'lucide-react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
@@ -12,7 +12,7 @@ import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { formatDateTime } from '../utils/dateUtils';
-import { matchesEntityFilter } from '../utils/entityUtils';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 type TabType = 'INITIATIVES' | 'EPICS' | 'TASKS';
 
@@ -53,49 +53,67 @@ export const TasksView: React.FC = () => {
   const [initiatives, setInitiatives] = useState<any[]>(() => (getCachedApi<any[]>('/api/initiatives') || []));
   const [tasks, setTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
   const [employees, setEmployees] = useState<any[]>(() => (getCachedApi<any[]>('/api/employees') || []));
-  const [employeeFilter, setEmployeeFilter] = useState<string>(() => {
-    if (user?.role === 'EMPLOYEE') {
-      return user.employeeId || user.id || 'ALL';
-    }
-    return 'ALL';
-  });
-
-  useEffect(() => {
-    if (user?.role === 'EMPLOYEE') {
-      const empId = user.employeeId || user.id;
-      if (empId) setEmployeeFilter(empId);
-    } else {
-      setEmployeeFilter('ALL');
-    }
-  }, [user?.role, user?.employeeId, user?.id]);
+  const [employeeFilter, setEmployeeFilter] = useState<string>('ALL');
 
   const [loading, setLoading] = useState(() => !(getCachedApi('/api/tasks') && getCachedApi('/api/epics')));
 
-  // Scalable Filtering & Pagination States for 100s of Tasks
+  // Scalable Server-Side Filtering & Pagination States for 1,000+ Tasks
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 15;
+  const [totalTasksCount, setTotalTasksCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [groupByEpic, setGroupByEpic] = useState(false);
+  const [collapsedEpics, setCollapsedEpics] = useState<Record<string, boolean>>({});
+  const pageSize = 25;
+
+  // Debounce search by ~300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const currentTab = activeTab;
 
   const loadTasks = async () => {
-    setLoading(true);
+    if (!getCachedApi('/api/tasks')) setLoading(true);
     try {
-      const [tasksData, epicsData, initsData, employeesData] = await Promise.all([
-        fetchApi<any[]>('/api/tasks').catch(() => []),
-        fetchApi<any[]>('/api/epics').catch(() => []),
-        fetchApi<any[]>('/api/initiatives').catch(() => []),
+      const queryParams = new URLSearchParams({
+        page: String(currentPage),
+        pageSize: String(pageSize),
+        employeeId: employeeFilter,
+        priority: priorityFilter,
+        status: statusFilter,
+        search: debouncedSearch,
+        paginate: 'true',
+      });
+
+      const [tasksRes, epicsData, initsData, employeesData] = await Promise.all([
+        fetchApi<any>(`/api/tasks?${queryParams.toString()}`).catch(() => ({ tasks: [], totalCount: 0 })),
+        isManager ? fetchApi<any[]>('/api/epics').catch(() => []) : Promise.resolve([]),
+        isManager ? fetchApi<any[]>('/api/initiatives').catch(() => []) : Promise.resolve([]),
         fetchApi<any[]>('/api/employees').catch(() => []),
       ]);
+
       setRawEpics(epicsData || []);
       setInitiatives(initsData || []);
       setEmployees(employeesData || []);
 
-      const formatted = (tasksData || []).map(t => {
-        const parentEpic = (epicsData || []).find(ep => ep.id === t.epicId);
-        const parentInit = (initsData || []).find(init => init.id === (t.initiativeId || parentEpic?.initiativeId));
+      const rawTasksList = Array.isArray(tasksRes) ? tasksRes : (tasksRes?.tasks || []);
+      const serverTotal = Array.isArray(tasksRes) ? tasksRes.length : (tasksRes?.totalCount ?? rawTasksList.length);
+      const serverTotalPages = Array.isArray(tasksRes) ? Math.ceil(serverTotal / pageSize) : (tasksRes?.totalPages ?? Math.max(1, Math.ceil(serverTotal / pageSize)));
+
+      setTotalTasksCount(serverTotal);
+      setTotalPages(serverTotalPages);
+
+      const formatted = rawTasksList.map((t: any) => {
+        const parentEpic = (epicsData || []).find((ep: any) => ep.id === t.epicId);
+        const parentInit = (initsData || []).find((init: any) => init.id === (t.initiativeId || parentEpic?.initiativeId));
 
         const isCAG = (
           t.entityId === 'cag' ||
@@ -173,73 +191,52 @@ export const TasksView: React.FC = () => {
 
   useEffect(() => {
     loadTasks();
-  }, [user]);
+  }, [currentPage, employeeFilter, priorityFilter, statusFilter, debouncedSearch, user]);
 
   const isTaskAssignedToUser = (task: any) => {
     if (isManager) return true;
     if (!task) return false;
     const targetId = user?.employeeId || user?.id;
     const targetEmail = (user?.email || '').toLowerCase();
-    const targetName = (user?.name || '').toLowerCase();
+    const targetName = (user?.name || '').toLowerCase().trim();
 
     return Boolean(
       (targetId && (task.assigneeId === targetId || task.employeeId === targetId)) ||
       (targetId && Array.isArray(task.assigneeIds) && task.assigneeIds.includes(targetId)) ||
       (targetEmail && task.assigneeEmail?.toLowerCase() === targetEmail) ||
-      (targetName && (task.assigneeName || task.assignee)?.toLowerCase().includes(targetName))
+      (targetName && (
+        (task.assigneeName && (
+          task.assigneeName.toLowerCase().trim() === targetName ||
+          task.assigneeName.split(',').map((n: string) => n.trim().toLowerCase()).includes(targetName)
+        )) ||
+        (task.assignee && task.assignee.toLowerCase().trim() === targetName)
+      ))
     );
   };
 
-  const filteredTasks = tasks.filter(t => {
-    const matchesEntity = matchesEntityFilter(t, selectedEntity);
-    const matchesPriority = priorityFilter === 'ALL' || (() => {
-      const p = (t.priority || '').toUpperCase();
-      const code = (p === 'URGENT' || p === 'CRITICAL' || p === 'P1' || p === '1') ? 'P1'
-        : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2'
-        : (p === 'LOW' || p === 'P4' || p === '4') ? 'P4' : 'P3';
-      return code === priorityFilter || p === priorityFilter;
-    })();
-    const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
-    const matchesSearch = !searchQuery.trim() ||
-      t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.taskCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.parentEpicCode?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Grouping by Parent Epic
+  const groupedTasks = useMemo(() => {
+    if (!groupByEpic) return null;
+    const groups: Record<string, { epicCode: string; epicTitle: string; items: any[] }> = {};
 
-    let matchesAssignee = true;
-    if (employeeFilter !== 'ALL') {
-      const selectedEmp = employees.find((e: any) => e.id === employeeFilter || e.employeeId === employeeFilter);
-      const selFirst = selectedEmp ? (selectedEmp.firstName || '').toLowerCase() : '';
-      const selLast = selectedEmp ? (selectedEmp.lastName || '').toLowerCase() : '';
-      const selCode = selectedEmp ? (selectedEmp.employeeCode || '').toLowerCase() : '';
-      const userEmail = (user?.email || '').toLowerCase();
-      const userName = (user?.name || '').toLowerCase();
+    tasks.forEach((t) => {
+      const key = t.parentEpicCode || 'NO_EPIC';
+      if (!groups[key]) {
+        groups[key] = {
+          epicCode: t.parentEpicCode || 'No parent epic',
+          epicTitle: t.parentEpicTitle || (t.parentEpicCode ? 'Epic Group' : 'Backlog items not tied to an epic'),
+          items: [],
+        };
+      }
+      groups[key].items.push(t);
+    });
 
-      const isMatchingUserSelf = isEmployee && (employeeFilter === user?.employeeId || employeeFilter === user?.id);
+    return groups;
+  }, [groupByEpic, tasks]);
 
-      matchesAssignee = Boolean(
-        t.assigneeId === employeeFilter ||
-        t.employeeId === employeeFilter ||
-        t.assigneeEmail === employeeFilter ||
-        (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(employeeFilter)) ||
-        (isMatchingUserSelf && (
-          (userEmail && t.assigneeEmail?.toLowerCase() === userEmail) ||
-          (userName && (t.assigneeName || t.assignee)?.toLowerCase().includes(userName))
-        )) ||
-        (t.assigneeName && (
-          (selFirst && t.assigneeName.toLowerCase().includes(selFirst)) ||
-          (selLast && t.assigneeName.toLowerCase().includes(selLast)) ||
-          (selCode && t.assigneeName.toLowerCase().includes(selCode))
-        ))
-      );
-    }
-
-    return matchesEntity && matchesPriority && matchesStatus && matchesSearch && matchesAssignee;
-  });
-
-  // Pagination Math for Zero-Complexity Scalability
-  const totalPages = Math.ceil(filteredTasks.length / pageSize) || 1;
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + pageSize);
+  const toggleEpicCollapse = (key: string) => {
+    setCollapsedEpics((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -272,12 +269,15 @@ export const TasksView: React.FC = () => {
       : (task.priority === 'HIGH' || task.priority === 'P2' || task.priority === '2') ? 'P2'
       : (task.priority === 'LOW' || task.priority === 'P4' || task.priority === '4') ? 'P4' : 'P3';
 
+    const taskBadge = getEntityBadge(task);
+    const resolvedEntity = taskBadge.isCommon ? 'COMMON' : taskBadge.isCAG ? 'CLIMAGRO' : 'EHM';
+
     setIsModalReadOnly(readOnly);
     setSelectedTaskToUpdate({
       id: task.id,
       taskId: task.taskCode || task.id,
       title: task.title || '',
-      entity: task.entityCode === 'CAG' || (task.taskCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
+      entity: resolvedEntity,
       assignee: task.assigneeName || task.assignee || 'Unassigned',
       assigneeId: task.assigneeId || '',
       reviewingLead: task.reviewingLead || 'Manager Lead',
@@ -314,6 +314,8 @@ export const TasksView: React.FC = () => {
           sprintWeek: updated.targetWeek,
           priority: updated.priority,
           waitingOn: updated.waitingOn,
+          checklists: (updated as any).checklists,
+          comments: (updated as any).comments,
         }),
       });
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
@@ -377,11 +379,16 @@ export const TasksView: React.FC = () => {
 
     setTasks(prev => [clonedTaskObj, ...prev]);
 
+    const clonedCode = clonedTaskObj.taskCode || '';
+    const isClonedCommon = clonedCode.startsWith('COMMON') || clonedCode.startsWith('COM-') || sourceTask.entity === 'COMMON';
+    const isClonedCAG = !isClonedCommon && (clonedCode.startsWith('CAG') || sourceTask.entity === 'CLIMAGRO');
+
     setSelectedTaskToUpdate({
       id: clonedTaskObj.id,
       taskId: clonedTaskObj.taskCode,
+      taskCode: clonedTaskObj.taskCode,
       title: clonedTaskObj.title,
-      entity: (clonedTaskObj.taskCode || '').startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
+      entity: isClonedCommon ? 'COMMON' : isClonedCAG ? 'CLIMAGRO' : 'EHM',
       assignee: clonedTaskObj.assigneeName,
       reviewingLead: clonedTaskObj.reviewingLead,
       status: 'In Progress',
@@ -411,6 +418,140 @@ export const TasksView: React.FC = () => {
     }
   };
 
+  const renderTaskRow = (t: any) => {
+    const isCAG = t.entityCode === 'CAG' || (t.taskCode || '').startsWith('CAG');
+    const entityLabel = isCAG ? 'CLIMAGRO' : 'EHM';
+    const postedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '23 Sept';
+
+    const p = (t.priority || '').toUpperCase();
+    const priorityCode = (p === 'URGENT' || p === 'CRITICAL' || p === 'P1' || p === '1') ? 'P1'
+      : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2'
+      : (p === 'LOW' || p === 'P4' || p === '4') ? 'P4' : 'P3';
+
+    const statusVal = t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'BACKLOG';
+
+    return (
+      <tr
+        key={t.id}
+        className="hover:bg-gray-50/80 transition-colors border-b border-gray-100/80 group"
+      >
+        {/* Deliverable Column: Task ID stacked above Title */}
+        <td className="py-3 px-4 max-w-xs">
+          <div className="space-y-0.5">
+            <span className="font-mono text-[10px] font-semibold text-gray-400 tracking-wider block">
+              {t.taskCode || t.id}
+            </span>
+            <span
+              onClick={() => handleTaskClick(t, false)}
+              className="font-bold text-xs text-gray-900 hover:text-emerald-700 cursor-pointer transition-colors block truncate"
+              title={t.title}
+            >
+              {t.title}
+            </span>
+          </div>
+        </td>
+
+        {/* Entity Tag */}
+        <td className="py-3 px-3 whitespace-nowrap">
+          {(() => {
+            const badge = getEntityBadge(t);
+            return (
+              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wide shrink-0 ${badge.className}`}>
+                {badge.label}
+              </span>
+            );
+          })()}
+        </td>
+
+        {/* Parent Epic Column */}
+        <td className="py-3 px-3 whitespace-nowrap">
+          {t.parentEpicCode ? (
+            <span
+              onClick={() => {
+                const epic = rawEpics.find((e: any) => e.epicCode === t.parentEpicCode || e.id === t.epicId);
+                if (epic) {
+                  setViewingEpicInTasks(epic);
+                } else {
+                  setActiveTab('EPICS');
+                }
+              }}
+              className="font-mono text-xs font-semibold text-gray-700 hover:text-emerald-700 hover:underline cursor-pointer transition-colors"
+            >
+              {t.parentEpicCode}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400 font-medium">
+              No parent epic
+            </span>
+          )}
+        </td>
+
+        {/* Posted Date */}
+        <td className="py-3 px-3 whitespace-nowrap text-xs text-gray-600 font-medium">
+          {postedDate}
+        </td>
+
+        {/* Priority Badge */}
+        <td className="py-3 px-3 text-center whitespace-nowrap">
+          <span
+            className={`inline-flex items-center justify-center font-extrabold text-[11px] px-2 py-0.5 rounded ${
+              priorityCode === 'P1'
+                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                : priorityCode === 'P2'
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : priorityCode === 'P3'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'bg-gray-100 text-gray-700 border border-gray-200'
+            }`}
+          >
+            {priorityCode}
+          </span>
+        </td>
+
+        {/* Status Dropdown / Badge */}
+        <td className="py-3 px-3 whitespace-nowrap">
+          <select
+            value={statusVal}
+            onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg border outline-none cursor-pointer transition-all ${
+              statusVal === 'DONE'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : statusVal === 'IN_PROGRESS'
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : 'bg-blue-50 text-blue-700 border-blue-200'
+            }`}
+          >
+            <option value="BACKLOG">Backlog</option>
+            <option value="IN_PROGRESS">In progress</option>
+            <option value="DONE">Done</option>
+          </select>
+        </td>
+
+        {/* Action Icons: Eye (View) & Edit3 (Edit) */}
+        <td className="py-3 px-4 text-right whitespace-nowrap">
+          <div className="inline-flex items-center gap-1.5 justify-end">
+            <button
+              type="button"
+              onClick={() => handleTaskClick(t, true)}
+              className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              title="View Task Details"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTaskClick(t, false)}
+              className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+              title="Edit Task"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="p-6 space-y-6 select-none">
       {/* Top Controls Header */}
@@ -423,24 +564,46 @@ export const TasksView: React.FC = () => {
         {/* Tab Selection */}
         <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl border border-gray-200/80">
           {[
-            { id: 'INITIATIVES', label: '1. Initiatives', icon: Target },
-            { id: 'EPICS', label: '2. Epics', icon: Layers },
-            { id: 'TASKS', label: '3. Tasks', icon: ListTodo },
+            { id: 'INITIATIVES', label: '1. Initiatives', icon: isEmployee ? Lock : Target, isLocked: isEmployee },
+            { id: 'EPICS', label: '2. Epics', icon: isEmployee ? Lock : Layers, isLocked: isEmployee },
+            { id: 'TASKS', label: '3. Tasks', icon: ListTodo, isLocked: false },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = currentTab === tab.id;
+            const isLocked = tab.isLocked;
+
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
+                type="button"
+                disabled={isLocked}
+                onClick={() => {
+                  if (!isLocked) {
+                    setActiveTab(tab.id as TabType);
+                  }
+                }}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  isActive
-                    ? 'bg-white text-emerald-700 shadow-xs border border-gray-200/60'
+                  isLocked
+                    ? 'text-gray-400 opacity-60 cursor-not-allowed border border-transparent select-none'
+                    : isActive
+                    ? 'bg-white text-emerald-700 shadow-xs border border-gray-200/60 cursor-pointer'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 cursor-pointer'
                 }`}
+                title={isLocked ? "Manager & Admin access only" : undefined}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
+                <Icon className={`w-3.5 h-3.5 ${
+                  isLocked 
+                    ? 'text-gray-400' 
+                    : isActive 
+                    ? 'text-emerald-600' 
+                    : 'text-gray-400'
+                }`} />
                 <span>{tab.label}</span>
+                {isLocked && (
+                  <span className="text-[10px] bg-gray-200 text-gray-500 font-extrabold px-1.5 py-0.2 rounded">
+                    Locked
+                  </span>
+                )}
               </button>
             );
           })}
@@ -448,42 +611,46 @@ export const TasksView: React.FC = () => {
       </div>
 
       {/* Tab Sub-View Rendering */}
-      <div className={currentTab === 'INITIATIVES' ? 'block' : 'hidden'}>
-        <InitiativesSubView
-          isManager={isManager}
-          selectedInitiativeIdToView={selectedInitiativeToViewId}
-          onClearSelectedInitiative={() => setSelectedInitiativeToViewId(null)}
-          onSelectEpic={(epicId, parentInitiativeId) => {
-            setSelectedEpicToViewId(epicId);
-            if (parentInitiativeId) {
-              setReturnToInitiativeId(parentInitiativeId);
-              setSelectedInitiativeToViewId(parentInitiativeId);
-            }
-            setActiveTab('EPICS');
-          }}
-        />
-      </div>
+      {isManager && (
+        <>
+          <div className={currentTab === 'INITIATIVES' ? 'block' : 'hidden'}>
+            <InitiativesSubView
+              isManager={isManager}
+              selectedInitiativeIdToView={selectedInitiativeToViewId}
+              onClearSelectedInitiative={() => setSelectedInitiativeToViewId(null)}
+              onSelectEpic={(epicId, parentInitiativeId) => {
+                setSelectedEpicToViewId(epicId);
+                if (parentInitiativeId) {
+                  setReturnToInitiativeId(parentInitiativeId);
+                  setSelectedInitiativeToViewId(parentInitiativeId);
+                }
+                setActiveTab('EPICS');
+              }}
+            />
+          </div>
 
-      <div className={currentTab === 'EPICS' ? 'block' : 'hidden'}>
-        <EpicsSubView
-          isManager={isManager}
-          selectedEpicIdToView={selectedEpicToViewId}
-          onClearSelectedEpic={() => {
-            setSelectedEpicToViewId(null);
-            if (returnToInitiativeId) {
-              const returnId = returnToInitiativeId;
-              setReturnToInitiativeId(null);
-              setSelectedInitiativeToViewId(returnId);
-              setActiveTab('INITIATIVES');
-            }
-          }}
-          onSelectInitiative={(initId) => {
-            setReturnToInitiativeId(null);
-            setSelectedInitiativeToViewId(initId);
-            setActiveTab('INITIATIVES');
-          }}
-        />
-      </div>
+          <div className={currentTab === 'EPICS' ? 'block' : 'hidden'}>
+            <EpicsSubView
+              isManager={isManager}
+              selectedEpicIdToView={selectedEpicToViewId}
+              onClearSelectedEpic={() => {
+                setSelectedEpicToViewId(null);
+                if (returnToInitiativeId) {
+                  const returnId = returnToInitiativeId;
+                  setReturnToInitiativeId(null);
+                  setSelectedInitiativeToViewId(returnId);
+                  setActiveTab('INITIATIVES');
+                }
+              }}
+              onSelectInitiative={(initId) => {
+                setReturnToInitiativeId(null);
+                setSelectedInitiativeToViewId(initId);
+                setActiveTab('INITIATIVES');
+              }}
+            />
+          </div>
+        </>
+      )}
 
       <div className={currentTab === 'TASKS' ? 'block' : 'hidden'}>
         <div className="space-y-4">
@@ -491,23 +658,34 @@ export const TasksView: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                <span>Product Backlog Tasks</span>
-                <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  {filteredTasks.length} Master Tasks
+                <span>Product backlog tasks</span>
+                <span className="text-xs bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  {totalTasksCount.toLocaleString()} tasks
                 </span>
               </h3>
               <p className="text-xs text-gray-500 font-medium">
-                Create & manage backlog deliverables. Tasks created here populate directly into the Sprint Backlog for assignment.
+                Create & manage backlog deliverables with high-performance server pagination.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Group by parent epic toggle */}
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer bg-white px-3 py-2 rounded-xl border border-gray-200 shadow-2xs hover:bg-gray-50 transition-all select-none">
+                <input
+                  type="checkbox"
+                  checked={groupByEpic}
+                  onChange={(e) => setGroupByEpic(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span>Group by epic</span>
+              </label>
+
               <button
                 onClick={() => setIsAssignModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>{isEmployee ? '+ Create My Task' : '+ New Task'}</span>
+                <span>{isEmployee ? '+ Create My Task' : '+ New task'}</span>
               </button>
             </div>
           </div>
@@ -515,23 +693,22 @@ export const TasksView: React.FC = () => {
           {/* Search & Filter Toolbar */}
           <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              {/* Search */}
+              {/* Debounced Search */}
               <div className="relative sm:col-span-1">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search backlog tasks by title, ID, or epic..."
+                  placeholder="Search by title, ID, or epic..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    setCurrentPage(1);
                   }}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs font-medium border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
+                  className="w-full pl-9 pr-3 py-2 text-xs font-medium border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 bg-gray-50"
                 />
               </div>
 
               {/* Employee Filter */}
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
                 <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                 <select
                   value={employeeFilter}
@@ -541,7 +718,7 @@ export const TasksView: React.FC = () => {
                   }}
                   className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
-                  <option value="ALL">All Employees ({employees.length || 10} Team Members)</option>
+                  <option value="ALL">All team members</option>
                   {employees.map((emp: any) => (
                     <option key={emp.id} value={emp.id}>
                       {emp.firstName} {emp.lastName}
@@ -551,7 +728,7 @@ export const TasksView: React.FC = () => {
               </div>
 
               {/* Priority Filter */}
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
                 <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                 <select
                   value={priorityFilter}
@@ -561,7 +738,7 @@ export const TasksView: React.FC = () => {
                   }}
                   className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
-                  <option value="ALL">All Priorities</option>
+                  <option value="ALL">All priorities</option>
                   <option value="P1">P1 - Critical / Urgent 🔥</option>
                   <option value="P2">P2 - High Priority ⚡</option>
                   <option value="P3">P3 - Medium Priority 📌</option>
@@ -570,7 +747,7 @@ export const TasksView: React.FC = () => {
               </div>
 
               {/* Status Filter */}
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
                 <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                 <select
                   value={statusFilter}
@@ -580,7 +757,7 @@ export const TasksView: React.FC = () => {
                   }}
                   className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
-                  <option value="ALL">All Statuses</option>
+                  <option value="ALL">All statuses</option>
                   <option value="BACKLOG">Backlog</option>
                   <option value="PLANNED">Planned</option>
                   <option value="TODO">To Do</option>
@@ -591,176 +768,107 @@ export const TasksView: React.FC = () => {
             </div>
           </div>
 
-          {/* High-Performance Table View Built for 100s of Tasks */}
+          {/* High-Performance Paginated Table View */}
           {loading ? (
-            <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading backlog tasks from database...</div>
+            <div className="py-16 text-center text-xs font-semibold text-gray-400 bg-white rounded-2xl border border-gray-200/80">
+              Loading tasks page {currentPage} from live database...
+            </div>
           ) : (
             <div className="bg-white border border-gray-200/80 rounded-2xl shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-extrabold text-gray-500 uppercase tracking-wider">
-                      <th className="py-2.5 px-3">Task ID</th>
-                      <th className="py-2.5 px-3">Entity</th>
-                      <th className="py-2.5 px-3">Deliverable Title</th>
-                      <th className="py-2.5 px-3">Parent Epic</th>
-                      <th className="py-2.5 px-3">Posted Date & Time</th>
-                      <th className="py-2.5 px-3 text-center">Priority</th>
-                      <th className="py-2.5 px-3">Status / Cycle</th>
-                      <th className="py-2.5 px-3 text-right">Actions</th>
+                      <th className="py-3 px-4">Deliverable</th>
+                      <th className="py-3 px-3">Entity</th>
+                      <th className="py-3 px-3">Parent epic</th>
+                      <th className="py-3 px-3">Posted</th>
+                      <th className="py-3 px-3 text-center">Priority</th>
+                      <th className="py-3 px-3">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                    {paginatedTasks.length === 0 ? (
+                    {tasks.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-xs text-gray-400 font-medium">
-                          No backlog tasks found matching criteria. Click "+ New Task" to create one.
+                          No backlog tasks found matching criteria. Click "+ New task" to create one.
                         </td>
                       </tr>
-                    ) : (
-                      paginatedTasks.map((t) => {
-                        const isDone = t.status === 'DONE' || t.status === 'Done';
-                        const isInProgress = t.status === 'IN_PROGRESS' || t.status === 'In Progress';
-
+                    ) : groupByEpic && groupedTasks ? (
+                      /* Grouped by Parent Epic Rows */
+                      Object.entries(groupedTasks).map(([groupKey, group]) => {
+                        const isCollapsed = collapsedEpics[groupKey];
                         return (
-                          <tr key={t.id} className="hover:bg-gray-50/80 transition-colors">
-                            <td className="py-2.5 px-3">
-                              <span
-                                onClick={() => handleTaskClick(t)}
-                                className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
-                                title="Click to view task details"
-                              >
-                                {t.taskCode}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-block ${
-                                t.entityCode === 'CAG'
-                                  ? 'text-blue-700 bg-blue-50 border-blue-200'
-                                  : 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                              }`}>
-                                {t.entityCode === 'CAG' ? 'CLIMAGRO' : 'EHM'}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <div className="font-bold text-gray-900 text-xs">{t.title}</div>
-                            </td>
-                            <td className="py-2.5 px-3">
-                              {t.parentEpicCode ? (
-                                <span
-                                  onClick={() => {
-                                    const foundEpic = rawEpics.find(e => e.epicCode === t.parentEpicCode || e.id === t.parentEpicCode || e.id === t.epicId);
-                                    setViewingEpicInTasks(foundEpic || { epicCode: t.parentEpicCode, title: t.parentEpicTitle || 'Parent Epic Details', description: '' });
-                                  }}
-                                  className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 inline-flex items-center gap-1 hover:bg-emerald-100 hover:underline transition-all text-[11px] cursor-pointer"
-                                  title="Click to view Parent Epic"
-                                >
-                                  <span>{t.parentEpicCode}</span>
-                                  <ArrowRight className="w-3 h-3 text-emerald-600" />
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-[11px] italic">No Parent Epic</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-3 text-gray-500 font-bold text-[11px]">
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-emerald-600" />
-                                {formatDateTime(t.createdAt)}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              {(() => {
-                                const p = (t.priority || '').toUpperCase();
-                                const label = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
-                                const color = (p === 'URGENT' || p === 'P1' || p === '1') ? 'bg-red-100 text-red-800 border-red-200 font-extrabold' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'bg-amber-100 text-amber-800 border-amber-200 font-bold' : 'bg-slate-100 text-slate-700 border-slate-200 font-medium';
-                                return (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-lg border inline-block ${color}`}>
-                                    {label}
+                          <React.Fragment key={groupKey}>
+                            {/* Epic Section Header */}
+                            <tr
+                              onClick={() => toggleEpicCollapse(groupKey)}
+                              className="bg-gray-50/90 hover:bg-gray-100/80 transition-colors cursor-pointer border-y border-gray-200"
+                            >
+                              <td colSpan={7} className="py-2.5 px-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {isCollapsed ? (
+                                      <ChevronRight className="w-4 h-4 text-gray-500" />
+                                    ) : (
+                                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                                    )}
+                                    <span className="font-mono font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
+                                      {group.epicCode}
+                                    </span>
+                                    <span className="font-bold text-gray-800 text-xs">
+                                      {group.epicTitle}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">
+                                    {group.items.length} {group.items.length === 1 ? 'task' : 'tasks'}
                                   </span>
-                                );
-                              })()}
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <select
-                                disabled={!isManager && !isTaskAssignedToUser(t)}
-                                value={isDone ? 'DONE' : isInProgress ? 'IN_PROGRESS' : t.status || 'BACKLOG'}
-                                onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}
-                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg uppercase border focus:outline-none transition-all shadow-2xs ${
-                                  !isManager && !isTaskAssignedToUser(t) ? 'cursor-default opacity-80' : 'cursor-pointer'
-                                } ${
-                                  isDone
-                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
-                                    : isInProgress
-                                    ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                                    : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
-                                }`}
-                                title={!isManager && !isTaskAssignedToUser(t) ? "Status (View Only)" : "Change Task Status"}
-                              >
-                                <option value="BACKLOG">BACKLOG</option>
-                                <option value="PLANNED">PLANNED</option>
-                                <option value="TODO">TODO</option>
-                                <option value="IN_PROGRESS">IN PROGRESS</option>
-                                <option value="DONE">DONE</option>
-                              </select>
-                            </td>
-                            <td className="py-2.5 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {/* View Button: Always Read-Only */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleTaskClick(t, true)}
-                                  className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
-                                  title="View Task Details (Read-Only)"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                                </button>
+                                </div>
+                              </td>
+                            </tr>
 
-                                {/* Edit Button: Manager can edit all, Employee can edit assigned tasks */}
-                                {(isManager || isTaskAssignedToUser(t)) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleTaskClick(t, false)}
-                                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 transition-all shadow-2xs flex items-center justify-center cursor-pointer"
-                                    title={isManager ? "Edit Task Details (Manager Level)" : "Edit My Assigned Task"}
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
+                            {/* Epic Grouped Task Rows */}
+                            {!isCollapsed &&
+                              group.items.map((t) => renderTaskRow(t))}
+                          </React.Fragment>
                         );
                       })
+                    ) : (
+                      /* Flat View Task Rows */
+                      tasks.map((t) => renderTaskRow(t))
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="p-3 bg-gray-50/80 border-t border-gray-200 flex items-center justify-between text-xs font-bold text-gray-600">
-                  <div>
-                    Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filteredTasks.length)} of {filteredTasks.length} tasks
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 cursor-pointer"
-                    >
-                      Previous
-                    </button>
-                    <span>Page {currentPage} of {totalPages}</span>
-                    <button
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      className="px-3 py-1 rounded-lg border bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 cursor-pointer"
-                    >
-                      Next
-                    </button>
-                  </div>
+              {/* Server-Side Pagination Controls */}
+              <div className="p-3.5 bg-gray-50/90 border-t border-gray-200 flex items-center justify-between text-xs font-bold text-gray-600">
+                <div>
+                  Showing {totalTasksCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, totalTasksCount)} of {totalTasksCount.toLocaleString()}
                 </div>
-              )}
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer transition-colors"
+                    title="Previous Page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="px-2 font-bold text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer transition-colors"
+                    title="Next Page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -876,9 +984,14 @@ export const TasksView: React.FC = () => {
                       <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                         {viewingEpicInTasks.epicCode}
                       </span>
-                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
-                        {isCAG ? 'Climagro' : 'EHM'}
-                      </span>
+                      {(() => {
+                        const badge = getEntityBadge(viewingEpicInTasks);
+                        return (
+                          <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-md border uppercase tracking-wide ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
                         {statusLabel}
                       </span>
@@ -1097,3 +1210,4 @@ export const TasksView: React.FC = () => {
     </div>
   );
 };
+
