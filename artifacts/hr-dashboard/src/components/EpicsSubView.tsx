@@ -41,6 +41,8 @@ interface InitiativeOption {
   id: string;
   initiativeCode: string;
   title: string;
+  entityCode?: string;
+  entity?: string;
 }
 
 interface ProjectOption {
@@ -132,32 +134,38 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [isSubmittingQuickTask, setIsSubmittingQuickTask] = useState(false);
 
   const initiativeOptions = React.useMemo(() => {
-    return initiatives.map((init) => ({
-      id: init.id,
-      code: init.initiativeCode,
-      label: init.title,
-    }));
+    return initiatives
+      .map((init) => ({
+        id: init.id,
+        code: init.initiativeCode,
+        label: init.title,
+      }))
+      .sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [initiatives]);
 
   const projectOptions = React.useMemo(() => {
-    return projects.map((proj) => ({
-      id: proj.id,
-      code: proj.code,
-      label: proj.name,
-      subtitle: proj.entity,
-    }));
+    return projects
+      .map((proj) => ({
+        id: proj.id,
+        code: proj.code,
+        label: proj.name,
+        subtitle: proj.entity,
+      }))
+      .sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [projects]);
 
   const epicCloneOptions = React.useMemo(() => {
-    return epics.map((ep) => ({
-      id: ep.id,
-      code: ep.epicCode,
-      label: ep.title,
-    }));
+    return epics
+      .map((ep) => ({
+        id: ep.id,
+        code: ep.epicCode,
+        label: ep.title,
+      }))
+      .sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [epics]);
 
   const handleOpenTaskModal = (taskItem: any) => {
-    const code = taskItem.taskCode || taskItem.taskId || taskItem.id || 'CAG-EMP01-001';
+    const code = taskItem.taskCode || taskItem.taskId || '-';
     const badge = getEntityBadge(taskItem);
     const resolvedEntity = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
     const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
@@ -278,12 +286,18 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         fetchApi<any[]>('/api/tasks'),
         fetchApi<ProjectOption[]>('/api/projects'),
       ]);
-      setEpics(epicsData || []);
+      const sortedEpics = [...(epicsData || [])].sort((a, b) =>
+        (a.title || a.epicCode || '').localeCompare(b.title || b.epicCode || '', undefined, { sensitivity: 'base' })
+      );
+      setEpics(sortedEpics);
       setAllTasks(tasksData || []);
-      setProjects(projsData || []);
+      const sortedProjects = [...(projsData || [])].sort((a, b) =>
+        (a.name || a.code || '').localeCompare(b.name || b.code || '', undefined, { sensitivity: 'base' })
+      );
+      setProjects(sortedProjects);
 
       if (initsData && initsData.length > 0) {
-        const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
         setInitiatives(sortedInits);
       }
     } catch {
@@ -315,12 +329,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     const handleInitsUpdate = () => {
       fetchApi<InitiativeOption[]>('/api/initiatives').then((initsData) => {
         if (initsData && initsData.length > 0) {
-          const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+          const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
           setInitiatives(sortedInits);
         }
       }).catch(() => {});
       fetchApi<ProjectOption[]>('/api/projects').then((projsData) => {
-        if (projsData) setProjects(projsData);
+        if (projsData) {
+          const sortedProjects = [...projsData].sort((a, b) =>
+            (a.name || a.code || '').localeCompare(b.name || b.code || '', undefined, { sensitivity: 'base' })
+          );
+          setProjects(sortedProjects);
+        }
       }).catch(() => {});
     };
     window.addEventListener('initiatives-updated', handleInitsUpdate);

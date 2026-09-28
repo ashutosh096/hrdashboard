@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-type EntityCode = 'ALL' | 'EHM' | 'CAG';
+type EntityCode = 'ALL' | 'EHM' | 'CAG' | 'COMMON';
 
 interface EntityContextType {
   selectedEntity: EntityCode;

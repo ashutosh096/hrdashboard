@@ -35,3 +35,6 @@ migration_mapping_step2.*
 
 # Temporary files
 scratch/
+
+# Chat logs / discussion files with sensitive content
+chatdiscussion.md
