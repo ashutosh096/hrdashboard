@@ -220,7 +220,9 @@ export const TeamDirectoryView: React.FC = () => {
       const lastName = parts.slice(1).join(' ') || '';
 
       const targetMail = email.trim().toLowerCase();
-      const roleToAssign = user?.role === 'ADMIN' ? role : 'Team Member';
+      const roleToAssign = user?.role === 'ADMIN' 
+        ? (role === 'ADMIN' ? 'ADMIN' : role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE')
+        : 'EMPLOYEE';
 
       await fetchApi<any>('/api/employees', {
         method: 'POST',
@@ -260,7 +262,8 @@ export const TeamDirectoryView: React.FC = () => {
     setEditFullName(emp.name || '');
     setEditEmail(emp.email || '');
     setEditPhone(emp.phone || '');
-    setEditRole(emp.roleType || 'Team Member');
+    const empRoleUpper = (emp.roleType || emp.role || '').toUpperCase();
+    setEditRole(empRoleUpper === 'ADMIN' ? 'ADMIN' : empRoleUpper === 'MANAGER' ? 'MANAGER' : 'Team Member');
     setEditPosition(emp.role || '');
     setEditDepartment(emp.dept || 'Product & Tech');
     const normEnt = (emp.entity || emp.entityCode || '').toUpperCase();
@@ -283,6 +286,8 @@ export const TeamDirectoryView: React.FC = () => {
       const firstName = parts[0] || editFullName;
       const lastName = parts.slice(1).join(' ') || '';
 
+      const normalizedEditRole = editRole === 'ADMIN' ? 'ADMIN' : editRole === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE';
+
       await fetchApi(`/api/employees/${editingEmployee.id}`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -291,7 +296,7 @@ export const TeamDirectoryView: React.FC = () => {
           email: editEmail.trim(),
           phone: editPhone.trim() || undefined,
           designation: editPosition,
-          role: editRole,
+          role: normalizedEditRole,
           departmentName: editDepartment,
           entityCode: editEntity,
         }),

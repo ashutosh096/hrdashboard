@@ -149,6 +149,13 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+function normalizeUserRole(rawRole: any): 'ADMIN' | 'MANAGER' | 'EMPLOYEE' {
+  const r = String(rawRole || '').toUpperCase().trim();
+  if (r === 'ADMIN') return 'ADMIN';
+  if (r === 'MANAGER') return 'MANAGER';
+  return 'EMPLOYEE';
+}
+
 // POST /api/employees - Enforce ADMIN / MANAGER RBAC
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Response) => {
   const { firstName, lastName, email, personalEmail, entityId, entityCode, departmentId, departmentName, designation, joiningDate, role } = req.body;
@@ -158,7 +165,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
     return res.status(400).json({ message: 'Email address is required.' });
   }
 
-  const requestedRole = (role as string || 'EMPLOYEE').toUpperCase();
+  const requestedRole = normalizeUserRole(role);
   const callerRole = ((req as any).user?.role || '').toUpperCase();
   const callerId = (req as any).user?.id;
 
@@ -557,8 +564,8 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
         .from(invites)
         .where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
 
-      const currentRole = ((userRow?.role || inviteRow?.role || 'EMPLOYEE') as string).toUpperCase().trim();
-      const requestedNewRole = role ? (role as string).toUpperCase().trim() : null;
+      const currentRole = normalizeUserRole(userRow?.role || inviteRow?.role || 'EMPLOYEE');
+      const requestedNewRole = role ? normalizeUserRole(role) : null;
 
       // Role change occurs ONLY if an admin requests a new role different from currentRole
       const isRoleChange = Boolean(requestedNewRole && requestedNewRole !== currentRole && callerRole === 'ADMIN');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown, Trash2, History, UserCheck } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
@@ -138,6 +138,25 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [editAssignedTo, setEditAssignedTo] = useState<string[]>([]);
   const [createAssignedDropOpen, setCreateAssignedDropOpen] = useState(false);
   const [editAssignedDropOpen, setEditAssignedDropOpen] = useState(false);
+  const createAssignedRef = useRef<HTMLDivElement>(null);
+  const editAssignedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (createAssignedRef.current && !createAssignedRef.current.contains(target)) {
+        setCreateAssignedDropOpen(false);
+      }
+      if (editAssignedRef.current && !editAssignedRef.current.contains(target)) {
+        setEditAssignedDropOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   const [isTaskAssignModalOpen, setIsTaskAssignModalOpen] = useState(false);
   const [taskAssignEpic, setTaskAssignEpic] = useState<EpicItem | null>(null);
   const [quickSlotIdx, setQuickSlotIdx] = useState<number | null>(null);
@@ -1612,7 +1631,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               </div>
 
               {/* Assigned To (ADMIN/MANAGER only) — click to open dropdown */}
-              <div className="relative">
+              <div className="relative" ref={editAssignedRef}>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
                 <button
                   type="button"
@@ -1825,7 +1844,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               </div>
 
               {/* Assigned To (ADMIN/MANAGER only) — click to open dropdown */}
-              <div className="relative">
+              <div className="relative" ref={createAssignedRef}>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
                 <button
                   type="button"

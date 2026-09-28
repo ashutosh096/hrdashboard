@@ -61,10 +61,10 @@ export const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({
         const data = await fetchApi<{
           history: HistoryItem[];
           hasMore: boolean;
-        }>(`/api/history/${tableName}/${recordId}?limit=10`);
+        }>(`/api/history/${tableName}/${recordId}?limit=3`);
 
         if (!isCancelled) {
-          setRecentItems(data.history || []);
+          setRecentItems((data.history || []).slice(0, 3));
           setTotalCount(data.history ? data.history.length : 0);
         }
       } catch (err) {
@@ -108,7 +108,7 @@ export const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({
         <p className="text-xs text-gray-400 py-1">No activity recorded yet.</p>
       ) : (
         <div className="space-y-1.5">
-          {recentItems.map((item) => (
+          {recentItems.slice(0, 3).map((item) => (
             <div
               key={item.id}
               className="text-xs text-gray-600 bg-gray-50/70 hover:bg-gray-100/70 transition-colors px-3 py-2 rounded-xl border border-gray-100 flex items-center justify-between gap-3"
