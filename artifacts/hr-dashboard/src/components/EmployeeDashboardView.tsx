@@ -1311,7 +1311,7 @@ export const EmployeeDashboardView: React.FC = () => {
                 </p>
               </div>
               <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Employee Workspace
+                Team Workspace
               </span>
             </div>
 

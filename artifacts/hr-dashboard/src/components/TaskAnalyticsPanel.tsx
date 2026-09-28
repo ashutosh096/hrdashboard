@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BarChart3, Calendar, CheckCircle2, Clock, Search } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
@@ -251,7 +251,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
             {filteredEmpAnalytics.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-6 text-center text-xs text-gray-400 font-medium">
-                  No employee performance records match criteria.
+                  No team member performance records match criteria.
                 </td>
               </tr>
             ) : (

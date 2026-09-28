@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Shield, Building2, User as UserIcon, LogOut, Edit2, Phone, Check, Loader2, Lock, Briefcase, Sparkles } from 'lucide-react';
 import { useAuth, UserRole } from '../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -30,7 +30,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const handleRolePreviewChange = (role: UserRole) => {
     if (actualRole !== 'ADMIN') return;
     setPreviewRole(role);
-    toast.success(`Previewing layout as ${role}!`);
+    const label = role === 'EMPLOYEE' ? 'Team' : role === 'MANAGER' ? 'Manager' : 'Admin';
+    toast.success(`Previewing layout as ${label}!`);
   };
 
   const handleLogout = () => {
@@ -161,14 +162,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleRolePreviewChange('Team Member')}
+                    onClick={() => handleRolePreviewChange('EMPLOYEE')}
                     className={`py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      previewRole === 'Team Member'
+                      previewRole === 'EMPLOYEE' || (previewRole as any) === 'Team Member'
                         ? 'bg-emerald-600 text-white shadow-2xs'
                         : 'text-gray-600 hover:text-gray-900 font-medium hover:bg-gray-100'
                     }`}
                   >
-                    Employee
+                    Team
                   </button>
                 </div>
               </div>
