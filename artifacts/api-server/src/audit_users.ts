@@ -1,6 +1,9 @@
 import { db, users, employees } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 
+console.error('DEPRECATED: audit_users.ts writes old-format codes and is disabled under Step 2.');
+process.exit(1);
+
 async function fixAndAudit() {
   // Update Ashutosh Mishra code to EHM-ADM01 and role to ADMIN
   await db.update(employees).set({

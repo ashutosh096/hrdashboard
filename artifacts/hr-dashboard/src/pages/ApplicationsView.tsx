@@ -30,12 +30,16 @@ import {
   Copy,
   Users,
   Loader2,
+  History,
+  UserCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { SearchableSelect, SelectOption } from '../components/SearchableSelect';
+import { RecordHistoryPanel } from '../components/RecordHistoryPanel';
+import { RecentActivitySection } from '../components/RecentActivitySection';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { formatAuthorDisplayName } from '../components/TaskUpdateModal';
@@ -44,7 +48,7 @@ export interface ApplicationItem {
   id: string;
   title: string;
   urlLink: string;
-  entity?: 'EHM' | 'CAG';
+  entity?: 'EHM' | 'CAG' | 'COMMON';
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   reviewingLead: string;
   assignedTo: string;
@@ -74,7 +78,8 @@ export interface ProjectItem {
   id: string;
   code: string;
   name: string;
-  entity: 'EHM' | 'CAG';
+  entity: 'EHM' | 'CAG' | 'COMMON';
+  entityCode?: string;
   entityName: string;
   category: string;
   lead: string;
@@ -90,6 +95,9 @@ export interface ProjectItem {
   description: string;
   checkpoints?: ProjectCheckpoint[];
   comments?: { id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[];
+  createdById?: string | null;
+  createdByName?: string | null;
+  createdAt?: string;
 }
 
 export const ApplicationsView: React.FC = () => {
@@ -128,6 +136,7 @@ export const ApplicationsView: React.FC = () => {
   const [selectedAppToUpdate, setSelectedAppToUpdate] = useState<ApplicationItem | null>(null);
   const [selectedProjectToUpdate, setSelectedProjectToUpdate] = useState<ProjectItem | null>(null);
   const [selectedProjectForView, setSelectedProjectForView] = useState<ProjectItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<{ recordId: string; title: string; code: string } | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [isSubmittingProject, setIsSubmittingProject] = useState(false);
 
@@ -177,24 +186,54 @@ export const ApplicationsView: React.FC = () => {
 
       const res = await fetchApi<any>(`/api/projects?${queryParams.toString()}`);
       if (res && res.projects) {
-        setProjects(res.projects);
+        const sortedProjs = [...res.projects].sort((a: any, b: any) =>
+          (a.name || a.title || '').localeCompare(b.name || b.title || '', undefined, { sensitivity: 'base' })
+        );
+        setProjects(sortedProjs);
         setTotalProjectsCount(res.totalCount || 0);
         setTotalPages(res.totalPages || Math.max(1, Math.ceil((res.totalCount || 0) / pageSize)));
         if (res.stats) {
           setProjectStats(res.stats);
         }
         try {
-          localStorage.setItem('hros_projects_list', JSON.stringify(res.projects));
+          localStorage.setItem('hros_projects_list', JSON.stringify(sortedProjs));
         } catch {}
       } else if (Array.isArray(res)) {
-        setProjects(res);
-        setTotalProjectsCount(res.length);
-        setTotalPages(Math.max(1, Math.ceil(res.length / pageSize)));
+        const sortedProjs = [...res].sort((a: any, b: any) =>
+          (a.name || a.title || '').localeCompare(b.name || b.title || '', undefined, { sensitivity: 'base' })
+        );
+        setProjects(sortedProjs);
+        setTotalProjectsCount(sortedProjs.length);
+        setTotalPages(Math.max(1, Math.ceil(sortedProjs.length / pageSize)));
       }
     } catch (err) {
       console.error('[PROJECTS FETCH ERROR]:', err);
     } finally {
       setLoadingProjects(false);
+    }
+  };
+
+  // Load applications from live database
+  const loadApplications = async () => {
+    try {
+      const data = await fetchApi<any[]>('/api/applications');
+      if (Array.isArray(data)) {
+        const mapped: ApplicationItem[] = data.map((d) => ({
+          id: d.id,
+          title: d.reason ? (d.reason.length > 50 ? d.reason.slice(0, 50) + '...' : d.reason) : `${d.type} Request`,
+          urlLink: '',
+          entity: 'EHM',
+          priority: d.type === 'EQUIPMENT' ? 'High' : 'Medium',
+          reviewingLead: d.reviewedBy ? 'Lead Reviewer' : 'Unassigned',
+          assignedTo: d.employeeName || (user?.name || 'Unassigned'),
+          status: d.status === 'APPROVED' ? 'Done' : d.status === 'REJECTED' ? 'Delayed' : 'Pending',
+          description: `Type: ${d.type}. ${d.reason}`,
+          createdAt: d.createdAt ? String(d.createdAt).split('T')[0] : 'Unknown',
+        }));
+        setApplications(mapped);
+      }
+    } catch (err: any) {
+      console.error('[APPLICATIONS FETCH ERROR]:', err);
     }
   };
 
@@ -204,9 +243,12 @@ export const ApplicationsView: React.FC = () => {
       .then((data) => {
         if (Array.isArray(data)) setDbEmployees(data);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[EMPLOYEES FETCH ERROR]:', err);
+      });
 
     loadProjects();
+    loadApplications();
   }, [currentPage, projectSubTab, entityFilter, statusFilter, leadFilter, debouncedSearch]);
 
   // Close overflow menu on outside click
@@ -216,33 +258,21 @@ export const ApplicationsView: React.FC = () => {
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  const fallbackTeamList = [
-    { id: 'emp-1', name: 'Ashutosh Mishra', code: 'EMP-001' },
-    { id: 'emp-2', name: 'Pranshu Dubey', code: 'EMP-002' },
-    { id: 'emp-3', name: 'Priyanka Sharma', code: 'EMP-003' },
-    { id: 'emp-4', name: 'Utkarsh Mishra', code: 'EMP-004' },
-    { id: 'emp-5', name: 'Prerna Shukla', code: 'EMP-005' },
-    { id: 'emp-6', name: 'Shreyansh Siladar', code: 'EMP-006' },
-    { id: 'emp-7', name: 'Dr. Harshit Mishra', code: 'EMP-007' },
-    { id: 'emp-8', name: 'Neha Shukla', code: 'EMP-008' },
-    { id: 'emp-9', name: 'Dr. Utsav Mishra', code: 'EMP-009' },
-    { id: 'emp-10', name: 'Himanshu Tiwari', code: 'EMP-010' },
-  ];
-
-  const availableTeamMembers = dbEmployees.length > 0
-    ? dbEmployees.map((emp) => ({
-        id: emp.id || emp.employeeCode || emp.email,
-        name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name || emp.email,
-        code: emp.employeeCode || emp.code || 'EMP',
-      }))
-    : fallbackTeamList;
+  const availableTeamMembers = React.useMemo(() => {
+    const list = dbEmployees.map((emp) => ({
+      id: emp.id || emp.email,
+      name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name || emp.email || 'Unassigned',
+      code: emp.employeeCode || emp.code || 'EMP',
+    }));
+    return [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  }, [dbEmployees]);
 
   // Add Application Form State
   const [title, setTitle] = useState('');
   const [urlLink, setUrlLink] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('High');
-  const [reviewingLead, setReviewingLead] = useState('Dr. Harshit Mishra');
-  const [assignedTo, setAssignedTo] = useState(user?.name || 'Ashutosh Mishra');
+  const [reviewingLead, setReviewingLead] = useState('');
+  const [assignedTo, setAssignedTo] = useState(user?.name || 'Unassigned');
   const [description, setDescription] = useState('');
 
   // Status Update Modal State for Applications
@@ -255,7 +285,7 @@ export const ApplicationsView: React.FC = () => {
   // Add Project Form State (Basic Information & Checkpoints)
   const [projectName, setProjectName] = useState('');
   const [projectCode, setProjectCode] = useState('');
-  const [projectEntity, setProjectEntity] = useState<'EHM' | 'CAG'>('EHM');
+  const [projectEntity, setProjectEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
   const [projectCategory, setProjectCategory] = useState('');
   const [selectedCategoryType, setSelectedCategoryType] = useState('');
   const [customCategoryText, setCustomCategoryText] = useState('');
@@ -348,7 +378,7 @@ export const ApplicationsView: React.FC = () => {
 
   // Scoped Applications & Active vs Archived Filtering
   const scopedApps = applications.filter(
-    a => matchesEntityFilter(a, selectedEntity) && (isEmployee ? a.assignedTo === (user?.name || 'Priyanka Sharma') : true)
+    a => matchesEntityFilter(a, selectedEntity) && (isEmployee ? a.assignedTo === (user?.name || 'Unassigned') : true)
   );
   const activeAppsList = scopedApps.filter(a => a.status !== 'Done');
   const archivedAppsList = scopedApps.filter(a => a.status === 'Done');
@@ -366,25 +396,28 @@ export const ApplicationsView: React.FC = () => {
   const userFirstName = (user?.name?.split(' ')[0] || '').toLowerCase();
   const userEmail = (user?.email || '').toLowerCase();
 
-  const scopedProjects = projects.filter(p => {
-    const matchesEntity = matchesEntityFilter(p, selectedEntity);
-    if (!isEmployee) return matchesEntity;
-
-    const isLead = (
+  const canEditProject = (p: ProjectItem) => {
+    if (!isEmployee) return true;
+    const isLead = Boolean(
       (currentUserName && p.lead?.toLowerCase().includes(currentUserName)) ||
       (userFirstName && p.lead?.toLowerCase().includes(userFirstName)) ||
       (userEmail && p.lead?.toLowerCase().includes(userEmail))
     );
     const isTeamMember = Array.isArray(p.team) && p.team.some(member => {
       const mLower = member.toLowerCase();
-      return (
+      return Boolean(
         (currentUserName && mLower.includes(currentUserName)) ||
         (userFirstName && mLower.includes(userFirstName)) ||
         (userEmail && mLower.includes(userEmail))
       );
     });
+    return isLead || isTeamMember;
+  };
 
-    return matchesEntity && (isLead || isTeamMember);
+  const scopedProjects = projects.filter(p => {
+    const matchesEntity = matchesEntityFilter(p, selectedEntity);
+    if (!isEmployee) return matchesEntity;
+    return matchesEntity && canEditProject(p);
   });
   const activeProjectsList = scopedProjects.filter(p => p.status !== 'Completed');
   const archivedProjectsList = scopedProjects.filter(p => p.status === 'Completed');
@@ -402,16 +435,7 @@ export const ApplicationsView: React.FC = () => {
   const highPriorityAppsCount = scopedApps.filter(a => a.priority === 'High' || a.priority === 'Urgent').length;
   const pendingAppsCount = scopedApps.filter(a => a.status === 'Pending' || a.status === 'Delayed').length;
 
-  const handleCloneApplication = (app: ApplicationItem) => {
-    setTitle(`[CLONE] ${app.title}`);
-    setUrlLink(app.urlLink);
-    setPriority(app.priority);
-    setReviewingLead(app.reviewingLead);
-    setAssignedTo(app.assignedTo);
-    setDescription(app.description);
-    setShowAddModal(true);
-    toast.success(`Pre-filled clone form for "${app.title}". Adjust basic info to complete!`);
-  };
+
 
   const handleCloneProject = (proj: ProjectItem) => {
     setEditingProjectId(null);
@@ -469,7 +493,7 @@ export const ApplicationsView: React.FC = () => {
     setProjectTargetDate(proj.targetDate);
     setProjectPriority(proj.priority);
     setProjectTechStack(proj.techStack || '');
-    setProjectDeliverableUrl(proj.deliverableUrl || proj.techStack || '');
+    setProjectDeliverableUrl(proj.deliverableUrl || '');
     setProjectDescription(proj.description);
     setProjectChecklists(proj.checkpoints || []);
     setProjectComments(proj.comments || []);
@@ -478,26 +502,30 @@ export const ApplicationsView: React.FC = () => {
     toast.info(`Editing project "${proj.name}". Modify parameters and click Save Changes!`);
   };
 
-  const handleAddAppSubmit = (e: React.FormEvent) => {
+  const handleAddAppSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalAssignee = isEmployee ? (user?.name || 'Priyanka Sharma') : assignedTo;
-    const newApp: ApplicationItem = {
-      id: `app-${Date.now()}`,
-      title,
-      urlLink,
-      priority,
-      reviewingLead,
-      assignedTo: finalAssignee,
-      status: 'In Progress',
-      description,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setApplications([newApp, ...applications]);
-    toast.success(`Application "${title}" created and synced with ${reviewingLead}!`);
-    setShowAddModal(false);
-    setTitle('');
-    setUrlLink('');
-    setDescription('');
+    try {
+      let appType = 'REMOTE_WORK';
+      if (priority === 'High' || priority === 'Urgent') appType = 'EQUIPMENT';
+      else if (title.toLowerCase().includes('reimburse') || description.toLowerCase().includes('reimburse')) appType = 'REIMBURSEMENT';
+
+      const fullReason = `${title}${urlLink ? ` - Link: ${urlLink}` : ''}${description ? ` | ${description}` : ''}`;
+      await fetchApi('/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: appType,
+          reason: fullReason,
+        }),
+      });
+      toast.success(`Application "${title}" submitted to server successfully!`);
+      setShowAddModal(false);
+      setTitle('');
+      setUrlLink('');
+      setDescription('');
+      await loadApplications();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to submit application');
+    }
   };
 
   const handleAddProjectSubmit = async (e: React.FormEvent) => {
@@ -506,12 +534,11 @@ export const ApplicationsView: React.FC = () => {
     setIsSubmittingProject(true);
 
     try {
-      const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
 
       const finalCheckpoints = projectChecklists;
       const finalTeam = selectedTeamMemberNames;
       const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : projectLead;
-      const finalDeliverableUrl = projectDeliverableUrl || projectTechStack;
+      const finalDeliverableUrl = projectDeliverableUrl.trim();
       const finalCategory = selectedCategoryType === 'Other'
         ? (customCategoryText.trim() || 'Other')
         : (selectedCategoryType || projectCategory);
@@ -521,7 +548,7 @@ export const ApplicationsView: React.FC = () => {
           code: projectCode.trim() || undefined,
           name: projectName,
           entity: projectEntity,
-          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
+          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : projectEntity === 'CAG' ? 'climagroanalytics' : 'common',
           category: finalCategory,
           lead: finalLead,
           team: finalTeam,
@@ -529,7 +556,7 @@ export const ApplicationsView: React.FC = () => {
           startDate: projectStartDate,
           targetDate: projectTargetDate,
           priority: projectPriority,
-          techStack: finalDeliverableUrl,
+          techStack: projectTechStack,
           deliverableUrl: finalDeliverableUrl,
           milestonesCount: finalCheckpoints.length,
           description: projectDescription,
@@ -557,7 +584,7 @@ export const ApplicationsView: React.FC = () => {
           code: projectCode.trim() || undefined,
           name: projectName,
           entity: projectEntity,
-          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
+          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : projectEntity === 'CAG' ? 'climagroanalytics' : 'common',
           category: finalCategory,
           lead: finalLead,
           team: finalTeam,
@@ -566,7 +593,7 @@ export const ApplicationsView: React.FC = () => {
           targetDate: projectTargetDate,
           status: 'Planning' as const,
           priority: projectPriority,
-          techStack: finalDeliverableUrl,
+          techStack: projectTechStack,
           deliverableUrl: finalDeliverableUrl,
           milestonesCount: finalCheckpoints.length,
           description: projectDescription,
@@ -629,7 +656,7 @@ export const ApplicationsView: React.FC = () => {
     }
   };
 
-  const handleSaveAppStatusUpdate = (e: React.FormEvent) => {
+  const handleSaveAppStatusUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAppToUpdate) return;
 
@@ -638,25 +665,28 @@ export const ApplicationsView: React.FC = () => {
       return;
     }
 
-    setApplications(
-      applications.map(a =>
-        a.id === selectedAppToUpdate.id
-          ? {
-              ...a,
-              status: updateStatus,
-              statusReason: updateStatus === 'Pending' || updateStatus === 'Delayed' ? statusReason : undefined,
-            }
-          : a
-      )
-    );
+    try {
+      const serverStatus = updateStatus === 'Done' ? 'APPROVED' : (updateStatus === 'Delayed' ? 'REJECTED' : 'PENDING');
+      await fetchApi(`/api/applications/${selectedAppToUpdate.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: serverStatus,
+          reason: statusReason.trim() ? `${selectedAppToUpdate.description} (Reason: ${statusReason})` : undefined,
+        }),
+      });
 
-    if (updateStatus === 'Done') {
-      toast.success(`Application "${selectedAppToUpdate.title}" marked as Done and moved to Archived tab!`);
-    } else {
-      toast.success(`Application status updated to ${updateStatus}!`);
+      if (updateStatus === 'Done') {
+        toast.success(`Application "${selectedAppToUpdate.title}" marked as Approved and saved!`);
+      } else {
+        toast.success(`Application status updated to ${updateStatus} and saved!`);
+      }
+
+      setSelectedAppToUpdate(null);
+      setStatusReason('');
+      await loadApplications();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update application status on server');
     }
-
-    setSelectedAppToUpdate(null);
   };
 
   const handleSaveProjectStatusUpdate = async (e: React.FormEvent) => {
@@ -939,9 +969,16 @@ export const ApplicationsView: React.FC = () => {
                                   )}
                                 </button>
                                 <div className="space-y-0.5 min-w-0">
-                                  <span className="font-mono text-[10px] font-semibold text-gray-400 tracking-wider block">
-                                    {prj.code}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-mono text-[10px] font-semibold text-gray-400 tracking-wider">
+                                      {prj.code}
+                                    </span>
+                                    {prj.createdByName && (
+                                      <span className="text-[10px] text-gray-500 font-medium">
+                                        • By <strong className="text-gray-700 font-semibold">{prj.createdByName}</strong>
+                                      </span>
+                                    )}
+                                  </div>
                                   <span
                                     onClick={() => setSelectedProjectForView(prj)}
                                     className="font-bold text-xs text-gray-900 hover:text-emerald-700 cursor-pointer transition-colors block truncate"
@@ -991,9 +1028,22 @@ export const ApplicationsView: React.FC = () => {
                               </span>
                             </td>
 
-                            {/* Column 5: Single Overflow Menu Button (⋯) */}
+                            {/* Column 5: Action Buttons */}
                             <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                              <div className="relative inline-flex items-center gap-1 text-left" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => setHistoryTarget({
+                                    recordId: prj.id,
+                                    title: prj.name,
+                                    code: prj.code,
+                                  })}
+                                  className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                  title="View Project Audit History"
+                                >
+                                  <History className="w-4 h-4" />
+                                </button>
+
                                 <button
                                   type="button"
                                   onClick={() => setActiveOverflowMenuId(activeOverflowMenuId === prj.id ? null : prj.id)}
@@ -1023,31 +1073,47 @@ export const ApplicationsView: React.FC = () => {
                                       <span>View details</span>
                                     </button>
 
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveOverflowMenuId(null);
+                                        setHistoryTarget({
+                                          recordId: prj.id,
+                                          title: prj.name,
+                                          code: prj.code,
+                                        });
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    >
+                                      <History className="w-3.5 h-3.5 text-blue-600" />
+                                      <span>Audit history</span>
+                                    </button>
+
+                                    {canEditProject(prj) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveOverflowMenuId(null);
+                                          handleEditProject(prj);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>Edit project</span>
+                                      </button>
+                                    )}
                                     {!isEmployee && (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setActiveOverflowMenuId(null);
-                                            handleEditProject(prj);
-                                          }}
-                                          className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-                                          <span>Edit project</span>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setActiveOverflowMenuId(null);
-                                            handleDeleteProject(prj.id, prj.name);
-                                          }}
-                                          className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                                          <span>Delete project</span>
-                                        </button>
-                                      </>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveOverflowMenuId(null);
+                                          handleDeleteProject(prj.id, prj.name);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                        <span>Delete project</span>
+                                      </button>
                                     )}
                                   </div>
                                 )}
@@ -1285,10 +1351,13 @@ export const ApplicationsView: React.FC = () => {
                     onChange={(e) => setReviewingLead(e.target.value)}
                     className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="Dr. Harshit Mishra">Dr. Harshit Mishra</option>
-                    <option value="Neha Shukla">Neha Shukla</option>
-                    <option value="Utsav Mishra">Utsav Mishra</option>
-                    <option value="Jitendra Sir">Jitendra Sir</option>
+                    {dbEmployees.length > 0 ? (
+                      dbEmployees.map((emp) => (
+                        <option key={emp.id} value={emp.name}>{emp.name}</option>
+                      ))
+                    ) : (
+                      <option value="Unassigned">Unassigned</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1306,18 +1375,13 @@ export const ApplicationsView: React.FC = () => {
                     onChange={(e) => setAssignedTo(e.target.value)}
                     className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="Ashutosh Mishra">Ashutosh Mishra</option>
-                    <option value="Priyanka Sharma">Priyanka Sharma</option>
-                    <option value="Utkarsh Mishra">Utkarsh Mishra</option>
-                    <option value="Prerna Shukla">Prerna Shukla</option>
-                    <option value="Shreyansh Siladar">Shreyansh Siladar</option>
-                    <option value="Tarul Ma'am">Tarul Ma'am</option>
-                    <option value="Dr. Harshit Mishra">Dr. Harshit Mishra</option>
-                    <option value="Neha Shukla">Neha Shukla</option>
-                    <option value="Dr. Utsav Mishra">Dr. Utsav Mishra</option>
-                    <option value="Jitendra Sir">Jitendra Sir</option>
-                    <option value="Pranshu Dubey">Pranshu Dubey</option>
-                    <option value="Himanshu Tiwari">Himanshu Tiwari</option>
+                    {dbEmployees.length > 0 ? (
+                      dbEmployees.map((emp) => (
+                        <option key={emp.id} value={emp.name}>{emp.name}</option>
+                      ))
+                    ) : (
+                      <option value="Unassigned">Unassigned</option>
+                    )}
                   </select>
                 )}
               </div>
@@ -1448,6 +1512,7 @@ export const ApplicationsView: React.FC = () => {
                       >
                         <option value="EHM">EHM</option>
                         <option value="CAG">CLIMAGRO</option>
+                        <option value="COMMON">COMMON (Cross-entity)</option>
                       </select>
                     </div>
 
@@ -2175,6 +2240,45 @@ export const ApplicationsView: React.FC = () => {
                 )}
               </div>
 
+              {/* Created By & Audit History */}
+              <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                {p.createdByName ? (
+                  <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Created by: <strong className="text-gray-900 font-semibold">{p.createdByName}</strong></span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-400">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Created {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB') : 'recently'}</span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setHistoryTarget({
+                    recordId: p.id,
+                    title: p.name,
+                    code: p.code,
+                  })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>View Full Audit History</span>
+                </button>
+              </div>
+
+              {/* Recent Activity Section */}
+              <RecentActivitySection
+                tableName="projects"
+                recordId={p.id}
+                onOpenHistory={() => setHistoryTarget({
+                  recordId: p.id,
+                  title: p.name,
+                  code: p.code,
+                })}
+              />
+
               {/* Modal Footer Actions */}
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                 {!isEmployee ? (
@@ -2203,7 +2307,7 @@ export const ApplicationsView: React.FC = () => {
                     Close
                   </button>
 
-                  {!isEmployee && (
+                  {selectedProjectForView && canEditProject(selectedProjectForView) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -2222,6 +2326,18 @@ export const ApplicationsView: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Record History Slide-Over Drawer */}
+      {historyTarget && (
+        <RecordHistoryPanel
+          isOpen={!!historyTarget}
+          onClose={() => setHistoryTarget(null)}
+          tableName="projects"
+          recordId={historyTarget.recordId}
+          title={historyTarget.title}
+          code={historyTarget.code}
+        />
+      )}
     </div>
   );
 };

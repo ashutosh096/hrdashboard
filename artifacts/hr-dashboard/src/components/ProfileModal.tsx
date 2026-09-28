@@ -80,9 +80,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
         : 'EHM & Climagro'
   );
 
-  const employeeCodeDisplay = user?.employeeCode || (
-    user?.employeeId ? `EMP-${user.employeeId.slice(0, 4)}` : 'COM-EMP01'
-  );
+  const employeeCodeDisplay = user?.employeeCode || '-';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none animate-in fade-in duration-150">

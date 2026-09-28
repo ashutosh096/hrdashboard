@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { db, epics, initiatives, projects, entityCounters, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql } from '@workspace/db';
+import { db, epics, initiatives, projects, entityCounters, generateNextGlobalCode, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { getCallerInfo } from '../utils/userSnapshot.js';
 
 const router = Router();
 
@@ -12,11 +13,11 @@ router.get('/', async (req, res) => {
   const { initiativeId, projectId } = req.query;
 
   try {
-    let query = db.select().from(epics);
+    let query = db.select().from(epics).orderBy(sql`LOWER(${epics.title}) ASC`);
     if (initiativeId && typeof initiativeId === 'string') {
-      query = db.select().from(epics).where(eq(epics.initiativeId, initiativeId)) as any;
+      query = db.select().from(epics).where(eq(epics.initiativeId, initiativeId)).orderBy(sql`LOWER(${epics.title}) ASC`) as any;
     } else if (projectId && typeof projectId === 'string') {
-      query = db.select().from(epics).where(eq(epics.projectId, projectId)) as any;
+      query = db.select().from(epics).where(eq(epics.projectId, projectId)).orderBy(sql`LOWER(${epics.title}) ASC`) as any;
     }
 
     const allEpics = await query;
@@ -47,6 +48,8 @@ router.get('/', async (req, res) => {
       };
     });
 
+    enriched.sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
+
     res.json(enriched);
   } catch (err: any) {
     console.error('[FETCH EPICS ERROR]:', err);
@@ -56,7 +59,7 @@ router.get('/', async (req, res) => {
 
 // POST /api/epics - Manager protected epic creation with atomic code sequence
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const { title, description, initiativeId, projectId, entityId, entity, entityCode, department, targetWeek, sprintsCountTarget, ownerId, targetDate, status } = req.body;
+  const { title, description, initiativeId, projectId, entityId, entity, entityCode, department, targetWeek, sprintsCountTarget, ownerId, targetDate, status, assignedTo } = req.body;
 
   try {
     const created = await db.transaction(async (tx) => {
@@ -120,25 +123,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       const [entRow] = await tx.select().from(entities).where(eq(entities.id, targetEntityId));
       const entCode = entRow?.code || 'EHM';
 
-      // 5. Concurrency-safe atomic counter update
-      await tx
-        .insert(entityCounters)
-        .values({ entityId: targetEntityId, nextEpicSeq: 1 })
-        .onConflictDoNothing();
-
-      const [counter] = await tx
-        .update(entityCounters)
-        .set({ nextEpicSeq: sql`${entityCounters.nextEpicSeq} + 1` })
-        .where(eq(entityCounters.entityId, targetEntityId))
-        .returning();
-
-      const seqNumber = (counter?.nextEpicSeq || 2) - 1;
-      let epicCode = '';
-      if (prefixCode && prefixCode !== 'EP') {
-        epicCode = `${prefixCode}-EP${String(seqNumber).padStart(2, '0')}`;
-      } else {
-        epicCode = `${entCode}-EPIC-${String(seqNumber).padStart(2, '0')}`;
-      }
+      // 5. Concurrency-safe atomic counter update on global_counters
+      const epicCode = await generateNextGlobalCode('EPIC', tx);
 
       let resolvedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' = 'PLANNED';
       if (status) {
@@ -148,7 +134,9 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         else resolvedStatus = 'PLANNED';
       }
 
-      // 6. Insert Epic
+      const caller = await getCallerInfo(req.user, tx);
+
+      // 6. Insert Epic with server-authenticated created_by
       const [newEpic] = await tx
         .insert(epics)
         .values({
@@ -164,8 +152,45 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           status: resolvedStatus,
           ownerId: ownerId || null,
           targetDate: targetDate ? new Date(targetDate) : null,
+          assignedTo: assignedTo ? JSON.stringify(assignedTo) : null,
+          createdById: caller.employeeId,
+          createdByName: caller.callerName,
         })
         .returning();
+
+      // 7. Record history for Epic creation
+      await recordHistory(tx, {
+        tableName: 'epics',
+        recordId: newEpic.id,
+        action: 'CREATED',
+        changes: [{ field: 'title', old: null, new: newEpic.title }],
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+
+      // 8. Record CHILD_ADDED on parent Initiative if linked
+      if (newEpic.initiativeId) {
+        await recordHistory(tx, {
+          tableName: 'initiatives',
+          recordId: newEpic.initiativeId,
+          action: 'CHILD_ADDED',
+          changes: [{ field: 'epic', old: null, new: `Epic added: ${newEpic.title}` }],
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
+
+      // 9. Record CHILD_ADDED on parent Project if linked
+      if (newEpic.projectId) {
+        await recordHistory(tx, {
+          tableName: 'projects',
+          recordId: newEpic.projectId,
+          action: 'CHILD_ADDED',
+          changes: [{ field: 'epic', old: null, new: `Epic added: ${newEpic.title}` }],
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
 
       return {
         ...newEpic,
@@ -188,7 +213,7 @@ async function handleEpicUpdate(req: any, res: any) {
   if (!epicId || epicId === 'undefined' || epicId === 'null') {
     return res.status(400).json({ message: 'Valid Epic ID required' });
   }
-  const { title, description, initiativeId, projectId, entityId, entity, entityCode, department, targetWeek, sprintsCountTarget, status } = req.body;
+  const { title, description, initiativeId, projectId, entityId, entity, entityCode, department, targetWeek, sprintsCountTarget, status, targetDate, ownerId, assignedTo } = req.body;
 
   let mappedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | undefined = undefined;
   if (status !== undefined) {
@@ -199,63 +224,96 @@ async function handleEpicUpdate(req: any, res: any) {
   }
 
   try {
-    const updatePayload: any = {};
-    if (title !== undefined) updatePayload.title = title;
-    if (description !== undefined) updatePayload.description = description;
-    if (initiativeId !== undefined) updatePayload.initiativeId = initiativeId || null;
-    if (projectId !== undefined) updatePayload.projectId = projectId || null;
-    if (department !== undefined) updatePayload.department = department;
-    if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek;
-    if (sprintsCountTarget !== undefined) updatePayload.sprintsCountTarget = Number(sprintsCountTarget);
-    if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
+    const updatedResult = await db.transaction(async (tx) => {
+      const [oldEpic] = await tx.select().from(epics).where(eq(epics.id, epicId));
+      if (!oldEpic) return null;
 
-    if (entityId || entity || entityCode) {
-      const entTarget = String(entityId || entity || entityCode).toLowerCase().trim();
-      const allEnts = await db.select().from(entities);
-      const matched = allEnts.find((e: any) => {
-        if (e.id === entityId) return true;
-        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
-          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+      const updatePayload: any = {};
+      if (title !== undefined) updatePayload.title = title;
+      if (description !== undefined) updatePayload.description = description;
+      if (initiativeId !== undefined) updatePayload.initiativeId = initiativeId || null;
+      if (projectId !== undefined) updatePayload.projectId = projectId || null;
+      if (department !== undefined) updatePayload.department = department;
+      if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek;
+      if (sprintsCountTarget !== undefined) updatePayload.sprintsCountTarget = Number(sprintsCountTarget);
+      if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
+      if (targetDate !== undefined) updatePayload.targetDate = targetDate ? new Date(targetDate) : null;
+      if (ownerId !== undefined) updatePayload.ownerId = ownerId || null;
+      if (assignedTo !== undefined) updatePayload.assignedTo = assignedTo ? JSON.stringify(assignedTo) : null;
+
+      if (entityId || entity || entityCode) {
+        const entTarget = String(entityId || entity || entityCode).toLowerCase().trim();
+        const allEnts = await tx.select().from(entities);
+        const matched = allEnts.find((e: any) => {
+          if (e.id === entityId) return true;
+          if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+            return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+          }
+          if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+            return e.code === 'CAG';
+          }
+          if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+            return e.code === 'EHM';
+          }
+          return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+        });
+        if (matched) {
+          updatePayload.entityId = matched.id;
         }
-        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
-          return e.code === 'CAG';
-        }
-        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
-          return e.code === 'EHM';
-        }
-        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
-      });
-      if (matched) {
-        updatePayload.entityId = matched.id;
       }
-    }
 
-    const [updated] = await db
-      .update(epics)
-      .set(updatePayload)
-      .where(eq(epics.id, epicId))
-      .returning();
+      const [updated] = await tx
+        .update(epics)
+        .set(updatePayload)
+        .where(eq(epics.id, epicId))
+        .returning();
 
-    if (!updated) {
+      // Record changed fields in history
+      const caller = await getCallerInfo(req.user, tx);
+      const changes: { field: string; old: any; new: any }[] = [];
+      for (const [key, newVal] of Object.entries(updatePayload)) {
+        const oldVal = (oldEpic as any)[key];
+        const oldStr = oldVal instanceof Date ? oldVal.toISOString() : String(oldVal ?? '');
+        const newStr = newVal instanceof Date ? newVal.toISOString() : String(newVal ?? '');
+        if (oldStr !== newStr) {
+          changes.push({ field: key, old: oldVal, new: newVal });
+        }
+      }
+
+      if (changes.length > 0) {
+        await recordHistory(tx, {
+          tableName: 'epics',
+          recordId: epicId,
+          action: 'UPDATED',
+          changes,
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
+
+      const [entRow] = updated.entityId
+        ? await tx.select().from(entities).where(eq(entities.id, updated.entityId))
+        : [null];
+
+      const resolvedEntity = entRow?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : entRow?.code === 'COMMON'
+        ? 'COMMON'
+        : 'EHM';
+
+      return {
+        ...updated,
+        entity: resolvedEntity,
+        entityCode: entRow?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM'),
+        entityName: entRow?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+      };
+    });
+
+    if (!updatedResult) {
       return res.status(404).json({ message: 'Epic not found' });
     }
 
-    const [entRow] = updated.entityId
-      ? await db.select().from(entities).where(eq(entities.id, updated.entityId))
-      : [null];
-
-    const resolvedEntity = entRow?.code === 'CAG'
-      ? 'CLIMAGRO'
-      : entRow?.code === 'COMMON'
-      ? 'COMMON'
-      : 'EHM';
-
-    res.json({
-      ...updated,
-      entity: resolvedEntity,
-      entityCode: entRow?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM'),
-      entityName: entRow?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
-    });
+    res.json(updatedResult);
   } catch (err: any) {
     console.error('[UPDATE EPIC ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update epic' });
@@ -281,6 +339,15 @@ router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await recordHistory(tx, {
+        tableName: 'epics',
+        recordId: epicId,
+        action: 'DELETED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+
       // 1. Find linked sprints
       const linkedSprints = await tx.select({ id: sprints.id }).from(sprints).where(eq(sprints.epicId, epicId));
       const sprintIds = linkedSprints.map(s => s.id);

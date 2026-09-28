@@ -11,7 +11,9 @@ export { eq, ne, and, or, inArray, sql, lt, lte, gt, gte, asc, desc } from 'driz
 export * from './schema/entities.js';
 export * from './schema/departments.js';
 export * from './schema/employees.js';
+export * from './schema/employee_code_history.js';
 export * from './schema/entity_counters.js';
+export * from './schema/global_counters.js';
 export * from './schema/users.js';
 export * from './schema/invites.js';
 export * from './schema/google_tokens.js';
@@ -32,6 +34,8 @@ export * from './schema/epics.js';
 export * from './schema/sprints.js';
 export * from './schema/password_reset_otps.js';
 export * from './schema/projects.js';
+export * from './schema/record_history.js';
+export * from './history.js';
 
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DB_URL;
 

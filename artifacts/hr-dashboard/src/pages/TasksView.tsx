@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown, History, UserCheck } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
 import { InitiativesSubView } from '../components/InitiativesSubView';
 import { EpicsSubView } from '../components/EpicsSubView';
 import { MarkdownViewer } from '../components/MarkdownViewer';
+import { RecordHistoryPanel } from '../components/RecordHistoryPanel';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi, getCachedApi } from '@workspace/api-client-react';
@@ -45,6 +46,7 @@ export const TasksView: React.FC = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<{ recordId: string; title: string; code: string } | null>(null);
   const [isModalReadOnly, setIsModalReadOnly] = useState<boolean>(false);
   const [viewingEpicInTasks, setViewingEpicInTasks] = useState<any | null>(null);
   const [showDeleteEpicConfirm, setShowDeleteEpicConfirm] = useState(false);
@@ -94,15 +96,42 @@ export const TasksView: React.FC = () => {
       });
 
       const [tasksRes, epicsData, initsData, employeesData] = await Promise.all([
-        fetchApi<any>(`/api/tasks?${queryParams.toString()}`).catch(() => ({ tasks: [], totalCount: 0 })),
-        isManager ? fetchApi<any[]>('/api/epics').catch(() => []) : Promise.resolve([]),
-        isManager ? fetchApi<any[]>('/api/initiatives').catch(() => []) : Promise.resolve([]),
-        fetchApi<any[]>('/api/employees').catch(() => []),
+        fetchApi<any>(`/api/tasks?${queryParams.toString()}`).catch((err) => {
+          console.error('[TASKS FETCH ERROR]:', err);
+          return { tasks: [], totalCount: 0 };
+        }),
+        isManager ? fetchApi<any[]>('/api/epics').catch((err) => {
+          console.error('[EPICS FETCH ERROR]:', err);
+          return [];
+        }) : Promise.resolve([]),
+        isManager ? fetchApi<any[]>('/api/initiatives').catch((err) => {
+          console.error('[INITIATIVES FETCH ERROR]:', err);
+          return [];
+        }) : Promise.resolve([]),
+        fetchApi<any[]>('/api/employees').catch((err) => {
+          console.error('[EMPLOYEES FETCH ERROR]:', err);
+          return [];
+        }),
       ]);
 
-      setRawEpics(epicsData || []);
-      setInitiatives(initsData || []);
-      setEmployees(employeesData || []);
+      const sortedEpics = [...(epicsData || [])].sort((a, b) =>
+        (a.title || a.epicCode || '').localeCompare(b.title || b.epicCode || '', undefined, { sensitivity: 'base' })
+      );
+      setRawEpics(sortedEpics);
+
+      const sortedInits = [...(initsData || [])].sort((a, b) =>
+        (a.title || a.initiativeCode || '').localeCompare(b.title || b.initiativeCode || '', undefined, { sensitivity: 'base' })
+      );
+      setInitiatives(sortedInits);
+
+      const sortedEmps = [...(employeesData || [])].sort((a, b) =>
+        `${a.firstName || ''} ${a.lastName || ''}`.trim().localeCompare(
+          `${b.firstName || ''} ${b.lastName || ''}`.trim(),
+          undefined,
+          { sensitivity: 'base' }
+        )
+      );
+      setEmployees(sortedEmps);
 
       const rawTasksList = Array.isArray(tasksRes) ? tasksRes : (tasksRes?.tasks || []);
       const serverTotal = Array.isArray(tasksRes) ? tasksRes.length : (tasksRes?.totalCount ?? rawTasksList.length);
@@ -137,7 +166,7 @@ export const TasksView: React.FC = () => {
         );
         const realLeadName = matchedLead
           ? `${matchedLead.firstName || ''} ${matchedLead.lastName || ''}`.trim()
-          : t.reviewingLead || 'Manager Lead';
+          : ((t.reviewingLead && t.reviewingLead.toLowerCase() !== 'manager lead') ? t.reviewingLead : 'Unassigned');
 
         const pRaw = (t.priority || '').toUpperCase();
         const pNormalized = (pRaw === 'URGENT' || pRaw === 'CRITICAL' || pRaw === 'P1' || pRaw === '1') ? 'P1'
@@ -153,8 +182,7 @@ export const TasksView: React.FC = () => {
           entityId: t.entityId,
           entityName: t.entityName,
           epicId: t.epicId || parentEpic?.id,
-          initiativeId: t.initiativeId || parentInit?.id || parentEpic?.initiativeId,
-          parentInitiativeCode: parentInit?.initiativeCode || (parentEpic ? (badge.isCAG ? 'CAG-INIT-001' : 'EHM-INIT-001') : null),
+          parentInitiativeCode: parentInit?.initiativeCode || null,
           parentInitiativeTitle: parentInit?.title || '',
           parentEpicCode: parentEpic?.epicCode || null,
           parentEpicTitle: parentEpic?.title || '',
@@ -286,7 +314,7 @@ export const TasksView: React.FC = () => {
       parentEpicTitle: task.parentEpicTitle || null,
       assignee: task.assigneeName || task.assignee || 'Unassigned',
       assigneeId: task.assigneeId || '',
-      reviewingLead: task.reviewingLead || 'Manager Lead',
+      reviewingLead: ((task.reviewingLead && task.reviewingLead.toLowerCase() !== 'manager lead') ? task.reviewingLead : 'Unassigned'),
       reviewingLeadId: task.reviewingLeadId || '',
       status: task.status === 'DONE' || task.status === 'Done' ? 'Done' :
               task.status === 'IN_REVIEW' || task.status === 'To Review' ? 'To Review' :
@@ -362,7 +390,7 @@ export const TasksView: React.FC = () => {
     }
 
     const newId = createdFromApi?.id || `task-clone-${Date.now()}`;
-    const newCode = createdFromApi?.taskCode || `CAG-EMP01-${Math.floor(100 + Math.random() * 900)}`;
+    const newCode = createdFromApi?.taskCode || '-';
 
     const firstComment = {
       id: `cmt-${Date.now()}`,
@@ -433,7 +461,7 @@ export const TasksView: React.FC = () => {
   const renderTaskRow = (t: any) => {
     const isCAG = t.entityCode === 'CAG';
     const entityLabel = t.entityCode === 'COMMON' ? 'EHM & CLIMAGRO' : isCAG ? 'CLIMAGRO' : 'EHM';
-    const postedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '23 Sept';
+    const postedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
 
     const p = (t.priority || '').toUpperCase();
     const priorityCode = (p === 'URGENT' || p === 'CRITICAL' || p === 'P1' || p === '1') ? 'P1'
@@ -450,9 +478,16 @@ export const TasksView: React.FC = () => {
         {/* Deliverable Column: Task ID stacked above Title */}
         <td className="py-3 px-4 max-w-xs">
           <div className="space-y-0.5">
-            <span className="font-mono text-[10px] font-semibold text-gray-400 tracking-wider block">
-              {t.taskCode || t.id}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-mono text-[10px] font-semibold text-gray-400 tracking-wider">
+                {t.taskCode || t.id}
+              </span>
+              {(t.createdByName || t.creatorName) && (
+                <span className="text-[10px] text-gray-500 font-medium">
+                  • By <strong className="text-gray-700 font-semibold">{t.createdByName || t.creatorName}</strong>
+                </span>
+              )}
+            </div>
             <span
               onClick={() => handleTaskClick(t, false)}
               className="font-bold text-xs text-gray-900 hover:text-emerald-700 cursor-pointer transition-colors block truncate"
@@ -557,6 +592,18 @@ export const TasksView: React.FC = () => {
               title="Edit Task"
             >
               <Edit3 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryTarget({
+                recordId: t.id,
+                title: t.title,
+                code: t.taskCode || t.taskId,
+              })}
+              className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+              title="View Task Audit History"
+            >
+              <History className="w-4 h-4" />
             </button>
           </div>
         </td>
@@ -1118,6 +1165,7 @@ export const TasksView: React.FC = () => {
                               </h5>
                               <p className="text-[11px] text-gray-400 font-medium">
                                 {displayTaskCode} • {assigneeStr} • {dateStr}
+                                {(taskItem.createdByName || taskItem.creatorName) ? ` • Created by: ${taskItem.createdByName || taskItem.creatorName}` : ''}
                               </p>
                             </div>
 
@@ -1216,6 +1264,18 @@ export const TasksView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Record History Slide-Over Drawer */}
+      {historyTarget && (
+        <RecordHistoryPanel
+          isOpen={!!historyTarget}
+          onClose={() => setHistoryTarget(null)}
+          tableName="tasks"
+          recordId={historyTarget.recordId}
+          title={historyTarget.title}
+          code={historyTarget.code}
+        />
       )}
     </div>
   );

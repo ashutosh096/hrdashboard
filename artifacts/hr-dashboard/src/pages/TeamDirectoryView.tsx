@@ -102,18 +102,12 @@ export const TeamDirectoryView: React.FC = () => {
         const formatted = data.map(emp => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member';
           const rawEntity = emp.entityCode || emp.entity || 'EHM';
-          const roleType = (emp.role || 'Team Member').toUpperCase();
-          const defaultCode = roleType === 'ADMIN'
-            ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-ADM01`
-            : roleType === 'MANAGER'
-              ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-MGR01`
-              : `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-EMP01`;
-
+          const roleType = (emp.role || 'EMPLOYEE').toUpperCase();
           return {
             id: emp.id,
             firstName: emp.firstName || '',
             lastName: emp.lastName || '',
-            employeeCode: emp.employeeCode || defaultCode,
+            employeeCode: emp.employeeCode || '-',
             name: empName,
             email: emp.email || '',
             phone: emp.phone && emp.phone.trim() ? emp.phone.trim() : null,

@@ -5,7 +5,11 @@ import { db, users, employees, entities, departments, entityCounters, initiative
 dotenv.config();
 
 export async function runSeed() {
-  console.log('[SEED] Purging dummy data, notifications, Google Calendar tokens, and keeping only Admin account...');
+  console.error('DEPRECATED: db/seed.ts writes old-format codes and is disabled under Step 2.');
+  if (process.env.ALLOW_LEGACY_SEED !== 'true') {
+    process.exit(1);
+    return;
+  }
   const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@example.com').toLowerCase().trim();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
   const passwordHash = await bcrypt.hash(adminPassword, 10);

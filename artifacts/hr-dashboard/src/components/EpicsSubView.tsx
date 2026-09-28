@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown, Trash2 } from 'lucide-react';
+import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown, Trash2, History, UserCheck } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
@@ -9,6 +9,8 @@ import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { TaskAssignModal } from './TaskAssignModal';
 import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
+import { RecordHistoryPanel } from './RecordHistoryPanel';
+import { RecentActivitySection } from './RecentActivitySection';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
@@ -30,6 +32,9 @@ interface EpicItem {
   targetWeek?: string | null;
   sprintsCountTarget?: number;
   targetDate: string | null;
+  createdById?: string | null;
+  createdByName?: string | null;
+  assignedTo?: string[] | null;
   createdAt?: string;
   sprintsCount: number;
   tasksCount: number;
@@ -113,6 +118,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   // View & Edit Modal States (Middle Pop Card)
   const [viewingEpic, setViewingEpic] = useState<EpicItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<{ recordId: string; title: string; code: string } | null>(null);
   const [viewingInitiativeInEpics, setViewingInitiativeInEpics] = useState<any | null>(null);
   const [editingEpic, setEditingEpic] = useState<EpicItem | null>(null);
   const [editEntity, setEditEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
@@ -127,6 +133,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [selectedTaskToView, setSelectedTaskToView] = useState<TaskItem | null>(null);
 
   // Task Creation Modal & Quick Inline Task Creation State
+  const [adminManagerList, setAdminManagerList] = useState<{ id: string; name: string }[]>([]);
+  const [createAssignedTo, setCreateAssignedTo] = useState<string[]>([]);
+  const [editAssignedTo, setEditAssignedTo] = useState<string[]>([]);
+  const [createAssignedDropOpen, setCreateAssignedDropOpen] = useState(false);
+  const [editAssignedDropOpen, setEditAssignedDropOpen] = useState(false);
   const [isTaskAssignModalOpen, setIsTaskAssignModalOpen] = useState(false);
   const [taskAssignEpic, setTaskAssignEpic] = useState<EpicItem | null>(null);
   const [quickSlotIdx, setQuickSlotIdx] = useState<number | null>(null);
@@ -280,13 +291,25 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [epicsData, initsData, tasksData, projsData] = await Promise.all([
+      const [epicsData, initsData, tasksData, projsData, employeesData] = await Promise.all([
         fetchApi<EpicItem[]>('/api/epics'),
         fetchApi<InitiativeOption[]>('/api/initiatives'),
         fetchApi<any[]>('/api/tasks'),
         fetchApi<ProjectOption[]>('/api/projects'),
+        fetchApi<any[]>('/api/employees'),
       ]);
-      const sortedEpics = [...(epicsData || [])].sort((a, b) =>
+      // Keep only ADMIN/MANAGER employees for "Assigned To" dropdown
+      const adminsAndManagers = (employeesData || [])
+        .filter((e: any) => e.role === 'ADMIN' || e.role === 'MANAGER')
+        .map((e: any) => ({ id: e.id, name: `${e.firstName || ''} ${e.lastName || ''}`.trim() }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      setAdminManagerList(adminsAndManagers);
+      const sortedEpics = [...(epicsData || [])].map(ep => ({
+        ...ep,
+        assignedTo: ep.assignedTo
+          ? (Array.isArray(ep.assignedTo) ? ep.assignedTo : (() => { try { return JSON.parse(ep.assignedTo); } catch { return []; } })())
+          : [],
+      })).sort((a, b) =>
         (a.title || a.epicCode || '').localeCompare(b.title || b.epicCode || '', undefined, { sensitivity: 'base' })
       );
       setEpics(sortedEpics);
@@ -424,6 +447,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           department,
           targetWeek,
           sprintsCountTarget: sprintsCountTarget > 0 ? sprintsCountTarget : undefined,
+          assignedTo: createAssignedTo.length > 0 ? createAssignedTo : undefined,
         }),
       });
       toast.success(`Epic ${created.epicCode} created successfully!`);
@@ -433,6 +457,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       setSelectedProjectId('');
       setTargetWeek('');
       setSprintsCountTarget(0);
+      setCreateAssignedTo([]);
       setIsModalOpen(false);
       window.dispatchEvent(new CustomEvent('epics-updated'));
       loadData();
@@ -453,6 +478,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     setEditTargetWeek(epic.targetWeek || '');
     setEditSprintsCountTarget(epic.sprintsCountTarget || 0);
     setEditStatus(epic.status === 'COMPLETED' ? 'DONE' : (epic.status || 'PLANNED'));
+    setEditAssignedTo(Array.isArray(epic.assignedTo) ? epic.assignedTo : []);
     const badge = getEntityBadge(epic);
     const resolvedEnt = epic.entity === 'CLIMAGRO' || epic.entityCode === 'CAG' || badge.isCAG ? 'CAG'
       : epic.entity === 'COMMON' || epic.entityCode === 'COMMON' || badge.isCommon ? 'COMMON'
@@ -481,6 +507,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           targetWeek: editTargetWeek,
           sprintsCountTarget: editSprintsCountTarget > 0 ? editSprintsCountTarget : 0,
           status: apiStatus,
+          assignedTo: editAssignedTo,
         }),
       });
       toast.success(`Epic ${editingEpic.epicCode} updated successfully!`);
@@ -772,6 +799,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       </div>
                       <p className="text-xs text-gray-400 font-medium truncate mt-0.5">
                         {parentInit?.title ? `Init: ${parentInit.title} • ` : ''}{parentProj?.name ? `Project: ${parentProj.name} • ` : ''}{epic.department || 'Product & Tech'} • {tasksSummary}
+                        {epic.createdByName ? ` • Created by: ${epic.createdByName}` : ''}
                       </p>
                     </div>
                   </div>
@@ -812,6 +840,22 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                         {isDone ? 'Done' : isInProgress ? 'In Progress' : 'Planned'}
                       </span>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHistoryTarget({
+                          recordId: epic.id,
+                          title: epic.title,
+                          code: epic.epicCode,
+                        });
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer border border-transparent hover:border-emerald-200"
+                      title="View Epic History"
+                    >
+                      <History className="w-4 h-4" />
+                    </button>
 
                     <button
                       type="button"
@@ -1102,7 +1146,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingEpic.createdAt ? new Date(viewingEpic.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                    {viewingEpic.createdAt ? new Date(viewingEpic.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
                   </span>
                 </div>
               </div>
@@ -1182,7 +1226,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                         const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
-                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
+                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
 
                         const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
                         const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
@@ -1297,6 +1341,45 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   </div>
                 );
               })()}
+
+              {/* Created By & Audit History Header */}
+              <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                {viewingEpic.createdByName ? (
+                  <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Created by: <strong className="text-gray-900 font-semibold">{viewingEpic.createdByName}</strong></span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-400">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Created {viewingEpic.createdAt ? new Date(viewingEpic.createdAt).toLocaleDateString('en-GB') : 'recently'}</span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setHistoryTarget({
+                    recordId: viewingEpic.id,
+                    title: viewingEpic.title,
+                    code: viewingEpic.epicCode,
+                  })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>View Full Audit History</span>
+                </button>
+              </div>
+
+              {/* Recent Activity Section */}
+              <RecentActivitySection
+                tableName="epics"
+                recordId={viewingEpic.id}
+                onOpenHistory={() => setHistoryTarget({
+                  recordId: viewingEpic.id,
+                  title: viewingEpic.title,
+                  code: viewingEpic.epicCode,
+                })}
+              />
             </div>
           </div>
         </div>
@@ -1528,6 +1611,48 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               </div>
 
+              {/* Assigned To (ADMIN/MANAGER only) — click to open dropdown */}
+              <div className="relative">
+                <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
+                <button
+                  type="button"
+                  onClick={() => setEditAssignedDropOpen(prev => !prev)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer font-medium text-gray-700"
+                >
+                  <span>
+                    {editAssignedTo.length === 0
+                      ? 'Select assignees...'
+                      : editAssignedTo.join(', ')}
+                  </span>
+                  <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${editAssignedDropOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {editAssignedDropOpen && (
+                  <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
+                    {adminManagerList.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-gray-400 font-medium">No admins/managers found</div>
+                    ) : adminManagerList.map((emp) => (
+                      <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={editAssignedTo.includes(emp.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) setEditAssignedTo(prev => [...prev, emp.name]);
+                            else setEditAssignedTo(prev => prev.filter(n => n !== emp.name));
+                          }}
+                          className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-gray-800">{emp.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {editAssignedTo.length > 0 && (
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                    {editAssignedTo.length} assigned: {editAssignedTo.join(', ')}
+                  </p>
+                )}
+              </div>
+
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
@@ -1697,6 +1822,48 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <p className="text-[10px] text-gray-400 font-medium mt-1">
                   {sprintsCountTarget > 0 ? `Target set to ${sprintsCountTarget} tasks.` : 'Leave blank/0 for dynamic flexible task count.'}
                 </p>
+              </div>
+
+              {/* Assigned To (ADMIN/MANAGER only) — click to open dropdown */}
+              <div className="relative">
+                <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
+                <button
+                  type="button"
+                  onClick={() => setCreateAssignedDropOpen(prev => !prev)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer font-medium text-gray-700"
+                >
+                  <span>
+                    {createAssignedTo.length === 0
+                      ? 'Select assignees...'
+                      : createAssignedTo.join(', ')}
+                  </span>
+                  <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${createAssignedDropOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {createAssignedDropOpen && (
+                  <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
+                    {adminManagerList.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-gray-400 font-medium">No admins/managers found</div>
+                    ) : adminManagerList.map((emp) => (
+                      <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={createAssignedTo.includes(emp.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) setCreateAssignedTo(prev => [...prev, emp.name]);
+                            else setCreateAssignedTo(prev => prev.filter(n => n !== emp.name));
+                          }}
+                          className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="text-xs font-medium text-gray-800">{emp.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {createAssignedTo.length > 0 && (
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                    {createAssignedTo.length} assigned: {createAssignedTo.join(', ')}
+                  </p>
+                )}
               </div>
 
               {/* Clone / Duplicate Option Checkbox */}
@@ -1929,7 +2096,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingInitiativeInEpics.createdAt ? new Date(viewingInitiativeInEpics.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                    {viewingInitiativeInEpics.createdAt ? new Date(viewingInitiativeInEpics.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
                   </span>
                 </div>
               </div>
@@ -2096,6 +2263,18 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         initialEntityId={(taskAssignEpic?.entityCode || taskAssignEpic?.entity || viewingEpic?.entityCode || viewingEpic?.entity) === 'CAG' ? 'CAG' : 'EHM'}
         initialDepartment={taskAssignEpic?.department || viewingEpic?.department || 'Operations & Delivery'}
       />
+
+      {/* Record History Slide-Over Drawer */}
+      {historyTarget && (
+        <RecordHistoryPanel
+          isOpen={!!historyTarget}
+          onClose={() => setHistoryTarget(null)}
+          tableName="epics"
+          recordId={historyTarget.recordId}
+          title={historyTarget.title}
+          code={historyTarget.code}
+        />
+      )}
     </div>
   );
 };

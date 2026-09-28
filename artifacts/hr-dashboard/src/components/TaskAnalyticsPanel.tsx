@@ -10,6 +10,8 @@ interface EmployeeRecord {
   lastName: string;
   employeeCode: string;
   entityId: string;
+  entityCode?: string;
+  entity?: string;
 }
 
 interface TaskRecord {

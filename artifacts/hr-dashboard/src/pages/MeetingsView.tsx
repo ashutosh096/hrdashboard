@@ -660,7 +660,7 @@ export const MeetingsView: React.FC = () => {
       return {
         id: emp.id,
         name: empName,
-        employeeCode: emp.employeeCode || `EHM-EMP0${idx + 1}`,
+        employeeCode: emp.employeeCode || '-',
         entity,
         entityCode: entity,
         entityId: emp.entityId,

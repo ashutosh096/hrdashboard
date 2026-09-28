@@ -38,6 +38,8 @@ export const tasks = pgTable(
     dueDate: timestamp('due_date').notNull(),
     dependencyTaskId: uuid('dependency_task_id'),
     waitingOn: varchar('waiting_on', { length: 255 }).default('None (Self)'),
+    createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
+    createdByName: text('created_by_name'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

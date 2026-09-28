@@ -1,5 +1,8 @@
 import { db, projects, eq, desc } from '@workspace/db';
 
+console.error('DEPRECATED: test_project_crud.ts writes old-format codes and is disabled under Step 2.');
+process.exit(1);
+
 async function testManualProjectAddition() {
   console.log('--- 🧪 Testing Manual Project Addition and Database Persistence ---');
 

@@ -18,6 +18,7 @@ build/
 */.env.development
 
 # Generated database backups & large exports (contain credentials / PII)
+**/DATABASE_BACKUP.*
 DATABASE_BACKUP.json
 DATABASE_BACKUP.md
 DATABASE_BACKUP.sql
@@ -35,6 +36,9 @@ migration_mapping_step2.*
 
 # Temporary files
 scratch/
+scratch_*
+imagedemo/
 
 # Chat logs / discussion files with sensitive content
 chatdiscussion.md
+

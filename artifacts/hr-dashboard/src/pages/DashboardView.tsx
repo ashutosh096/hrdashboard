@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import {
   Users,
@@ -310,7 +310,7 @@ export const DashboardView: React.FC = () => {
                     <div className="p-4 text-center text-xs font-semibold text-gray-400">No team members found for selected entity.</div>
                   ) : (
                     scopedEmployees.slice(0, 6).map((emp) => {
-                      const attRecord = scopedAttendance.find((a) => a.employeeId === emp.id || a.employeeId === emp.employeeCode);
+                      const attRecord = scopedAttendance.find((a) => a.employeeId === emp.id);
                       const clockInTime = attRecord?.clockIn ? new Date(attRecord.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '9:00 am';
                       const workMode = attRecord?.workMode || 'OFFICE';
                       const isRemote = workMode === 'REMOTE';

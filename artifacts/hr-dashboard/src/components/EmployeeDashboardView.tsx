@@ -177,10 +177,6 @@ export const EmployeeDashboardView: React.FC = () => {
     }
   };
 
-  // Standup Log State
-  const [completedToday, setCompletedToday] = useState('');
-  const [plannedTomorrow, setPlannedTomorrow] = useState('');
-  const [blockers, setBlockers] = useState('');
 
   const loadData = async (_silent = false) => {
     try {
@@ -225,7 +221,7 @@ export const EmployeeDashboardView: React.FC = () => {
           })
           .map((t) => {
             const matchedLeadEmp = (empData || []).find((e: any) => e.id === t.reviewingLeadId || e.employeeId === t.reviewingLeadId);
-            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Manager Lead');
+            const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : ((t.reviewingLead && t.reviewingLead.toLowerCase() !== 'manager lead') ? t.reviewingLead : 'Unassigned');
             const resolvedSprintName = t.sprintId ? sprintMap.get(t.sprintId) : t.sprintWeek;
 
             const taskBadge = getEntityBadge(t);
@@ -410,17 +406,6 @@ export const EmployeeDashboardView: React.FC = () => {
 
 
 
-  const handleStandupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!completedToday) {
-      toast.error('Please enter work completed today.');
-      return;
-    }
-    toast.success('Daily Standup Work Log submitted to Manager & Lead!');
-    setCompletedToday('');
-    setPlannedTomorrow('');
-    setBlockers('');
-  };
 
   // Filter tasks for Backlog tab
   const filteredBacklogTasks = scopedMyTasks.filter((t) => {
@@ -1398,7 +1383,7 @@ export const EmployeeDashboardView: React.FC = () => {
                       </option>
                     ))}
                     {dbEmployees.length === 0 && (
-                      <option value="Manager Lead">Manager Lead</option>
+                      <option value="Unassigned">Unassigned</option>
                     )}
                   </select>
                 </div>

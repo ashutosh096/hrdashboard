@@ -53,6 +53,7 @@ export interface SearchItem {
   ownerName?: string;
   deliverableUrl?: string;
   targetDate?: string;
+  previousCodes?: string[];
   rawData?: any;
 }
 
@@ -217,6 +218,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
         email: e.email || '',
         phone: e.phone || '',
         entityName: entityStr,
+        previousCodes: Array.isArray(e.previousCodes) ? e.previousCodes : [],
         rawData: e,
       };
     });
@@ -287,6 +289,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
         item.email || '',
         item.phone || '',
         item.roleBadge || '',
+        (item.previousCodes || []).join(' '),
       ]
         .join(' ')
         .toLowerCase();
@@ -355,7 +358,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Search projects, epics, tasks, team (e.g. EHM-I01, harshit, P1, sprint)..."
+                placeholder="Search projects, epics, tasks, team (e.g. INIT0001, TASK0001, TEAM0001)..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -492,6 +495,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                             <span className="text-[10px] font-bold font-mono text-gray-500 bg-gray-100 px-1.5 py-0.2 rounded shrink-0">
                               {r.code}
                             </span>
+                            {r.type === 'Team' && r.previousCodes && r.previousCodes.length > 0 && (
+                              <span className="text-[9px] font-mono text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded shrink-0" title={`Historical codes: ${r.previousCodes.join(', ')}`}>
+                                prev: {r.previousCodes.join(', ')}
+                              </span>
+                            )}
                           </div>
 
                           <p className="text-[11px] text-gray-500 font-medium truncate">{r.subtitle}</p>
@@ -638,6 +646,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                   <div>
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Entity</span>
                     <span className="font-bold text-gray-900">{viewingItem.entityName}</span>
+                  </div>
+                )}
+
+                {viewingItem.previousCodes && viewingItem.previousCodes.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Previous Codes</span>
+                    <span className="font-mono text-xs text-amber-800 font-bold">{viewingItem.previousCodes.join(', ')}</span>
                   </div>
                 )}
               </div>

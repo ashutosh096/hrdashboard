@@ -110,4 +110,55 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PATCH /:id - Update application status (ADMIN/MANAGER) or reason (EMPLOYEE own pending)
+router.patch('/:id', async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { status, reason } = req.body;
+  const callerRole = (req.user?.role || '').toUpperCase();
+  const isManagerOrAdmin = callerRole === 'ADMIN' || callerRole === 'MANAGER';
+
+  try {
+    const [existing] = await db.select().from(applications).where(eq(applications.id, id!));
+    if (!existing) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    const updateData: any = { updatedAt: new Date() };
+
+    if (status !== undefined) {
+      if (!isManagerOrAdmin) {
+        return res.status(403).json({ message: 'Only Admins and Managers can approve or reject applications' });
+      }
+      const normStatus = String(status).toUpperCase();
+      if (!['PENDING', 'APPROVED', 'REJECTED'].includes(normStatus)) {
+        return res.status(400).json({ message: 'Invalid status. Allowed: PENDING, APPROVED, REJECTED' });
+      }
+      updateData.status = normStatus;
+      if (req.user?.employeeId) {
+        updateData.reviewedBy = req.user.employeeId;
+      }
+    }
+
+    if (reason !== undefined) {
+      if (!isManagerOrAdmin && existing.employeeId !== req.user?.employeeId) {
+        return res.status(403).json({ message: 'You can only edit your own applications' });
+      }
+      if (typeof reason === 'string' && reason.trim()) {
+        updateData.reason = reason.trim();
+      }
+    }
+
+    const [updated] = await db
+      .update(applications)
+      .set(updateData)
+      .where(eq(applications.id, id!))
+      .returning();
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[PATCH APPLICATION ERROR]:', err);
+    res.status(500).json({ message: err?.message || 'Failed to update application' });
+  }
+});
+
 export default router;

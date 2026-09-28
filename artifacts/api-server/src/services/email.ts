@@ -48,9 +48,9 @@ async function attemptSmtpSend(
   const configs = customPort
     ? [{ port: customPort, secure: customPort === 465 }]
     : [
-        { port: 465, secure: true },
-        { port: 587, secure: false, requireTLS: true },
-      ];
+      { port: 465, secure: true },
+      { port: 587, secure: false, requireTLS: true },
+    ];
 
   let lastError = '';
 

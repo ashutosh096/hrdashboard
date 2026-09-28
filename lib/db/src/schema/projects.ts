@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, integer, jsonb, uuid, index } from 'drizzle-orm/pg-core';
+import { employees } from './employees.js';
 
 export const projects = pgTable(
   'projects',
@@ -22,6 +23,8 @@ export const projects = pgTable(
     description: text('description').default(''),
     checkpoints: jsonb('checkpoints').$type<{ id: string; title: string; isCompleted: boolean }[]>().default([]),
     comments: jsonb('comments').$type<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>().default([]),
+    createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
+    createdByName: text('created_by_name'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

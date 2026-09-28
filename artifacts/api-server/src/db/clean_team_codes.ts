@@ -1,5 +1,8 @@
 import { db, users, employees, departments, entities, eq, and } from '@workspace/db';
 
+console.error('DEPRECATED: db/clean_team_codes.ts writes old-format codes and is disabled under Step 2.');
+process.exit(1);
+
 async function cleanTeam() {
   console.log('--- Cleaning Core Team Employee Codes & Entities ---');
 

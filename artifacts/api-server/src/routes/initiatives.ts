@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { db, initiatives, entityCounters, entities, departments, employees, epics, tasks, eq, sql } from '@workspace/db';
+import { db, initiatives, entityCounters, generateNextGlobalCode, entities, departments, employees, epics, tasks, eq, sql, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { getCallerInfo } from '../utils/userSnapshot.js';
 
 const router = Router();
 
@@ -26,8 +27,11 @@ router.get('/', async (req, res) => {
         ownerId: initiatives.ownerId,
         targetDate: initiatives.targetDate,
         createdAt: initiatives.createdAt,
+        createdById: initiatives.createdById,
+        createdByName: initiatives.createdByName,
       })
-      .from(initiatives);
+      .from(initiatives)
+      .orderBy(sql`LOWER(${initiatives.title}) ASC`);
 
     // Fetch linked epics, entities & departments for each initiative
     const allEpics = await db.select().from(epics);
@@ -56,6 +60,8 @@ router.get('/', async (req, res) => {
       };
     });
 
+    enriched.sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
+
     res.json(enriched);
   } catch (err: any) {
     console.error('[FETCH INITIATIVES ERROR]:', err);
@@ -69,6 +75,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 
   try {
     const created = await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+
       // 1. Resolve Entity ID and Entity Code safely
       const allEntities = await tx.select().from(entities);
       let entity = allEntities.find(e =>
@@ -86,24 +94,11 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       if (!entity) throw new Error('No entity found in database');
 
       const targetEntityId = entity.id;
-      const entityCode = entity.code; // "EHM" or "CAG"
 
-      // 2. Concurrency-safe atomic update on entity_counters
-      await tx
-        .insert(entityCounters)
-        .values({ entityId: targetEntityId, nextInitiativeSeq: 1 })
-        .onConflictDoNothing();
+      // 2. Concurrency-safe atomic update on global_counters
+      const initiativeCode = await generateNextGlobalCode('INIT', tx);
 
-      const [counter] = await tx
-        .update(entityCounters)
-        .set({ nextInitiativeSeq: sql`${entityCounters.nextInitiativeSeq} + 1` })
-        .where(eq(entityCounters.entityId, targetEntityId))
-        .returning();
-
-      const seqNumber = (counter?.nextInitiativeSeq || 2) - 1;
-      const initiativeCode = `${entityCode}-I${String(seqNumber).padStart(2, '0')}`;
-
-      // 3. Insert Initiative
+      // 3. Insert Initiative with server-authenticated created_by
       const [newInitiative] = await tx
         .insert(initiatives)
         .values({
@@ -119,8 +114,20 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           status: status || 'PLANNED',
           ownerId: ownerId || null,
           targetDate: targetDate ? new Date(targetDate) : null,
+          createdById: caller.employeeId,
+          createdByName: caller.callerName,
         })
         .returning();
+
+      // 4. Record history for creation
+      await recordHistory(tx, {
+        tableName: 'initiatives',
+        recordId: newInitiative.id,
+        action: 'CREATED',
+        changes: [{ field: 'title', old: null, new: newInitiative.title }],
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
 
       return newInitiative;
     });
@@ -132,10 +139,10 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// PUT /api/initiatives/:id - Update initiative status & details
-router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+// Helper for initiative updates
+async function handleInitiativeUpdate(req: any, res: any) {
   const initId = req.params.id as string;
-  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric, subDepartment, entityId } = req.body;
+  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric, subDepartment, entityId, targetDate, ownerId } = req.body;
 
   let mappedStatus: 'PLANNED' | 'ACTIVE' | 'DONE' | undefined = undefined;
   if (status === 'IN_PROGRESS' || status === 'ACTIVE') mappedStatus = 'ACTIVE';
@@ -143,39 +150,71 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   else if (status === 'PLANNED') mappedStatus = 'PLANNED';
 
   try {
-    const updatePayload: any = {};
-    if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
-    if (title !== undefined) updatePayload.title = title;
-    if (description !== undefined) updatePayload.description = description;
-    if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth;
-    if (epicsCountTarget !== undefined) updatePayload.epicsCountTarget = Number(epicsCountTarget);
-    if (targetDeliverableMetric !== undefined) updatePayload.targetDeliverableMetric = targetDeliverableMetric;
-    if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
+    const updated = await db.transaction(async (tx) => {
+      const [oldInit] = await tx.select().from(initiatives).where(eq(initiatives.id, initId));
+      if (!oldInit) return null;
 
-    if (entityId !== undefined) {
-      const entTarget = String(entityId || '').toLowerCase().trim();
-      const allEntities = await db.select().from(entities);
-      let entity = allEntities.find((e: any) => {
-        if (e.id === entityId) return true;
-        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
-          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
-        }
-        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
-          return e.code === 'CAG';
-        }
-        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
-          return e.code === 'EHM';
-        }
-        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
-      });
-      if (entity) updatePayload.entityId = entity.id;
-    }
+      const updatePayload: any = {};
+      if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
+      if (title !== undefined) updatePayload.title = title;
+      if (description !== undefined) updatePayload.description = description;
+      if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth;
+      if (epicsCountTarget !== undefined) updatePayload.epicsCountTarget = Number(epicsCountTarget);
+      if (targetDeliverableMetric !== undefined) updatePayload.targetDeliverableMetric = targetDeliverableMetric;
+      if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
+      if (targetDate !== undefined) updatePayload.targetDate = targetDate ? new Date(targetDate) : null;
+      if (ownerId !== undefined) updatePayload.ownerId = ownerId || null;
 
-    const [updated] = await db
-      .update(initiatives)
-      .set(updatePayload)
-      .where(eq(initiatives.id, initId))
-      .returning();
+      if (entityId !== undefined) {
+        const entTarget = String(entityId || '').toLowerCase().trim();
+        const allEntities = await tx.select().from(entities);
+        let entity = allEntities.find((e: any) => {
+          if (e.id === entityId) return true;
+          if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+            return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+          }
+          if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+            return e.code === 'CAG';
+          }
+          if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+            return e.code === 'EHM';
+          }
+          return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+        });
+        if (entity) updatePayload.entityId = entity.id;
+      }
+
+      const [resInit] = await tx
+        .update(initiatives)
+        .set(updatePayload)
+        .where(eq(initiatives.id, initId))
+        .returning();
+
+      // Record changed fields in history
+      const caller = await getCallerInfo(req.user, tx);
+      const changes: { field: string; old: any; new: any }[] = [];
+      for (const [key, newVal] of Object.entries(updatePayload)) {
+        const oldVal = (oldInit as any)[key];
+        const oldStr = oldVal instanceof Date ? oldVal.toISOString() : String(oldVal ?? '');
+        const newStr = newVal instanceof Date ? newVal.toISOString() : String(newVal ?? '');
+        if (oldStr !== newStr) {
+          changes.push({ field: key, old: oldVal, new: newVal });
+        }
+      }
+
+      if (changes.length > 0) {
+        await recordHistory(tx, {
+          tableName: 'initiatives',
+          recordId: initId,
+          action: 'UPDATED',
+          changes,
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
+
+      return resInit;
+    });
 
     if (!updated) {
       return res.status(404).json({ message: 'Initiative not found' });
@@ -186,63 +225,13 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     console.error('[UPDATE INITIATIVE ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update initiative' });
   }
-});
+}
+
+// PUT /api/initiatives/:id - Update initiative status & details
+router.put('/:id', requireRole(['ADMIN', 'MANAGER']), handleInitiativeUpdate);
 
 // PATCH /api/initiatives/:id - Update initiative status & details
-router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const initId = req.params.id as string;
-  const { status, title, description, targetMonth, epicsCountTarget, targetDeliverableMetric, subDepartment, entityId } = req.body;
-
-  let mappedStatus: 'PLANNED' | 'ACTIVE' | 'DONE' | undefined = undefined;
-  if (status === 'IN_PROGRESS' || status === 'ACTIVE') mappedStatus = 'ACTIVE';
-  else if (status === 'COMPLETED' || status === 'DONE') mappedStatus = 'DONE';
-  else if (status === 'PLANNED') mappedStatus = 'PLANNED';
-
-  try {
-    const updatePayload: any = {};
-    if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
-    if (title !== undefined) updatePayload.title = title;
-    if (description !== undefined) updatePayload.description = description;
-    if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth;
-    if (epicsCountTarget !== undefined) updatePayload.epicsCountTarget = Number(epicsCountTarget);
-    if (targetDeliverableMetric !== undefined) updatePayload.targetDeliverableMetric = targetDeliverableMetric;
-    if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
-
-    if (entityId !== undefined) {
-      const entTarget = String(entityId || '').toLowerCase().trim();
-      const allEntities = await db.select().from(entities);
-      let entity = allEntities.find((e: any) => {
-        if (e.id === entityId) return true;
-        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
-          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
-        }
-        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
-          return e.code === 'CAG';
-        }
-        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
-          return e.code === 'EHM';
-        }
-        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
-      });
-      if (entity) updatePayload.entityId = entity.id;
-    }
-
-    const [updated] = await db
-      .update(initiatives)
-      .set(updatePayload)
-      .where(eq(initiatives.id, initId))
-      .returning();
-
-    if (!updated) {
-      return res.status(404).json({ message: 'Initiative not found' });
-    }
-
-    res.json(updated);
-  } catch (err: any) {
-    console.error('[PATCH INITIATIVE ERROR]:', err);
-    res.status(500).json({ message: err.message || 'Failed to update initiative' });
-  }
-});
+router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), handleInitiativeUpdate);
 
 // DELETE /api/initiatives/:id - Admin protected initiative deletion
 router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
@@ -254,6 +243,15 @@ router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await recordHistory(tx, {
+        tableName: 'initiatives',
+        recordId: initId,
+        action: 'DELETED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+
       // 1. Detach all linked epics (set initiativeId = null)
       await tx
         .update(epics)

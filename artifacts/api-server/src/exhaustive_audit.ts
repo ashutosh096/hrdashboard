@@ -1,6 +1,6 @@
 process.env.NODE_ENV = 'test';
 import { app } from './index.js';
-import { db, users, employees, entities, departments, initiatives, epics, sprints, tasks, taskChecklists, taskComments, notifications, meetings, meetingAttendees, passwordResetOtps, eq, and, or, sql, inArray } from '@workspace/db';
+import { db, users, employees, employeeCodeHistory, entities, departments, initiatives, epics, sprints, tasks, taskChecklists, taskComments, notifications, meetings, meetingAttendees, passwordResetOtps, eq, and, or, sql, inArray } from '@workspace/db';
 import bcrypt from 'bcryptjs';
 import http from 'node:http';
 
@@ -174,8 +174,8 @@ async function runExhaustiveAudit() {
     const createdEmpData: any = await createEmpRes.json();
     recordTest(
       'Employees',
-      'Create Employee generates code (EHM-EMP##), creates user & invite records with 0 salary leaks',
-      createEmpRes.status === 201 && !!createdEmpData.employee?.employeeCode && createdEmpData.employee?.salary === undefined
+      'Create Employee generates code (TEAM####), creates user & invite records with 0 salary leaks',
+      createEmpRes.status === 201 && /^TEAM\d{4}$/.test(createdEmpData.employee?.employeeCode || '') && createdEmpData.employee?.salary === undefined
     );
     const createdEmp = createdEmpData.employee;
 
@@ -197,7 +197,7 @@ async function runExhaustiveAudit() {
       }),
     });
     const createdMgrData: any = await createMgrRes.json();
-    recordTest('Employees', 'Create Manager generates code (CAG-MGR##)', createMgrRes.status === 201 && createdMgrData.employee?.employeeCode.includes('CAG-MGR'));
+    recordTest('Employees', 'Create Manager generates code (MANA####)', createMgrRes.status === 201 && /^MANA\d{4}$/.test(createdMgrData.employee?.employeeCode || ''));
     const createdMgr = createdMgrData.employee;
 
     // 3.3 Re-invite Employee
@@ -220,7 +220,37 @@ async function runExhaustiveAudit() {
       }),
     });
     const editEmpData: any = await editEmpRes.json();
-    recordTest('Employees', 'Edit employee designation persists instantly in PostgreSQL', editEmpRes.status === 200 && editEmpData.employee?.designation === 'Principal Architect');
+    recordTest('Employees', 'Edit employee designation leaves code unchanged', editEmpRes.status === 200 && editEmpData.employee?.designation === 'Principal Architect' && editEmpData.employee?.employeeCode === createdEmp.employeeCode);
+
+    // 3.5 Role change (EMPLOYEE -> ADMIN): code prefix changes to ADMN, history recorded
+    const oldEmpCode = createdEmp.employeeCode;
+    const roleChangeRes = await fetch(`${API_BASE}/api/employees/${createdEmp.id}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        role: 'ADMIN',
+      }),
+    });
+    const roleChangeData: any = await roleChangeRes.json();
+    const [auditHistRow] = await db.select().from(employeeCodeHistory).where(eq(employeeCodeHistory.employeeId, createdEmp.id));
+    recordTest(
+      'Employees',
+      'Role change updates code prefix to ADMN and logs employee_code_history row',
+      roleChangeRes.status === 200 &&
+      /^ADMN\d{4}$/.test(roleChangeData.employee?.employeeCode || '') &&
+      auditHistRow?.oldCode === oldEmpCode &&
+      auditHistRow?.newCode === roleChangeData.employee?.employeeCode
+    );
+
+    // 3.6 Manual code edit: permissions remain intact
+    await db.update(employees).set({ employeeCode: 'ADMN9999' }).where(eq(employees.id, createdEmp.id));
+    const accessCheckRes = await fetch(`${API_BASE}/api/employees`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    recordTest('Employees', 'Access & permissions unchanged when code edited manually', accessCheckRes.status === 200);
 
     // -------------------------------------------------------------
     // SECTION 4: STRATEGIC INITIATIVES, EPICS & SPRINT TASKS
@@ -246,7 +276,7 @@ async function runExhaustiveAudit() {
       }),
     });
     const init1Data: any = await init1Res.json();
-    recordTest('Initiatives', 'Create Initiative #1 auto-generates EHM-I## code', init1Res.status === 201 && (init1Data.initiativeCode?.includes('EHM-I') || init1Data.initiativeCode?.includes('INIT')));
+    recordTest('Initiatives', 'Create Initiative #1 auto-generates INIT#### code', init1Res.status === 201 && /^INIT\d{4}$/.test(init1Data.initiativeCode || ''));
 
     const init2Res = await fetch(`${API_BASE}/api/initiatives`, {
       method: 'POST',
@@ -264,7 +294,7 @@ async function runExhaustiveAudit() {
       }),
     });
     const init2Data: any = await init2Res.json();
-    recordTest('Initiatives', 'Create Initiative #2 auto-generates CAG-I## code', init2Res.status === 201 && (init2Data.initiativeCode?.includes('CAG-I') || init2Data.initiativeCode?.includes('INIT')));
+    recordTest('Initiatives', 'Create Initiative #2 auto-generates INIT#### code', init2Res.status === 201 && /^INIT\d{4}$/.test(init2Data.initiativeCode || ''));
 
     // Edit Initiative
     const editInitRes = await fetch(`${API_BASE}/api/initiatives/${init1Data.id}`, {
@@ -294,7 +324,7 @@ async function runExhaustiveAudit() {
       }),
     });
     const epic1Data: any = await epic1Res.json();
-    recordTest('Epics', 'Create Epic linked to parent Initiative generates lineage code [EPIC-###]', epic1Res.status === 201 && !!epic1Data.epicCode);
+    recordTest('Epics', 'Create Epic linked to parent Initiative generates EPIC#### code', epic1Res.status === 201 && /^EPIC\d{4}$/.test(epic1Data.epicCode || ''));
 
     // 4.3 Create 4-Week Sprint
     const sprintRes = await fetch(`${API_BASE}/api/sprints`, {
@@ -314,7 +344,7 @@ async function runExhaustiveAudit() {
       }),
     });
     const sprintData: any = await sprintRes.json();
-    recordTest('Sprints', 'Create Sprint initializes 4-week active sprint cycle', sprintRes.status === 201 && !!sprintData.id);
+    recordTest('Sprints', 'Create Sprint initializes 4-week active sprint cycle with SPRT#### code', sprintRes.status === 201 && /^SPRT\d{4}$/.test(sprintData.sprintCode || ''));
 
     // 4.4 Create Tasks with full lifecycle: PLANNED -> TODO -> IN_PROGRESS -> TO_REVIEW -> DONE
     const taskRes = await fetch(`${API_BASE}/api/tasks`, {
@@ -338,7 +368,7 @@ async function runExhaustiveAudit() {
       }),
     });
     const taskData: any = await taskRes.json();
-    recordTest('Tasks', 'Create Sprint Task derives Epic lineage code (e.g. EHM-EP01-T001)', taskRes.status === 201 && !!taskData.taskCode);
+    recordTest('Tasks', 'Create Epic Task generates TASK#### code', taskRes.status === 201 && /^TASK\d{4}$/.test(taskData.taskCode || ''));
 
     // 4.5 Task Code Immutability
     const taskCodeOriginal = taskData.taskCode;
@@ -475,6 +505,7 @@ async function runExhaustiveAudit() {
     console.log('🗑️ 7. DELETION & CASCADING CLEANUP AUDIT');
     console.log('======================================================');
 
+    await db.delete(employeeCodeHistory).where(inArray(employeeCodeHistory.employeeId, [createdEmp.id, createdMgr.id]));
     const deleteEmpRes = await fetch(`${API_BASE}/api/employees/${createdEmp.id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${adminToken}` },

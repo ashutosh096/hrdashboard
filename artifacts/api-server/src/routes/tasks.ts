@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import crypto from 'node:crypto';
-import { db, tasks, employees, entities, users, notifications, sprints, epics, initiatives, projects, entityCounters, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, sql, asc, desc } from '@workspace/db';
+import { db, tasks, employees, entities, users, notifications, sprints, epics, initiatives, projects, entityCounters, generateNextGlobalCode, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, sql, asc, desc, recordHistory } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { getCallerInfo } from '../utils/userSnapshot.js';
 
 const router = Router();
 
@@ -98,9 +98,10 @@ router.get('/', async (req, res) => {
 
     if (!isPaginatedRequest) {
       const allTasks = whereClause
-        ? await db.select().from(tasks).where(whereClause).orderBy(sql`${tasks.createdAt} DESC`)
-        : await db.select().from(tasks).orderBy(sql`${tasks.createdAt} DESC`);
+        ? await db.select().from(tasks).where(whereClause).orderBy(sql`LOWER(${tasks.title}) ASC`)
+        : await db.select().from(tasks).orderBy(sql`LOWER(${tasks.title}) ASC`);
       const enriched = await enrichTasks(allTasks);
+      enriched.sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
       return res.json(enriched);
     }
 
@@ -120,17 +121,18 @@ router.get('/', async (req, res) => {
           .select()
           .from(tasks)
           .where(whereClause)
-          .orderBy(sql`${tasks.createdAt} DESC`)
+          .orderBy(sql`LOWER(${tasks.title}) ASC`)
           .limit(targetPageSize)
           .offset(offset)
       : await db
           .select()
           .from(tasks)
-          .orderBy(sql`${tasks.createdAt} DESC`)
+          .orderBy(sql`LOWER(${tasks.title}) ASC`)
           .limit(targetPageSize)
           .offset(offset);
 
     const enriched = await enrichTasks(taskRows);
+    enriched.sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
 
     return res.json({
       tasks: enriched,
@@ -215,6 +217,7 @@ export async function enrichTasks(tasksList: any[]) {
       reviewingLeadName: reviewingLead,
       reviewingLeadEmail: leadEmp?.email || '',
       creatorName: creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin',
+      createdByName: t.createdByName || (creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin'),
       epicCode: parentEpic?.epicCode || null,
       epicTitle: parentEpic?.title || null,
       parentEpicCode: parentEpic?.epicCode || null,
@@ -424,14 +427,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
             finalProjectId = parentEpic.projectId;
           }
 
-          const seqNumber = parentEpic.nextTaskSeq;
-          generatedTaskCode = `${parentEpic.epicCode}-T${String(seqNumber).padStart(3, '0')}`;
-
-          // Increment nextTaskSeq on parent epic
-          await tx
-            .update(epics)
-            .set({ nextTaskSeq: sql`${epics.nextTaskSeq} + 1` })
-            .where(eq(epics.id, epicId));
+          generatedTaskCode = await generateNextGlobalCode('TASK', tx);
         } else if (sprintId) {
           // SPRINT_TASK Lineage
           taskType = 'SPRINT_TASK';
@@ -447,34 +443,14 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
 
           if (!parentSprint) throw new Error(`Parent Sprint not found for ID: ${sprintId}`);
 
-          const seqNumber = parentSprint.nextTaskSeq;
-          generatedTaskCode = `${parentSprint.sprintCode}-T${String(seqNumber).padStart(3, '0')}`;
-
-          // Increment nextTaskSeq on parent sprint
-          await tx
-            .update(sprints)
-            .set({ nextTaskSeq: sql`${sprints.nextTaskSeq} + 1` })
-            .where(eq(sprints.id, sprintId));
+          generatedTaskCode = await generateNextGlobalCode('STSK', tx);
         } else {
           // BACKLOG Lineage
           taskType = 'BACKLOG';
           finalEpicId = null;
           finalSprintId = null;
 
-          // Lock entity_counters row for backlog counter
-          await tx
-            .insert(entityCounters)
-            .values({ entityId: assignee.entityId, nextBacklogTaskSeq: 1 })
-            .onConflictDoNothing();
-
-          const [counter] = await tx
-            .update(entityCounters)
-            .set({ nextBacklogTaskSeq: sql`${entityCounters.nextBacklogTaskSeq} + 1` })
-            .where(eq(entityCounters.entityId, assignee.entityId))
-            .returning();
-
-          const seqNumber = (counter?.nextBacklogTaskSeq || 2) - 1;
-          generatedTaskCode = `${entityCode}-T${String(seqNumber).padStart(3, '0')}`;
+          generatedTaskCode = await generateNextGlobalCode('BLOG', tx);
         }
 
         // 3. Resolve sprintWeek string
@@ -487,6 +463,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
         // 4. Resolve Creator & Reviewing Lead
         const targetCreatorId = creatorId || req.user?.employeeId || assignee.id;
         const targetReviewingLeadId = reviewingLeadId || (req.user?.employeeId && req.user.employeeId !== assignee.id ? req.user.employeeId : null);
+        const caller = await getCallerInfo(req.user, tx);
 
         // 5. Insert Task
         const dueDateVal = dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000);
@@ -513,8 +490,68 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
             priority: normalizeTaskPriority(priority),
             dueDate: dueDateVal,
             deliverableUrl: deliverableUrl || null,
+            createdById: caller.employeeId,
+            createdByName: caller.callerName,
           })
           .returning();
+
+        // 5a. Record history for Task creation
+        await recordHistory(tx, {
+          tableName: 'tasks',
+          recordId: newTask.id,
+          action: 'CREATED',
+          changes: [{ field: 'title', old: null, new: newTask.title }],
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+
+        // 5b. Record CHILD_ADDED on parent Epic if present
+        if (finalEpicId) {
+          await recordHistory(tx, {
+            tableName: 'epics',
+            recordId: finalEpicId,
+            action: 'CHILD_ADDED',
+            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
+            changedById: caller.employeeId,
+            changedByName: caller.callerName,
+          });
+        }
+
+        // 5c. Record CHILD_ADDED on parent Sprint if present
+        if (finalSprintId) {
+          await recordHistory(tx, {
+            tableName: 'sprints',
+            recordId: finalSprintId,
+            action: 'CHILD_ADDED',
+            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
+            changedById: caller.employeeId,
+            changedByName: caller.callerName,
+          });
+        }
+
+        // 5d. Record CHILD_ADDED on parent Initiative if present
+        if (finalInitiativeId) {
+          await recordHistory(tx, {
+            tableName: 'initiatives',
+            recordId: finalInitiativeId,
+            action: 'CHILD_ADDED',
+            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
+            changedById: caller.employeeId,
+            changedByName: caller.callerName,
+          });
+        }
+
+        // 5e. Record CHILD_ADDED on parent Project if present
+        if (finalProjectId) {
+          await recordHistory(tx, {
+            tableName: 'projects',
+            recordId: finalProjectId,
+            action: 'CHILD_ADDED',
+            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
+            changedById: caller.employeeId,
+            changedByName: caller.callerName,
+          });
+        }
 
         // 5a. Persist Initial Checklists (Subtasks) if provided
         if (Array.isArray(checklists) && checklists.length > 0) {
@@ -683,8 +720,7 @@ const handleTaskUpdate = async (req: any, res: any) => {
             e.id === assigneeId ||
             `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
             e.firstName.toLowerCase() === rawTarget ||
-            e.lastName?.toLowerCase() === rawTarget ||
-            e.employeeCode.toLowerCase() === rawTarget
+            e.lastName?.toLowerCase() === rawTarget
         );
         if (matchedEmp) {
           updateData.assigneeId = matchedEmp.id;
@@ -702,8 +738,7 @@ const handleTaskUpdate = async (req: any, res: any) => {
             e.id === reviewingLeadId ||
             `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
             e.firstName.toLowerCase() === rawTarget ||
-            e.lastName?.toLowerCase() === rawTarget ||
-            e.employeeCode.toLowerCase() === rawTarget
+            e.lastName?.toLowerCase() === rawTarget
         );
         if (matchedLead) {
           updateData.reviewingLeadId = matchedLead.id;
@@ -781,6 +816,29 @@ const handleTaskUpdate = async (req: any, res: any) => {
         .set(updateData)
         .where(eq(tasks.id, taskId))
         .returning();
+
+      // Record changed fields in history
+      const caller = await getCallerInfo(req.user, tx);
+      const changes: { field: string; old: any; new: any }[] = [];
+      for (const [key, newVal] of Object.entries(updateData)) {
+        const oldVal = (existingTaskCheck as any)[key];
+        const oldStr = oldVal instanceof Date ? oldVal.toISOString() : String(oldVal ?? '');
+        const newStr = newVal instanceof Date ? newVal.toISOString() : String(newVal ?? '');
+        if (oldStr !== newStr) {
+          changes.push({ field: key, old: oldVal, new: newVal });
+        }
+      }
+
+      if (changes.length > 0) {
+        await recordHistory(tx, {
+          tableName: 'tasks',
+          recordId: taskId,
+          action: 'UPDATED',
+          changes,
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
 
       // Persist Checklists if provided
       if (Array.isArray(checklists) && checklists.length > 0) {
@@ -921,11 +979,27 @@ router.patch('/:id/status', async (req, res) => {
         normalizedStatus = 'TO_REVIEW';
       }
     }
-    const [updatedTask] = await db
-      .update(tasks)
-      .set({ status: normalizedStatus, updatedAt: new Date() })
-      .where(eq(tasks.id, taskId))
-      .returning();
+    const updatedTask = await db.transaction(async (tx) => {
+      const [resTask] = await tx
+        .update(tasks)
+        .set({ status: normalizedStatus, updatedAt: new Date() })
+        .where(eq(tasks.id, taskId))
+        .returning();
+
+      if (resTask && targetTask.status !== normalizedStatus) {
+        const caller = await getCallerInfo(req.user, tx);
+        await recordHistory(tx, {
+          tableName: 'tasks',
+          recordId: taskId,
+          action: 'STATUS_CHANGED',
+          changes: [{ field: 'status', old: targetTask.status, new: normalizedStatus }],
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
+
+      return resTask;
+    });
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
@@ -1034,94 +1108,98 @@ router.post('/:id/clone', requireRole(['ADMIN', 'MANAGER']), async (req, res) =>
       return res.status(404).json({ message: 'Source task not found' });
     }
 
-    // Preserve exact entity from source task
-    const [sourceEntity] = await db.select().from(entities).where(eq(entities.id, sourceTask.entityId));
-    const entityCode = sourceEntity?.code || 'CAG';
+    const cloneResult = await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
 
-    // Derive new task code
-    let generatedTaskCode = '';
-    if (sourceTask.epicId) {
-      const [parentEpic] = await db.select().from(epics).where(eq(epics.id, sourceTask.epicId));
-      if (parentEpic) {
-        const seq = parentEpic.nextTaskSeq;
-        generatedTaskCode = `${parentEpic.epicCode}-T${String(seq).padStart(3, '0')}`;
-        await db.update(epics).set({ nextTaskSeq: sql`${epics.nextTaskSeq} + 1` }).where(eq(epics.id, parentEpic.id));
+      // Preserve exact entity from source task
+      const [sourceEntity] = await tx.select().from(entities).where(eq(entities.id, sourceTask.entityId));
+      const entityCode = sourceEntity?.code || 'CAG';
+
+      // Derive new task code according to category
+      let generatedTaskCode = '';
+      if (sourceTask.taskType === 'EPIC_TASK' || sourceTask.epicId) {
+        generatedTaskCode = await generateNextGlobalCode('TASK', tx);
+      } else if (sourceTask.taskType === 'SPRINT_TASK' || sourceTask.sprintId) {
+        generatedTaskCode = await generateNextGlobalCode('STSK', tx);
+      } else {
+        generatedTaskCode = await generateNextGlobalCode('BLOG', tx);
       }
-    }
-    if (!generatedTaskCode) {
-      await db
-        .insert(entityCounters)
-        .values({ entityId: sourceTask.entityId, nextBacklogTaskSeq: 1 })
-        .onConflictDoNothing();
-      const [counter] = await db
-        .update(entityCounters)
-        .set({ nextBacklogTaskSeq: sql`${entityCounters.nextBacklogTaskSeq} + 1` })
-        .where(eq(entityCounters.entityId, sourceTask.entityId))
-        .returning();
-      const seqNumber = (counter?.nextBacklogTaskSeq || 2) - 1;
-      generatedTaskCode = `${entityCode}-T${String(seqNumber).padStart(3, '0')}`;
-    }
 
-    // Insert cloned task
-    const [clonedTask] = await db
-      .insert(tasks)
-      .values({
-        taskCode: generatedTaskCode,
-        title: `[CLONE] ${sourceTask.title}`,
-        description: sourceTask.description ? `[Cloned from ${sourceTask.taskCode}]\n\n${sourceTask.description}` : `Cloned from ${sourceTask.taskCode}`,
-        entityId: sourceTask.entityId,
-        departmentId: sourceTask.departmentId,
-        taskType: sourceTask.taskType,
-        sprintWeek: sourceTask.sprintWeek,
-        sprintId: sourceTask.sprintId,
-        initiativeId: sourceTask.initiativeId,
-        epicId: sourceTask.epicId,
-        projectId: sourceTask.projectId,
-        storyPoints: sourceTask.storyPoints,
-        assigneeId: sourceTask.assigneeId,
-        creatorId: req.user?.employeeId || sourceTask.creatorId,
-        reviewingLeadId: sourceTask.reviewingLeadId,
-        status: 'BACKLOG',
-        priority: sourceTask.priority,
-        dueDate: sourceTask.dueDate,
-        deliverableUrl: sourceTask.deliverableUrl,
-      })
-      .returning();
-
-    // Clone checklists from source task
-    const sourceChecklists = await db
-      .select()
-      .from(taskChecklists)
-      .where(eq(taskChecklists.taskId, sourceTask.id))
-      .orderBy(asc(taskChecklists.sortOrder));
-
-    const clonedChecklists = [];
-    for (const c of sourceChecklists) {
-      const [clonedItem] = await db
-        .insert(taskChecklists)
+      // Insert cloned task with server-authenticated creator
+      const [clonedTask] = await tx
+        .insert(tasks)
         .values({
-          taskId: clonedTask.id,
-          itemText: c.itemText,
-          isCompleted: false, // Reset completion for clone
-          sortOrder: c.sortOrder,
+          taskCode: generatedTaskCode,
+          title: `[CLONE] ${sourceTask.title}`,
+          description: sourceTask.description ? `[Cloned from ${sourceTask.taskCode}]\n\n${sourceTask.description}` : `Cloned from ${sourceTask.taskCode}`,
+          entityId: sourceTask.entityId,
+          departmentId: sourceTask.departmentId,
+          taskType: sourceTask.taskType,
+          sprintWeek: sourceTask.sprintWeek,
+          sprintId: sourceTask.sprintId,
+          initiativeId: sourceTask.initiativeId,
+          epicId: sourceTask.epicId,
+          projectId: sourceTask.projectId,
+          storyPoints: sourceTask.storyPoints,
+          assigneeId: sourceTask.assigneeId,
+          creatorId: req.user?.employeeId || sourceTask.creatorId,
+          reviewingLeadId: sourceTask.reviewingLeadId,
+          status: 'BACKLOG',
+          priority: sourceTask.priority,
+          dueDate: sourceTask.dueDate,
+          deliverableUrl: sourceTask.deliverableUrl,
+          createdById: caller.employeeId,
+          createdByName: caller.callerName,
         })
         .returning();
-      clonedChecklists.push(clonedItem);
-    }
 
-    // Add initial system comment
-    await db.insert(taskComments).values({
-      taskId: clonedTask.id,
-      authorName: 'System Log',
-      content: `Cloned from task [${sourceTask.taskCode}] "${sourceTask.title}"`,
-      isSystemLog: true,
+      // Clone checklists from source task
+      const sourceChecklists = await tx
+        .select()
+        .from(taskChecklists)
+        .where(eq(taskChecklists.taskId, sourceTask.id))
+        .orderBy(asc(taskChecklists.sortOrder));
+
+      const clonedChecklists = [];
+      for (const c of sourceChecklists) {
+        const [clonedItem] = await tx
+          .insert(taskChecklists)
+          .values({
+            taskId: clonedTask.id,
+            itemText: c.itemText,
+            isCompleted: false, // Reset completion for clone
+            sortOrder: c.sortOrder,
+          })
+          .returning();
+        clonedChecklists.push(clonedItem);
+      }
+
+      // Add initial system comment
+      await tx.insert(taskComments).values({
+        taskId: clonedTask.id,
+        authorName: 'System Log',
+        content: `Cloned from task [${sourceTask.taskCode}] "${sourceTask.title}"`,
+        isSystemLog: true,
+      });
+
+      // Record CLONED history
+      await recordHistory(tx, {
+        tableName: 'tasks',
+        recordId: clonedTask.id,
+        action: 'CLONED',
+        changes: [{ field: 'clonedFrom', old: sourceTask.id, new: clonedTask.id }],
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+
+      return {
+        ...clonedTask,
+        entity: entityCode,
+        checklists: clonedChecklists,
+      };
     });
 
-    res.status(201).json({
-      ...clonedTask,
-      entity: entityCode,
-      checklists: clonedChecklists,
-    });
+    res.status(201).json(cloneResult);
   } catch (err: any) {
     console.error('[TASK CLONE ERROR]:', err);
     res.status(500).json({ message: 'Failed to clone task', error: err.message });
@@ -1376,6 +1454,15 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     }
 
     await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await recordHistory(tx, {
+        tableName: 'tasks',
+        recordId: taskId,
+        action: 'DELETED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+
       await tx.delete(taskChecklists).where(eq(taskChecklists.taskId, taskId));
       await tx.delete(taskComments).where(eq(taskComments.taskId, taskId));
       await tx.delete(taskNotes).where(eq(taskNotes.taskId, taskId));

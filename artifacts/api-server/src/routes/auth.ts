@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { db, users, invites, googleTokens, employees, entities, passwordResetOtps, auditLogs, eq, and, sql } from '@workspace/db';
+import { db, users, invites, googleTokens, employees, employeeCodeHistory, generateEmployeeCode, entities, passwordResetOtps, auditLogs, eq, and, sql } from '@workspace/db';
 import { JWT_SECRET } from '../config/jwt.js';
 import { sendPasswordResetOtpEmail } from '../services/email.js';
 
@@ -226,7 +226,7 @@ router.get('/me', async (req: Request, res: Response) => {
         firstName: empData?.firstName || '',
         lastName: empData?.lastName || '',
         phone: empData?.phone || '',
-        employeeCode: empData?.employeeCode || 'EHM-EMP01',
+        employeeCode: empData?.employeeCode || '-',
         designation: empData?.designation || '',
         entityName: entityData?.name || 'EHM consultancy',
         entityCode: entityData?.code || 'EHM',
@@ -324,7 +324,7 @@ const handleProfileUpdate = async (req: Request, res: Response) => {
         firstName: updatedEmployee?.firstName || targetFirstName || '',
         lastName: updatedEmployee?.lastName || targetLastName || '',
         phone: resolvedPhone,
-        employeeCode: updatedEmployee?.employeeCode || 'EHM-EMP01',
+        employeeCode: updatedEmployee?.employeeCode || '-',
         designation: updatedEmployee?.designation || '',
         entityName: entityData?.name || 'EHM consultancy',
         entityCode: entityData?.code || 'EHM',
@@ -419,39 +419,85 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    let userId: string;
+    const txResult = await db.transaction(async (tx) => {
+      let finalUserId: string;
+      const currentRole = ((existingUser?.role || 'EMPLOYEE') as string).toUpperCase();
+      const isRoleChange = Boolean(existingUser && assignedRole && assignedRole !== currentRole);
 
-    if (existingUser) {
-      userId = existingUser.id;
-      await db
-        .update(users)
-        .set({
-          passwordHash,
-          status: 'ACTIVE',
-          role: assignedRole,
-          employeeId: employeeId || existingUser.employeeId,
-        })
-        .where(eq(users.id, existingUser.id));
-    } else {
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          email: targetEmail,
-          passwordHash,
-          role: assignedRole,
-          status: 'ACTIVE',
-          employeeId: employeeId,
-        })
-        .returning();
-      userId = newUser.id;
-    }
+      if (existingUser) {
+        finalUserId = existingUser.id;
+        await tx
+          .update(users)
+          .set({
+            passwordHash,
+            status: 'ACTIVE',
+            role: assignedRole,
+            employeeId: employeeId || existingUser.employeeId,
+          })
+          .where(eq(users.id, existingUser.id));
+      } else {
+        const [newUser] = await tx
+          .insert(users)
+          .values({
+            email: targetEmail,
+            passwordHash,
+            role: assignedRole,
+            status: 'ACTIVE',
+            employeeId: employeeId,
+          })
+          .returning();
+        finalUserId = newUser.id;
+      }
 
-    if (inviteRecordId) {
-      await db
-        .update(invites)
-        .set({ status: 'ACCEPTED' })
-        .where(eq(invites.id, inviteRecordId));
-    }
+      if (matchingEmployee) {
+        if (isRoleChange) {
+          const newCode = await generateEmployeeCode(assignedRole, tx);
+          await tx
+            .update(employees)
+            .set({ employeeCode: newCode })
+            .where(eq(employees.id, matchingEmployee.id));
+
+          await tx.insert(employeeCodeHistory).values({
+            employeeId: matchingEmployee.id,
+            oldCode: matchingEmployee.employeeCode,
+            newCode,
+            oldRole: currentRole,
+            newRole: assignedRole,
+            changedBy: finalUserId,
+            changedAt: new Date(),
+          });
+
+          await tx.insert(auditLogs).values({
+            userId: finalUserId,
+            action: 'EMPLOYEE_ROLE_CHANGED',
+            details: {
+              employeeId: matchingEmployee.id,
+              oldRole: currentRole,
+              newRole: assignedRole,
+              oldCode: matchingEmployee.employeeCode,
+              newCode,
+            },
+          });
+        } else if (!matchingEmployee.employeeCode) {
+          const newCode = await generateEmployeeCode(assignedRole, tx);
+          await tx
+            .update(employees)
+            .set({ employeeCode: newCode })
+            .where(eq(employees.id, matchingEmployee.id));
+        }
+      }
+
+      if (inviteRecordId) {
+        await tx
+          .update(invites)
+          .set({ status: 'ACCEPTED' })
+          .where(eq(invites.id, inviteRecordId));
+      }
+
+      return { userId: finalUserId };
+    });
+
+    const userId = txResult.userId;
 
     const userPayload = {
       id: userId,

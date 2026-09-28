@@ -17,6 +17,9 @@ function makeToken(user: any) {
   );
 }
 
+console.error('DEPRECATED: test_three_fixes_proof.ts writes old-format codes and is disabled under Step 2.');
+process.exit(1);
+
 async function runThreeFixesProof() {
   console.log('========================================================================');
   console.log('🧪 REAL-DATA PROOF FOR ALL THREE BACKEND FIXES');

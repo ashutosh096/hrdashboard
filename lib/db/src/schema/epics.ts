@@ -20,6 +20,9 @@ export const epics = pgTable('epics', {
   nextTaskSeq: integer('next_task_seq').default(1).notNull(),
   status: epicStatusEnum('status').default('PLANNED').notNull(),
   ownerId: uuid('owner_id').references(() => employees.id),
+  assignedTo: text('assigned_to'),  // JSON array of employee names (ADMIN/MANAGER only)
+  createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
+  createdByName: text('created_by_name'),
   targetDate: timestamp('target_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

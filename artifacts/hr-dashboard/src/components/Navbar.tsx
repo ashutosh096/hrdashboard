@@ -420,16 +420,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               toast.error(err?.message || 'Failed to update task');
             }
           }}
-          onDelete={async (deletedId) => {
-            try {
-              await fetchApi(`/api/tasks/${deletedId}`, { method: 'DELETE' });
-              toast.success('Task removed');
-              clearApiCache('/api/tasks');
-              clearApiCache('/api/sprints');
-              setSelectedTaskForModal(null);
-            } catch (err: any) {
-              toast.error(err?.message || 'Failed to delete task');
-            }
+          onDelete={(deletedId) => {
+            clearApiCache('/api/tasks');
+            clearApiCache('/api/sprints');
+            setSelectedTaskForModal(null);
           }}
         />
       )}

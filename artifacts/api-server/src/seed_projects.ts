@@ -1,5 +1,8 @@
 import { db, projects } from '@workspace/db';
 
+console.error('DEPRECATED: seed_projects.ts writes old-format codes and is disabled under Step 2.');
+process.exit(1);
+
 async function seedProjects() {
   console.log('Seeding initial foundational projects into Postgres...');
 

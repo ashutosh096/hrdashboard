@@ -103,6 +103,12 @@ async function runBackup() {
   fs.writeFileSync(mdPathRoot, md, 'utf-8');
   console.log(`==> Saved Comprehensive Markdown backup to: ${mdPathRoot}`);
 
+  const jsonPathArtifacts = path.join(ROOT_DIR, 'artifacts/api-server/DATABASE_BACKUP.json');
+  fs.writeFileSync(jsonPathArtifacts, JSON.stringify(allData, null, 2), 'utf-8');
+  const mdPathArtifacts = path.join(ROOT_DIR, 'artifacts/api-server/DATABASE_BACKUP.md');
+  fs.writeFileSync(mdPathArtifacts, md, 'utf-8');
+  console.log(`==> Saved copies to: ${jsonPathArtifacts} and ${mdPathArtifacts}`);
+
   console.log(`\n🎉 Backup complete! Total ${totalRecords} records across ${tableNames.length} tables backed up.`);
   process.exit(0);
 }

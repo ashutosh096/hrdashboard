@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye, Trash2 } from 'lucide-react';
+import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye, Trash2, History, UserCheck } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
@@ -7,6 +7,8 @@ import { RichTextEditor } from './RichTextEditor';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
+import { RecordHistoryPanel } from './RecordHistoryPanel';
+import { RecentActivitySection } from './RecentActivitySection';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +21,7 @@ interface InitiativeItem {
   description: string;
   status: string;
   entityId: string;
+  entity?: string;
   entityName?: string;
   entityCode?: string;
   departmentId?: string | null;
@@ -27,6 +30,8 @@ interface InitiativeItem {
   epicsCountTarget?: number;
   targetDeliverableMetric?: string | null;
   targetDate: string | null;
+  createdById?: string | null;
+  createdByName?: string | null;
   createdAt?: string;
   epicsCount: number;
   epics: Array<{
@@ -48,6 +53,7 @@ interface Props {
 const ENTITY_OPTIONS = [
   { id: 'ehmconsultancy', name: 'EHM', code: 'EHM' },
   { id: 'climagroanalytics', name: 'CLIMAGRO', code: 'CAG' },
+  { id: 'common', name: 'COMMON', code: 'COMMON' },
 ];
 
 const DEPARTMENT_OPTIONS = [
@@ -64,6 +70,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
   const { selectedEntity } = useEntity();
   const [initiatives, setInitiatives] = useState<InitiativeItem[]>([]);
   const [viewingInitiative, setViewingInitiative] = useState<InitiativeItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<{ recordId: string; title: string; code: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewingEpicDetails, setViewingEpicDetails] = useState<any | null>(null);
@@ -186,11 +193,11 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
       id: init.id,
       code: init.initiativeCode,
       label: init.title,
-    }));
+    })).sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [initiatives]);
 
   const handleOpenTaskModal = (taskItem: any) => {
-    const code = taskItem.taskCode || taskItem.taskId || taskItem.id || 'CAG-EMP01-001';
+    const code = taskItem.taskCode || taskItem.taskId || '-';
     const badge = getEntityBadge(taskItem);
     const resolvedEntity = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
     const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
@@ -252,7 +259,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     if (!silent) setLoading(true);
     try {
       const initData = await fetchApi<InitiativeItem[]>('/api/initiatives');
-      setInitiatives(initData || []);
+      const sortedInits = [...(initData || [])].sort((a, b) =>
+        (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' })
+      );
+      setInitiatives(sortedInits);
     } catch (err) {
       if (!silent) setInitiatives([]);
     } finally {
@@ -307,8 +317,15 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     if (!viewingInitiative) return;
     setEditTitle(viewingInitiative.title);
     setEditDescription(viewingInitiative.description || '');
-    setEditEntityId(viewingInitiative.entityId || 'ehmconsultancy');
-    setEditSubDepartment(viewingInitiative.subDepartment || '');
+    const entLower = (viewingInitiative.entityName || viewingInitiative.entity || '').toLowerCase();
+    const resolvedEnt = entLower.includes('cag') || entLower.includes('climagro')
+      ? 'climagroanalytics'
+      : entLower.includes('common')
+      ? 'common'
+      : viewingInitiative.entityId || 'ehmconsultancy';
+    setEditEntityId(resolvedEnt);
+    const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId || 'Product & Tech';
+    setEditSubDepartment(dept);
     setEditTargetMonth(viewingInitiative.targetMonth || '');
     setEditEpicsCountTarget(viewingInitiative.epicsCountTarget || 0);
     setEditTargetDeliverableMetric(viewingInitiative.targetDeliverableMetric || '');
@@ -575,7 +592,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         </div>
       </div>
 
-      {loading ? (
+      {loading && initiatives.length === 0 ? (
         <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading initiatives from database...</div>
       ) : displayedInitiatives.length === 0 ? (
         <div className="bg-gray-50 rounded-2xl p-8 text-center border border-gray-200">
@@ -602,7 +619,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
             const isDone = item.status === 'DONE' || item.status === 'COMPLETED';
             const isInProgress = item.status === 'ACTIVE' || item.status === 'IN_PROGRESS';
             const isSelected = selectedInitiativeIdToView === item.id || selectedInitiativeIdToView === item.initiativeCode;
-            const isCollapsed = collapsedInitiativeIds[item.id] !== false;
+            const isCollapsed = collapsedInitiativeIds[item.id] ?? true;
 
             return (
               <div
@@ -619,7 +636,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <button
                       type="button"
-                      onClick={() => setCollapsedInitiativeIds(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                      onClick={() => setCollapsedInitiativeIds(prev => ({ ...prev, [item.id]: !(prev[item.id] ?? true) }))}
                       className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 rounded-lg transition-colors shrink-0 cursor-pointer"
                       title={isCollapsed ? 'Expand Initiative Details' : 'Collapse Initiative Details'}
                     >
@@ -666,7 +683,14 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={isDone ? 'DONE' : isInProgress ? 'ACTIVE' : 'PLANNED'}
-                          onChange={(e) => handleDirectStatusChange(item.id, e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'DONE') {
+                              setConfirmModal({ isOpen: true, initiative: item, newStatus: 'DONE' });
+                            } else {
+                              handleDirectStatusChange(item.id, val);
+                            }
+                          }}
                           className={`text-[10px] font-extrabold px-2.5 py-1 pr-6 rounded-lg uppercase tracking-wider border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
                             isDone
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
@@ -693,6 +717,22 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                         {item.status || 'PLANNED'}
                       </span>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHistoryTarget({
+                          recordId: item.id,
+                          title: item.title,
+                          code: item.initiativeCode,
+                        });
+                      }}
+                      className="p-1 text-gray-400 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 cursor-pointer transition-colors"
+                      title="View Initiative Audit History"
+                    >
+                      <History className="w-4 h-4" />
+                    </button>
 
                     <button
                       type="button"
@@ -736,6 +776,13 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                           <Clock className="w-3 h-3 text-gray-400" />
                           <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently'}</span>
                         </div>
+
+                        {item.createdByName && (
+                          <div className="flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200/60" title={`Created by ${item.createdByName}`}>
+                            <UserCheck className="w-3 h-3 text-emerald-600" />
+                            <span>Created by: <strong className="text-gray-800 font-semibold">{item.createdByName}</strong></span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Progress Bar */}
@@ -743,7 +790,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                         <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full rounded-full transition-all duration-500 bg-emerald-500"
-                            style={{ width: epicsDivision ? `${Math.min(100, Math.max(5, Math.round((item.epicsCount / epicsDivision) * 100)))}%` : `${item.epicsCount > 0 ? 100 : 0}%` }}
+                            style={{ width: epicsDivision ? `${Math.min(100, Math.max(0, Math.round((item.epicsCount / epicsDivision) * 100)))}%` : `${item.epicsCount > 0 ? 100 : 0}%` }}
                           />
                         </div>
                         <span className="text-[10px] font-bold text-gray-600 whitespace-nowrap">
@@ -855,14 +902,26 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                         {viewingInitiative.initiativeCode}
                       </span>
-                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 uppercase tracking-wide">
-                        {isCAG ? 'Climagro' : 'EHM'}
-                      </span>
+                      {(() => {
+                        const badge = getEntityBadge(viewingInitiative);
+                        return (
+                          <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wide border ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                       {(isManager || isAdmin) ? (
                         <div className="relative inline-flex items-center">
                           <select
                             value={viewingInitiative.status === 'DONE' || viewingInitiative.status === 'COMPLETED' ? 'DONE' : viewingInitiative.status === 'ACTIVE' || viewingInitiative.status === 'IN_PROGRESS' ? 'ACTIVE' : 'PLANNED'}
-                            onChange={(e) => handleDirectStatusChange(viewingInitiative.id, e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === 'DONE') {
+                                setConfirmModal({ isOpen: true, initiative: viewingInitiative, newStatus: 'DONE' });
+                              } else {
+                                handleDirectStatusChange(viewingInitiative.id, val);
+                              }
+                            }}
                             className={`text-xs font-bold px-3 py-1 pr-7 rounded-lg border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
                               viewingInitiative.status === 'DONE' || viewingInitiative.status === 'COMPLETED'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
@@ -915,6 +974,20 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     {viewingInitiative.description}
                   </p>
                 )}
+                {isEditMode && (
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-1">
+                    <label className="block text-xs font-bold text-gray-700">Brand / Entity *</label>
+                    <select
+                      value={editEntityId}
+                      onChange={(e) => setEditEntityId(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg bg-white"
+                    >
+                      {ENTITY_OPTIONS.map((ent) => (
+                        <option key={ent.id} value={ent.id}>{ent.name} ({ent.code})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Success Metric Box (Only shown if filled or in Edit Mode) */}
@@ -961,22 +1034,34 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
-                  <span className="text-xs font-bold text-gray-900 block">
-                    {(() => {
-                      const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
-                      if (!dept) return 'Product & Tech';
-                      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                        return 'Product & Tech';
-                      }
-                      return dept;
-                    })()}
-                  </span>
+                  {isEditMode ? (
+                    <select
+                      value={editSubDepartment}
+                      onChange={(e) => setEditSubDepartment(e.target.value)}
+                      className="w-full px-2 py-1 text-xs font-bold border border-gray-300 rounded-lg bg-white"
+                    >
+                      {DEPARTMENT_OPTIONS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs font-bold text-gray-900 block">
+                      {(() => {
+                        const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
+                        if (!dept) return 'Product & Tech';
+                        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                          return 'Product & Tech';
+                        }
+                        return dept;
+                      })()}
+                    </span>
+                  )}
                 </div>
 
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingInitiative.createdAt ? new Date(viewingInitiative.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '8 Sep 2026'}
+                    {viewingInitiative.createdAt ? new Date(viewingInitiative.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
                   </span>
                 </div>
               </div>
@@ -1131,6 +1216,45 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   </div>
                 );
               })()}
+
+              {/* Created By & Audit History Header */}
+              <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                {viewingInitiative.createdByName ? (
+                  <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Created by: <strong className="text-gray-900 font-semibold">{viewingInitiative.createdByName}</strong></span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-400">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Created {viewingInitiative.createdAt ? new Date(viewingInitiative.createdAt).toLocaleDateString('en-GB') : 'recently'}</span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setHistoryTarget({
+                    recordId: viewingInitiative.id,
+                    title: viewingInitiative.title,
+                    code: viewingInitiative.initiativeCode,
+                  })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>View Full Audit History</span>
+                </button>
+              </div>
+
+              {/* Recent Activity Section */}
+              <RecentActivitySection
+                tableName="initiatives"
+                recordId={viewingInitiative.id}
+                onOpenHistory={() => setHistoryTarget({
+                  recordId: viewingInitiative.id,
+                  title: viewingInitiative.title,
+                  code: viewingInitiative.initiativeCode,
+                })}
+              />
             </div>
 
             {/* Save Button Footer if in Edit Mode */}
@@ -1162,21 +1286,21 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
             <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
-              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
-                <Trash2 className="w-5 h-5" />
+              <div className="p-2 rounded-xl bg-purple-50 text-purple-600 border border-purple-200">
+                <Archive className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">Delete Strategic Initiative</h3>
-                <p className="text-xs text-gray-400 font-medium">Admin Privilege Action</p>
+                <h3 className="text-base font-bold text-gray-900">Archive Strategic Initiative</h3>
+                <p className="text-xs text-gray-400 font-medium">Soft Archive Action</p>
               </div>
             </div>
 
             <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
-              Are you sure you want to permanently delete initiative{' '}
-              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+              Are you sure you want to archive initiative{' '}
+              <span className="font-bold font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
                 {viewingInitiative.initiativeCode}
               </span>{' '}
-              "{viewingInitiative.title}"? This will permanently delete all associated epics, sprints, and tasks.
+              "{viewingInitiative.title}"? This will move the initiative to the Archive view without deleting underlying records.
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
@@ -1193,23 +1317,26 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 onClick={async () => {
                   try {
                     setIsDeleting(true);
-                    await fetchApi(`/api/initiatives/${viewingInitiative.id}`, { method: 'DELETE' });
-                    toast.success(`Initiative ${viewingInitiative.initiativeCode} deleted successfully!`);
+                    await fetchApi(`/api/initiatives/${viewingInitiative.id}`, {
+                      method: 'PUT',
+                      body: JSON.stringify({ status: 'ARCHIVED' }),
+                    });
+                    toast.success(`Initiative ${viewingInitiative.initiativeCode} archived successfully!`);
                     setShowDeleteConfirm(false);
                     setViewingInitiative(null);
                     setIsEditMode(false);
                     onClearSelectedInitiative?.();
                     loadData();
                   } catch (err: any) {
-                    toast.error(err?.message || 'Failed to delete initiative');
+                    toast.error(err?.message || 'Failed to archive initiative');
                   } finally {
                     setIsDeleting(false);
                   }
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
               >
-                <Trash2 className="w-4 h-4" />
-                <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Initiative'}</span>
+                <Archive className="w-4 h-4" />
+                <span>{isDeleting ? 'Archiving...' : 'Yes, Archive Initiative'}</span>
               </button>
             </div>
           </div>
@@ -1688,7 +1815,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingEpicDetails.createdAt ? new Date(viewingEpicDetails.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                    {viewingEpicDetails.createdAt ? new Date(viewingEpicDetails.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
                   </span>
                 </div>
               </div>
@@ -1728,7 +1855,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                         const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
-                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
+                        const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
 
                         const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
                         const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
@@ -2001,6 +2128,17 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         }}
         isReadOnly={true}
       />
+      {/* Record History Slide-Over Drawer */}
+      {historyTarget && (
+        <RecordHistoryPanel
+          isOpen={!!historyTarget}
+          onClose={() => setHistoryTarget(null)}
+          tableName="initiatives"
+          recordId={historyTarget.recordId}
+          title={historyTarget.title}
+          code={historyTarget.code}
+        />
+      )}
     </div>
   );
 };

@@ -27,6 +27,9 @@ import {
 } from '@workspace/db';
 import bcrypt from 'bcryptjs';
 
+console.error('DEPRECATED: clean_production_seed.ts writes old-format codes and is disabled under Step 2.');
+process.exit(1);
+
 async function setupCleanProductionData() {
   console.log('\n======================================================');
   console.log('🧹 DATABASE CLEANUP & PRODUCTION SEED INITIALIZATION');

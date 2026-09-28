@@ -27,6 +27,7 @@ import { startOverdueCheckCron } from './jobs/overdue-check-cron.js';
 import { db, sql } from '@workspace/db';
 
 import notificationsRouter from './routes/notifications.js';
+import historyRouter from './routes/history.js';
 
 dotenv.config();
 
@@ -150,6 +151,7 @@ app.use('/api/initiatives', initiativesRouter);
 app.use('/api/epics', epicsRouter);
 app.use('/api/sprints', sprintsRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/history', historyRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });

@@ -12,11 +12,11 @@ interface TaskCloneModalProps {
 }
 
 const DEFAULT_PREVIOUS_TASKS = [
-  { id: 'cl-1', taskCode: 'EHM-EMP01-001', title: 'API Gateway Telemetry Pipeline Integration', dept: 'Product & Tech', priority: 'HIGH', desc: 'GraphQL gateway telemetry & rate limiting middleware.', lead: 'Dr. Harshit Mishra' },
-  { id: 'cl-2', taskCode: 'EHM-EMP01-002', title: 'Real-time WebSocket Notification & Push Engine', dept: 'Product & Tech', priority: 'HIGH', desc: 'Redis pub/sub channels setup and 500 connection stress testing.', lead: 'Jitendra Sir' },
-  { id: 'cl-3', taskCode: 'EHM-EMP01-003', title: 'OAuth2 & Role-Based Access Control Security Audit', dept: 'Product & Tech', priority: 'URGENT', desc: 'Audit JWT bearer scopes and token expiration.', lead: 'Jitendra Sir' },
-  { id: 'cl-4', taskCode: 'EHM-EPIC-004', title: 'Q3 Brand Marketing Client Acquisition Campaign', dept: 'Marketing', priority: 'HIGH', desc: 'Brand identity collateral and B2B campaign funnel.', lead: 'Priyanka Sharma' },
-  { id: 'cl-5', taskCode: 'CAG-EPIC-001', title: 'Agri-Tech Subsidy & Government Compliance Report', dept: 'Grants & Governance', priority: 'HIGH', desc: 'Government subsidy compliance and field telemetry.', lead: 'Dr. Utsav Mishra' },
+  { id: 'cl-1', taskCode: 'TASK0001', title: 'API Gateway Telemetry Pipeline Integration', dept: 'Product & Tech', priority: 'HIGH', desc: 'GraphQL gateway telemetry & rate limiting middleware.', lead: 'Dr. Harshit Mishra' },
+  { id: 'cl-2', taskCode: 'TASK0002', title: 'Real-time WebSocket Notification & Push Engine', dept: 'Product & Tech', priority: 'HIGH', desc: 'Redis pub/sub channels setup and 500 connection stress testing.', lead: 'Jitendra Sir' },
+  { id: 'cl-3', taskCode: 'TASK0003', title: 'OAuth2 & Role-Based Access Control Security Audit', dept: 'Product & Tech', priority: 'URGENT', desc: 'Audit JWT bearer scopes and token expiration.', lead: 'Jitendra Sir' },
+  { id: 'cl-4', taskCode: 'TASK0004', title: 'Q3 Brand Marketing Client Acquisition Campaign', dept: 'Marketing', priority: 'HIGH', desc: 'Brand identity collateral and B2B campaign funnel.', lead: 'Priyanka Sharma' },
+  { id: 'cl-5', taskCode: 'TASK0005', title: 'Agri-Tech Subsidy & Government Compliance Report', dept: 'Grants & Governance', priority: 'HIGH', desc: 'Government subsidy compliance and field telemetry.', lead: 'Dr. Utsav Mishra' },
 ];
 
 export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({

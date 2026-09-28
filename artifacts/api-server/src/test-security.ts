@@ -24,6 +24,9 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
+console.error('DEPRECATED: test-security.ts writes old-format codes and is disabled under Step 2.');
+process.exit(1);
+
 async function runSecurityAudit() {
   await new Promise<void>((resolve) => {
     server = app.listen(TEST_PORT, () => {

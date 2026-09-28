@@ -5,6 +5,9 @@ import {
   employees,
   entities,
   entityCounters,
+  generateNextGlobalCode,
+  generateEmployeeCode,
+  employeeCodeHistory,
   departments,
   invites,
   tasks,
@@ -47,16 +50,17 @@ async function logAudit(userId: string | null | undefined, action: string, detai
   }
 }
 
-// GET /api/employees - Exclude sensitive salary information
+// GET /api/employees - Exclude sensitive salary information & support code history search
 router.get('/', async (req: Request, res: Response) => {
   try {
     const empList = await db.select().from(employees);
 
-    const [userList, inviteList, deptList, entityList] = await Promise.all([
+    const [userList, inviteList, deptList, entityList, historyList] = await Promise.all([
       db.select({ email: users.email, role: users.role, employeeId: users.employeeId }).from(users),
       db.select({ email: invites.email, role: invites.role, employeeId: invites.employeeId }).from(invites),
       db.select().from(departments),
       db.select().from(entities),
+      db.select().from(employeeCodeHistory),
     ]);
 
     const userMapByEmpId = new Map<string, string>();
@@ -83,7 +87,16 @@ router.get('/', async (req: Request, res: Response) => {
       entityMap.set(e.id, { code: e.code, name: e.name });
     });
 
-    const result = empList.map((emp) => {
+    const historyMap = new Map<string, string[]>();
+    historyList.forEach((h) => {
+      const arr = historyMap.get(h.employeeId) || [];
+      if (h.oldCode && !arr.includes(h.oldCode)) {
+        arr.push(h.oldCode);
+      }
+      historyMap.set(h.employeeId, arr);
+    });
+
+    let result = empList.map((emp) => {
       const emailLower = (emp.email || '').toLowerCase().trim();
       const userRole = userMapByEmpId.get(emp.id) || userMapByEmail.get(emailLower);
       const inviteRole = inviteMapByEmpId.get(emp.id) || inviteMapByEmail.get(emailLower);
@@ -95,6 +108,7 @@ router.get('/', async (req: Request, res: Response) => {
 
       const ent = entityMap.get(emp.entityId);
       const entityCode = ent?.code || 'EHM';
+      const previousCodes = historyMap.get(emp.id) || [];
 
       return {
         ...safeEmp,
@@ -102,7 +116,30 @@ router.get('/', async (req: Request, res: Response) => {
         entityCode,
         entityName: ent?.name,
         departmentName: deptMap.get(emp.departmentId) || 'Product & Tech',
+        previousCodes,
       };
+    });
+
+    const searchQuery = ((req.query.search || req.query.q) as string || '').toLowerCase().trim();
+    if (searchQuery) {
+      result = result.filter((e) => {
+        const fullName = `${e.firstName || ''} ${e.lastName || ''}`.toLowerCase();
+        const code = (e.employeeCode || '').toLowerCase();
+        const email = (e.email || '').toLowerCase();
+        const matchedOldCode = e.previousCodes.some((oldC) => oldC.toLowerCase().includes(searchQuery));
+        return (
+          fullName.includes(searchQuery) ||
+          code.includes(searchQuery) ||
+          email.includes(searchQuery) ||
+          matchedOldCode
+        );
+      });
+    }
+
+    result.sort((a, b) => {
+      const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
+      const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
+      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
     });
 
     res.json(result);
@@ -183,25 +220,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
         throw new Error(`Entity not found for ID: ${targetEntityId}`);
       }
 
-      const resEntityCode = entity.code === 'COMMON' ? 'COM' : entity.code;
-      const isAdm = requestedRole === 'ADMIN';
-      const isMgr = requestedRole === 'MANAGER';
-      const rolePrefix = isAdm ? 'ADM' : isMgr ? 'MGR' : 'EMP';
-      const prefix = `${resEntityCode}-${rolePrefix}`;
-
-      await tx
-        .insert(entityCounters)
-        .values({ entityId: targetEntityId, nextEmployeeSeq: 1 })
-        .onConflictDoNothing();
-
-      const [counter] = await tx
-        .update(entityCounters)
-        .set({ nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` })
-        .where(eq(entityCounters.entityId, targetEntityId))
-        .returning();
-
-      const seq = counter?.nextEmployeeSeq ? counter.nextEmployeeSeq - 1 : 1;
-      const employeeCode = `${prefix}${String(seq).padStart(2, '0')}`;
+      const employeeCode = await generateEmployeeCode(requestedRole, tx);
 
       let targetDeptId = departmentId;
       if (!targetDeptId && departmentName) {
@@ -497,29 +516,6 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     const [finalEntity] = await db.select().from(entities).where(eq(entities.id, finalEntityId));
     const finalEntityCode = finalEntity?.code || (entityCode?.toUpperCase() === 'CAG' ? 'CAG' : entityCode?.toUpperCase() === 'COMMON' ? 'COMMON' : 'EHM');
 
-    const effectiveRole = ((role || targetUser?.role || 'EMPLOYEE') as string).toUpperCase();
-    const roleCode = effectiveRole === 'ADMIN' ? 'ADM' : effectiveRole === 'MANAGER' ? 'MGR' : 'EMP';
-    const codePrefix = finalEntityCode === 'COMMON' ? 'COM' : finalEntityCode;
-    const expectedPrefix = `${codePrefix}-${roleCode}`;
-
-    const entityChanged = finalEntityId !== emp.entityId;
-    const roleChanged = effectiveRole !== (targetUser?.role || 'EMPLOYEE');
-    if (!emp.employeeCode || entityChanged || roleChanged) {
-      await db
-        .insert(entityCounters)
-        .values({ entityId: finalEntityId, nextEmployeeSeq: 1 })
-        .onConflictDoNothing();
-
-      const [counter] = await db
-        .update(entityCounters)
-        .set({ nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` })
-        .where(eq(entityCounters.entityId, finalEntityId))
-        .returning();
-
-      const seq = counter?.nextEmployeeSeq ? counter.nextEmployeeSeq - 1 : 1;
-      updateData.employeeCode = `${expectedPrefix}${String(seq).padStart(2, '0')}`;
-    }
-
     let targetDeptId = departmentId;
     if (!targetDeptId && departmentName) {
       const allDepts = await db.select().from(departments);
@@ -548,35 +544,103 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     }
     if (targetDeptId) updateData.departmentId = targetDeptId;
 
-    const [updatedEmp] = await db
-      .update(employees)
-      .set(updateData)
-      .where(eq(employees.id, id))
-      .returning();
+    // Execute role change, code generation, code history and employee update in ONE atomic transaction
+    const txResult = await db.transaction(async (tx) => {
+      // Determine current stored role strictly from users.role (then invites.role, then EMPLOYEE)
+      const [userRow] = await tx
+        .select({ role: users.role })
+        .from(users)
+        .where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
 
-    if (role && callerRole === 'ADMIN') {
-      await db.update(users).set({ role: effectiveRole as any }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
-      await db.update(invites).set({ role: effectiveRole as any }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
-    }
+      const [inviteRow] = await tx
+        .select({ role: invites.role })
+        .from(invites)
+        .where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
 
-    if (email && email.toLowerCase().trim() !== emp.email?.toLowerCase().trim()) {
-      await db.update(users).set({ email: targetEmail }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
-      await db.update(invites).set({ email: targetEmail }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
-    }
+      const currentRole = ((userRow?.role || inviteRow?.role || 'EMPLOYEE') as string).toUpperCase().trim();
+      const requestedNewRole = role ? (role as string).toUpperCase().trim() : null;
 
-    await logAudit(callerUser?.id, 'EMPLOYEE_UPDATED', {
-      employeeId: id,
-      updatedFields: Object.keys(updateData),
-      newRole: role || undefined,
-      newCode: updateData.employeeCode || undefined,
+      // Role change occurs ONLY if an admin requests a new role different from currentRole
+      const isRoleChange = Boolean(requestedNewRole && requestedNewRole !== currentRole && callerRole === 'ADMIN');
+      const effectiveRole = requestedNewRole && callerRole === 'ADMIN' ? requestedNewRole : currentRole;
+
+      let newGeneratedCode: string | undefined = undefined;
+
+      if (isRoleChange && requestedNewRole) {
+        // Generate new code from the appropriate role counter (ADMN, MANA, TEAM)
+        newGeneratedCode = await generateEmployeeCode(requestedNewRole, tx);
+        updateData.employeeCode = newGeneratedCode;
+
+        // Update users.role
+        await tx.update(users).set({ role: requestedNewRole as any }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+        // Update invites.role
+        await tx.update(invites).set({ role: requestedNewRole as any }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
+
+        // Insert row in employee_code_history
+        await tx.insert(employeeCodeHistory).values({
+          employeeId: id,
+          oldCode: emp.employeeCode,
+          newCode: newGeneratedCode,
+          oldRole: currentRole,
+          newRole: requestedNewRole,
+          changedBy: callerUser?.id || null,
+          changedAt: new Date(),
+        });
+
+        // Write audit_logs entry
+        await tx.insert(auditLogs).values({
+          userId: callerUser?.id || null,
+          action: 'EMPLOYEE_ROLE_CHANGED',
+          details: {
+            employeeId: id,
+            oldRole: currentRole,
+            newRole: requestedNewRole,
+            oldCode: emp.employeeCode,
+            newCode: newGeneratedCode,
+          },
+        });
+      } else if (!emp.employeeCode) {
+        // If employee has no code yet, generate from their current role counter
+        newGeneratedCode = await generateEmployeeCode(currentRole, tx);
+        updateData.employeeCode = newGeneratedCode;
+      }
+      // If role is unchanged (or same value), or entity/department/designation changed:
+      // employeeCode is NOT modified. Counters never go backwards; old codes are never reused.
+
+      if (email && email.toLowerCase().trim() !== emp.email?.toLowerCase().trim()) {
+        await tx.update(users).set({ email: targetEmail }).where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+        await tx.update(invites).set({ email: targetEmail }).where(or(eq(invites.employeeId, id), eq(invites.email, emp.email)));
+      }
+
+      const [updatedEmp] = await tx
+        .update(employees)
+        .set(updateData)
+        .where(eq(employees.id, id))
+        .returning();
+
+      await tx.insert(auditLogs).values({
+        userId: callerUser?.id || null,
+        action: 'EMPLOYEE_UPDATED',
+        details: {
+          employeeId: id,
+          updatedFields: Object.keys(updateData),
+          newRole: isRoleChange ? requestedNewRole : undefined,
+          newCode: newGeneratedCode || undefined,
+        },
+      });
+
+      return {
+        updatedEmp,
+        effectiveRole,
+      };
     });
 
-    const { salary: _omit, ...safeUpdatedEmp } = updatedEmp;
+    const { salary: _omit, ...safeUpdatedEmp } = txResult.updatedEmp;
     return res.json({
       message: 'Employee updated successfully',
       employee: {
         ...safeUpdatedEmp,
-        role: effectiveRole,
+        role: txResult.effectiveRole,
         entityCode: finalEntityCode,
         departmentName: departmentName || undefined,
       },

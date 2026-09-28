@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2 } from 'lucide-react';
+import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2, History, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
 import { RichTextEditor } from './RichTextEditor';
 import { MarkdownViewer } from './MarkdownViewer';
 import { CalendarPicker } from './CalendarPicker';
+import { RecordHistoryPanel } from './RecordHistoryPanel';
+import { RecentActivitySection } from './RecentActivitySection';
 import { formatDateTime } from '../utils/dateUtils';
 import { getEntityBadge } from '../utils/entityUtils';
+
+export interface ChecklistItem {
+  id: string;
+  itemText: string;
+  isCompleted: boolean;
+  completedAt?: string | null;
+  sortOrder: number;
+}
+
+export interface CommentItem {
+  id: string;
+  authorName: string;
+  content: string;
+  isSystemLog: boolean;
+  createdAt: string;
+}
 
 export interface TaskItem {
   id: string;
@@ -15,6 +33,7 @@ export interface TaskItem {
   taskCode?: string;
   title: string;
   entity: string; // EHM or CLIMAGRO / CAG or COMMON
+  entityId?: string;
   entityCode?: string;
   entityName?: string;
   epicId?: string | null;
@@ -31,23 +50,12 @@ export interface TaskItem {
   dueDate?: string;
   targetWeek?: string;
   priority?: string;
+  createdById?: string | null;
+  createdByName?: string | null;
+  creatorName?: string | null;
   createdAt?: string;
-}
-
-interface ChecklistItem {
-  id: string;
-  itemText: string;
-  isCompleted: boolean;
-  completedAt?: string | null;
-  sortOrder: number;
-}
-
-interface CommentItem {
-  id: string;
-  authorName: string;
-  content: string;
-  isSystemLog: boolean;
-  createdAt: string;
+  checklists?: ChecklistItem[];
+  comments?: CommentItem[];
 }
 
 interface TaskUpdateModalProps {
@@ -139,6 +147,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [importChecklistAndLinks, setImportChecklistAndLinks] = useState(true);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
 
   const [employeesList, setEmployeesList] = useState<{ id: string; name: string; designation: string }[]>([]);
   const [epicsList, setEpicsList] = useState<{ id: string; epicCode: string; title: string; entityCode?: string }[]>([]);
@@ -146,9 +155,9 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [entity, setEntity] = useState('EHM');
   const [parentTaskId, setParentTaskId] = useState('');
   const [taskName, setTaskName] = useState('');
-  const [assignee, setAssignee] = useState('Priyanka Sharma');
+  const [assignee, setAssignee] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
-  const [reviewingLead, setReviewingLead] = useState('Dr. Harshit Mishra');
+  const [reviewingLead, setReviewingLead] = useState('');
   const [reviewingLeadId, setReviewingLeadId] = useState('');
   const [outputUrl, setOutputUrl] = useState('');
   const [status, setStatus] = useState<string>('In Progress');
@@ -177,6 +186,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Team Member',
             designation: e.designation || 'Team Member',
           }));
+          list.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
           setEmployeesList(list);
         }
         if (Array.isArray(epicsData)) {
@@ -186,6 +196,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             title: ep.title,
             entityCode: ep.entityCode || ep.entity,
           }));
+          list.sort((a, b) => (a.title || a.epicCode || '').localeCompare(b.title || b.epicCode || '', undefined, { sensitivity: 'base' }));
           setEpicsList(list);
         }
       }).catch(() => {});
@@ -255,7 +266,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setAssignee(matchedAssignee ? matchedAssignee.name : cleanAssignee);
       setAssigneeId(task.assigneeId || matchedAssignee?.id || '');
 
-      const cleanLead = (task.reviewingLead || 'Manager Lead').replace(/\(.*?\)/g, '').trim();
+      const cleanLead = ((task.reviewingLead && task.reviewingLead.toLowerCase() !== 'manager lead') ? task.reviewingLead : 'Unassigned').replace(/\(.*?\)/g, '').trim();
       const matchedLead = employeesList.find(e => e.id === task.reviewingLeadId || e.name.toLowerCase() === cleanLead.toLowerCase());
       setReviewingLead(matchedLead ? matchedLead.name : cleanLead);
       setReviewingLeadId(task.reviewingLeadId || matchedLead?.id || '');
@@ -413,6 +424,15 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             >
               <Copy className="w-3.5 h-3.5 text-purple-600" />
               <span>Clone Task</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowHistoryPanel(true)}
+              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+              title="View Task Audit History"
+            >
+              <History className="w-3.5 h-3.5 text-emerald-600" />
+              <span>History</span>
             </button>
             <button
               onClick={onClose}
@@ -588,6 +608,14 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Created By Info */}
+              {(task.createdByName || task.creatorName) && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/90 rounded-xl border border-gray-200 text-xs text-gray-700">
+                  <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Created by: <strong className="text-gray-900 font-semibold">{task.createdByName || task.creatorName}</strong></span>
+                </div>
+              )}
 
               {/* Deliverable / Task Name */}
               <div>
@@ -1069,11 +1097,32 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 <span>Post</span>
               </button>
             </form>
+
+            {/* Audit History Timeline Widget */}
+            <div className="mt-3 pt-2">
+              <RecentActivitySection
+                tableName="tasks"
+                recordId={task.id}
+                onOpenHistory={() => setShowHistoryPanel(true)}
+              />
+            </div>
           </div>
 
         </div>
 
       </div>
+
+      {/* Record History Slide-Over Drawer */}
+      {showHistoryPanel && (
+        <RecordHistoryPanel
+          isOpen={showHistoryPanel}
+          onClose={() => setShowHistoryPanel(false)}
+          tableName="tasks"
+          recordId={task.id}
+          title={task.title}
+          code={task.taskCode || task.taskId}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, Calendar, Layers, Clock, Copy, Plus, CheckCircle, ShieldCheck, Sparkles, ListChecks, MessageSquare, Send } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
@@ -190,15 +190,19 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
       ]);
 
       const sortedEpics = [...(epicsData || [])].sort((a, b) =>
-        (a.epicCode || a.title || '').localeCompare(b.epicCode || b.title || '')
+        (a.title || a.epicCode || '').localeCompare(b.title || b.epicCode || '', undefined, { sensitivity: 'base' })
       );
       setEpics(sortedEpics);
 
       const sortedSprints = [...(sprintsData || [])].sort((a, b) =>
-        (a.name || '').localeCompare(b.name || '')
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
       );
       setSprints(sortedSprints);
-      setProjects(projsData || []);
+
+      const sortedProjects = [...(projsData || [])].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+      );
+      setProjects(sortedProjects);
 
       const formattedEmps = (empsData || []).map(e => ({
         id: e.id,
@@ -206,7 +210,13 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
         lastName: e.lastName,
         employeeCode: e.employeeCode,
         designation: e.designation || 'Team Member',
-      }));
+      })).sort((a, b) =>
+        `${a.firstName || ''} ${a.lastName || ''}`.trim().localeCompare(
+          `${b.firstName || ''} ${b.lastName || ''}`.trim(),
+          undefined,
+          { sensitivity: 'base' }
+        )
+      );
       setEmployees(formattedEmps);
       // Keep assigneeId, reviewingLeadId, selectedSprintId, selectedEpicId, selectedProjectId EMPTY by default
     } catch (err) {

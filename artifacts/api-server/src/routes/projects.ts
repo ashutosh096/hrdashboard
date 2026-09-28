@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { db, projects, employees, tasks, eq, desc, sql, and, or, inArray } from '@workspace/db';
-import { requireAuth } from '../middleware/auth.js';
+import { db, projects, employees, tasks, generateNextGlobalCode, eq, desc, sql, and, or, inArray, recordHistory } from '@workspace/db';
+import { requireAuth, requireRole } from '../middleware/auth.js';
+import { getCallerInfo } from '../utils/userSnapshot.js';
 
 const router = Router();
 
@@ -257,8 +258,9 @@ router.get('/', async (req, res) => {
 
     if (!isPaginatedRequest) {
       const allProjects = whereClause
-        ? await db.select().from(projects).where(whereClause).orderBy(desc(projects.createdAt))
-        : await db.select().from(projects).orderBy(desc(projects.createdAt));
+        ? await db.select().from(projects).where(whereClause).orderBy(sql`LOWER(${projects.name}) ASC`)
+        : await db.select().from(projects).orderBy(sql`LOWER(${projects.name}) ASC`);
+      allProjects.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
       return res.json(allProjects);
     }
 
@@ -278,15 +280,17 @@ router.get('/', async (req, res) => {
           .select()
           .from(projects)
           .where(whereClause)
-          .orderBy(desc(projects.createdAt))
+          .orderBy(sql`LOWER(${projects.name}) ASC`)
           .limit(targetPageSize)
           .offset(offset)
       : await db
           .select()
           .from(projects)
-          .orderBy(desc(projects.createdAt))
+          .orderBy(sql`LOWER(${projects.name}) ASC`)
           .limit(targetPageSize)
           .offset(offset);
+
+    projectRows.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
     return res.json({
       projects: projectRows,
@@ -303,10 +307,9 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/projects - Create a new project
-router.post('/', async (req, res) => {
+router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   try {
     const {
-      code,
       name,
       entity,
       entityName,
@@ -320,7 +323,6 @@ router.post('/', async (req, res) => {
       priority,
       techStack,
       deliverableUrl,
-      milestonesCount,
       description,
       checkpoints,
       comments,
@@ -333,51 +335,56 @@ router.post('/', async (req, res) => {
     const finalEntity = (entity === 'CAG' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM') as any;
     const finalEntityName = entityName || (finalEntity === 'CAG' ? 'climagroanalytics' : finalEntity === 'COMMON' ? 'common' : 'ehmconsultancy');
 
-    // Auto-generate guaranteed unique code if code is missing or already exists in DB
-    const allExisting = await db.select({ code: projects.code }).from(projects);
-    const existingCodes = new Set(allExisting.map(p => p.code.toLowerCase().trim()));
-
-    let finalCode = (code || '').trim();
-    if (!finalCode || existingCodes.has(finalCode.toLowerCase())) {
-      const year = new Date().getFullYear();
-      let nextNum = allExisting.length + 1;
-      let candidate = `${finalEntity}-PRJ-${year}-${String(nextNum).padStart(2, '0')}`;
-      while (existingCodes.has(candidate.toLowerCase())) {
-        nextNum++;
-        candidate = `${finalEntity}-PRJ-${year}-${String(nextNum).padStart(2, '0')}`;
-      }
-      finalCode = candidate;
-    }
-
     const finalCheckpoints = Array.isArray(checkpoints) ? checkpoints : [];
     const finalTeam = Array.isArray(team) ? team : [];
     const finalComments = Array.isArray(comments) ? comments : [];
 
-    const [created] = await db
-      .insert(projects)
-      .values({
-        code: finalCode,
-        name: name.trim(),
-        entity: finalEntity,
-        entityName: finalEntityName,
-        category: category || 'General',
-        lead: lead || '',
-        team: finalTeam,
-        budget: budget || '',
-        startDate: startDate || null,
-        targetDate: targetDate || null,
-        status: status || 'Planning',
-        priority: priority || 'Medium',
-        techStack: techStack || '',
-        deliverableUrl: deliverableUrl || techStack || '',
-        milestonesCount: finalCheckpoints.length,
-        description: description || '',
-        checkpoints: finalCheckpoints,
-        comments: finalComments,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+    const created = await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+
+      // Server ALWAYS generates code with generateNextGlobalCode('PROJ'). Ignore any client-supplied code.
+      const finalCode = await generateNextGlobalCode('PROJ', tx);
+
+      const [newProj] = await tx
+        .insert(projects)
+        .values({
+          code: finalCode,
+          name: name.trim(),
+          entity: finalEntity,
+          entityName: finalEntityName,
+          category: category || 'General',
+          lead: lead || '',
+          team: finalTeam,
+          budget: budget || '',
+          startDate: startDate || null,
+          targetDate: targetDate || null,
+          status: status || 'Planning',
+          priority: priority || 'Medium',
+          techStack: techStack || '',
+          deliverableUrl: deliverableUrl || techStack || '',
+          milestonesCount: finalCheckpoints.length,
+          description: description || '',
+          checkpoints: finalCheckpoints,
+          comments: finalComments,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdById: caller.employeeId,
+          createdByName: caller.callerName,
+        })
+        .returning();
+
+      // Record history
+      await recordHistory(tx, {
+        tableName: 'projects',
+        recordId: newProj.id,
+        action: 'CREATED',
+        changes: [{ field: 'name', old: null, new: newProj.name }],
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+
+      return newProj;
+    });
 
     res.status(201).json(created);
   } catch (err: any) {
@@ -390,6 +397,29 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const userRole = (req.user?.role || '').toUpperCase();
+    const isManagerOrAdmin = userRole === 'ADMIN' || userRole === 'MANAGER';
+
+    const [existingCheck] = await db.select().from(projects).where(eq(projects.id, id));
+    if (!existingCheck) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    if (!isManagerOrAdmin) {
+      const callerInfo = await getCallerInfo(req.user);
+      const callerNameLower = (callerInfo.callerName || '').toLowerCase().trim();
+      const callerEmpId = callerInfo.employeeId;
+      const leadLower = (existingCheck.lead || '').toLowerCase().trim();
+      const isLead = (callerNameLower && leadLower.includes(callerNameLower)) || (callerEmpId && (existingCheck as any).leadId === callerEmpId);
+      const isTeamMember = Array.isArray(existingCheck.team) && callerNameLower && existingCheck.team.some((t: string) => t.toLowerCase().includes(callerNameLower));
+      const isCreator = callerEmpId && (existingCheck as any).createdById === callerEmpId;
+
+      if (!isLead && !isTeamMember && !isCreator) {
+        return res.status(403).json({ message: 'Access denied. You must be assigned to this project or be an Admin/Manager to edit it.' });
+      }
+    }
+
     const {
       code,
       name,
@@ -411,41 +441,70 @@ router.patch('/:id', async (req, res) => {
       comments,
     } = req.body;
 
-    const [existing] = await db.select().from(projects).where(eq(projects.id, id));
-    if (!existing) {
+    const updated = await db.transaction(async (tx) => {
+      const existing = existingCheck;
+
+      const updatePayload: Record<string, any> = {
+        updatedAt: new Date(),
+      };
+
+      if (code !== undefined) updatePayload.code = code;
+      if (name !== undefined) updatePayload.name = name.trim();
+      if (entity !== undefined) updatePayload.entity = entity;
+      if (entityName !== undefined) updatePayload.entityName = entityName;
+      if (category !== undefined) updatePayload.category = category;
+      if (lead !== undefined) updatePayload.lead = lead;
+      if (team !== undefined) updatePayload.team = team;
+      if (budget !== undefined) updatePayload.budget = budget;
+      if (startDate !== undefined) updatePayload.startDate = startDate;
+      if (targetDate !== undefined) updatePayload.targetDate = targetDate;
+      if (status !== undefined) updatePayload.status = status;
+      if (priority !== undefined) updatePayload.priority = priority;
+      if (techStack !== undefined) updatePayload.techStack = techStack;
+      if (deliverableUrl !== undefined) updatePayload.deliverableUrl = deliverableUrl;
+      if (description !== undefined) updatePayload.description = description;
+      if (checkpoints !== undefined) {
+        updatePayload.checkpoints = checkpoints;
+        updatePayload.milestonesCount = Array.isArray(checkpoints) ? checkpoints.length : 0;
+      }
+      if (comments !== undefined) updatePayload.comments = comments;
+
+      const [updatedProj] = await tx
+        .update(projects)
+        .set(updatePayload)
+        .where(eq(projects.id, id))
+        .returning();
+
+      // Record history
+      const caller = await getCallerInfo(req.user, tx);
+      const changes: { field: string; old: any; new: any }[] = [];
+      for (const [key, newVal] of Object.entries(updatePayload)) {
+        if (key === 'updatedAt') continue;
+        const oldVal = (existing as any)[key];
+        const oldStr = typeof oldVal === 'object' ? JSON.stringify(oldVal) : String(oldVal ?? '');
+        const newStr = typeof newVal === 'object' ? JSON.stringify(newVal) : String(newVal ?? '');
+        if (oldStr !== newStr) {
+          changes.push({ field: key, old: oldVal, new: newVal });
+        }
+      }
+
+      if (changes.length > 0) {
+        await recordHistory(tx, {
+          tableName: 'projects',
+          recordId: id,
+          action: 'UPDATED',
+          changes,
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
+
+      return updatedProj;
+    });
+
+    if (!updated) {
       return res.status(404).json({ message: 'Project not found' });
     }
-
-    const updatePayload: Record<string, any> = {
-      updatedAt: new Date(),
-    };
-
-    if (code !== undefined) updatePayload.code = code;
-    if (name !== undefined) updatePayload.name = name.trim();
-    if (entity !== undefined) updatePayload.entity = entity;
-    if (entityName !== undefined) updatePayload.entityName = entityName;
-    if (category !== undefined) updatePayload.category = category;
-    if (lead !== undefined) updatePayload.lead = lead;
-    if (team !== undefined) updatePayload.team = team;
-    if (budget !== undefined) updatePayload.budget = budget;
-    if (startDate !== undefined) updatePayload.startDate = startDate;
-    if (targetDate !== undefined) updatePayload.targetDate = targetDate;
-    if (status !== undefined) updatePayload.status = status;
-    if (priority !== undefined) updatePayload.priority = priority;
-    if (techStack !== undefined) updatePayload.techStack = techStack;
-    if (deliverableUrl !== undefined) updatePayload.deliverableUrl = deliverableUrl;
-    if (description !== undefined) updatePayload.description = description;
-    if (checkpoints !== undefined) {
-      updatePayload.checkpoints = checkpoints;
-      updatePayload.milestonesCount = Array.isArray(checkpoints) ? checkpoints.length : 0;
-    }
-    if (comments !== undefined) updatePayload.comments = comments;
-
-    const [updated] = await db
-      .update(projects)
-      .set(updatePayload)
-      .where(eq(projects.id, id))
-      .returning();
 
     res.json(updated);
   } catch (err: any) {
@@ -454,16 +513,28 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/projects/:id - Delete a project
-router.delete('/:id', async (req, res) => {
+// DELETE /api/projects/:id - Delete a project (ADMIN ONLY)
+router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const [existing] = await db.select().from(projects).where(eq(projects.id, id));
     if (!existing) {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    await db.delete(projects).where(eq(projects.id, id));
+    await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await recordHistory(tx, {
+        tableName: 'projects',
+        recordId: id,
+        action: 'DELETED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+
+      await tx.delete(projects).where(eq(projects.id, id));
+    });
+
     res.json({ success: true, message: 'Project deleted successfully' });
   } catch (err: any) {
     console.error('[DELETE PROJECT ERROR]:', err);

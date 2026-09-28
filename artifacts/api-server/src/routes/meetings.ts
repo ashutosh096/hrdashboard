@@ -418,12 +418,33 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// Helper function to check meeting ownership / privileges
+function checkMeetingOwnership(existing: any, user: any): boolean {
+  const callerRole = (user?.role || '').toUpperCase();
+  const callerEmpId = user?.employeeId;
+  const callerUserId = user?.id;
+
+  const isPrivileged = callerRole === 'ADMIN' || callerRole === 'MANAGER';
+  const isOrganizer = (callerEmpId && existing.organizerId === callerEmpId) || (callerUserId && existing.organizerUserId === callerUserId);
+
+  return isPrivileged || !!isOrganizer;
+}
+
 // PATCH /api/meetings/:id - Update meeting details / MoM (Minutes of Meeting) / description
 router.patch('/:id', async (req: Request, res: Response) => {
   const meetingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const { title, description, startTime, endTime, location } = req.body;
 
   try {
+    const [existing] = await db.select().from(meetings).where(eq(meetings.id, meetingId!));
+    if (!existing) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    if (!checkMeetingOwnership(existing, req.user)) {
+      return res.status(403).json({ message: 'Access denied. Only the meeting organizer or an Admin/Manager can edit this meeting' });
+    }
+
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
@@ -437,10 +458,6 @@ router.patch('/:id', async (req: Request, res: Response) => {
       .where(eq(meetings.id, meetingId!))
       .returning();
 
-    if (!updated) {
-      return res.status(404).json({ message: 'Meeting not found' });
-    }
-
     res.json(updated);
   } catch (err: any) {
     console.error('[MEETING UPDATE ERROR]:', err);
@@ -453,15 +470,20 @@ router.delete('/:id', async (req: Request, res: Response) => {
   const meetingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
   try {
+    const [existing] = await db.select().from(meetings).where(eq(meetings.id, meetingId!));
+    if (!existing) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    if (!checkMeetingOwnership(existing, req.user)) {
+      return res.status(403).json({ message: 'Access denied. Only the meeting organizer or an Admin/Manager can cancel this meeting' });
+    }
+
     const [cancelled] = await db
       .update(meetings)
       .set({ status: 'CANCELLED' })
       .where(eq(meetings.id, meetingId!))
       .returning();
-
-    if (!cancelled) {
-      return res.status(404).json({ message: 'Meeting not found' });
-    }
 
     res.json({ message: 'Meeting cancelled successfully', meeting: cancelled });
   } catch (err: any) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send } from 'lucide-react';
+import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send, History, UserCheck } from 'lucide-react';
 import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +7,7 @@ import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { RichTextEditor } from './RichTextEditor';
 import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
+import { RecordHistoryPanel } from './RecordHistoryPanel';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
@@ -30,6 +31,9 @@ interface SprintItem {
   goal?: string;
   tasksCount?: number;
   tasks?: any[];
+  createdById?: string | null;
+  createdByName?: string | null;
+  createdAt?: string;
 }
 
 interface EmployeeOption {
@@ -186,6 +190,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
   // Task Update / Review Modal State
   const [selectedTaskToUpdate, setSelectedTaskToUpdate] = useState<TaskItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<{ recordId: string; title: string; code: string } | null>(null);
   const [isModalReadOnly, setIsModalReadOnly] = useState<boolean>(false);
 
   // New Sprint Modal State
@@ -245,37 +250,45 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   };
 
   const epicOptions = React.useMemo(() => {
-    return epics.map((ep) => ({
-      id: ep.id,
-      code: ep.epicCode,
-      label: ep.title,
-    }));
+    return epics
+      .map((ep) => ({
+        id: ep.id,
+        code: ep.epicCode,
+        label: ep.title,
+      }))
+      .sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [epics]);
 
   const projectOptions = React.useMemo(() => {
-    return projects.map((p) => ({
-      id: p.id,
-      code: p.code,
-      label: p.name,
-      subtitle: p.entity,
-    }));
+    return projects
+      .map((p) => ({
+        id: p.id,
+        code: p.code,
+        label: p.name,
+        subtitle: p.entity,
+      }))
+      .sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [projects]);
 
   const leadOptions = React.useMemo(() => {
-    return employees.map((emp) => ({
-      id: emp.id,
-      code: emp.employeeCode,
-      label: `${emp.firstName} ${emp.lastName}`,
-      subtitle: emp.designation,
-    }));
+    return employees
+      .map((emp) => ({
+        id: emp.id,
+        code: emp.employeeCode,
+        label: `${emp.firstName} ${emp.lastName}`,
+        subtitle: emp.designation,
+      }))
+      .sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [employees]);
 
   const taskCloneOptions = React.useMemo(() => {
-    return allTasks.map((t) => ({
-      id: t.id,
-      code: t.taskCode || t.id,
-      label: t.title,
-    }));
+    return allTasks
+      .map((t) => ({
+        id: t.id,
+        code: t.taskCode || t.id,
+        label: t.title,
+      }))
+      .sort((a, b) => (a.label || '').localeCompare(b.label || '', undefined, { sensitivity: 'base' }));
   }, [allTasks]);
 
   const loadData = async (silent = false) => {
@@ -288,20 +301,27 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         fetchApi<any[]>('/api/tasks'),
         fetchApi<any[]>('/api/projects'),
       ]);
-      const formattedEmps = (empData || []).map(e => ({
-        id: e.id,
-        firstName: e.firstName,
-        lastName: e.lastName,
-        employeeCode: e.employeeCode,
-        designation: e.designation || 'Team Member',
-        email: e.email || '',
-      }));
+      const formattedEmps = (empData || [])
+        .map(e => ({
+          id: e.id,
+          firstName: e.firstName,
+          lastName: e.lastName,
+          employeeCode: e.employeeCode,
+          designation: e.designation || 'Team Member',
+          email: e.email || '',
+        }))
+        .sort((a, b) => `${a.firstName || ''} ${a.lastName || ''}`.trim().localeCompare(`${b.firstName || ''} ${b.lastName || ''}`.trim(), undefined, { sensitivity: 'base' }));
       setEmployees(formattedEmps);
-      setProjects(projsData || []);
+
+      const sortedProjects = [...(projsData || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+      setProjects(sortedProjects);
+
+      const sortedSprints = [...(sprintsData || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+      setSprints(sortedSprints);
 
       const enrichedTasks = (tasksData || []).map((t: any) => {
-        const assignedEmp = formattedEmps.find(e => e.id === t.assigneeId || e.employeeCode === t.assigneeId);
-        const leadEmp = formattedEmps.find(e => e.id === t.reviewingLeadId || e.employeeCode === t.reviewingLeadId);
+        const assignedEmp = formattedEmps.find(e => e.id === t.assigneeId);
+        const leadEmp = formattedEmps.find(e => e.id === t.reviewingLeadId);
         const parentEpic = (epicsData || []).find((ep: any) => ep.id === t.epicId);
 
         const assigneeName = (t.assigneeName && t.assigneeName !== 'Unassigned')
@@ -310,7 +330,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
         const reviewingLead = (t.reviewingLead && t.reviewingLead !== 'Manager lead')
           ? t.reviewingLead
-          : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Manager lead');
+          : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Unassigned');
 
         const epicCode = t.epicCode || parentEpic?.epicCode || '';
 
@@ -753,8 +773,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       toast.error('You can only edit tasks assigned to you.');
     }
 
-    const assignedEmp = employees.find(e => e.id === task.assigneeId || e.employeeCode === task.assigneeId);
-    const leadEmp = employees.find(e => e.id === task.reviewingLeadId || e.employeeCode === task.reviewingLeadId);
+    const assignedEmp = employees.find(e => e.id === task.assigneeId);
+    const leadEmp = employees.find(e => e.id === task.reviewingLeadId);
 
     const resolvedAssignee = (task.assigneeName && task.assigneeName !== 'Unassigned')
       ? task.assigneeName
@@ -762,7 +782,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     const resolvedLead = (task.reviewingLead && task.reviewingLead !== 'Manager lead')
       ? task.reviewingLead
-      : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : task.reviewingLead || 'Manager Lead');
+      : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : ((task.reviewingLead && task.reviewingLead.toLowerCase() !== 'manager lead') ? task.reviewingLead : 'Unassigned'));
 
     const taskBadge = getEntityBadge(task);
     const resolvedEntity = taskBadge.isCommon ? 'COMMON' : taskBadge.isCAG ? 'CLIMAGRO' : 'EHM';
@@ -960,9 +980,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     let matchesEmp = true;
     if (selectedEmployeeId !== 'ALL') {
-      const selectedEmpObj = employees.find(e => e.id === selectedEmployeeId || e.employeeCode === selectedEmployeeId);
+      const selectedEmpObj = employees.find(e => e.id === selectedEmployeeId);
       const selFullName = selectedEmpObj ? `${selectedEmpObj.firstName || ''} ${selectedEmpObj.lastName || ''}`.trim().toLowerCase() : '';
-      const selCode = selectedEmpObj ? (selectedEmpObj.employeeCode || '').toLowerCase() : '';
       const selEmail = selectedEmpObj ? (selectedEmpObj.email || '').toLowerCase() : '';
       const userEmail = (user?.email || '').toLowerCase();
       const userName = (user?.name || '').toLowerCase().trim();
@@ -972,12 +991,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       matchesEmp = Boolean(
         t.assigneeId === selectedEmployeeId ||
         t.employeeId === selectedEmployeeId ||
-        (selCode && (t.assigneeId === selCode || t.employeeId === selCode)) ||
         (selEmail && t.assigneeEmail?.toLowerCase() === selEmail) ||
-        (Array.isArray(t.assigneeIds) && (
-          t.assigneeIds.includes(selectedEmployeeId) ||
-          (selCode && t.assigneeIds.includes(selCode))
-        )) ||
+        (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(selectedEmployeeId)) ||
         (isMatchingUserSelf && (
           (userEmail && t.assigneeEmail?.toLowerCase() === userEmail) ||
           (userName && (t.assigneeName || t.assignee)?.toLowerCase().trim() === userName)
@@ -1175,42 +1190,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         </div>
       </div>
 
-      {/* Week Sub-Navigation Tabs Bar */}
-      <div className="flex items-center gap-6 border-b border-gray-200 pt-1 text-xs font-bold">
-        {[
-          { id: 'ALL', label: 'All weeks' },
-          { id: 'Week 1', label: 'Week 1' },
-          { id: 'Week 2', label: 'Week 2' },
-          { id: 'Week 3', label: 'Week 3' },
-          { id: 'Week 4', label: 'Week 4' },
-        ].map((w) => {
-          const isActive =
-            selectedWeek === w.id ||
-            (w.id === 'Week 1' && selectedWeek === 'Week 1 (Days 1–7)') ||
-            (w.id === 'Week 2' && selectedWeek === 'Week 2 (Days 8–14)') ||
-            (w.id === 'Week 3' && selectedWeek === 'Week 3 (Days 15–21)') ||
-            (w.id === 'Week 4' && selectedWeek === 'Week 4 (Days 22–28)');
-          return (
-            <button
-              key={w.id}
-              onClick={() => {
-                if (w.id === 'ALL') setSelectedWeek('ALL');
-                else if (w.id === 'Week 1') setSelectedWeek('Week 1 (Days 1–7)');
-                else if (w.id === 'Week 2') setSelectedWeek('Week 2 (Days 8–14)');
-                else if (w.id === 'Week 3') setSelectedWeek('Week 3 (Days 15–21)');
-                else if (w.id === 'Week 4') setSelectedWeek('Week 4 (Days 22–28)');
-              }}
-              className={`pb-2.5 transition-all cursor-pointer relative ${
-                isActive
-                  ? 'text-blue-600 font-extrabold border-b-2 border-blue-600 -mb-[1px]'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <span>{w.label}</span>
-            </button>
-          );
-        })}
-      </div>
+{/* Week sub-nav removed — showing all weeks */}
 
       {/* 🚀 6-COLUMN KANBAN BOARD VIEW (Backlog -> Planned -> To Do -> In Progress -> To Review -> Done) */}
       {loading ? (
@@ -1337,8 +1317,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
                       return sortedColumnTasks.map(t => {
                         const entityName = t.entityCode === 'CAG' || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
-                        const assignedEmp = employees.find(e => e.id === t.assigneeId || e.employeeCode === t.assigneeId);
-                        const leadEmp = employees.find(e => e.id === t.reviewingLeadId || e.employeeCode === t.reviewingLeadId);
+                        const assignedEmp = employees.find(e => e.id === t.assigneeId);
+                        const leadEmp = employees.find(e => e.id === t.reviewingLeadId);
 
                         const resolvedAssigneeName = (t.assigneeName && t.assigneeName !== 'Unassigned')
                           ? t.assigneeName
@@ -1378,10 +1358,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         const priorityTextColor = (priorityLabel === 'P1') ? 'text-red-600' : (priorityLabel === 'P2') ? 'text-rose-600' : (priorityLabel === 'P3') ? 'text-amber-600' : 'text-slate-500';
                         const priorityBarColor = (priorityLabel === 'P1') ? 'bg-red-500' : (priorityLabel === 'P2') ? 'bg-rose-500' : (priorityLabel === 'P3') ? 'bg-amber-500' : 'bg-slate-400';
 
-                        const createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '16 Sep';
+                        const createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
                         const reviewerLead = (t.reviewingLead && t.reviewingLead !== 'Manager lead')
                           ? t.reviewingLead
-                          : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Manager lead');
+                          : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Unassigned');
                         const assigneeDisplayName = isUnassigned ? 'Unassigned' : resolvedAssigneeName;
 
                         return (
@@ -1448,6 +1428,21 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                       <Edit3 className="w-3 h-3 text-blue-600" />
                                     </button>
                                   )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setHistoryTarget({
+                                        recordId: t.id,
+                                        title: t.title,
+                                        code: t.taskCode || t.taskId || t.id,
+                                      });
+                                    }}
+                                    className="p-1 rounded bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 transition-colors cursor-pointer"
+                                    title="View Task Audit History"
+                                  >
+                                    <History className="w-3 h-3" />
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -1479,6 +1474,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                   {reviewerLead}
                                 </span>
                               </div>
+{/* Created by tag removed per user request */}
                             </div>
 
                             {/* 5. Bottom Line: Left = Posted Date | Right = Target / Due Date */}
@@ -2559,6 +2555,18 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
             setSelectedTaskToUpdate(null);
           }}
           isReadOnly={isModalReadOnly}
+        />
+      )}
+
+      {/* Record History Slide-Over Drawer */}
+      {historyTarget && (
+        <RecordHistoryPanel
+          isOpen={!!historyTarget}
+          onClose={() => setHistoryTarget(null)}
+          tableName="tasks"
+          recordId={historyTarget.recordId}
+          title={historyTarget.title}
+          code={historyTarget.code}
         />
       )}
     </div>

@@ -42,6 +42,8 @@ interface EmployeeRecord {
   designation: string;
   departmentId: string;
   entityId: string;
+  entityCode?: string;
+  entity?: string;
 }
 
 interface TaskRecord {
