@@ -217,6 +217,8 @@ export async function enrichTasks(tasksList: any[]) {
       creatorName: creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin',
       epicCode: parentEpic?.epicCode || null,
       epicTitle: parentEpic?.title || null,
+      parentEpicCode: parentEpic?.epicCode || null,
+      parentEpicTitle: parentEpic?.title || null,
       initiativeCode: parentInit?.initiativeCode || null,
       initiativeTitle: parentInit?.title || null,
       projectCode: parentProj?.code || null,
@@ -754,16 +756,16 @@ const handleTaskUpdate = async (req: any, res: any) => {
           if (!newEpic) throw new Error('Target epic not found');
 
           updateData.epicId = epicId;
-          updateData.sprintId = null;
-          updateData.taskType = 'EPIC_TASK';
-          updateData.initiativeId = newEpic.initiativeId;
+          updateData.taskType = existingTaskCheck.sprintId ? 'SPRINT_TASK' : 'EPIC_TASK';
+          updateData.initiativeId = newEpic.initiativeId || existingTaskCheck.initiativeId;
           if (!updateData.projectId && newEpic.projectId) {
             updateData.projectId = newEpic.projectId;
           }
         } else {
           updateData.epicId = null;
-          updateData.taskType = 'BACKLOG';
-          updateData.initiativeId = null;
+          if (!existingTaskCheck.sprintId) {
+            updateData.taskType = 'BACKLOG';
+          }
         }
       } else if (sprintId !== undefined) {
         if (sprintId) {

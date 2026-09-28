@@ -343,6 +343,7 @@ export const EmployeeDashboardView: React.FC = () => {
       outputUrl: t.outputUrl,
       waitingOn: t.waitingOn,
       notes: t.notes,
+      epicId: (t as any).epicId || null,
     });
   };
 
@@ -358,6 +359,7 @@ export const EmployeeDashboardView: React.FC = () => {
           title: updated.title,
           entity: resolvedEntityLabel,
           entityCode: resolvedEntityCode,
+          epicId: updated.epicId !== undefined ? updated.epicId : null,
           status: updated.status,
           deliverableUrl: updated.outputUrl || '',
           description: updated.notes || '',

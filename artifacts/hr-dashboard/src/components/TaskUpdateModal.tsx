@@ -17,6 +17,9 @@ export interface TaskItem {
   entity: string; // EHM or CLIMAGRO / CAG or COMMON
   entityCode?: string;
   entityName?: string;
+  epicId?: string | null;
+  parentEpicCode?: string | null;
+  parentEpicTitle?: string | null;
   assignee: string;
   assigneeId?: string;
   reviewingLead: string;
@@ -138,6 +141,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   const [employeesList, setEmployeesList] = useState<{ id: string; name: string; designation: string }[]>([]);
+  const [epicsList, setEpicsList] = useState<{ id: string; epicCode: string; title: string; entityCode?: string }[]>([]);
+  const [selectedEpicId, setSelectedEpicId] = useState<string>('');
   const [entity, setEntity] = useState('EHM');
   const [parentTaskId, setParentTaskId] = useState('');
   const [taskName, setTaskName] = useState('');
@@ -162,18 +167,28 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      fetchApi<any[]>('/api/employees')
-        .then((data) => {
-          if (Array.isArray(data)) {
-            const list = data.map((e) => ({
-              id: e.id,
-              name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Team Member',
-              designation: e.designation || 'Team Member',
-            }));
-            setEmployeesList(list);
-          }
-        })
-        .catch(() => {});
+      Promise.all([
+        fetchApi<any[]>('/api/employees').catch(() => []),
+        fetchApi<any[]>('/api/epics').catch(() => []),
+      ]).then(([empData, epicsData]) => {
+        if (Array.isArray(empData)) {
+          const list = empData.map((e) => ({
+            id: e.id,
+            name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Team Member',
+            designation: e.designation || 'Team Member',
+          }));
+          setEmployeesList(list);
+        }
+        if (Array.isArray(epicsData)) {
+          const list = epicsData.map((ep: any) => ({
+            id: ep.id,
+            epicCode: ep.epicCode,
+            title: ep.title,
+            entityCode: ep.entityCode || ep.entity,
+          }));
+          setEpicsList(list);
+        }
+      }).catch(() => {});
     }
   }, [isOpen]);
 
@@ -252,6 +267,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setTargetWeek(task.targetWeek || 'Week 1 (Days 1–7)');
       setPriority(normalizePriorityCode(task.priority));
       setDueDate(parseDateForInput(task.dueDate));
+      setSelectedEpicId(task.epicId || (task as any).parentEpicId || '');
       loadTaskData();
     }
   }, [task?.id, isOpen]);
@@ -321,6 +337,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       try {
         setIsSavingTask(true);
         const resolvedCode = entity === 'CLIMAGRO' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM';
+        const matchedEpic = epicsList.find((e) => e.id === selectedEpicId);
         await onSave({
           ...task,
           taskId: parentTaskId,
@@ -329,6 +346,9 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           entity,
           entityCode: resolvedCode,
           entityId: undefined,
+          epicId: selectedEpicId || null,
+          parentEpicCode: matchedEpic ? matchedEpic.epicCode : selectedEpicId ? task.parentEpicCode : null,
+          parentEpicTitle: matchedEpic ? matchedEpic.title : selectedEpicId ? task.parentEpicTitle : null,
           assignee,
           assigneeId,
           reviewingLead,
@@ -587,6 +607,52 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     placeholder="Enter task title / deliverable name..."
                     className="w-full text-xs font-semibold bg-white border border-gray-300 rounded-xl p-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
                   />
+                )}
+              </div>
+
+              {/* Parent Feature Epic */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Parent Feature Epic
+                  </label>
+                  {selectedEpicId ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      ✓ Linked to Feature Epic
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-gray-400">
+                      No Parent Epic (Standalone Backlog Task)
+                    </span>
+                  )}
+                </div>
+                {readOnlyMode ? (
+                  <input
+                    type="text"
+                    disabled
+                    value={
+                      (() => {
+                        const matched = epicsList.find((e) => e.id === selectedEpicId);
+                        if (matched) return `${matched.epicCode}: ${matched.title}`;
+                        if (task.parentEpicCode) return `${task.parentEpicCode}: ${task.parentEpicTitle || ''}`.trim();
+                        return 'No parent epic (Standalone Backlog)';
+                      })()
+                    }
+                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                  />
+                ) : (
+                  <select
+                    value={selectedEpicId}
+                    onChange={(e) => setSelectedEpicId(e.target.value)}
+                    className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="">No parent epic (Standalone Backlog)</option>
+                    {epicsList.map((ep) => (
+                      <option key={ep.id} value={ep.id}>
+                        {ep.epicCode} - {ep.title} ({ep.entityCode || 'ALL'})
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
 
