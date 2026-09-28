@@ -1,6 +1,6 @@
 # Comprehensive HR Dashboard System & Database Backup
 
-> **Backup Date & Time:** 9/28/2026, 14:31:24 (2026-09-28T09:01:24.576Z)
+> **Backup Date & Time:** 9/28/2026, 14:35:45 (2026-09-28T09:05:45.584Z)
 > **Scope:** Complete Database snapshot including all Team Members, Initiatives, Epics, Tasks, Sprints, Meetings, Announcements, Projects, Checklists, Notes, Comments, and System entities.
 > **Total Tables Backed Up:** 24
 > **Status:** All changes remain strictly on localhost with zero data loss.
@@ -2444,8 +2444,8 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | 809e33a0-4163-47c9-a75c-c9e3961ef8a0 | 526b8f7f-697d-4401-b380-50b085403f3f | ya29.a0AX07CmtwoYsbuQy8nIIpLbgh6AzUw96KTo4... | 1//0gHCFrfGn7G7VCgYIARAAGBASNwF-L9Ir_EGkHK... | 2026-09-28 09:32:31.581 | 2026-09-23 10:08:50.875633 | 2026-09-28 08:32:32.582 |
 | b1c5cada-a1e9-4db2-8f46-939fb9b14831 | c20f5e78-aa5b-49ea-9a01-f69f34d91fb7 | ya29.a0AX07Cmu1oqhVhOuys-hJ2HdFcqq_9seNISZ... | 1//0ga-Enhdpm8TbCgYIARAAGBASNwF-L9IrkNXl6G... | 2026-09-28 09:52:32.208 | 2026-09-22 10:06:09.132309 | 2026-09-28 08:52:33.208 |
-| a94e4ab2-69a1-49f5-b5a2-c76fdd42ebd9 | fa0289e6-0109-4228-9f3d-f54b7164773c | ya29.a0AX07CmtSGY3NnTtCY4YqrgwPjqUic7_zV05... | 1//0gcEAGUR9t5HyCgYIARAAGBASNwF-L9IrdximeC... | 2026-09-28 09:07:54.218 | 2026-09-22 16:15:49.987595 | 2026-09-28 08:07:55.218 |
-| df8651a5-1aa6-4ab0-b916-cf8625e63dd2 | 6df0b051-0183-414d-96df-b32a19a24cf2 | ya29.a0AX07CmuiI1p0tM2cRvk6pw8kjD0OUYLQtlh... | 1//0gqD1u-vvgTMECgYIARAAGBASNwF-L9IrsSd5fo... | 2026-09-28 09:08:01.612 | 2026-09-23 05:23:55.080654 | 2026-09-28 08:08:02.613 |
+| a94e4ab2-69a1-49f5-b5a2-c76fdd42ebd9 | fa0289e6-0109-4228-9f3d-f54b7164773c | ya29.a0AX07CmvXE1_ahIsLCMH0DAovtd8Qhit3GSb... | 1//0gcEAGUR9t5HyCgYIARAAGBASNwF-L9IrdximeC... | 2026-09-28 10:03:04.18 | 2026-09-22 16:15:49.987595 | 2026-09-28 09:03:05.18 |
+| df8651a5-1aa6-4ab0-b916-cf8625e63dd2 | 6df0b051-0183-414d-96df-b32a19a24cf2 | ya29.a0AX07Cmszy_ne6iUdD0G7Tjge7mCkOxd-5ZY... | 1//0gqD1u-vvgTMECgYIARAAGBASNwF-L9IrsSd5fo... | 2026-09-28 10:03:16.545 | 2026-09-23 05:23:55.080654 | 2026-09-28 09:03:17.545 |
 | 8d165b49-6250-45af-8a80-2ad937a943fe | 6a82e692-0b48-441e-b26f-09dbfd6c0ca9 | ya29.a0AX07Cmu6hMqOBfh6GtqdzMUbn0kdl3smliz... | 1//0gz82pl3jqQneCgYIARAAGBASNwF-L9Irar00MC... | 2026-09-28 09:17:30.647 | 2026-09-22 08:05:48.962518 | 2026-09-28 08:17:31.647 |
 
 ### Complete Field Data & Records (`google_tokens`)
@@ -2473,20 +2473,20 @@
   {
     "id": "a94e4ab2-69a1-49f5-b5a2-c76fdd42ebd9",
     "user_id": "fa0289e6-0109-4228-9f3d-f54b7164773c",
-    "access_token": "ya29.a0AX07CmtSGY3NnTtCY4YqrgwPjqUic7_zV05_u36FDaEl5_DL55BAa4GX-2rzeyr40JSBmozQIvfHu8LT81NcXqfj5Z_V6YX5DRysR9feph827RUccoQi9OUymr7zcS0kf0JPhrATzrRwVnyPr__NYA2hV8hTI9MaFI6fNcPS8__CBSPl_LOPbir3l6sjCDqDRrbvx3ABaCgYKAUUSARMSFQHGX2MifIjUAc6DGHWORMt7m1C9ZQ0207",
+    "access_token": "ya29.a0AX07CmvXE1_ahIsLCMH0DAovtd8Qhit3GSb7cjKfHigkEat4DfqOnijzQvlsp-XkaHEEnw0M8NVRF6wfw1dNKfn0VvTSGsOWWFfN0bBOn1ClW5Ld-ML3MEXLniWfxOhPUYf2BgZUySBXCXOAZIoyla0y3PTRXVU40na2-QgptiQLprwzpNPxOBTxD8XWkC6K4QD3hn4UaCgYKAecSARMSFQHGX2MiCnbDNsfUklvhGlOli7i2tQ0207",
     "refresh_token": "1//0gcEAGUR9t5HyCgYIARAAGBASNwF-L9IrdximeCGsM7CCVjwZ45hN7raU0gHNYK9QtTW2gLj98aniW82ag0aNaDzqdgTSTVdMz2o",
-    "expiry": "2026-09-28 09:07:54.218",
+    "expiry": "2026-09-28 10:03:04.18",
     "created_at": "2026-09-22 16:15:49.987595",
-    "updated_at": "2026-09-28 08:07:55.218"
+    "updated_at": "2026-09-28 09:03:05.18"
   },
   {
     "id": "df8651a5-1aa6-4ab0-b916-cf8625e63dd2",
     "user_id": "6df0b051-0183-414d-96df-b32a19a24cf2",
-    "access_token": "ya29.a0AX07CmuiI1p0tM2cRvk6pw8kjD0OUYLQtlhhJ7_CqH01xggseLFsKRK2WTPuFYuxiIDYwX1-JKtk78oifc1s3ra09SBKoblDxK3mV3Q_Kp1tDK4TaWufl1omrs5eQRVNvtX3pm0mE0okpzhvvexrpfwNOY833o8y6dVn8IYFolsNMPYHuWEKOZir9g2juTot1vhY-0nJaCgYKAW0SARASFQHGX2MimNuQVpqxp5kOE2qUYoWaTA0207",
+    "access_token": "ya29.a0AX07Cmszy_ne6iUdD0G7Tjge7mCkOxd-5ZYmUGQVyJAgSuMBH_g40fcbk4C44M46m1KrFF0yhe1Ap1X9Mp2sXVktgaqPApWre0tmwfp2SaK4qsRr_bAz-tj5HNW_GIqI9SkF64iUq4s_pWx2m11b9Jr4CA61MAj3DYvzDTq2s66yqPUDZ26o3nhWEA5Lpl1R1gA8MsaEaCgYKAfcSARASFQHGX2MiEVLCsiFCS3YW1pWHpHcw_g0207",
     "refresh_token": "1//0gqD1u-vvgTMECgYIARAAGBASNwF-L9IrsSd5foHzOBYq9nj_moCmBXQEH9UFsuepM3YZQnqFYo1NSyTgINagofu5wp9eEpITIlE",
-    "expiry": "2026-09-28 09:08:01.612",
+    "expiry": "2026-09-28 10:03:16.545",
     "created_at": "2026-09-23 05:23:55.080654",
-    "updated_at": "2026-09-28 08:08:02.613"
+    "updated_at": "2026-09-28 09:03:17.545"
   },
   {
     "id": "8d165b49-6250-45af-8a80-2ad937a943fe",
@@ -2851,12 +2851,7 @@
 | 30f26cb9-a93e-48c4-ae0e-4de78ee2a586 | Office |  | 2026-10-25 18:30:00 | 2026-10-27 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | cd065a91-6f29-4d02-b194-08b09f3eb047 | Office |  | 2026-11-09 18:30:00 | 2026-11-11 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | a8fb7aff-0c7d-42a6-ae8b-42de43571be7 | Office |  | 2026-10-19 18:30:00 | 2026-10-21 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 2fe9388f-b09e-448d-be63-4284a2ce24c3 | Maps Discussion |  | 2026-09-04 06:30:00 | 2026-09-04 07:00:00 | Google Meet | https://meet.google.com/jwb-uafo-jwo | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 96f5e6e2-56ce-4180-b3ce-c7e5f991b72b | Discussion |  | 2026-09-04 08:00:00 | 2026-09-04 08:30:00 | Google Meet | https://meet.google.com/que-crbw-pti | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 3687981f-e6e0-472c-ac16-4b4154c10b0c | Internal Discusson |  | 2026-09-04 15:12:00 | 2026-09-04 16:12:00 | Google Meet | https://meet.google.com/ffc-afud-icw | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 4bdcd308-da7f-442c-9324-0b67f0bba7b6 | Company Call |  | 2026-10-08 05:00:00 | 2026-10-08 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 15c709b9-1de9-4ca4-8a83-22dc28675a4b | Marketing Team Discussion |  | 2026-08-31 07:00:00 | 2026-08-31 07:30:00 | Google Meet | https://meet.google.com/ajf-bqpi-tgq | c30c78d7-9398-4517-a54a-64005b90d555 |
-| d4a5d0e4-d645-41c9-a054-640243486bc5 | Social Analytics discussion meeting  |  | 2026-09-04 09:45:00 | 2026-09-04 10:15:00 | Google Meet | https://meet.google.com/zoq-uxzm-sgc | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 9c05b791-3046-49e9-bbab-ed579536c0a3 | hiii |  | 2026-09-28 08:30:00 | 2026-09-28 09:30:00 | Google Meet | https://meet.google.com/knr-chwu-ycd | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 06272f8d-851e-4da9-b6e9-95b19c605ba0 | Office |  | 2026-09-29 18:30:00 | 2026-10-01 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 304924a2-d48b-4bb2-85fb-0a3c26e098d5 | Office |  | 2026-11-23 18:30:00 | 2026-11-25 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -2866,11 +2861,9 @@
 | b683e6ec-cd8f-4691-a90d-739c137ed87a | Office |  | 2026-11-02 18:30:00 | 2026-11-04 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 1d0f0153-5d8b-49f2-abc6-eb8797278958 | Company Call |  | 2026-10-01 05:00:00 | 2026-10-01 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 7d4ee1d1-0cf7-4180-9f57-188faedadf56 | Company Call |  | 2026-10-05 05:00:00 | 2026-10-05 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| c037304e-8789-4d3d-9e19-8cb31471569d | Catch up and potential collaborations |  | 2026-09-06 05:30:00 | 2026-09-06 06:30:00 | Google Meet | https://meet.google.com/qvm-xpex-rgk | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 4840b726-994e-4326-a67c-6d4c11eec553 | Avani Sports |  | 2026-10-02 09:15:00 | 2026-10-02 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 0a374b31-993d-446c-b779-1a21c3388872 | Avani Sports |  | 2026-10-05 09:15:00 | 2026-10-05 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | d6983bb0-900d-45c4-b857-324b16aee00d | Company Call |  | 2026-11-19 05:00:00 | 2026-11-19 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 89d1f2c6-dcdd-4f74-95be-e54c28a45478 | AI Manthan Discussion  |  | 2026-09-11 11:05:00 | 2026-09-11 11:35:00 | Google Meet | https://meet.google.com/nye-mniz-qyz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 3164bc96-0cfe-46be-83ac-98f3ad3df4f6 | Office |  | 2026-09-23 18:30:00 | 2026-09-25 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 8ab4470f-2f87-4ae4-8e24-96384486092b | Office |  | 2026-09-30 18:30:00 | 2026-10-02 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | ff1611a8-fc3f-4135-8736-d9df468eea0c | Office |  | 2026-11-17 18:30:00 | 2026-11-19 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -2888,11 +2881,8 @@
 | c3e9ffd7-35e2-4cc7-be69-678e8982191a | Company Call |  | 2026-10-30 05:00:00 | 2026-10-30 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 312a3001-7a88-4be7-87ea-9d3713cacc43 | Dev call, 9:20 |  | 2026-09-25 03:45:00 | 2026-09-25 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | b0e297ab-5e58-4e89-a694-61dc066099c9 | Office |  | 2026-10-08 18:30:00 | 2026-10-10 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| d3932de1-29fc-48e7-a33d-1e2bfbac2dab | ClimAgro Discovery Call between Harshit Mi... | What: ClimAgro Discovery Call between Hars... | 2026-09-21 05:30:00 | 2026-09-21 06:00:00 | Google Meet | https://meet.google.com/img-kyde-xop | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 0e2ba332-c71c-4ab5-bff0-893e3c2fcd11 | Company Call |  | 2026-11-02 05:00:00 | 2026-11-02 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 92c8ed17-7bb3-4f5f-9b49-18a5ec34cd1c | AI Manthan - CSJMU |  | 2026-09-11 18:30:00 | 2026-09-13 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 0a98ffc7-b6e0-4102-a8bd-4c22119409cb | Company Call |  | 2026-10-26 05:00:00 | 2026-10-26 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 9d581e62-938d-4f7b-b2d6-d51c48bf6908 | Weekly Progress Call |  | 2026-09-19 09:30:00 | 2026-09-19 10:15:00 | Google Meet | https://meet.google.com/seh-ottt-sbk | c30c78d7-9398-4517-a54a-64005b90d555 |
 | e8faa5ef-d8ce-451f-9219-22ea8d026f16 | Company Call |  | 2026-10-27 05:00:00 | 2026-10-27 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | a9be8cce-5de6-4101-887b-aca0fed5704a | Office |  | 2026-09-24 18:30:00 | 2026-09-26 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | b0d51ffe-517a-4500-bf8a-90c1a6f89d10 | Office |  | 2026-11-18 18:30:00 | 2026-11-20 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -2900,25 +2890,29 @@
 | 05da94ce-8da2-4100-8d00-c7af09525148 | Dev call, 9:20 |  | 2026-09-26 03:45:00 | 2026-09-26 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 89fc9696-b8ab-4119-a3af-e50364b820ed | ClimAgro Weekly Updates |  | 2026-09-26 05:30:00 | 2026-09-26 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 8c38e0cf-310a-4cd1-8b39-d41da5a71574 | Proposals (Agra + Sustainability ...) |  | 2026-09-26 09:00:00 | 2026-09-26 09:30:00 | Google Meet | https://meet.google.com/jbs-jskh-vgq | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 4b7b5446-399a-492b-946f-3093aba3f576 | CropRisk Discovery Call between Harshit Mi... | What: CropRisk Discovery Call between Hars... | 2026-09-07 05:30:00 | 2026-09-07 06:00:00 | Google Meet | https://meet.google.com/zbx-mgfa-uyn | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 2fd9b98e-5c16-4194-bfac-276f5c95d7cc | Office |  | 2026-10-09 18:30:00 | 2026-10-11 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 2774c148-3c31-41b6-9ebe-22985399919b | Office |  | 2026-11-26 18:30:00 | 2026-11-28 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 1ef79e01-2f36-42dd-86b1-51f70b54891e | Office |  | 2026-10-23 18:30:00 | 2026-10-25 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| c17b3c5d-efad-485d-b8e5-661f5d81b1b9 | Agra Proposal |  | 2026-09-11 09:45:00 | 2026-09-11 10:15:00 | Google Meet | https://meet.google.com/ves-wrtq-xkf | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 61eae544-695c-4ebc-af78-b5e5d286ef33 | Office |  | 2026-09-25 18:30:00 | 2026-09-27 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| d7b6159e-38e1-4a0d-a3b4-d144abe802d6 | Company Call |  | 2026-09-03 05:00:00 | 2026-09-03 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| bb2e8028-eb25-4dcc-8398-387f59e836f7 | Company Call |  | 2026-09-04 05:00:00 | 2026-09-04 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| d564280e-d554-4163-a1cd-386585730071 | Company Call |  | 2026-09-07 05:00:00 | 2026-09-07 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 49357749-1dd7-4a10-b409-9529dcefdcb0 | Company Call |  | 2026-09-08 05:00:00 | 2026-09-08 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | e7c2a768-d91a-4be2-b8b7-3596af517e82 | Office |  | 2026-11-19 18:30:00 | 2026-11-21 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 44e98baf-d7de-4116-b015-904687f9e04f | Office |  | 2026-10-30 18:30:00 | 2026-11-01 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 5185790d-0280-4af1-ada9-ec603942255b | Office |  | 2026-10-02 18:30:00 | 2026-10-04 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 702c4ebf-0ebc-4d3b-9f41-ad5d300dc6ad | Office |  | 2026-11-12 18:30:00 | 2026-11-14 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| c49f6843-8153-48e1-9f5d-e520b3c4921d | ClimAgro Discovery Call between Harshit Mi... | What: ClimAgro Discovery Call between Hars... | 2026-09-08 08:30:00 | 2026-09-08 09:00:00 | Google Meet | https://meet.google.com/wce-ckvb-ufh | c30c78d7-9398-4517-a54a-64005b90d555 |
-| f1cd6d29-d7ac-4668-a2e8-f82fe2998818 | Company Call  |  | 2026-09-23 06:00:00 | 2026-09-23 06:15:00 | Google Meet | https://meet.google.com/yke-gktd-gik | c30c78d7-9398-4517-a54a-64005b90d555 |
-| 066cc2a9-14c9-4f7b-a320-69132a5cc9d8 | Delhi & Agra Proposal  |  | 2026-09-11 11:30:00 | 2026-09-11 12:00:00 | Google Meet | https://meet.google.com/yxw-srym-ewh | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 6eb98d8a-6762-4c98-9225-564345b7d040 | ClimAgro Weekly Updates |  | 2026-10-03 05:30:00 | 2026-10-03 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 8ac3da68-0978-4b09-841b-324965a88908 | Office |  | 2026-11-13 18:30:00 | 2026-11-15 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| c128b57c-9149-4bdf-9559-77dd03b469b1 | Marketing Team Discussion |  | 2026-08-31 07:00:00 | 2026-08-31 07:30:00 | Google Meet | https://meet.google.com/ajf-bqpi-tgq | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 6a19e5ec-f746-4436-8262-1c258f8408c9 | ClimAgro Weekly Updates |  | 2026-10-17 05:30:00 | 2026-10-17 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 09ad534e-576d-4b8d-9c7d-9ed28f330e71 | ClimAgro Weekly Updates |  | 2026-11-07 05:30:00 | 2026-11-07 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 1cc5e0d3-d079-46c7-90be-78c74b20e4ae | Company Call |  | 2026-09-10 05:00:00 | 2026-09-10 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 25b14262-6cba-44fd-a67e-ffc27e14a98b | Company Call |  | 2026-09-11 05:00:00 | 2026-09-11 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| db2835c6-789e-44bc-b964-52edd99b0a90 | Company Call |  | 2026-09-14 05:00:00 | 2026-09-14 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | d02e5ada-aac3-4876-a62c-5499eb0766d4 | Office |  | 2026-11-16 18:30:00 | 2026-11-18 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 3ddd83e4-7424-485d-b6fc-d1dba632fbe9 | Avani Sports |  | 2026-10-19 09:15:00 | 2026-10-19 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 78b4b984-5903-4d90-a809-90dae624c089 | Company Call |  | 2026-09-15 05:00:00 | 2026-09-15 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | bc1ec592-d67a-43d7-8312-de0e7bd7bcec | Sales CRM Meeting |  | 2026-09-25 10:30:00 | 2026-09-25 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 98f5dadb-395b-4236-9bd1-aee20e57d72e | Office |  | 2026-11-24 18:30:00 | 2026-11-26 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 36d08fa9-ac5e-4e5c-93ad-e7c82fbd65b6 | Sales CRM Meeting |  | 2026-10-08 10:30:00 | 2026-10-08 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
@@ -2940,18 +2934,16 @@
 | e21b45e7-242b-4aad-be64-5c9025907aae | Office |  | 2026-10-16 18:30:00 | 2026-10-18 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 9dd00b9d-f706-4de8-8b4c-131740b362e2 | Dev call, 9:20 |  | 2026-11-26 03:45:00 | 2026-11-26 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 6d321a92-110f-400a-9d02-20d71042efab | Company Call |  | 2026-10-06 05:00:00 | 2026-10-06 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| a5a14fc1-81e3-45ba-92d7-34580ddb3c64 | ClimIntellio Discovery Call between Harshi... | What: ClimIntellio Discovery Call between ... | 2026-09-08 05:30:00 | 2026-09-08 06:00:00 | Google Meet | https://meet.google.com/gdt-apcv-oxc | c30c78d7-9398-4517-a54a-64005b90d555 |
-| 9334229a-3347-4802-b519-f526e4dc5626 | MOU between EHM Consultancy Pvt. Ltd. and ... |  | 2026-09-11 13:15:00 | 2026-09-11 13:45:00 | Google Meet | https://meet.google.com/kgd-thqy-paa | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 3a8f507c-aadb-4874-ace3-72cc1284eff1 | ClimAgro Company call |  | 2026-09-05 05:30:00 | 2026-09-05 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| c844b7c7-9435-4a99-bed3-fec68746bcaf | ClimAgro Company call |  | 2026-09-13 05:30:00 | 2026-09-13 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| b8802f17-ecd6-451b-a7b0-a83c27d16ecf | AI Manthan Discussion  |  | 2026-09-11 11:05:00 | 2026-09-11 11:35:00 | Google Meet | https://meet.google.com/nye-mniz-qyz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 9cd75d93-0bbf-462e-9464-9d288842e735 | Company Call |  | 2026-10-12 05:00:00 | 2026-10-12 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| d4ec958a-5baf-4240-bc92-bf28c4ee8aa8 | Company Call |  | 2026-09-17 05:00:00 | 2026-09-17 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | ad6b804e-0ca3-4dd4-96f0-e73b83e31425 | Office |  | 2026-09-28 18:30:00 | 2026-09-30 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 2de27947-1372-442d-a106-1c9feb1ed32d | Office |  | 2026-11-10 18:30:00 | 2026-11-12 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 72e19a79-8441-41b1-8761-6d448bc1798f | Office |  | 2026-10-21 18:30:00 | 2026-10-23 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | c8b3076a-f99c-4836-bec7-429e5fcccd2a | Office |  | 2026-10-29 18:30:00 | 2026-10-31 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | c40eb1b2-982d-4255-945b-ce8031173c75 | Sales CRM Meeting |  | 2026-11-20 10:30:00 | 2026-11-20 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | bcd14f87-45f1-4185-821a-a6316cce225c | Company Call |  | 2026-11-27 05:00:00 | 2026-11-27 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| e0c2ddad-0005-40a0-9de4-a4cd4d01a168 | Unlocking Investment Opportunities | You are hosting this event. View the publi... | 2026-09-17 09:30:00 | 2026-09-17 11:00:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| c6e0cf82-bc50-411a-95e1-6c4f18a75478 | ClimAgro Discovery Call between Harshit Mi... | What: ClimAgro Discovery Call between Hars... | 2026-09-21 05:30:00 | 2026-09-21 06:00:00 | Google Meet | https://meet.google.com/img-kyde-xop | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 086a393d-597e-4ac7-be86-6055cbd48c4c | Dev call, 9:20 |  | 2026-09-30 03:45:00 | 2026-09-30 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | ef83e5fe-196c-4daf-8c1e-1cfc1269f55f | Dev call, 9:20 |  | 2026-10-05 03:45:00 | 2026-10-05 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 3af62091-ea07-4268-b4ef-821a72bc6211 | Dev call, 9:20 |  | 2026-10-07 03:45:00 | 2026-10-07 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
@@ -2963,7 +2955,6 @@
 | d1f68ac1-a0ff-45fa-b960-e9792a056155 | Dev call, 9:20 |  | 2026-10-18 03:45:00 | 2026-10-18 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 26f16d37-dd54-4b9f-a8b0-77936e42a220 | Dev call, 9:20 |  | 2026-10-19 03:45:00 | 2026-10-19 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 3fb3d0fd-575b-4de4-b0da-a8560b23ea61 | Dev call, 9:20 |  | 2026-09-28 03:45:00 | 2026-09-28 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| b0ff70de-584e-4af6-984e-beea8fd884b6 | Internal meeting - Harshit |  | 2026-09-14 08:00:00 | 2026-09-14 08:30:00 | Google Meet | https://meet.google.com/hdm-oyps-hti | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 85fe110d-1c97-47f8-a404-3be09cdcb6fb | Dev call, 9:20 |  | 2026-09-29 03:45:00 | 2026-09-29 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 498b813c-a74b-4e4a-b27b-e17d9e9e2681 | Dev call, 9:20 |  | 2026-10-01 03:45:00 | 2026-10-01 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | eaca9265-8687-4ba7-9c20-588d0c640ccd | Dev call, 9:20 |  | 2026-10-03 03:45:00 | 2026-10-03 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
@@ -2984,45 +2975,37 @@
 | 54c08358-449f-4f92-aca3-544c62a682ae | Dev call, 9:20 |  | 2026-11-18 03:45:00 | 2026-11-18 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 770a10c9-f429-42f5-b7b0-74bf135ad411 | Dev call, 9:20 |  | 2026-11-20 03:45:00 | 2026-11-20 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 058fcd3f-4a34-4038-b205-24ae58097aab | Dev call, 9:20 |  | 2026-10-21 03:45:00 | 2026-10-21 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 52c5c547-d093-4ec3-869a-5f59136b502e | Avani Sports |  | 2026-08-31 09:15:00 | 2026-08-31 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 9c7ad347-8cfb-4be5-b354-1733b2c319ec | School Time |  | 2026-09-28 02:00:00 | 2026-09-28 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 6b3afda3-aafc-4394-971e-7d54e33f6a56 | Avani Sports |  | 2026-09-02 09:15:00 | 2026-09-02 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 5453ad8f-4cd2-4fdd-9b40-33b6f241e17d | Avani Sports |  | 2026-09-04 09:15:00 | 2026-09-04 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| ee0f31a3-2a47-4e5f-afeb-85b8b9500d5b | Avani Sports |  | 2026-09-07 09:15:00 | 2026-09-07 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 93fea726-0078-426a-bb67-62cf8d7ca3fa | Avani Sports |  | 2026-09-09 09:15:00 | 2026-09-09 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| d1319596-3a54-4c76-add6-703898c31919 | Avani Sports |  | 2026-09-11 09:15:00 | 2026-09-11 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| e98025af-46af-450b-803f-f02c744de444 | CropRisk Discovery Call between Harshit Mi... | What: CropRisk Discovery Call between Hars... | 2026-09-07 05:30:00 | 2026-09-07 06:00:00 | Google Meet | https://meet.google.com/zbx-mgfa-uyn | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 9937587e-3938-4cca-8bfc-fca33b8fa0c0 | ClimAgro Discovery Call between Harshit Mi... | What: ClimAgro Discovery Call between Hars... | 2026-09-08 08:30:00 | 2026-09-08 09:00:00 | Google Meet | https://meet.google.com/wce-ckvb-ufh | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 41787735-674e-43d0-82e8-a07c89e21560 | Avani Sports |  | 2026-10-21 09:15:00 | 2026-10-21 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 914fc9f7-3250-4eb5-88c0-38de32cfd2d5 | Avani Sports |  | 2026-09-16 09:15:00 | 2026-09-16 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| dc82e3a0-602d-4dff-bbc2-e862f95f0aad | Avani Sports |  | 2026-09-18 09:15:00 | 2026-09-18 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 2d049ab1-c715-48fd-8fca-7a2433a87247 | Company Call |  | 2026-09-18 05:00:00 | 2026-09-18 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 97d332d2-7d08-4b7e-9ffd-b53a460ce17a | Company Call |  | 2026-09-28 05:00:00 | 2026-09-28 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 87c68b8f-4429-4f4c-aa03-1f7fc0dc1520 | Avani Sports |  | 2026-09-21 09:15:00 | 2026-09-21 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 2b0bac15-4232-4669-9989-a5617642ae6d | Avani Sports |  | 2026-09-23 09:15:00 | 2026-09-23 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 5af75c71-0556-4725-97a9-6059de70a1df | Company Call |  | 2026-09-01 05:00:00 | 2026-09-01 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 0952a377-3073-40e8-9469-5c7d06e5288a | Company Call |  | 2026-09-21 05:00:00 | 2026-09-21 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| cf5ce7a7-77e4-4131-b39c-c02432cc2630 | Company Call |  | 2026-09-22 05:00:00 | 2026-09-22 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| d9c07edb-1d38-4cd4-82d0-513511d1ce88 | Company Call |  | 2026-09-24 05:00:00 | 2026-09-24 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 1044affb-90fc-44e0-9aa6-f17863304eb9 | Company Call  |  | 2026-09-23 06:00:00 | 2026-09-23 06:15:00 | Google Meet | https://meet.google.com/yke-gktd-gik | c30c78d7-9398-4517-a54a-64005b90d555 |
 | dc575317-281e-4723-8268-a05dc7392bd9 | School Time |  | 2026-10-05 02:00:00 | 2026-10-05 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | b24e568d-f129-4963-8c94-4ba7b73f3fb1 | Sales CRM Meeting |  | 2026-11-26 10:30:00 | 2026-11-26 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 3c615159-bcf8-442f-88c9-d5243a244d9e | ClimIntellio Discovery Call between Harshi... | What: ClimIntellio Discovery Call between ... | 2026-09-08 05:30:00 | 2026-09-08 06:00:00 | Google Meet | https://meet.google.com/gdt-apcv-oxc | c30c78d7-9398-4517-a54a-64005b90d555 |
 | d81ed7e0-1662-447e-a1e0-cac5085462f2 | Company Call |  | 2026-10-19 05:00:00 | 2026-10-19 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | ad5c0941-8422-46fc-89ea-bb7f0e0eb6cd | School Time |  | 2026-09-29 02:00:00 | 2026-09-29 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | baf5321d-ffcd-4cb2-b263-440df7bef34c | Company Call |  | 2026-10-15 05:00:00 | 2026-10-15 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 86f8694d-6b48-4deb-bd6f-17e817d01bfa | Company Call |  | 2026-09-07 05:00:00 | 2026-09-07 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| 18b82da7-5dc6-4f02-9423-9c3fd07dbdc8 | Company Call |  | 2026-09-10 05:00:00 | 2026-09-10 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | cbe9acc1-73f8-49c8-a4e4-20800c39278f | School Time |  | 2026-09-30 02:00:00 | 2026-09-30 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | cabc6d40-2596-4836-96b5-66ee653dfe61 | School Time |  | 2026-10-01 02:00:00 | 2026-10-01 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 76323713-de51-4b8b-94a2-62f3d94b4bc0 | School Time |  | 2026-10-02 02:00:00 | 2026-10-02 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 1315aa32-e8f2-4c7f-b492-4c5030a2f14c | Company Call |  | 2026-09-11 05:00:00 | 2026-09-11 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| e644d652-a8cf-42da-b30f-4fb6ae05c20e | Company Call |  | 2026-09-14 05:00:00 | 2026-09-14 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| 4ac00cbe-d2b8-435b-a998-e2b71adb257c | Company Call |  | 2026-09-15 05:00:00 | 2026-09-15 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 9fc3b022-96b5-4570-acfd-c89a03138013 | School Time |  | 2026-10-21 02:00:00 | 2026-10-21 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 861d116a-f454-44e7-be5a-12fb07060a7b | School Time |  | 2026-10-13 02:00:00 | 2026-10-13 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | b74cbbf1-80e9-4b12-981d-53965f780dfd | School Time |  | 2026-10-15 02:00:00 | 2026-10-15 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | f4c5cd1d-7173-425d-95e1-0f2b04357a21 | School Time |  | 2026-10-16 02:00:00 | 2026-10-16 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 28a2d149-40e4-409d-9f1c-56f196793472 | School Time |  | 2026-10-22 02:00:00 | 2026-10-22 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| c5f4c858-6399-44ca-99ef-5a811cb3814a | Bharat win Application |  | 2026-08-31 17:00:00 | 2026-08-31 18:00:00 | Google Meet | https://meet.google.com/aco-jcee-amh | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 494c3ffe-b521-462a-b7c8-67cfb19c011e | School Time |  | 2026-10-23 02:00:00 | 2026-10-23 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 12a33e4c-0f70-470b-a3e6-473480ecfc58 | School Time |  | 2026-10-29 02:00:00 | 2026-10-29 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| bd8eb2b3-3d37-4ed5-835a-54a27be01e13 | ClimAgro Discovery Call |  | 2026-09-01 05:30:00 | 2026-09-01 06:00:00 | Google Meet | https://meet.google.com/uqo-bynq-eku | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | a6fba09b-c01c-4487-90c4-1edf2cb5d610 | School Time |  | 2026-10-28 02:00:00 | 2026-10-28 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 55f2f040-31ad-4f3c-8587-354cefaa5f0a | Bharat win Application |  | 2026-08-31 17:00:00 | 2026-08-31 18:00:00 | Google Meet | https://meet.google.com/aco-jcee-amh | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 4bdc6ade-2b5a-48eb-8056-2817eac19364 | Company Call |  | 2026-09-18 05:00:00 | 2026-09-18 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| 93bca995-ce35-45b6-9a07-05bd760fa7f1 | Company Call |  | 2026-09-22 05:00:00 | 2026-09-22 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| e8318d29-2b2d-4345-82cd-5d9afb58c70f | Company Call |  | 2026-09-24 05:00:00 | 2026-09-24 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 6bd985ae-542d-4871-a58c-0a7938760ea7 | CropRisk Discovery Call between Harshit Mi... | What: CropRisk Discovery Call between Hars... | 2026-09-01 10:00:00 | 2026-09-01 10:30:00 | Google Meet | https://meet.google.com/aaq-rypf-msb | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 6e9d8aa4-cf2c-4a65-8f41-2f7d64dacdcf | Discussion |  | 2026-09-01 12:30:00 | 2026-09-01 13:00:00 | Google Meet | https://meet.google.com/ahw-varg-xmq | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | c7ab875f-fef7-4c3a-8f2f-e8c0440675e3 | School Time |  | 2026-10-30 02:00:00 | 2026-10-30 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | c1fee4b1-514b-416d-8e86-724019fb4a87 | School Time |  | 2026-10-27 02:00:00 | 2026-10-27 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 20d1130a-f7cf-4f7d-8dcd-2e337ef694ec | School Time |  | 2026-10-12 02:00:00 | 2026-10-12 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -3030,43 +3013,45 @@
 | 8e675683-3ba4-41fc-8e65-e444bfa60dd6 | School Time |  | 2026-11-09 02:00:00 | 2026-11-09 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | ac4bbe2a-b5e1-499e-821e-c7dd2798c1ac | School Time |  | 2026-11-10 02:00:00 | 2026-11-10 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 32c22f86-8af4-4349-a1e0-2abb7e77b45f | School Time |  | 2026-11-11 02:00:00 | 2026-11-11 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| f8dbe81d-c9f6-468d-b6e6-89042f3397cb | ClimAgro Discovery Call |  | 2026-09-01 05:30:00 | 2026-09-01 06:00:00 | Google Meet | https://meet.google.com/uqo-bynq-eku | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| b3020226-3a4a-459c-b18f-5810c97d25c2 | CropRisk Discovery Call between Harshit Mi... | What: CropRisk Discovery Call between Hars... | 2026-09-01 10:00:00 | 2026-09-01 10:30:00 | Google Meet | https://meet.google.com/aaq-rypf-msb | c30c78d7-9398-4517-a54a-64005b90d555 |
+| c81ff472-65c2-4131-ba19-a6e86a5c9a54 | FW: Closed-door roundtable discussion on A... |    From: mannat.p@energivaventures.com Whe... | 2026-09-02 04:30:00 | 2026-09-02 07:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| c65dd3db-9070-4035-8a9a-5cf8a9670799 | Sales Team Discussion  |  | 2026-09-02 14:40:00 | 2026-09-02 15:10:00 | Google Meet | https://meet.google.com/ojs-tzti-jxq | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 685c3939-b96f-4c67-879b-ae719527b002 | School Time |  | 2026-11-17 02:00:00 | 2026-11-17 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| e808b494-e0bf-450f-a6ad-9054031fc8dd | Startup Expo at UP Startup Samvad 3.0 at L... |  | 2026-09-07 18:30:00 | 2026-09-09 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 081c23fa-890f-44ae-b750-a16b5bc7b3a2 | Dev call, 9:20 |  | 2026-11-27 03:45:00 | 2026-11-27 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | c7955462-41cd-4d36-9929-de44ca9a09fd | School Time |  | 2026-11-20 02:00:00 | 2026-11-20 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 68608390-d3dd-48ad-bfc8-a735e3d6d53e | Discussion |  | 2026-09-01 12:30:00 | 2026-09-01 13:00:00 | Google Meet | https://meet.google.com/ahw-varg-xmq | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | a955afea-b0db-4363-9514-95f975f22e1c | School Time |  | 2026-11-12 02:00:00 | 2026-11-12 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 63c04696-6cce-4400-b692-ab67c7a58291 | School Time |  | 2026-11-25 02:00:00 | 2026-11-25 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 1cdc83dd-5656-41dc-aa78-156c3b2c666a | School Time |  | 2026-11-26 02:00:00 | 2026-11-26 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 1c275e46-1b32-48f8-8b8e-dd05aa894213 | School Time |  | 2026-11-18 02:00:00 | 2026-11-18 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | e89dc199-8419-42aa-b4eb-276bef166e0f | School Time |  | 2026-11-06 02:00:00 | 2026-11-06 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | ede0592b-2f8e-4968-b148-9ef301cff580 | Company Call |  | 2026-09-25 05:00:00 | 2026-09-25 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| e16b9829-58c6-485d-940b-3da5a5d0cb1a | FW: Closed-door roundtable discussion on A... |    From: mannat.p@energivaventures.com Whe... | 2026-09-02 04:30:00 | 2026-09-02 07:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 89126832-110a-4c40-8005-f6e64464d2fc | Sales Team Discussion  |  | 2026-09-02 14:40:00 | 2026-09-02 15:10:00 | Google Meet | https://meet.google.com/ojs-tzti-jxq | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 99beda61-0ded-49eb-993d-2061be427659 | Startup Expo at UP Startup Samvad 3.0 at L... |  | 2026-09-07 18:30:00 | 2026-09-09 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 56856f6e-87c6-495e-9bc8-6466b02ab557 | Sales Team Discussion  |  | 2026-09-03 06:00:00 | 2026-09-03 06:30:00 | Google Meet | https://meet.google.com/skn-ybzs-pdw | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 99a37bcc-9690-4323-bb9e-374606cdce32 | ClimAgro MKT Sept Plan  |  | 2026-09-03 10:15:00 | 2026-09-03 10:45:00 | Google Meet | https://meet.google.com/ghn-marq-bct | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 802d120c-517b-4ea8-8ec6-de385e995958 | CityAdapt |  | 2026-09-14 09:00:00 | 2026-09-14 09:30:00 | Google Meet | https://meet.google.com/zjw-pnaf-jke | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 656581f1-fc5f-49ee-8bd1-dd1a3b971d48 | Agra Proposal - Waste Module |  | 2026-09-15 15:30:00 | 2026-09-15 16:00:00 | Google Meet | https://meet.google.com/ckj-axxh-yca | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 778cd2c3-b686-49ac-a029-343e0a68b143 | Sales Team Discussion  |  | 2026-09-03 06:00:00 | 2026-09-03 06:30:00 | Google Meet | https://meet.google.com/skn-ybzs-pdw | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| b4244740-390f-46e4-8121-4cf0ecdd9b2a | Maps Discussion |  | 2026-09-04 06:30:00 | 2026-09-04 07:00:00 | Google Meet | https://meet.google.com/jwb-uafo-jwo | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| b5290138-7fba-4808-ac5a-1a8f8b268116 | Discussion |  | 2026-09-04 08:00:00 | 2026-09-04 08:30:00 | Google Meet | https://meet.google.com/que-crbw-pti | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| c64dd293-0466-43e1-8bdc-ef67a78a190b | Internal Discusson |  | 2026-09-04 15:12:00 | 2026-09-04 16:12:00 | Google Meet | https://meet.google.com/ffc-afud-icw | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 2ee886ee-7219-40d7-aff2-749ca5003d32 | Catch up and potential collaborations |  | 2026-09-06 05:30:00 | 2026-09-06 06:30:00 | Google Meet | https://meet.google.com/qvm-xpex-rgk | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 3752a067-b49e-441f-9bda-c90369286713 | EHM Weekly Updates |  | 2026-09-26 06:30:00 | 2026-09-26 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | c30c78d7-9398-4517-a54a-64005b90d555 |
-| e061fde1-757a-4cf6-ac1f-2ba8e5f39f4f | Sales CRM Meeting |  | 2026-09-16 10:30:00 | 2026-09-16 11:00:00 | Google Meet | https://meet.google.com/cyn-nscu-aym | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| eec4b927-aecc-4217-a34b-627afeecf2ba | DOMS IITK Delivery & Quotation |  | 2026-09-22 03:30:00 | 2026-09-22 03:45:00 | Google Meet | https://meet.google.com/ghs-ywor-gwp | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| d2108926-85b9-46fc-9d52-68ed84682806 | Agra Waste Management - Dashboard and Fina... |  | 2026-09-24 10:45:00 | 2026-09-24 11:15:00 | Google Meet | https://meet.google.com/xjn-xzbg-onz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 8050dbca-5d71-4f08-b1b0-87cf69aca24c | AI Manthan - CSJMU |  | 2026-09-11 18:30:00 | 2026-09-13 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 0707bcb4-88bf-40a5-8629-77c198ac9d41 | Agra Proposal |  | 2026-09-11 09:45:00 | 2026-09-11 10:15:00 | Google Meet | https://meet.google.com/ves-wrtq-xkf | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | e9eb528e-9676-4ee0-96cd-52a44718fce7 | School Time |  | 2026-11-03 02:00:00 | 2026-11-03 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 3b5d0261-f6ff-4365-9e2f-b0fbea09207b | School Time |  | 2026-11-04 02:00:00 | 2026-11-04 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 0df357a6-8511-4620-a4a9-a1b23c4fa989 | MOU between EHM Consultancy Pvt. Ltd. and ... |  | 2026-09-11 13:15:00 | 2026-09-11 13:45:00 | Google Meet | https://meet.google.com/kgd-thqy-paa | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| e951fd0e-be5b-4b22-833b-d4cd1f673e9b | Unlocking Investment Opportunities | You are hosting this event. View the publi... | 2026-09-17 09:30:00 | 2026-09-17 11:00:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 4bcad5e7-ee29-4c76-b657-0d890147c247 | Internal meeting - Harshit |  | 2026-09-14 08:00:00 | 2026-09-14 08:30:00 | Google Meet | https://meet.google.com/hdm-oyps-hti | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 45232d0f-524f-4374-ba2c-e362e85220c8 | Social Analytics discussion meeting  |  | 2026-09-04 09:45:00 | 2026-09-04 10:15:00 | Google Meet | https://meet.google.com/zoq-uxzm-sgc | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 61a61f89-11ea-4e68-98b7-8fc4a087b9a4 | Delhi & Agra Proposal  |  | 2026-09-11 11:30:00 | 2026-09-11 12:00:00 | Google Meet | https://meet.google.com/yxw-srym-ewh | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | bc2b8a82-584e-4fda-899d-f68c558debd5 | School Time |  | 2026-10-08 07:45:00 | 2026-10-08 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | c5211977-1396-487e-8bff-b70ed8e3c93d | School Time |  | 2026-10-06 07:45:00 | 2026-10-06 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| a9a23484-c8b6-468c-a65a-a80fdcbb0327 | ClimAgro Company call |  | 2026-09-19 05:30:00 | 2026-09-19 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| d4852a2c-718a-4b6a-9af3-a7400e0a84d5 | Sales CRM Meeting |  | 2026-09-18 10:30:00 | 2026-09-18 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 03454b01-cfd0-4f9a-8e68-3f84da7552c8 | Sales CRM Meeting |  | 2026-09-21 10:30:00 | 2026-09-21 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 14e12100-46f4-407b-9dda-259dedbdd3c5 | Sales CRM Meeting |  | 2026-09-22 10:30:00 | 2026-09-22 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 3d12bf00-6452-4ab7-b4d4-532a130431c8 | Sales CRM Meeting |  | 2026-09-23 10:30:00 | 2026-09-23 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 5f0f7ccd-cdab-4f38-bd3c-0a4e37a7648e | Sales CRM Meeting |  | 2026-09-24 10:30:00 | 2026-09-24 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 573f4d79-f4e6-48d0-9282-7b7d77d47ea3 | Avani Sports |  | 2026-08-31 09:15:00 | 2026-08-31 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 5bbfbe34-846b-4e20-a124-fb3598c6140d | Avani Sports |  | 2026-09-02 09:15:00 | 2026-09-02 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 0f76f6f7-1fcc-4cb3-8b6f-638eb3b89399 | Avani Sports |  | 2026-09-04 09:15:00 | 2026-09-04 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| a1f63406-344f-4f5c-9bf0-787b740382a5 | Avani Sports |  | 2026-09-07 09:15:00 | 2026-09-07 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| f1a6e152-0ec2-4817-bac2-5253aa5fdf4a | Avani Sports |  | 2026-09-09 09:15:00 | 2026-09-09 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| a3e8b03b-1f3a-4bf6-a081-2c8c90af613d | Avani Sports |  | 2026-09-11 09:15:00 | 2026-09-11 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 4dd34333-c0c1-40cb-9aee-696fa71843d2 | School Time |  | 2026-10-12 07:45:00 | 2026-10-12 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 5cbeb9e5-e355-49c5-8bbb-76d43ed6e384 | School Time |  | 2026-10-13 07:45:00 | 2026-10-13 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 066030a3-9997-4fab-8c86-00eca162effa | Sales CRM Meeting |  | 2026-09-17 10:30:00 | 2026-09-17 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 2fd1d343-65bc-460e-bfab-55934a3a8398 | Dev call, 9:20 |  | 2026-09-05 03:45:00 | 2026-09-05 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| c8b1abc9-f657-4551-bf83-ba897845d98c | Avani Sports |  | 2026-09-16 09:15:00 | 2026-09-16 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 092afe4d-8a51-4b3e-a83d-0903b08ef98e | Avani Sports |  | 2026-09-18 09:15:00 | 2026-09-18 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 8753744a-5f59-4db5-a9e9-a81d041a2b92 | School Time |  | 2026-10-02 07:45:00 | 2026-10-02 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 2ae5d8a4-1744-4fa5-9db3-8281eedb00dd | School Time |  | 2026-10-05 07:45:00 | 2026-10-05 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 3c234f62-95d1-4827-bab0-59a894d49cc4 | School Time |  | 2026-10-09 07:45:00 | 2026-10-09 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -3086,10 +3071,10 @@
 | 747127f0-6825-481e-bab6-845098571550 | Office |  | 2026-10-18 18:30:00 | 2026-10-20 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | b266b179-bd50-4ea9-8154-818c858f32f4 | School Time |  | 2026-11-12 07:45:00 | 2026-11-12 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 26a5c3a0-3109-4d1a-b59a-fa3d6b94677c | School Time |  | 2026-10-22 07:45:00 | 2026-10-22 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 90a3f769-2823-4c80-b2af-fa2e50512935 | Dev call, 9:20 |  | 2026-09-06 03:45:00 | 2026-09-06 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 8d6cc90c-1cc5-4e52-b34c-fb3e53047a5a | Dev call, 9:20 |  | 2026-09-09 03:45:00 | 2026-09-09 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| b1015212-08a8-41c5-b826-b35662aedd72 | Avani Sports |  | 2026-09-21 09:15:00 | 2026-09-21 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| d6f16897-ac26-47d0-945a-8ad70cbe7ac3 | Avani Sports |  | 2026-09-23 09:15:00 | 2026-09-23 09:45:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | aeb12fb4-2847-4279-af0a-f47ca11ec714 | School Time |  | 2026-11-03 07:45:00 | 2026-11-03 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 87926fa8-0d0e-4617-8d06-f86b0061c056 | Dev call, 9:20 |  | 2026-09-13 03:45:00 | 2026-09-13 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 62cb6156-dc00-4992-a3f3-dc19da90f68d | ClimAgro MKT Sept Plan  |  | 2026-09-03 10:15:00 | 2026-09-03 10:45:00 | Google Meet | https://meet.google.com/ghn-marq-bct | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 7faddcae-5eb6-45c0-8b8f-22dc3c976d31 | School Time |  | 2026-11-02 07:45:00 | 2026-11-02 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 99cb23dd-8e50-4ad8-b432-ea249ac31f60 | School Time |  | 2026-11-13 07:45:00 | 2026-11-13 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 2b4e2c75-0314-4f66-a0d4-2d73926b2014 | School Time |  | 2026-11-16 07:45:00 | 2026-11-16 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -3097,19 +3082,19 @@
 | 67778b14-f136-4373-831f-2a54fc4c3285 | School Time |  | 2026-11-20 07:45:00 | 2026-11-20 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 60a3f022-aaa4-4b69-8caf-192d57702bca | School Time |  | 2026-11-24 07:45:00 | 2026-11-24 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | cb4fd2c7-30d3-48ba-9193-4f53a81d95ba | School Time |  | 2026-11-25 07:45:00 | 2026-11-25 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| c1b7008a-b093-4818-a803-c1ae6f073bdc | Dev call, 9:20 |  | 2026-09-17 03:45:00 | 2026-09-17 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 3022afda-417e-408c-b6c3-b96821d8c992 | CityAdapt |  | 2026-09-14 09:00:00 | 2026-09-14 09:30:00 | Google Meet | https://meet.google.com/zjw-pnaf-jke | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 9d88bb90-180d-4ad3-b29f-aa3f1ad8f76d | School Time |  | 2026-11-26 07:45:00 | 2026-11-26 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| eb47d089-fa56-4a63-bf8f-3190278a9c6f | Dev call, 9:20 |  | 2026-09-19 03:45:00 | 2026-09-19 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 6539af99-d31c-4360-897b-c8679a9849b8 | Dev call, 9:20 |  | 2026-09-20 03:45:00 | 2026-09-20 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| f5124952-7f25-411c-921b-9313f7d799a2 | Dev call, 9:20 |  | 2026-09-07 03:45:00 | 2026-09-07 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| ce277286-82b8-4830-aa6f-f388d7814f76 | Dev call, 9:20 |  | 2026-09-08 03:45:00 | 2026-09-08 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 6c0b6246-8472-4c38-a70b-1086fa6c94c4 | Dev call, 9:20 |  | 2026-09-10 03:45:00 | 2026-09-10 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| f7754944-0c61-40dd-a54a-d9e6f6b1015f | Dev call, 9:20 |  | 2026-09-11 03:45:00 | 2026-09-11 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 2fd2d24e-1920-4ad1-ac78-d1760f4b837c | Dev call, 9:20 |  | 2026-09-12 03:45:00 | 2026-09-12 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 76cc8cc3-8ea7-4b51-b6c2-14e99e7d0b5e | Dev call, 9:20 |  | 2026-09-14 03:45:00 | 2026-09-14 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| bb742af1-a927-42c5-bcc7-99d7a37c8f19 | Dev call, 9:20 |  | 2026-09-15 03:45:00 | 2026-09-15 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 2ae2d5d6-077a-43b3-b8fd-8f7b9d4e9635 | Dev call, 9:20 |  | 2026-09-16 03:45:00 | 2026-09-16 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 71c7f5cb-dd8d-4dc4-8008-537f8413349b | Dev call, 9:20 |  | 2026-09-18 03:45:00 | 2026-09-18 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 4431ab37-4e1b-420b-ab3b-0af5e95129e4 | Agra Proposal - Waste Module |  | 2026-09-15 15:30:00 | 2026-09-15 16:00:00 | Google Meet | https://meet.google.com/ckj-axxh-yca | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 09456189-eb6b-42e7-aa7c-120156f258dd | Sales CRM Meeting |  | 2026-09-16 10:30:00 | 2026-09-16 11:00:00 | Google Meet | https://meet.google.com/cyn-nscu-aym | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| b7339009-f970-498a-a563-906c96f54ad6 | Weekly Progress Call |  | 2026-09-19 09:30:00 | 2026-09-19 10:15:00 | Google Meet | https://meet.google.com/seh-ottt-sbk | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 01871a83-1c13-474f-9e1a-7c5d0c775b39 | DOMS IITK Delivery & Quotation |  | 2026-09-22 03:30:00 | 2026-09-22 03:45:00 | Google Meet | https://meet.google.com/ghs-ywor-gwp | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 7518e8ed-c66b-41c0-9654-d4023a702f1f | Agra Waste Management - Dashboard and Fina... |  | 2026-09-24 10:45:00 | 2026-09-24 11:15:00 | Google Meet | https://meet.google.com/xjn-xzbg-onz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 2afc7079-0cec-4943-9b2b-e630828c9a5e | ClimAgro Company call |  | 2026-09-05 05:30:00 | 2026-09-05 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 2e3ca607-c8ba-4b3f-b942-f75c635ee5b0 | ClimAgro Company call |  | 2026-09-13 05:30:00 | 2026-09-13 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| ee9712fe-25d8-4db3-ad0f-ecc6cb1849ee | ClimAgro Company call |  | 2026-09-19 05:30:00 | 2026-09-19 06:15:00 | Google Meet | https://meet.google.com/kni-opev-xfu | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 2ffa168d-2460-43e0-9b72-307d7bb4ab0d | Sales CRM Meeting |  | 2026-09-18 10:30:00 | 2026-09-18 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 8a73de0c-0bdc-42a2-bb43-96a0ed38bec2 | Sales CRM Meeting |  | 2026-09-21 10:30:00 | 2026-09-21 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| bd0cb582-54fb-4ace-bd85-3f4864485988 | Sales CRM Meeting |  | 2026-09-22 10:30:00 | 2026-09-22 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 8efc44f4-c2df-403d-83a4-2542e68e53ef | Vipasana Sunday |  | 2026-09-27 03:30:00 | 2026-09-27 10:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | d4164209-77c1-4755-8e3f-78c9dd632e7f | Vipasana Sunday |  | 2026-10-25 03:30:00 | 2026-10-25 10:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 818e89e4-74bc-44c2-9009-1ba23f8f4f01 | Vipasana Sunday |  | 2026-11-22 03:30:00 | 2026-11-22 10:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
@@ -3117,41 +3102,55 @@
 | cf1a93c1-d2fa-4dfe-a19c-0bb316c95698 | School Time |  | 2026-10-08 02:00:00 | 2026-10-08 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | d8b76872-d01f-4fc3-858b-e632f79566e3 | Office |  | 2026-10-27 18:30:00 | 2026-10-29 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 9cb95aac-4ddf-41cb-ba80-669314dcb251 | Anamika 3 monthly review |  | 2026-09-26 04:30:00 | 2026-09-26 05:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 175b48e9-eb15-4c99-a991-0e78d5fac393 | Dev call, 9:20 |  | 2026-09-21 03:45:00 | 2026-09-21 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| a18c3ec4-2b73-49f5-93af-895225546743 | Dev call, 9:20 |  | 2026-09-22 03:45:00 | 2026-09-22 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| a84772df-573d-4c84-ad19-e168036870e5 | Dev call, 9:20 |  | 2026-09-23 03:45:00 | 2026-09-23 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| 1ef7273f-ac50-49ce-bce4-3bf7b8186fb6 | Dev call, 9:20 |  | 2026-09-24 03:45:00 | 2026-09-24 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
-| f256d95f-b768-4d30-a8c7-c5b1db878871 | Company Call |  | 2026-09-04 05:00:00 | 2026-09-04 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| 37fbbace-400d-4bc5-86bf-082907ed848b | Company Call |  | 2026-09-08 05:00:00 | 2026-09-08 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| a6fa0fa3-f920-4210-add9-b5bad2a8f552 | Company Call |  | 2026-09-17 05:00:00 | 2026-09-17 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| 43167a8f-c36b-45a2-8995-1f385efc7cde | Company Call |  | 2026-09-21 05:00:00 | 2026-09-21 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 5f10ec41-825d-4b3e-bdfa-36ac07a48eee | Sales CRM Meeting |  | 2026-09-23 10:30:00 | 2026-09-23 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 8fedc97c-eee5-422d-8a3c-a96846254816 | Sales CRM Meeting |  | 2026-09-24 10:30:00 | 2026-09-24 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 8bc4d76c-265d-4a56-aae8-a2c5906526e7 | Sales CRM Meeting |  | 2026-09-17 10:30:00 | 2026-09-17 11:00:00 | Google Meet | https://meet.google.com/ibg-yuxg-qce | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| c1996fdb-60e7-46c6-b15f-6b8c63db7595 | Dev call, 9:20 |  | 2026-09-05 03:45:00 | 2026-09-05 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| d5dde8b2-be7a-4289-a971-db37d63bcb01 | Dev call, 9:20 |  | 2026-09-06 03:45:00 | 2026-09-06 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 5f2c0046-428a-41f3-8b96-069efc5c5b71 | Dev call, 9:20 |  | 2026-09-09 03:45:00 | 2026-09-09 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 66487260-5854-4c7c-8a3a-a9b1223bca14 | Dev call, 9:20 |  | 2026-09-13 03:45:00 | 2026-09-13 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 1d2c7462-db82-4b91-a1cf-8a295c9fbbcb | Dev call, 9:20 |  | 2026-09-17 03:45:00 | 2026-09-17 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 5c2b5845-8342-4cfe-b119-79a0687ae131 | Dev call, 9:20 |  | 2026-09-19 03:45:00 | 2026-09-19 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 760c1779-36f5-431d-b07b-b02a174f6454 | Dev call, 9:20 |  | 2026-09-20 03:45:00 | 2026-09-20 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 4a622f93-f75d-4364-b9c9-37857b6811c0 | School Time |  | 2026-11-10 07:45:00 | 2026-11-10 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| b9115e20-637f-4d93-a22c-fd6f17c0d9c3 | EHM Weekly Updates |  | 2026-10-31 06:30:00 | 2026-10-31 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 8e421995-82fa-4e97-9e25-6c47df307cc6 | School Time |  | 2026-10-09 02:00:00 | 2026-10-09 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | a01a74af-022b-4c7e-a3b1-c7859abf744d | School Time |  | 2026-11-05 02:00:00 | 2026-11-05 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 424091b5-5dba-4091-ac39-7469751d5342 | Company Call |  | 2026-08-31 05:00:00 | 2026-08-31 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
-| a0e8a585-de14-4fb0-a5e8-b541ccd7d8ee | Company Call |  | 2026-09-03 05:00:00 | 2026-09-03 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| af668dfc-7b44-4c25-b2c9-b39682726188 | Dev call, 9:20 |  | 2026-09-07 03:45:00 | 2026-09-07 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 25e39283-b69b-4e32-9c11-07a640a66057 | School Time |  | 2026-09-28 07:45:00 | 2026-09-28 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| d2bf9fd7-b064-4d60-8238-a6aae01ec708 | Dev call, 9:20 |  | 2026-09-08 03:45:00 | 2026-09-08 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 25abeddb-9bcf-4988-90af-c73d55e85b14 | School Time |  | 2026-09-25 02:00:00 | 2026-09-25 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | b2a57895-5660-4d9a-8c18-c7822ff5a351 | School Time |  | 2026-10-07 02:00:00 | 2026-10-07 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| b9115e20-637f-4d93-a22c-fd6f17c0d9c3 | EHM Weekly Updates |  | 2026-10-31 06:30:00 | 2026-10-31 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| a02be318-50d5-4a8e-934f-fc44061029e1 | Dev call, 9:20 |  | 2026-09-10 03:45:00 | 2026-09-10 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 9a02b695-e966-438a-a7a1-e2c4338f4af3 | Dev call, 9:20 |  | 2026-09-11 03:45:00 | 2026-09-11 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 553cb211-7169-48ef-82f3-9431366f9825 | Dev call, 9:20 |  | 2026-09-12 03:45:00 | 2026-09-12 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 3a3d7a64-6f0c-43f4-99c2-68919c205162 | Dev call, 9:20 |  | 2026-09-14 03:45:00 | 2026-09-14 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 8c4927b8-8b9f-4f91-a03e-0892a785a34c | Dev call, 9:20 |  | 2026-09-15 03:45:00 | 2026-09-15 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 667046b0-5207-4a31-b60b-10676bd9aee8 | Office |  | 2026-11-20 18:30:00 | 2026-11-22 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 3f025c60-f7fe-49d2-854b-33160e13b2b6 | School Time |  | 2026-10-20 07:45:00 | 2026-10-20 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 6fa8e7d1-6739-4e0d-ac63-4df276d78f23 | School Time |  | 2026-11-18 07:45:00 | 2026-11-18 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 6bfabae5-6b34-45cf-ab05-bbbe70b864ab | School Time |  | 2026-11-19 07:45:00 | 2026-11-19 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 2d2a30b1-1fd4-441f-9be4-6de21d49a38a | Company Call |  | 2026-11-26 05:00:00 | 2026-11-26 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 955f9c88-b754-4d12-a630-41966f8d19ce | EHM Weekly Updates |  | 2026-11-21 06:30:00 | 2026-11-21 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 2d2a30b1-1fd4-441f-9be4-6de21d49a38a | Company Call |  | 2026-11-26 05:00:00 | 2026-11-26 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
+| 00c8ba5c-b933-47e1-82f7-6e69101c1a98 | Dev call, 9:20 |  | 2026-09-16 03:45:00 | 2026-09-16 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 6e5c9902-ac34-4921-aad2-13f0ff59db96 | EHM CRM Meeting |  | 2026-09-28 08:30:00 | 2026-09-28 09:00:00 | Google Meet | https://meet.google.com/nsk-nyao-mph | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 0b6a3cd2-555d-43e4-b1a9-9f3c2e6212e3 | Dev call, 9:20 |  | 2026-09-18 03:45:00 | 2026-09-18 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 77893d40-86c6-4159-8e54-faefa34e6a7e | Dev call, 9:20 |  | 2026-09-21 03:45:00 | 2026-09-21 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 2442e44f-4d80-4459-a216-86e34f3316ab | Dev call, 9:20 |  | 2026-09-22 03:45:00 | 2026-09-22 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| a3e3e81a-4e8e-4013-b4a9-57d2b57dd642 | Dev call, 9:20 |  | 2026-09-23 03:45:00 | 2026-09-23 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 4b86783c-e83a-47c8-84f4-d9def97ee535 | Office |  | 2026-10-15 18:30:00 | 2026-10-17 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 876976f3-fbe9-46d9-9e2c-df2c007bd05f | School Time |  | 2026-09-25 07:45:00 | 2026-09-25 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | c52d1f99-8918-406c-8e1b-804c8073fda7 | Company Call |  | 2026-10-29 05:00:00 | 2026-10-29 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | 5a41e3a2-a8e3-4ea5-bad2-788a150c5d9a | School Time |  | 2026-10-14 02:00:00 | 2026-10-14 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | a2b9a856-3a4f-4de8-ac94-7af636c90f34 | School Time |  | 2026-10-19 02:00:00 | 2026-10-19 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
-| 995db240-33b8-4144-a313-9120e4e509c0 | EHM Weekly Updates |  | 2026-10-03 06:30:00 | 2026-10-03 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | e22790fa-b83f-4139-a895-ea64dff7580c | EHM Weekly Updates |  | 2026-10-17 06:30:00 | 2026-10-17 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 03bcdff0-faae-4761-8a67-24939f690bca | Dev call, 9:20 |  | 2026-09-24 03:45:00 | 2026-09-24 04:15:00 | Google Meet | https://meet.google.com/ger-vadd-qfg | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | c372f181-49e8-4495-a9c3-55129033973e | Office |  | 2026-10-05 18:30:00 | 2026-10-07 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 14ec5750-ad11-43e2-9648-86e54a5dcb22 | Office |  | 2026-11-03 18:30:00 | 2026-11-05 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 48dc5bd9-bb81-48b3-9e99-c3d7ddde56d0 | Office |  | 2026-11-04 18:30:00 | 2026-11-06 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 6d7274f1-2574-4ee1-b371-5e427de4be8f | Company Call |  | 2026-08-31 05:00:00 | 2026-08-31 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | e9d5cbf7-d42f-420d-8a8c-2aeb6205dd10 | EHM Weekly Updates |  | 2026-10-24 06:30:00 | 2026-10-24 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
+| 1d2627a6-a927-4c42-9bb2-8768fefe9ec8 | Company Call |  | 2026-09-01 05:00:00 | 2026-09-01 05:30:00 | Google Meet | https://meet.google.com/yoj-opxb-qdz | c30c78d7-9398-4517-a54a-64005b90d555 |
 | 9c85c9f9-5df5-4ca9-8bae-a9ebcb6f2d69 | Office |  | 2026-10-22 18:30:00 | 2026-10-24 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 0c29282b-9c9a-45a7-b542-cb5239c53f6a | School Time |  | 2026-11-02 02:00:00 | 2026-11-02 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | d231e0ee-3c69-4080-997b-b9fc1b82cd47 | School Time |  | 2026-10-06 02:00:00 | 2026-10-06 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -3160,6 +3159,7 @@
 | d87d6d89-752b-41a4-a50b-f11a04604d03 | School Time |  | 2026-10-16 07:45:00 | 2026-10-16 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 92ae954f-64d5-4b19-a9c9-0db6ac0c47e6 | Office |  | 2026-11-06 18:30:00 | 2026-11-08 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | ee358280-9fac-4dec-81a7-ee390ecd0ae5 | School Time |  | 2026-10-19 07:45:00 | 2026-10-19 08:15:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
+| 995db240-33b8-4144-a313-9120e4e509c0 | EHM Weekly Updates |  | 2026-10-03 06:30:00 | 2026-10-03 07:00:00 | Google Meet | https://meet.google.com/ckr-uwko-tak | 67f526ba-afcf-4ec0-bf41-da1468bfb816 |
 | f07d330b-d28a-40d0-be8f-ac6da3e4de90 | Office |  | 2026-10-20 18:30:00 | 2026-10-22 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 8c48bb6f-9fdf-46a4-a32b-aa59c94c5740 | School Time |  | 2026-10-20 02:00:00 | 2026-10-20 02:30:00 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
 | 30523430-0086-4a0e-bbf8-d9e02d7a0d89 | Office |  | 2026-10-14 18:30:00 | 2026-10-16 18:29:59 | Google Meet | https://www.google.com/calendar/event?eid=... | 1e32f27a-d641-40ff-923c-05fef4836c10 |
@@ -4703,69 +4703,6 @@
     "status": "CANCELLED"
   },
   {
-    "id": "2fe9388f-b09e-448d-be63-4284a2ce24c3",
-    "title": "Maps Discussion",
-    "description": "",
-    "start_time": "2026-09-04 06:30:00",
-    "end_time": "2026-09-04 07:00:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/jwb-uafo-jwo",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "511a56ngk2b2ce2kr6thcsjudm",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:55.260183",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "96f5e6e2-56ce-4180-b3ce-c7e5f991b72b",
-    "title": "Discussion",
-    "description": "",
-    "start_time": "2026-09-04 08:00:00",
-    "end_time": "2026-09-04 08:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/que-crbw-pti",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "74v8mkgdbdg6kcudvor30qq4oi",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:55.567159",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "3687981f-e6e0-472c-ac16-4b4154c10b0c",
-    "title": "Internal Discusson",
-    "description": "",
-    "start_time": "2026-09-04 15:12:00",
-    "end_time": "2026-09-04 16:12:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ffc-afud-icw",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "officialutkarshmishra01@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "5hmikvg8dig5a2i19dsd2ooeo0",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.171206",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "4bdcd308-da7f-442c-9324-0b67f0bba7b6",
     "title": "Company Call",
     "description": "",
@@ -4793,57 +4730,6 @@
     "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20261008T050000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-22 08:07:20.309465",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "15c709b9-1de9-4ca4-8a83-22dc28675a4b",
-    "title": "Marketing Team Discussion",
-    "description": "",
-    "start_time": "2026-08-31 07:00:00",
-    "end_time": "2026-08-31 07:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ajf-bqpi-tgq",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "shreyanshsiladar@gmail.com",
-      "neha@climagroanalytics.com",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "7ebpe2tksnpqc0bl47pf36ntni",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.19954",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "d4a5d0e4-d645-41c9-a054-640243486bc5",
-    "title": "Social Analytics discussion meeting ",
-    "description": "",
-    "start_time": "2026-09-04 09:45:00",
-    "end_time": "2026-09-04 10:15:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/zoq-uxzm-sgc",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "dubey.pranshu@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "7sb1u6hphd0n633phu4jldlr4n",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:55.867631",
     "status": "SCHEDULED"
   },
   {
@@ -5040,27 +4926,6 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "c037304e-8789-4d3d-9e19-8cb31471569d",
-    "title": "Catch up and potential collaborations",
-    "description": "",
-    "start_time": "2026-09-06 05:30:00",
-    "end_time": "2026-09-06 06:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/qvm-xpex-rgk",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "pranavbhardwaj99@gmail.com",
-      "jitendra@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "6co3ge1k6lh34b9gckq32b9kcos30b9pckr30b9l69i6ac1m60sj8c9nc4",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.470852",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "4840b726-994e-4326-a67c-6d4c11eec553",
     "title": "Avani Sports",
     "description": "",
@@ -5128,31 +4993,6 @@
     "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20261119T050000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-22 08:07:31.796249",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "89d1f2c6-dcdd-4f74-95be-e54c28a45478",
-    "title": "AI Manthan Discussion ",
-    "description": "",
-    "start_time": "2026-09-11 11:05:00",
-    "end_time": "2026-09-11 11:35:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/nye-mniz-qyz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "shreyanshsiladar@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "6n9r33o5vtm243v967bb7lum0q",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.515244",
     "status": "SCHEDULED"
   },
   {
@@ -5615,26 +5455,6 @@
     "status": "CANCELLED"
   },
   {
-    "id": "d3932de1-29fc-48e7-a33d-1e2bfbac2dab",
-    "title": "ClimAgro Discovery Call between Harshit Mishra and Ashutosh mishra ",
-    "description": "What:\nClimAgro Discovery Call between Harshit Mishra and Ashutosh mishra \n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh mishra \nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/img-kyde-xop\n\nDescription\nA 30-minute introduction for anyone exploring climate risk intelligence solutions for agriculture, finance, or institutional risk management. We'll cover: · Your current climate and agricultural risk challenges · How ClimAgro's platform (ClimIntellio for hazard data, CropRisk.ai (http://CropRisk.ai) for risk scoring) addresses your needs · Fit assessment and next steps No deck. Just a conversation to understand if we're a match. Particularly relevant for: Banks, insurers, agribusinesses, government agencies, and development organizations evaluating climate risk solutions.\n\nAdditional notes:\nThis is testing sir please ignore this\n\nWhat best describes your organization?:\nOther\n  \nWhat's your primary role?:\nClimate Finance / Sustainability Lead\n  \nWhat's your primary interest?:\nBoth / Not sure\n  \nGeographic focus?:\nOther\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/6xadBbAKXZBsQop2mNsNRk?changes=true",
-    "start_time": "2026-09-21 05:30:00",
-    "end_time": "2026-09-21 06:00:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/img-kyde-xop",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555"
-    ],
-    "google_event_id": "_6ps62p22c90kmm2q89pl2rrg69mkssqea9lk0gr1dgn66rrd",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.673242",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "0e2ba332-c71c-4ab5-bff0-893e3c2fcd11",
     "title": "Company Call",
     "description": "",
@@ -5665,26 +5485,6 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "92c8ed17-7bb3-4f5f-9b49-18a5ec34cd1c",
-    "title": "AI Manthan - CSJMU",
-    "description": "",
-    "start_time": "2026-09-11 18:30:00",
-    "end_time": "2026-09-13 18:29:59",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=NzM5YTdzdG10bmpjYWxiYWxuZHRudTlpbGcgaGFyc2hpdEBlaG1jb25zdWx0YW5jeS5jby5pbg",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "739a7stmtnjcalbalndtnu9ilg",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.771102",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "0a98ffc7-b6e0-4102-a8bd-4c22119409cb",
     "title": "Company Call",
     "description": "",
@@ -5712,34 +5512,6 @@
     "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20261026T050000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-22 08:07:25.096019",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "9d581e62-938d-4f7b-b2d6-d51c48bf6908",
-    "title": "Weekly Progress Call",
-    "description": "",
-    "start_time": "2026-09-19 09:30:00",
-    "end_time": "2026-09-19 10:15:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/seh-ottt-sbk",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "dubey.pranshu@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "7d0f5eh4lkub33d5b0pdjm6quu",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.831832",
     "status": "SCHEDULED"
   },
   {
@@ -5903,26 +5675,6 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "4b7b5446-399a-492b-946f-3093aba3f576",
-    "title": "CropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra",
-    "description": "What:\nCropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/zbx-mgfa-uyn\n\nDescription\nA focused 30-minute conversation to understand your agricultural portfolio's risk exposure and how ClimAgro's CropRisk scoring can support your lending or underwriting decisions.\n\nWe'll cover:\n\n· Your current approach to agricultural credit risk\n\n· The geographies and crop types you're most exposed to\n\n· How CropRisk's district-level climate scoring fits your workflow\n\nNo slides. No pitch deck. Just a direct conversation about whether this is a fit.\n\nAdditional notes:\nsir this is testing for croprisk.ai call\n\nWhat best describes your organization?:\nBanks & NBFCs\n  \nWhat is your primary role? :\nRisk Manager (Enterprise / Corporate)\n  \nWhat's your primary interest?:\nClimate hazard data (ClimIntellio)\n  \nGeographic focus?:\nOther\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/jeiDCyqTDziLQJoXKUnpdr?changes=true",
-    "start_time": "2026-09-07 05:30:00",
-    "end_time": "2026-09-07 06:00:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/zbx-mgfa-uyn",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555"
-    ],
-    "google_event_id": "_d9imih23f5ol8h3qd5652ijfb15larjgchp40gr1dgn66rrd",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.990671",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "2fd9b98e-5c16-4194-bfac-276f5c95d7cc",
     "title": "Office",
     "description": "",
@@ -5980,27 +5732,6 @@
     "status": "CANCELLED"
   },
   {
-    "id": "c17b3c5d-efad-485d-b8e5-661f5d81b1b9",
-    "title": "Agra Proposal",
-    "description": "",
-    "start_time": "2026-09-11 09:45:00",
-    "end_time": "2026-09-11 10:15:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ves-wrtq-xkf",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "priyankasharma121202@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "4lmku9afhdv355ofm00723kspt",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:57.092617",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "61eae544-695c-4ebc-af78-b5e5d286ef33",
     "title": "Office",
     "description": "",
@@ -6018,6 +5749,122 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:30.84795",
     "status": "CANCELLED"
+  },
+  {
+    "id": "d7b6159e-38e1-4a0d-a3b4-d144abe802d6",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-03 05:00:00",
+    "end_time": "2026-09-03 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260903T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:02.555042",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "bb2e8028-eb25-4dcc-8398-387f59e836f7",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-04 05:00:00",
+    "end_time": "2026-09-04 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260904T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:02.724147",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "d564280e-d554-4163-a1cd-386585730071",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-07 05:00:00",
+    "end_time": "2026-09-07 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260907T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:02.893277",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "49357749-1dd7-4a10-b409-9529dcefdcb0",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-08 05:00:00",
+    "end_time": "2026-09-08 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260908T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:03.062262",
+    "status": "SCHEDULED"
   },
   {
     "id": "e7c2a768-d91a-4be2-b8b7-3596af517e82",
@@ -6096,75 +5943,6 @@
     "status": "CANCELLED"
   },
   {
-    "id": "c49f6843-8153-48e1-9f5d-e520b3c4921d",
-    "title": "ClimAgro Discovery Call between Harshit Mishra and Ashutosh Mishra",
-    "description": "What:\nClimAgro Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/wce-ckvb-ufh\n\nDescription\nA 30-minute introduction for anyone exploring climate risk intelligence solutions for agriculture, finance, or institutional risk management. We'll cover: · Your current climate and agricultural risk challenges · How ClimAgro's platform (ClimIntellio for hazard data, CropRisk.ai (http://CropRisk.ai) for risk scoring) addresses your needs · Fit assessment and next steps No deck. Just a conversation to understand if we're a match. Particularly relevant for: Banks, insurers, agribusinesses, government agencies, and development organizations evaluating climate risk solutions.\n\nAdditional notes:\nsir this is testing of climagro call\n\nWhat best describes your organization?:\nInsurance & Reinsurance\n  \nWhat's your primary role?:\nCredit / Lending Officer\n  \nWhat's your primary interest?:\nClimate hazard data (ClimIntellio)\n  \nGeographic focus?:\nundefined\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/te7fJ5MsqWFbxmZdeT43Vf?changes=true",
-    "start_time": "2026-09-08 08:30:00",
-    "end_time": "2026-09-08 09:00:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/wce-ckvb-ufh",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555"
-    ],
-    "google_event_id": "_ehijepia6l6n6san8ph7graqchil8d1japj40gr1dgn66rrd",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:57.149476",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "f1cd6d29-d7ac-4668-a2e8-f82fe2998818",
-    "title": "Company Call ",
-    "description": "",
-    "start_time": "2026-09-23 06:00:00",
-    "end_time": "2026-09-23 06:15:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yke-gktd-gik",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "shreyanshsiladar@gmail.com",
-      "priyankasharma121202@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555"
-    ],
-    "google_event_id": "3anrslncscmb4jh66lhgane6jl",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:57.307847",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "066cc2a9-14c9-4f7b-a320-69132a5cc9d8",
-    "title": "Delhi & Agra Proposal ",
-    "description": "",
-    "start_time": "2026-09-11 11:30:00",
-    "end_time": "2026-09-11 12:00:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yxw-srym-ewh",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "5v6tkvm9qom5j6biag3ge62c2d",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:57.418444",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "6eb98d8a-6762-4c98-9225-564345b7d040",
     "title": "ClimAgro Weekly Updates",
     "description": "",
@@ -6213,6 +5991,32 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:32.00537",
     "status": "CANCELLED"
+  },
+  {
+    "id": "c128b57c-9149-4bdf-9559-77dd03b469b1",
+    "title": "Marketing Team Discussion",
+    "description": "",
+    "start_time": "2026-08-31 07:00:00",
+    "end_time": "2026-08-31 07:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ajf-bqpi-tgq",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "ashutoshmishraup78@gmail.com",
+      "shreyanshsiladar@gmail.com",
+      "neha@climagroanalytics.com",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "7ebpe2tksnpqc0bl47pf36ntni",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:03.58741",
+    "status": "SCHEDULED"
   },
   {
     "id": "6a19e5ec-f746-4436-8262-1c258f8408c9",
@@ -6277,6 +6081,93 @@
     "status": "SCHEDULED"
   },
   {
+    "id": "1cc5e0d3-d079-46c7-90be-78c74b20e4ae",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-10 05:00:00",
+    "end_time": "2026-09-10 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260910T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:03.231239",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "25b14262-6cba-44fd-a67e-ffc27e14a98b",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-11 05:00:00",
+    "end_time": "2026-09-11 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260911T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:03.400097",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "db2835c6-789e-44bc-b964-52edd99b0a90",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-14 05:00:00",
+    "end_time": "2026-09-14 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260914T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:03.568895",
+    "status": "SCHEDULED"
+  },
+  {
     "id": "d02e5ada-aac3-4876-a62c-5499eb0766d4",
     "title": "Office",
     "description": "",
@@ -6314,6 +6205,35 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-26 18:31:39.204409",
     "status": "CANCELLED"
+  },
+  {
+    "id": "78b4b984-5903-4d90-a809-90dae624c089",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-15 05:00:00",
+    "end_time": "2026-09-15 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260915T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:03.73736",
+    "status": "SCHEDULED"
   },
   {
     "id": "bc1ec592-d67a-43d7-8312-de0e7bd7bcec",
@@ -6781,95 +6701,28 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "a5a14fc1-81e3-45ba-92d7-34580ddb3c64",
-    "title": "ClimIntellio Discovery Call between Harshit Mishra and Ashutosh Mishra",
-    "description": "What:\nClimIntellio Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/gdt-apcv-oxc\n\nDescription\nA 30-minute conversation for banks, financial institutions, and insurers to explore how ClimAgro's ClimIntellio delivers pincode-level climate hazard data aligned with RBI Climate Risk Framework and NDMA-notified hazards.\n\nWe'll cover:· Your agricultural or climate-exposed portfolio and regulatory requirements· How ClimIntellio's hazard scoring (frequency, intensity, persistence) enables audit-proof risk mapping at borrower level· Integration pathways into credit decisioning, pricing, and RBI compliance workflows\n\nParticularly relevant for: Tier-1 banks, agribusiness lenders, NBFCs, and insurance providers managing climate risk exposure and regulatory reporting.\n\nAdditional notes:\nsir this is testing of climintellio discorbery call\n\nWhat best describes your organization?:\nBanks & NBFCs\n  \nWhat's your primary role?:\nRisk Manager (Enterprise / Corporate)\n  \nWhat's your primary interest?:\nClimate hazard data (ClimIntellio)\n  \nGeographic focus?:\nIndia-wide\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/oWNx8sPfsHeCBe1saz7qxy?changes=true",
-    "start_time": "2026-09-08 05:30:00",
-    "end_time": "2026-09-08 06:00:00",
+    "id": "b8802f17-ecd6-451b-a7b0-a83c27d16ecf",
+    "title": "AI Manthan Discussion ",
+    "description": "",
+    "start_time": "2026-09-11 11:05:00",
+    "end_time": "2026-09-11 11:35:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/gdt-apcv-oxc",
+    "google_meet_url": "https://meet.google.com/nye-mniz-qyz",
     "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
     "invitees": [
       "ashutoshmishraup78@gmail.com",
+      "shreyanshsiladar@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
       "harshit@ehmconsultancy.co.in",
       "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555"
-    ],
-    "google_event_id": "_dtbksu1oed86csq8cl1k4p9hedgnkdrhf1sk0gr1dgn66rrd",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:57.465834",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "9334229a-3347-4802-b519-f526e4dc5626",
-    "title": "MOU between EHM Consultancy Pvt. Ltd. and Tirkha & Greenhub",
-    "description": "",
-    "start_time": "2026-09-11 13:15:00",
-    "end_time": "2026-09-11 13:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/kgd-thqy-paa",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "utsav@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
       "fa0289e6-0109-4228-9f3d-f54b7164773c",
       "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "1t3548vjtp2ub4ntvl1jpvflt9",
+    "google_event_id": "6n9r33o5vtm243v967bb7lum0q",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:57.718129",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "3a8f507c-aadb-4874-ace3-72cc1284eff1",
-    "title": "ClimAgro Company call",
-    "description": "",
-    "start_time": "2026-09-05 05:30:00",
-    "end_time": "2026-09-05 06:15:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/kni-opev-xfu",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
-    "invitees": [
-      "jitendra@climagroanalytics.com",
-      "neha@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "dubey.pranshu@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "neeraj@climagroanalytics.com",
-      "utsavm@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "19ro6nds1825bcp69ihbvm10sb_20260905T053000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:08.939837",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "c844b7c7-9435-4a99-bed3-fec68746bcaf",
-    "title": "ClimAgro Company call",
-    "description": "",
-    "start_time": "2026-09-13 05:30:00",
-    "end_time": "2026-09-13 06:15:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/kni-opev-xfu",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
-    "invitees": [
-      "jitendra@climagroanalytics.com",
-      "neha@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "dubey.pranshu@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "neeraj@climagroanalytics.com",
-      "utsavm@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "19ro6nds1825bcp69ihbvm10sb_20260912T053000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:09.250717",
+    "created_at": "2026-09-28 09:03:03.896932",
     "status": "SCHEDULED"
   },
   {
@@ -6900,6 +6753,35 @@
     "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20261012T050000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-22 08:07:21.266697",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "d4ec958a-5baf-4240-bc92-bf28c4ee8aa8",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-17 05:00:00",
+    "end_time": "2026-09-17 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260917T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:03.905682",
     "status": "SCHEDULED"
   },
   {
@@ -7030,212 +6912,23 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "e0c2ddad-0005-40a0-9de4-a4cd4d01a168",
-    "title": "Unlocking Investment Opportunities",
-    "description": "You are hosting this event. View the public page at https://luma.com/34r2k8x0\n\nManage the event at https://luma.com/event/manage/evt-6WqPU85dyFrHGI8\n\nClick to join: https://luma.com/join/eh-Sv8dxXQU0NDZIFS\n\nThe Genesis 2.0 Matching Investor Component is an investment-focused initiative designed to support market-ready startups in accessing matching investment, strengthening their fundraising readiness, and enabling long-term entrepreneurial growth. The program connects eligible startups with investment opportunities and ecosystem support to accelerate innovation, scale, and market expansion.\n\nHosted by Naman",
-    "start_time": "2026-09-17 09:30:00",
-    "end_time": "2026-09-17 11:00:00",
+    "id": "c6e0cf82-bc50-411a-95e1-6c4f18a75478",
+    "title": "ClimAgro Discovery Call between Harshit Mishra and Ashutosh mishra ",
+    "description": "What:\nClimAgro Discovery Call between Harshit Mishra and Ashutosh mishra \n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh mishra \nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/img-kyde-xop\n\nDescription\nA 30-minute introduction for anyone exploring climate risk intelligence solutions for agriculture, finance, or institutional risk management. We'll cover: · Your current climate and agricultural risk challenges · How ClimAgro's platform (ClimIntellio for hazard data, CropRisk.ai (http://CropRisk.ai) for risk scoring) addresses your needs · Fit assessment and next steps No deck. Just a conversation to understand if we're a match. Particularly relevant for: Banks, insurers, agribusinesses, government agencies, and development organizations evaluating climate risk solutions.\n\nAdditional notes:\nThis is testing sir please ignore this\n\nWhat best describes your organization?:\nOther\n  \nWhat's your primary role?:\nClimate Finance / Sustainability Lead\n  \nWhat's your primary interest?:\nBoth / Not sure\n  \nGeographic focus?:\nOther\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/6xadBbAKXZBsQop2mNsNRk?changes=true",
+    "start_time": "2026-09-21 05:30:00",
+    "end_time": "2026-09-21 06:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=X2Nscjc4YjltYXRvbDBsOW82bGk3aWhqaTkxM2tpZTIwY2xyNmFyamtlY242b3Q5ZWRsZ2cgaGFyc2hpdEBlaG1jb25zdWx0YW5jeS5jby5pbg",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "google_meet_url": "https://meet.google.com/img-kyde-xop",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
     "invitees": [
-      "shubham.c2294@gmail.com",
-      "connect@canebot.com",
-      "biropowr@gmail.com",
-      "avarulvel1525@gmail.com",
-      "thinkrawtech@gmail.com",
-      "contact@clean-water.co.in",
-      "krashakinnovativesolutions@gmail.com",
-      "skotra4@gmail.com",
-      "info@biofieldpower.com",
-      "director@speedybyte.co.in",
-      "sangeetachilshetty@gmail.com",
-      "dhruv@mlense.in",
-      "mkrai94@gmail.com",
-      "srishti@qzense.com",
-      "dharkan.anand.4366@gmail.com",
-      "mycolabs.office@gmail.com",
-      "srinivas@areete.org",
-      "apps.1326@gmail.com",
-      "renergizr.industries@gmail.com",
-      "kawatra.sahil@gmail.com",
-      "shefali@froots.co",
-      "abhiev30@gmail.com",
-      "pundirabhinav10@gmail.com",
-      "vijay@yourfarm.co.in",
-      "piyushjha433@gmail.com",
-      "gandhijenil45@gmail.com",
-      "amrit@indrawater.com",
-      "ceo@flylabsolutions.com",
-      "pragnyasmarttechnologies@gmail.com",
-      "shefali@chiragtechnologies.com",
-      "wegreenwarriors@gmail.com",
-      "dduwelcome@gmail.com",
-      "sharma.vipasha@gmail.com",
-      "radhika@netpractice.app",
-      "team.heuronics@gmail.com",
-      "thochirengma@gmail.com",
-      "celligonaturalfibres@gmail.com",
-      "shivdeepbrar@live.com",
-      "udaygedam@veenerosolutions.com",
-      "yashpatil8011@gmail.com",
-      "musshtecch@gmail.com",
-      "everbright.chakma@gmail.com",
-      "priyan@croprover.in",
-      "amtoweeder@gmail.com",
-      "29.varun@gmail.com",
-      "sanjoydeb@bitsathy.ac.in",
-      "abhinav@rappr.in",
-      "picraft3d@gmail.com",
+      "ashutoshmishraup78@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "sanjay@urbanairlabs.com",
-      "girish.sapra1@gmail.com",
-      "vijay@prayogik.in",
-      "agrohaven3@gmail.com",
-      "ghaadnaturals@gmail.com",
-      "mahendraiipe@gmail.com",
-      "adityasha157@gmail.com",
-      "varun@modernvillagefoundation.com",
-      "ceo@aressystems.io",
-      "er.abhi.dhaliwal@gmail.com",
-      "arpit.goyal@aeroworkstechnologies.com",
-      "technograndis@gmail.com",
-      "akshit.dangi@scratchnest.com",
-      "liza@innofarms.co.in",
-      "jchaudhry9694@gmail.com",
-      "grainiqinnov@gmail.com",
-      "4akash7@gmail.com",
-      "panyalasainathreddy@gmail.com",
-      "innoflectsolutions05@gmail.com",
-      "pankaj@cropcoin.in",
-      "sisir@navariti.com",
-      "chaudhurirapti@gmail.com",
-      "gupta.sayak2002@gmail.com",
-      "gaurav.agrawal@aptcoder.com",
-      "anubhav@redotterfarms.in",
-      "hntechnovations@gmail.com",
-      "contact@yoboshu.in",
-      "joitabioseedai@gmail.com",
-      "ragul.paramasivam@chimertech.com",
-      "startups@ihub-awadh.in",
-      "huskage@gmail.com",
-      "chandramani@agrijoy.in",
-      "amirayub41@gmail.com",
-      "karbari.rsudha@gmail.com",
-      "yashstartupworks@gmail.com",
-      "ceo@innow8.in",
-      "jayabeerpinkunu@gmail.com",
-      "baddamnarendranarendra123@gmail.com",
-      "swarm.uav25@gmail.com",
-      "agri.kibbutz@gmail.com",
-      "siddhartha.khare@gmail.com",
-      "fruvetech@gmail.com",
-      "priyanka.saklani88@gmail.com",
-      "harshit1927.be23@chitkara.edu.in",
-      "rajgaurav.jsr@gmail.com",
-      "sarusagropl@gmail.com",
-      "sschavan2878@gmail.com",
-      "palanamtechnology@gmail.com",
-      "ceo@heyfarmer.in",
-      "zulfy11@gmail.com",
-      "siddhartha.agspert@gmail.com",
-      "siddharth@indianhempstore.com",
-      "hegdekudgi@rootsgoods.com",
-      "connect@r2e.in",
-      "ceo@cropsync.in",
-      "hemant@jadibeaute.com",
-      "chematicotechnologies@gmail.com",
-      "rafiazargar.25@gmail.com",
-      "rahul@citygreens.in",
-      "mittal46arjun@gmail.com",
-      "kanchankuwarbi@gmail.com",
-      "infyrainnovations@gmail.com",
-      "itssarvagya@gmail.com",
-      "suryavedaagritech@gmail.com",
-      "sharmauma981@gmail.com",
-      "spandaninnovators8@gmail.com",
-      "mriganka04saha@gmail.com",
-      "manisha.mehra@terafac.com",
-      "aditidwiditi@gmail.com",
-      "nabanita.sarkar@mindwebs.org",
-      "rajesh.patidar1@gmail.com",
-      "tushar@vaaniresearch.com",
-      "akshay@iwebtechno.com",
-      "diptikantacharya@gmail.com",
-      "shivam.tripathi@airober.com",
-      "mittalsachin770@gmail.com",
-      "sunilrathod048@gmail.com",
-      "amit@farmo.ai",
-      "arifjamal.official@gmail.com",
-      "nanokriti@gmail.com",
-      "innect.technologies@gmail.com",
-      "nehjpuria@gmail.com",
-      "rajesh@cluix.in",
-      "cashobhitagg@gmail.com",
-      "resilientagrisolutions@gmail.com",
-      "jasveer@senseitout.com",
-      "sandeep.tripathi@agronest.org",
-      "kuppireddyakhil@gmail.com",
-      "prakritiksukoon@gmail.com",
-      "frostbasket01@gmail.com",
-      "pdpvagritech@gmail.com",
-      "avnagrobharat@gmail.com",
-      "priyanka.gupta@rezovate.com",
-      "faseeh@wildfloc.com",
-      "jiaulhaq1786@gmail.com",
-      "naresh19awchar@gmail.com",
-      "harsh@evoxialabs.com",
-      "canyoudroid@gmail.com",
-      "hanish3270153@gmail.com",
-      "shwetaf.rce@gmail.com",
-      "gauravd2901@gmail.com",
-      "jyoti@kroop.ai",
-      "jchirag483@gmail.com",
-      "susheelshetty2@gmail.com",
-      "carrusmobilitysolutions@gmail.com",
-      "nitishsharma85060@gmail.com",
-      "youngovator@gmail.com",
-      "sparkyaitech@gmail.com",
-      "jd@ambiator.com",
-      "sanjay@aryaveco.com",
-      "tvishta@gmail.com",
-      "neetesh.thakur@greymattertech.in",
-      "geranjoynlrn@gmail.com",
-      "ankushda86@gmail.com",
-      "arthimendherbals@gmail.com",
-      "saumya@ekosight.com",
-      "adarshkodhanda@hotmail.com",
-      "aman.kumar@gatisheel.com",
-      "anita@oxycodetechnologies.com",
-      "arnabpchoudhury@viksitlabs.in",
-      "avinash@rowbotix.in",
-      "faiz.22soag1010021@gmail.com",
-      "gyansetu@rotoai.in",
-      "hmswamy@cropdomain.com",
-      "info@cybergenixsecurity.com",
-      "info@drufarm.com",
-      "info@skykatech.com",
-      "innovation@agrivision4u.com",
-      "jaya.kar@blucocoondigital.com",
-      "pavanverma@vayunotics.com",
-      "rajat@scanxt.com",
-      "rajiv.mishra@amaletix.com",
-      "ramanath@ayurythm.com",
-      "sachin@gramiq.ai",
-      "saraswathi@optimists.in",
-      "sarvagya.tripathi@abhimaagritech.com",
-      "shobana.u@innogle.com",
-      "shri_v25@rediffmail.com",
-      "shrilesh.mande@industill.com",
-      "sushant@jeevshastra.com",
-      "vaishalikaurchawla@phulkariforever.com",
-      "vivek.saraf@sunseedapv.com",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555"
     ],
-    "google_event_id": "_clr78b9matol0l9o6li7ihji913kie20clr6arjkecn6ot9edlgg",
+    "google_event_id": "_6ps62p22c90kmm2q89pl2rrg69mkssqea9lk0gr1dgn66rrd",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:58.332579",
+    "created_at": "2026-09-28 09:03:04.050919",
     "status": "SCHEDULED"
   },
   {
@@ -7489,26 +7182,6 @@
     "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260928T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-22 08:06:44.189579",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "b0ff70de-584e-4af6-984e-beea8fd884b6",
-    "title": "Internal meeting - Harshit",
-    "description": "",
-    "start_time": "2026-09-14 08:00:00",
-    "end_time": "2026-09-14 08:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/hdm-oyps-hti",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "67qi7jgr0v5ntj8tmsgd60ukoa",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:58.636886",
     "status": "SCHEDULED"
   },
   {
@@ -7968,26 +7641,6 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "52c5c547-d093-4ec3-869a-5f59136b502e",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-08-31 09:15:00",
-    "end_time": "2026-08-31 09:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA4MzFUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260831T091500Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:58.938381",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "9c7ad347-8cfb-4be5-b354-1733b2c319ec",
     "title": "School Time",
     "description": "",
@@ -8007,103 +7660,43 @@
     "status": "CANCELLED"
   },
   {
-    "id": "6b3afda3-aafc-4394-971e-7d54e33f6a56",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-02 09:15:00",
-    "end_time": "2026-09-02 09:45:00",
+    "id": "e98025af-46af-450b-803f-f02c744de444",
+    "title": "CropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra",
+    "description": "What:\nCropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/zbx-mgfa-uyn\n\nDescription\nA focused 30-minute conversation to understand your agricultural portfolio's risk exposure and how ClimAgro's CropRisk scoring can support your lending or underwriting decisions.\n\nWe'll cover:\n\n· Your current approach to agricultural credit risk\n\n· The geographies and crop types you're most exposed to\n\n· How CropRisk's district-level climate scoring fits your workflow\n\nNo slides. No pitch deck. Just a direct conversation about whether this is a fit.\n\nAdditional notes:\nsir this is testing for croprisk.ai call\n\nWhat best describes your organization?:\nBanks & NBFCs\n  \nWhat is your primary role? :\nRisk Manager (Enterprise / Corporate)\n  \nWhat's your primary interest?:\nClimate hazard data (ClimIntellio)\n  \nGeographic focus?:\nOther\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/jeiDCyqTDziLQJoXKUnpdr?changes=true",
+    "start_time": "2026-09-07 05:30:00",
+    "end_time": "2026-09-07 06:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDJUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "google_meet_url": "https://meet.google.com/zbx-mgfa-uyn",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
     "invitees": [
-      "neha@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555"
     ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260902T091500Z",
+    "google_event_id": "_d9imih23f5ol8h3qd5652ijfb15larjgchp40gr1dgn66rrd",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:59.248754",
+    "created_at": "2026-09-28 09:03:04.359777",
     "status": "SCHEDULED"
   },
   {
-    "id": "5453ad8f-4cd2-4fdd-9b40-33b6f241e17d",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-04 09:15:00",
-    "end_time": "2026-09-04 09:45:00",
+    "id": "9937587e-3938-4cca-8bfc-fca33b8fa0c0",
+    "title": "ClimAgro Discovery Call between Harshit Mishra and Ashutosh Mishra",
+    "description": "What:\nClimAgro Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/wce-ckvb-ufh\n\nDescription\nA 30-minute introduction for anyone exploring climate risk intelligence solutions for agriculture, finance, or institutional risk management. We'll cover: · Your current climate and agricultural risk challenges · How ClimAgro's platform (ClimIntellio for hazard data, CropRisk.ai (http://CropRisk.ai) for risk scoring) addresses your needs · Fit assessment and next steps No deck. Just a conversation to understand if we're a match. Particularly relevant for: Banks, insurers, agribusinesses, government agencies, and development organizations evaluating climate risk solutions.\n\nAdditional notes:\nsir this is testing of climagro call\n\nWhat best describes your organization?:\nInsurance & Reinsurance\n  \nWhat's your primary role?:\nCredit / Lending Officer\n  \nWhat's your primary interest?:\nClimate hazard data (ClimIntellio)\n  \nGeographic focus?:\nundefined\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/te7fJ5MsqWFbxmZdeT43Vf?changes=true",
+    "start_time": "2026-09-08 08:30:00",
+    "end_time": "2026-09-08 09:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDRUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "google_meet_url": "https://meet.google.com/wce-ckvb-ufh",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
     "invitees": [
-      "neha@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555"
     ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260904T091500Z",
+    "google_event_id": "_ehijepia6l6n6san8ph7graqchil8d1japj40gr1dgn66rrd",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:59.551429",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "ee0f31a3-2a47-4e5f-afeb-85b8b9500d5b",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-07 09:15:00",
-    "end_time": "2026-09-07 09:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDdUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260907T091500Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:59.851582",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "93fea726-0078-426a-bb67-62cf8d7ca3fa",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-09 09:15:00",
-    "end_time": "2026-09-09 09:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDlUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260909T091500Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:00.153606",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "d1319596-3a54-4c76-add6-703898c31919",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-11 09:15:00",
-    "end_time": "2026-09-11 09:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MTFUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260911T091500Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:00.456139",
+    "created_at": "2026-09-28 09:03:04.5139",
     "status": "SCHEDULED"
   },
   {
@@ -8127,43 +7720,32 @@
     "status": "CANCELLED"
   },
   {
-    "id": "914fc9f7-3250-4eb5-88c0-38de32cfd2d5",
-    "title": "Avani Sports",
+    "id": "2d049ab1-c715-48fd-8fca-7a2433a87247",
+    "title": "Company Call",
     "description": "",
-    "start_time": "2026-09-16 09:15:00",
-    "end_time": "2026-09-16 09:45:00",
+    "start_time": "2026-09-18 05:00:00",
+    "end_time": "2026-09-18 05:30:00",
     "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MTZUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
     "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
       "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260916T091500Z",
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260918T050000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:00.75801",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "dc82e3a0-602d-4dff-bbc2-e862f95f0aad",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-18 09:15:00",
-    "end_time": "2026-09-18 09:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MThUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260918T091500Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:01.058335",
+    "created_at": "2026-09-28 09:03:04.074176",
     "status": "SCHEDULED"
   },
   {
@@ -8197,51 +7779,11 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "87c68b8f-4429-4f4c-aa03-1f7fc0dc1520",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-21 09:15:00",
-    "end_time": "2026-09-21 09:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MjFUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260921T091500Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:01.359987",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "2b0bac15-4232-4669-9989-a5617642ae6d",
-    "title": "Avani Sports",
-    "description": "",
-    "start_time": "2026-09-23 09:15:00",
-    "end_time": "2026-09-23 09:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MjNUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260923T091500Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:01.664532",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "5af75c71-0556-4725-97a9-6059de70a1df",
+    "id": "0952a377-3073-40e8-9469-5c7d06e5288a",
     "title": "Company Call",
     "description": "",
-    "start_time": "2026-09-01 05:00:00",
-    "end_time": "2026-09-01 05:30:00",
+    "start_time": "2026-09-21 05:00:00",
+    "end_time": "2026-09-21 05:30:00",
     "location": "Google Meet",
     "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
     "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
@@ -8260,9 +7802,93 @@
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260901T050000Z",
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260921T050000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:02.059102",
+    "created_at": "2026-09-28 09:03:04.243066",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "cf5ce7a7-77e4-4131-b39c-c02432cc2630",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-22 05:00:00",
+    "end_time": "2026-09-22 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260922T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:04.412016",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "d9c07edb-1d38-4cd4-82d0-513511d1ce88",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-24 05:00:00",
+    "end_time": "2026-09-24 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260924T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:04.58067",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "1044affb-90fc-44e0-9aa6-f17863304eb9",
+    "title": "Company Call ",
+    "description": "",
+    "start_time": "2026-09-23 06:00:00",
+    "end_time": "2026-09-23 06:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yke-gktd-gik",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "shreyanshsiladar@gmail.com",
+      "priyankasharma121202@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555"
+    ],
+    "google_event_id": "3anrslncscmb4jh66lhgane6jl",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:04.668272",
     "status": "SCHEDULED"
   },
   {
@@ -8304,6 +7930,26 @@
     "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20261126T103000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 10:32:00.681388",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "3c615159-bcf8-442f-88c9-d5243a244d9e",
+    "title": "ClimIntellio Discovery Call between Harshit Mishra and Ashutosh Mishra",
+    "description": "What:\nClimIntellio Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/gdt-apcv-oxc\n\nDescription\nA 30-minute conversation for banks, financial institutions, and insurers to explore how ClimAgro's ClimIntellio delivers pincode-level climate hazard data aligned with RBI Climate Risk Framework and NDMA-notified hazards.\n\nWe'll cover:· Your agricultural or climate-exposed portfolio and regulatory requirements· How ClimIntellio's hazard scoring (frequency, intensity, persistence) enables audit-proof risk mapping at borrower level· Integration pathways into credit decisioning, pricing, and RBI compliance workflows\n\nParticularly relevant for: Tier-1 banks, agribusiness lenders, NBFCs, and insurance providers managing climate risk exposure and regulatory reporting.\n\nAdditional notes:\nsir this is testing of climintellio discorbery call\n\nWhat best describes your organization?:\nBanks & NBFCs\n  \nWhat's your primary role?:\nRisk Manager (Enterprise / Corporate)\n  \nWhat's your primary interest?:\nClimate hazard data (ClimIntellio)\n  \nGeographic focus?:\nIndia-wide\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/oWNx8sPfsHeCBe1saz7qxy?changes=true",
+    "start_time": "2026-09-08 05:30:00",
+    "end_time": "2026-09-08 06:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/gdt-apcv-oxc",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "ashutoshmishraup78@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555"
+    ],
+    "google_event_id": "_dtbksu1oed86csq8cl1k4p9hedgnkdrhf1sk0gr1dgn66rrd",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:04.824215",
     "status": "SCHEDULED"
   },
   {
@@ -8386,64 +8032,6 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "86f8694d-6b48-4deb-bd6f-17e817d01bfa",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-07 05:00:00",
-    "end_time": "2026-09-07 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260907T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:02.53541",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "18b82da7-5dc6-4f02-9423-9c3fd07dbdc8",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-10 05:00:00",
-    "end_time": "2026-09-10 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260910T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:02.853254",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "cbe9acc1-73f8-49c8-a4e4-20800c39278f",
     "title": "School Time",
     "description": "",
@@ -8499,93 +8087,6 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:39.714765",
     "status": "CANCELLED"
-  },
-  {
-    "id": "1315aa32-e8f2-4c7f-b492-4c5030a2f14c",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-11 05:00:00",
-    "end_time": "2026-09-11 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260911T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:03.01348",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "e644d652-a8cf-42da-b30f-4fb6ae05c20e",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-14 05:00:00",
-    "end_time": "2026-09-14 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260914T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:03.172512",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "4ac00cbe-d2b8-435b-a998-e2b71adb257c",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-15 05:00:00",
-    "end_time": "2026-09-15 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260915T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:03.333294",
-    "status": "SCHEDULED"
   },
   {
     "id": "9fc3b022-96b5-4570-acfd-c89a03138013",
@@ -8683,6 +8184,26 @@
     "status": "CANCELLED"
   },
   {
+    "id": "c5f4c858-6399-44ca-99ef-5a811cb3814a",
+    "title": "Bharat win Application",
+    "description": "",
+    "start_time": "2026-08-31 17:00:00",
+    "end_time": "2026-08-31 18:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/aco-jcee-amh",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "harshit@ehmconsultancy.co.in",
+      "officialutkarshmishra01@gmail.com",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "3rpeopp3dp7opd5gof3h5uta7q",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:11.640102",
+    "status": "SCHEDULED"
+  },
+  {
     "id": "494c3ffe-b521-462a-b7c8-67cfb19c011e",
     "title": "School Time",
     "description": "",
@@ -8721,6 +8242,27 @@
     "status": "CANCELLED"
   },
   {
+    "id": "bd8eb2b3-3d37-4ed5-835a-54a27be01e13",
+    "title": "ClimAgro Discovery Call",
+    "description": "",
+    "start_time": "2026-09-01 05:30:00",
+    "end_time": "2026-09-01 06:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/uqo-bynq-eku",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "mohammad.huq@howdengroup.com",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "3q8tjvs39vm3m7l3v2ug6l6k3k",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:11.793849",
+    "status": "SCHEDULED"
+  },
+  {
     "id": "a6fba09b-c01c-4487-90c4-1edf2cb5d610",
     "title": "School Time",
     "description": "",
@@ -8740,110 +8282,48 @@
     "status": "CANCELLED"
   },
   {
-    "id": "55f2f040-31ad-4f3c-8587-354cefaa5f0a",
-    "title": "Bharat win Application",
-    "description": "",
-    "start_time": "2026-08-31 17:00:00",
-    "end_time": "2026-08-31 18:00:00",
+    "id": "6bd985ae-542d-4871-a58c-0a7938760ea7",
+    "title": "CropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra",
+    "description": "What:\nCropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/aaq-rypf-msb\n\nDescription\nA focused 30-minute conversation to understand your agricultural portfolio's risk exposure and how ClimAgro's CropRisk scoring can support your lending or underwriting decisions.\n\nWe'll cover:\n\n· Your current approach to agricultural credit risk\n\n· The geographies and crop types you're most exposed to\n\n· How CropRisk's district-level climate scoring fits your workflow\n\nNo slides. No pitch deck. Just a direct conversation about whether this is a fit.\n\nWhat sectors or geographies does your climate programme or portfolio cover?:\nthis is testing sir \n  \nWhat is your primary role? :\ndeveloper \n  \nAre there specific climate reporting standards your organisation works to? (e.g., TCFD, Paris Alignment):\nTCFD\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/jGuW3SvD2NLHXRui9esJiA?changes=true",
+    "start_time": "2026-09-01 10:00:00",
+    "end_time": "2026-09-01 10:30:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/aco-jcee-amh",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "google_meet_url": "https://meet.google.com/aaq-rypf-msb",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
     "invitees": [
+      "ashutoshmishraup78@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "officialutkarshmishra01@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
       "fa0289e6-0109-4228-9f3d-f54b7164773c",
       "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "3rpeopp3dp7opd5gof3h5uta7q",
+    "google_event_id": "_d93nalpjadr48cie9h45gkjld4smasqad50k0gr1dgn66rrd",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:05.637275",
+    "created_at": "2026-09-28 09:03:03.742417",
     "status": "SCHEDULED"
   },
   {
-    "id": "4bdc6ade-2b5a-48eb-8056-2817eac19364",
-    "title": "Company Call",
+    "id": "6e9d8aa4-cf2c-4a65-8f41-2f7d64dacdcf",
+    "title": "Discussion",
     "description": "",
-    "start_time": "2026-09-18 05:00:00",
-    "end_time": "2026-09-18 05:30:00",
+    "start_time": "2026-09-01 12:30:00",
+    "end_time": "2026-09-01 13:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "google_meet_url": "https://meet.google.com/ahw-varg-xmq",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
       "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260918T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:03.653582",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "93bca995-ce35-45b6-9a07-05bd760fa7f1",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-22 05:00:00",
-    "end_time": "2026-09-22 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
       "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260922T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:03.974288",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "e8318d29-2b2d-4345-82cd-5d9afb58c70f",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-24 05:00:00",
-    "end_time": "2026-09-24 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
       "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260924T050000Z",
+    "google_event_id": "4ojsa8spfkdphiublj1qhc46dl",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:04.132986",
+    "created_at": "2026-09-28 09:03:12.101723",
     "status": "SCHEDULED"
   },
   {
@@ -8980,46 +8460,49 @@
     "status": "CANCELLED"
   },
   {
-    "id": "f8dbe81d-c9f6-468d-b6e6-89042f3397cb",
-    "title": "ClimAgro Discovery Call",
-    "description": "",
-    "start_time": "2026-09-01 05:30:00",
-    "end_time": "2026-09-01 06:00:00",
+    "id": "c81ff472-65c2-4131-ba19-a6e86a5c9a54",
+    "title": "FW: Closed-door roundtable discussion on AI for Climate Action in India ",
+    "description": "\n\n\nFrom: mannat.p@energivaventures.com\nWhen: 10:00 - 13:00 2 September 2026\nSubject: Closed-door roundtable discussion on AI for Climate Action in India\nLocation: Energiva Ventures, The Capital Court, Munirka, New Delhi; Avni Room\n\n\n\n________________________________________________________________________________\nMicrosoft Teams meeting\nJoin: https://teams.microsoft.com/meet/459097769914457?p=ThgOtI7I4Dt6zemwXc\nMeeting ID: 459 097 769 914 457\nPasscode: cW9sp73R\n________________________________\nNeed help?<https://aka.ms/JoinTeamsMeeting?omkt=en-US> | System reference<https://teams.microsoft.com/l/meetup-join/19%3ameeting_YjY1MDc2NjUtMTQ4Yi00N2QwLTk5MDUtZjcyM2U3YjRmYTRl%40thread.v2/0?context=%7b%22Tid%22%3a%22a78d170a-609b-4891-a924-44780a2dc58b%22%2c%22Oid%22%3a%22456ee46e-332d-4604-8316-7ea449de61ad%22%7d>\nFor organizers: Meeting options<https://teams.microsoft.com/meetingOptions/?organizerId=456ee46e-332d-4604-8316-7ea449de61ad&tenantId=a78d170a-609b-4891-a924-44780a2dc58b&threadId=19_meeting_YjY1MDc2NjUtMTQ4Yi00N2QwLTk5MDUtZjcyM2U3YjRmYTRl@thread.v2&messageId=0&language=en-US>\n________________________________________________________________________________\n",
+    "start_time": "2026-09-02 04:30:00",
+    "end_time": "2026-09-02 07:30:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/uqo-bynq-eku",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=XzYwcTMwYzFnNjBvMzBlMWk2MG80YWMxZzYwcmo4Z3BsODhyajJjMWg4NHMzNGg5ZzYwczMwYzFnNjBvMzBjMWc2c3MzNGNoaDc0cjQyZHBnNmNvazhoMWc2NG8zMGMxZzYwbzMwYzFnNjBvMzBjMWc2MG8zMmMxZzYwbzMwYzFnOG9va2FjYTY2c3A0YWhoazg5MzQyY3BrNjkwazZlMjQ2aDFqOGg5bDcwc2ppaGkxOGtyMCBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
     "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "jitendra@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "mohammad.huq@howdengroup.com",
+      "amit.p@energivaventures.com",
+      "mannat.p@energivaventures.com",
+      "piyush.g@energivaventures.com",
+      "priyanka.s@energivaventures.com",
+      "skumar@csis.org",
       "fa0289e6-0109-4228-9f3d-f54b7164773c",
       "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "3q8tjvs39vm3m7l3v2ug6l6k3k",
+    "google_event_id": "_60q30c1g60o30e1i60o4ac1g60rj8gpl88rj2c1h84s34h9g60s30c1g60o30c1g6ss34chh74r42dpg6cok8h1g64o30c1g60o30c1g60o30c1g60o32c1g60o30c1g8ookaca66sp4ahhk89342cpk690k6e246h1j8h9l70sjihi18kr0",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:05.79614",
+    "created_at": "2026-09-28 09:03:12.256803",
     "status": "SCHEDULED"
   },
   {
-    "id": "b3020226-3a4a-459c-b18f-5810c97d25c2",
-    "title": "CropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra",
-    "description": "What:\nCropRisk Discovery Call between Harshit Mishra and Ashutosh Mishra\n\nInvitee timezone:\nAsia/Calcutta\n\nWho:\nHarshit Mishra - Organizer\nharshit@climagroanalytics.com\nAshutosh Mishra\nashutoshmishraup78@gmail.com\n\nWhere:\nhttps://meet.google.com/aaq-rypf-msb\n\nDescription\nA focused 30-minute conversation to understand your agricultural portfolio's risk exposure and how ClimAgro's CropRisk scoring can support your lending or underwriting decisions.\n\nWe'll cover:\n\n· Your current approach to agricultural credit risk\n\n· The geographies and crop types you're most exposed to\n\n· How CropRisk's district-level climate scoring fits your workflow\n\nNo slides. No pitch deck. Just a direct conversation about whether this is a fit.\n\nWhat sectors or geographies does your climate programme or portfolio cover?:\nthis is testing sir \n  \nWhat is your primary role? :\ndeveloper \n  \nAre there specific climate reporting standards your organisation works to? (e.g., TCFD, Paris Alignment):\nTCFD\n  \n\nNeed to reschedule or cancel? https://cal.com/booking/jGuW3SvD2NLHXRui9esJiA?changes=true",
-    "start_time": "2026-09-01 10:00:00",
-    "end_time": "2026-09-01 10:30:00",
+    "id": "c65dd3db-9070-4035-8a9a-5cf8a9670799",
+    "title": "Sales Team Discussion ",
+    "description": "",
+    "start_time": "2026-09-02 14:40:00",
+    "end_time": "2026-09-02 15:10:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/aaq-rypf-msb",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "google_meet_url": "https://meet.google.com/ojs-tzti-jxq",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "ashutoshmishraup78@gmail.com",
+      "tiwarihimanshu2303@gmail.com",
+      "neha@climagroanalytics.com",
+      "prernashukla566@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
       "fa0289e6-0109-4228-9f3d-f54b7164773c",
       "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "_d93nalpjadr48cie9h45gkjld4smasqad50k0gr1dgn66rrd",
+    "google_event_id": "1r6ddb6ej7ctapei3vuk5jj979",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:52:56.357395",
+    "created_at": "2026-09-28 09:03:12.410836",
     "status": "SCHEDULED"
   },
   {
@@ -9040,6 +8523,28 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:44.999875",
     "status": "CANCELLED"
+  },
+  {
+    "id": "e808b494-e0bf-450f-a6ad-9054031fc8dd",
+    "title": "Startup Expo at UP Startup Samvad 3.0 at Lucknow",
+    "description": "",
+    "start_time": "2026-09-07 18:30:00",
+    "end_time": "2026-09-09 18:29:59",
+    "location": "Google Meet",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=NGNxNmtpNjkydjgxbnRsdTJubDhhOWw0bjAgaGFyc2hpdEBlaG1jb25zdWx0YW5jeS5jby5pbg",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "utsav@ehmconsultancy.co.in",
+      "jitendra@ehmconsultancy.co.in",
+      "neha@ehmconsultancy.co.in",
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "4cq6ki692v81ntlu2nl8a9l4n0",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:12.56497",
+    "status": "SCHEDULED"
   },
   {
     "id": "081c23fa-890f-44ae-b750-a16b5bc7b3a2",
@@ -9082,29 +8587,6 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:45.500597",
     "status": "CANCELLED"
-  },
-  {
-    "id": "68608390-d3dd-48ad-bfc8-a735e3d6d53e",
-    "title": "Discussion",
-    "description": "",
-    "start_time": "2026-09-01 12:30:00",
-    "end_time": "2026-09-01 13:00:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ahw-varg-xmq",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "officialutkarshmishra01@gmail.com",
-      "priyankasharma121202@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "4ojsa8spfkdphiublj1qhc46dl",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:06.113545",
-    "status": "SCHEDULED"
   },
   {
     "id": "a955afea-b0db-4363-9514-95f975f22e1c",
@@ -9231,75 +8713,7 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "e16b9829-58c6-485d-940b-3da5a5d0cb1a",
-    "title": "FW: Closed-door roundtable discussion on AI for Climate Action in India ",
-    "description": "\n\n\nFrom: mannat.p@energivaventures.com\nWhen: 10:00 - 13:00 2 September 2026\nSubject: Closed-door roundtable discussion on AI for Climate Action in India\nLocation: Energiva Ventures, The Capital Court, Munirka, New Delhi; Avni Room\n\n\n\n________________________________________________________________________________\nMicrosoft Teams meeting\nJoin: https://teams.microsoft.com/meet/459097769914457?p=ThgOtI7I4Dt6zemwXc\nMeeting ID: 459 097 769 914 457\nPasscode: cW9sp73R\n________________________________\nNeed help?<https://aka.ms/JoinTeamsMeeting?omkt=en-US> | System reference<https://teams.microsoft.com/l/meetup-join/19%3ameeting_YjY1MDc2NjUtMTQ4Yi00N2QwLTk5MDUtZjcyM2U3YjRmYTRl%40thread.v2/0?context=%7b%22Tid%22%3a%22a78d170a-609b-4891-a924-44780a2dc58b%22%2c%22Oid%22%3a%22456ee46e-332d-4604-8316-7ea449de61ad%22%7d>\nFor organizers: Meeting options<https://teams.microsoft.com/meetingOptions/?organizerId=456ee46e-332d-4604-8316-7ea449de61ad&tenantId=a78d170a-609b-4891-a924-44780a2dc58b&threadId=19_meeting_YjY1MDc2NjUtMTQ4Yi00N2QwLTk5MDUtZjcyM2U3YjRmYTRl@thread.v2&messageId=0&language=en-US>\n________________________________________________________________________________\n",
-    "start_time": "2026-09-02 04:30:00",
-    "end_time": "2026-09-02 07:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=XzYwcTMwYzFnNjBvMzBlMWk2MG80YWMxZzYwcmo4Z3BsODhyajJjMWg4NHMzNGg5ZzYwczMwYzFnNjBvMzBjMWc2c3MzNGNoaDc0cjQyZHBnNmNvazhoMWc2NG8zMGMxZzYwbzMwYzFnNjBvMzBjMWc2MG8zMmMxZzYwbzMwYzFnOG9va2FjYTY2c3A0YWhoazg5MzQyY3BrNjkwazZlMjQ2aDFqOGg5bDcwc2ppaGkxOGtyMCBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "harshit@ehmconsultancy.co.in",
-      "amit.p@energivaventures.com",
-      "mannat.p@energivaventures.com",
-      "piyush.g@energivaventures.com",
-      "priyanka.s@energivaventures.com",
-      "skumar@csis.org",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "_60q30c1g60o30e1i60o4ac1g60rj8gpl88rj2c1h84s34h9g60s30c1g60o30c1g6ss34chh74r42dpg6cok8h1g64o30c1g60o30c1g60o30c1g60o32c1g60o30c1g8ookaca66sp4ahhk89342cpk690k6e246h1j8h9l70sjihi18kr0",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:06.272785",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "89126832-110a-4c40-8005-f6e64464d2fc",
-    "title": "Sales Team Discussion ",
-    "description": "",
-    "start_time": "2026-09-02 14:40:00",
-    "end_time": "2026-09-02 15:10:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ojs-tzti-jxq",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "tiwarihimanshu2303@gmail.com",
-      "neha@climagroanalytics.com",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "1r6ddb6ej7ctapei3vuk5jj979",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:06.432326",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "99beda61-0ded-49eb-993d-2061be427659",
-    "title": "Startup Expo at UP Startup Samvad 3.0 at Lucknow",
-    "description": "",
-    "start_time": "2026-09-07 18:30:00",
-    "end_time": "2026-09-09 18:29:59",
-    "location": "Google Meet",
-    "google_meet_url": "https://www.google.com/calendar/event?eid=NGNxNmtpNjkydjgxbnRsdTJubDhhOWw0bjAgaGFyc2hpdEBlaG1jb25zdWx0YW5jeS5jby5pbg",
-    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
-    "invitees": [
-      "utsav@ehmconsultancy.co.in",
-      "jitendra@ehmconsultancy.co.in",
-      "neha@ehmconsultancy.co.in",
-      "harshit@ehmconsultancy.co.in",
-      "fa0289e6-0109-4228-9f3d-f54b7164773c",
-      "1e32f27a-d641-40ff-923c-05fef4836c10"
-    ],
-    "google_event_id": "4cq6ki692v81ntlu2nl8a9l4n0",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:06.591674",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "56856f6e-87c6-495e-9bc8-6466b02ab557",
+    "id": "778cd2c3-b686-49ac-a029-343e0a68b143",
     "title": "Sales Team Discussion ",
     "description": "",
     "start_time": "2026-09-03 06:00:00",
@@ -9317,71 +8731,91 @@
     ],
     "google_event_id": "1l7kd3jvifh0rffhgrflpgqde4",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:06.75014",
+    "created_at": "2026-09-28 09:03:12.718767",
     "status": "SCHEDULED"
   },
   {
-    "id": "99a37bcc-9690-4323-bb9e-374606cdce32",
-    "title": "ClimAgro MKT Sept Plan ",
+    "id": "b4244740-390f-46e4-8121-4cf0ecdd9b2a",
+    "title": "Maps Discussion",
     "description": "",
-    "start_time": "2026-09-03 10:15:00",
-    "end_time": "2026-09-03 10:45:00",
+    "start_time": "2026-09-04 06:30:00",
+    "end_time": "2026-09-04 07:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ghn-marq-bct",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://meet.google.com/jwb-uafo-jwo",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
-      "neha@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816",
       "fa0289e6-0109-4228-9f3d-f54b7164773c",
       "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "1v5lust8krmq1t6ilqgqf3ejp6",
+    "google_event_id": "511a56ngk2b2ce2kr6thcsjudm",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:06.056165",
+    "created_at": "2026-09-28 09:03:13.026961",
     "status": "SCHEDULED"
   },
   {
-    "id": "802d120c-517b-4ea8-8ec6-de385e995958",
-    "title": "CityAdapt",
+    "id": "b5290138-7fba-4808-ac5a-1a8f8b268116",
+    "title": "Discussion",
     "description": "",
-    "start_time": "2026-09-14 09:00:00",
-    "end_time": "2026-09-14 09:30:00",
+    "start_time": "2026-09-04 08:00:00",
+    "end_time": "2026-09-04 08:30:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/zjw-pnaf-jke",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://meet.google.com/que-crbw-pti",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "0u8sj4qf69qob9h95o43tefetb",
+    "google_event_id": "74v8mkgdbdg6kcudvor30qq4oi",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:06.970034",
+    "created_at": "2026-09-28 09:03:13.180976",
     "status": "SCHEDULED"
   },
   {
-    "id": "656581f1-fc5f-49ee-8bd1-dd1a3b971d48",
-    "title": "Agra Proposal - Waste Module",
+    "id": "c64dd293-0466-43e1-8bdc-ef67a78a190b",
+    "title": "Internal Discusson",
     "description": "",
-    "start_time": "2026-09-15 15:30:00",
-    "end_time": "2026-09-15 16:00:00",
+    "start_time": "2026-09-04 15:12:00",
+    "end_time": "2026-09-04 16:12:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ckj-axxh-yca",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://meet.google.com/ffc-afud-icw",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
+      "officialutkarshmishra01@gmail.com",
       "utsav@ehmconsultancy.co.in",
-      "dubey.pranshu@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "504agc98qtg7o6em4hm3c2n4ef",
+    "google_event_id": "5hmikvg8dig5a2i19dsd2ooeo0",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:07.274304",
+    "created_at": "2026-09-28 09:03:13.488334",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "2ee886ee-7219-40d7-aff2-749ca5003d32",
+    "title": "Catch up and potential collaborations",
+    "description": "",
+    "start_time": "2026-09-06 05:30:00",
+    "end_time": "2026-09-06 06:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/qvm-xpex-rgk",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "pranavbhardwaj99@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "6co3ge1k6lh34b9gckq32b9kcos30b9pckr30b9l69i6ac1m60sj8c9nc4",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:13.642048",
     "status": "SCHEDULED"
   },
   {
@@ -9411,67 +8845,44 @@
     "status": "SCHEDULED"
   },
   {
-    "id": "e061fde1-757a-4cf6-ac1f-2ba8e5f39f4f",
-    "title": "Sales CRM Meeting",
+    "id": "8050dbca-5d71-4f08-b1b0-87cf69aca24c",
+    "title": "AI Manthan - CSJMU",
     "description": "",
-    "start_time": "2026-09-16 10:30:00",
-    "end_time": "2026-09-16 11:00:00",
+    "start_time": "2026-09-11 18:30:00",
+    "end_time": "2026-09-13 18:29:59",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/cyn-nscu-aym",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=NzM5YTdzdG10bmpjYWxiYWxuZHRudTlpbGcgaGFyc2hpdEBlaG1jb25zdWx0YW5jeS5jby5pbg",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "4hqmoved9ih3uencnp601k501o",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:07.582584",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "eec4b927-aecc-4217-a34b-627afeecf2ba",
-    "title": "DOMS IITK Delivery & Quotation",
-    "description": "",
-    "start_time": "2026-09-22 03:30:00",
-    "end_time": "2026-09-22 03:45:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ghs-ywor-gwp",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
-    "invitees": [
-      "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "50fplrro84ppr00af1hbtqjfdd",
+    "google_event_id": "739a7stmtnjcalbalndtnu9ilg",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:08.18747",
+    "created_at": "2026-09-28 09:03:13.795997",
     "status": "SCHEDULED"
   },
   {
-    "id": "d2108926-85b9-46fc-9d52-68ed84682806",
-    "title": "Agra Waste Management - Dashboard and Final Deck",
+    "id": "0707bcb4-88bf-40a5-8629-77c198ac9d41",
+    "title": "Agra Proposal",
     "description": "",
-    "start_time": "2026-09-24 10:45:00",
-    "end_time": "2026-09-24 11:15:00",
+    "start_time": "2026-09-11 09:45:00",
+    "end_time": "2026-09-11 10:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/xjn-xzbg-onz",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://meet.google.com/ves-wrtq-xkf",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
+      "priyankasharma121202@gmail.com",
       "utsav@ehmconsultancy.co.in",
-      "dubey.pranshu@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "1o5f56j0mai03d3qvlu5puueoi",
+    "google_event_id": "4lmku9afhdv355ofm00723kspt",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:08.487808",
+    "created_at": "2026-09-28 09:03:13.950044",
     "status": "SCHEDULED"
   },
   {
@@ -9513,6 +8924,303 @@
     "status": "CANCELLED"
   },
   {
+    "id": "0df357a6-8511-4620-a4a9-a1b23c4fa989",
+    "title": "MOU between EHM Consultancy Pvt. Ltd. and Tirkha & Greenhub",
+    "description": "",
+    "start_time": "2026-09-11 13:15:00",
+    "end_time": "2026-09-11 13:45:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/kgd-thqy-paa",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "utsav@ehmconsultancy.co.in",
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "1t3548vjtp2ub4ntvl1jpvflt9",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:14.257688",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "e951fd0e-be5b-4b22-833b-d4cd1f673e9b",
+    "title": "Unlocking Investment Opportunities",
+    "description": "You are hosting this event. View the public page at https://luma.com/34r2k8x0\n\nManage the event at https://luma.com/event/manage/evt-6WqPU85dyFrHGI8\n\nClick to join: https://luma.com/join/eh-Sv8dxXQU0NDZIFS\n\nThe Genesis 2.0 Matching Investor Component is an investment-focused initiative designed to support market-ready startups in accessing matching investment, strengthening their fundraising readiness, and enabling long-term entrepreneurial growth. The program connects eligible startups with investment opportunities and ecosystem support to accelerate innovation, scale, and market expansion.\n\nHosted by Naman",
+    "start_time": "2026-09-17 09:30:00",
+    "end_time": "2026-09-17 11:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=X2Nscjc4YjltYXRvbDBsOW82bGk3aWhqaTkxM2tpZTIwY2xyNmFyamtlY242b3Q5ZWRsZ2cgaGFyc2hpdEBlaG1jb25zdWx0YW5jeS5jby5pbg",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "shubham.c2294@gmail.com",
+      "connect@canebot.com",
+      "biropowr@gmail.com",
+      "avarulvel1525@gmail.com",
+      "thinkrawtech@gmail.com",
+      "contact@clean-water.co.in",
+      "krashakinnovativesolutions@gmail.com",
+      "skotra4@gmail.com",
+      "info@biofieldpower.com",
+      "director@speedybyte.co.in",
+      "sangeetachilshetty@gmail.com",
+      "dhruv@mlense.in",
+      "mkrai94@gmail.com",
+      "srishti@qzense.com",
+      "dharkan.anand.4366@gmail.com",
+      "mycolabs.office@gmail.com",
+      "srinivas@areete.org",
+      "apps.1326@gmail.com",
+      "renergizr.industries@gmail.com",
+      "kawatra.sahil@gmail.com",
+      "shefali@froots.co",
+      "abhiev30@gmail.com",
+      "pundirabhinav10@gmail.com",
+      "vijay@yourfarm.co.in",
+      "piyushjha433@gmail.com",
+      "gandhijenil45@gmail.com",
+      "amrit@indrawater.com",
+      "ceo@flylabsolutions.com",
+      "pragnyasmarttechnologies@gmail.com",
+      "shefali@chiragtechnologies.com",
+      "wegreenwarriors@gmail.com",
+      "dduwelcome@gmail.com",
+      "sharma.vipasha@gmail.com",
+      "radhika@netpractice.app",
+      "team.heuronics@gmail.com",
+      "thochirengma@gmail.com",
+      "celligonaturalfibres@gmail.com",
+      "shivdeepbrar@live.com",
+      "udaygedam@veenerosolutions.com",
+      "yashpatil8011@gmail.com",
+      "musshtecch@gmail.com",
+      "everbright.chakma@gmail.com",
+      "priyan@croprover.in",
+      "amtoweeder@gmail.com",
+      "29.varun@gmail.com",
+      "sanjoydeb@bitsathy.ac.in",
+      "abhinav@rappr.in",
+      "picraft3d@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "sanjay@urbanairlabs.com",
+      "girish.sapra1@gmail.com",
+      "vijay@prayogik.in",
+      "agrohaven3@gmail.com",
+      "ghaadnaturals@gmail.com",
+      "mahendraiipe@gmail.com",
+      "adityasha157@gmail.com",
+      "varun@modernvillagefoundation.com",
+      "ceo@aressystems.io",
+      "er.abhi.dhaliwal@gmail.com",
+      "arpit.goyal@aeroworkstechnologies.com",
+      "technograndis@gmail.com",
+      "akshit.dangi@scratchnest.com",
+      "liza@innofarms.co.in",
+      "jchaudhry9694@gmail.com",
+      "grainiqinnov@gmail.com",
+      "4akash7@gmail.com",
+      "panyalasainathreddy@gmail.com",
+      "innoflectsolutions05@gmail.com",
+      "pankaj@cropcoin.in",
+      "sisir@navariti.com",
+      "chaudhurirapti@gmail.com",
+      "gupta.sayak2002@gmail.com",
+      "gaurav.agrawal@aptcoder.com",
+      "anubhav@redotterfarms.in",
+      "hntechnovations@gmail.com",
+      "contact@yoboshu.in",
+      "joitabioseedai@gmail.com",
+      "ragul.paramasivam@chimertech.com",
+      "startups@ihub-awadh.in",
+      "huskage@gmail.com",
+      "chandramani@agrijoy.in",
+      "amirayub41@gmail.com",
+      "karbari.rsudha@gmail.com",
+      "yashstartupworks@gmail.com",
+      "ceo@innow8.in",
+      "jayabeerpinkunu@gmail.com",
+      "baddamnarendranarendra123@gmail.com",
+      "swarm.uav25@gmail.com",
+      "agri.kibbutz@gmail.com",
+      "siddhartha.khare@gmail.com",
+      "fruvetech@gmail.com",
+      "priyanka.saklani88@gmail.com",
+      "harshit1927.be23@chitkara.edu.in",
+      "rajgaurav.jsr@gmail.com",
+      "sarusagropl@gmail.com",
+      "sschavan2878@gmail.com",
+      "palanamtechnology@gmail.com",
+      "ceo@heyfarmer.in",
+      "zulfy11@gmail.com",
+      "siddhartha.agspert@gmail.com",
+      "siddharth@indianhempstore.com",
+      "hegdekudgi@rootsgoods.com",
+      "connect@r2e.in",
+      "ceo@cropsync.in",
+      "hemant@jadibeaute.com",
+      "chematicotechnologies@gmail.com",
+      "rafiazargar.25@gmail.com",
+      "rahul@citygreens.in",
+      "mittal46arjun@gmail.com",
+      "kanchankuwarbi@gmail.com",
+      "infyrainnovations@gmail.com",
+      "itssarvagya@gmail.com",
+      "suryavedaagritech@gmail.com",
+      "sharmauma981@gmail.com",
+      "spandaninnovators8@gmail.com",
+      "mriganka04saha@gmail.com",
+      "manisha.mehra@terafac.com",
+      "aditidwiditi@gmail.com",
+      "nabanita.sarkar@mindwebs.org",
+      "rajesh.patidar1@gmail.com",
+      "tushar@vaaniresearch.com",
+      "akshay@iwebtechno.com",
+      "diptikantacharya@gmail.com",
+      "shivam.tripathi@airober.com",
+      "mittalsachin770@gmail.com",
+      "sunilrathod048@gmail.com",
+      "amit@farmo.ai",
+      "arifjamal.official@gmail.com",
+      "nanokriti@gmail.com",
+      "innect.technologies@gmail.com",
+      "nehjpuria@gmail.com",
+      "rajesh@cluix.in",
+      "cashobhitagg@gmail.com",
+      "resilientagrisolutions@gmail.com",
+      "jasveer@senseitout.com",
+      "sandeep.tripathi@agronest.org",
+      "kuppireddyakhil@gmail.com",
+      "prakritiksukoon@gmail.com",
+      "frostbasket01@gmail.com",
+      "pdpvagritech@gmail.com",
+      "avnagrobharat@gmail.com",
+      "priyanka.gupta@rezovate.com",
+      "faseeh@wildfloc.com",
+      "jiaulhaq1786@gmail.com",
+      "naresh19awchar@gmail.com",
+      "harsh@evoxialabs.com",
+      "canyoudroid@gmail.com",
+      "hanish3270153@gmail.com",
+      "shwetaf.rce@gmail.com",
+      "gauravd2901@gmail.com",
+      "jyoti@kroop.ai",
+      "jchirag483@gmail.com",
+      "susheelshetty2@gmail.com",
+      "carrusmobilitysolutions@gmail.com",
+      "nitishsharma85060@gmail.com",
+      "youngovator@gmail.com",
+      "sparkyaitech@gmail.com",
+      "jd@ambiator.com",
+      "sanjay@aryaveco.com",
+      "tvishta@gmail.com",
+      "neetesh.thakur@greymattertech.in",
+      "geranjoynlrn@gmail.com",
+      "ankushda86@gmail.com",
+      "arthimendherbals@gmail.com",
+      "saumya@ekosight.com",
+      "adarshkodhanda@hotmail.com",
+      "aman.kumar@gatisheel.com",
+      "anita@oxycodetechnologies.com",
+      "arnabpchoudhury@viksitlabs.in",
+      "avinash@rowbotix.in",
+      "faiz.22soag1010021@gmail.com",
+      "gyansetu@rotoai.in",
+      "hmswamy@cropdomain.com",
+      "info@cybergenixsecurity.com",
+      "info@drufarm.com",
+      "info@skykatech.com",
+      "innovation@agrivision4u.com",
+      "jaya.kar@blucocoondigital.com",
+      "pavanverma@vayunotics.com",
+      "rajat@scanxt.com",
+      "rajiv.mishra@amaletix.com",
+      "ramanath@ayurythm.com",
+      "sachin@gramiq.ai",
+      "saraswathi@optimists.in",
+      "sarvagya.tripathi@abhimaagritech.com",
+      "shobana.u@innogle.com",
+      "shri_v25@rediffmail.com",
+      "shrilesh.mande@industill.com",
+      "sushant@jeevshastra.com",
+      "vaishalikaurchawla@phulkariforever.com",
+      "vivek.saraf@sunseedapv.com",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "_clr78b9matol0l9o6li7ihji913kie20clr6arjkecn6ot9edlgg",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:14.565757",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "4bcad5e7-ee29-4c76-b657-0d890147c247",
+    "title": "Internal meeting - Harshit",
+    "description": "",
+    "start_time": "2026-09-14 08:00:00",
+    "end_time": "2026-09-14 08:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/hdm-oyps-hti",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "neha@ehmconsultancy.co.in",
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
+    ],
+    "google_event_id": "67qi7jgr0v5ntj8tmsgd60ukoa",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:14.719886",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "45232d0f-524f-4374-ba2c-e362e85220c8",
+    "title": "Social Analytics discussion meeting ",
+    "description": "",
+    "start_time": "2026-09-04 09:45:00",
+    "end_time": "2026-09-04 10:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/zoq-uxzm-sgc",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "dubey.pranshu@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "7sb1u6hphd0n633phu4jldlr4n",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:13.334744",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "61a61f89-11ea-4e68-98b7-8fc4a087b9a4",
+    "title": "Delhi & Agra Proposal ",
+    "description": "",
+    "start_time": "2026-09-11 11:30:00",
+    "end_time": "2026-09-11 12:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yxw-srym-ewh",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "5v6tkvm9qom5j6biag3ge62c2d",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:14.103802",
+    "status": "SCHEDULED"
+  },
+  {
     "id": "bc2b8a82-584e-4fda-899d-f68c558debd5",
     "title": "School Time",
     "description": "",
@@ -9551,139 +9259,123 @@
     "status": "CANCELLED"
   },
   {
-    "id": "a9a23484-c8b6-468c-a65a-a80fdcbb0327",
-    "title": "ClimAgro Company call",
+    "id": "573f4d79-f4e6-48d0-9282-7b7d77d47ea3",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-19 05:30:00",
-    "end_time": "2026-09-19 06:15:00",
+    "start_time": "2026-08-31 09:15:00",
+    "end_time": "2026-08-31 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/kni-opev-xfu",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA4MzFUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "jitendra@climagroanalytics.com",
-      "neha@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "dubey.pranshu@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "neeraj@climagroanalytics.com",
-      "utsavm@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "19ro6nds1825bcp69ihbvm10sb_20260919T053000Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260831T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:09.550923",
+    "created_at": "2026-09-28 09:03:14.873477",
     "status": "SCHEDULED"
   },
   {
-    "id": "d4852a2c-718a-4b6a-9af3-a7400e0a84d5",
-    "title": "Sales CRM Meeting",
+    "id": "5bbfbe34-846b-4e20-a124-fb3598c6140d",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-18 10:30:00",
-    "end_time": "2026-09-18 11:00:00",
+    "start_time": "2026-09-02 09:15:00",
+    "end_time": "2026-09-02 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDJUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260918T103000Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260902T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:11.350212",
+    "created_at": "2026-09-28 09:03:15.027391",
     "status": "SCHEDULED"
   },
   {
-    "id": "03454b01-cfd0-4f9a-8e68-3f84da7552c8",
-    "title": "Sales CRM Meeting",
+    "id": "0f76f6f7-1fcc-4cb3-8b6f-638eb3b89399",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-21 10:30:00",
-    "end_time": "2026-09-21 11:00:00",
+    "start_time": "2026-09-04 09:15:00",
+    "end_time": "2026-09-04 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDRUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260921T103000Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260904T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:11.64991",
+    "created_at": "2026-09-28 09:03:15.18216",
     "status": "SCHEDULED"
   },
   {
-    "id": "14e12100-46f4-407b-9dda-259dedbdd3c5",
-    "title": "Sales CRM Meeting",
+    "id": "a1f63406-344f-4f5c-9bf0-787b740382a5",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-22 10:30:00",
-    "end_time": "2026-09-22 11:00:00",
+    "start_time": "2026-09-07 09:15:00",
+    "end_time": "2026-09-07 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDdUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260922T103000Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260907T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:11.949744",
+    "created_at": "2026-09-28 09:03:15.337001",
     "status": "SCHEDULED"
   },
   {
-    "id": "3d12bf00-6452-4ab7-b4d4-532a130431c8",
-    "title": "Sales CRM Meeting",
+    "id": "f1a6e152-0ec2-4817-bac2-5253aa5fdf4a",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-23 10:30:00",
-    "end_time": "2026-09-23 11:00:00",
+    "start_time": "2026-09-09 09:15:00",
+    "end_time": "2026-09-09 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MDlUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260923T103000Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260909T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:12.262951",
+    "created_at": "2026-09-28 09:03:15.490753",
     "status": "SCHEDULED"
   },
   {
-    "id": "5f0f7ccd-cdab-4f38-bd3c-0a4e37a7648e",
-    "title": "Sales CRM Meeting",
+    "id": "a3e8b03b-1f3a-4bf6-a081-2c8c90af613d",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-24 10:30:00",
-    "end_time": "2026-09-24 11:00:00",
+    "start_time": "2026-09-11 09:15:00",
+    "end_time": "2026-09-11 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MTFUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260924T103000Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260911T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:12.56507",
+    "created_at": "2026-09-28 09:03:15.645202",
     "status": "SCHEDULED"
   },
   {
@@ -9725,48 +9417,43 @@
     "status": "CANCELLED"
   },
   {
-    "id": "066030a3-9997-4fab-8c86-00eca162effa",
-    "title": "Sales CRM Meeting",
+    "id": "c8b1abc9-f657-4551-bf83-ba897845d98c",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-17 10:30:00",
-    "end_time": "2026-09-17 11:00:00",
+    "start_time": "2026-09-16 09:15:00",
+    "end_time": "2026-09-16 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MTZUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "harshit@ehmconsultancy.co.in",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260917T103000Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260916T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:17.193162",
+    "created_at": "2026-09-28 09:03:15.799147",
     "status": "SCHEDULED"
   },
   {
-    "id": "2fd1d343-65bc-460e-bfab-55934a3a8398",
-    "title": "Dev call, 9:20",
+    "id": "092afe4d-8a51-4b3e-a83d-0903b08ef98e",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-05 03:45:00",
-    "end_time": "2026-09-05 04:15:00",
+    "start_time": "2026-09-18 09:15:00",
+    "end_time": "2026-09-18 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MThUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260905T034500Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260918T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:17.351282",
+    "created_at": "2026-09-28 09:03:15.952901",
     "status": "SCHEDULED"
   },
   {
@@ -10131,49 +9818,43 @@
     "status": "CANCELLED"
   },
   {
-    "id": "90a3f769-2823-4c80-b2af-fa2e50512935",
-    "title": "Dev call, 9:20",
+    "id": "b1015212-08a8-41c5-b826-b35662aedd72",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-06 03:45:00",
-    "end_time": "2026-09-06 04:15:00",
+    "start_time": "2026-09-21 09:15:00",
+    "end_time": "2026-09-21 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MjFUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260906T034500Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260921T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:17.509309",
+    "created_at": "2026-09-28 09:03:16.106848",
     "status": "SCHEDULED"
   },
   {
-    "id": "8d6cc90c-1cc5-4e52-b34c-fb3e53047a5a",
-    "title": "Dev call, 9:20",
+    "id": "d6f16897-ac26-47d0-945a-8ad70cbe7ac3",
+    "title": "Avani Sports",
     "description": "",
-    "start_time": "2026-09-09 03:45:00",
-    "end_time": "2026-09-09 04:15:00",
+    "start_time": "2026-09-23 09:15:00",
+    "end_time": "2026-09-23 09:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://www.google.com/calendar/event?eid=MG01MzdtZmhtYnRiYjliNWplbmU4ZHBxb29fMjAyNjA5MjNUMDkxNTAwWiBoYXJzaGl0QGVobWNvbnN1bHRhbmN5LmNvLmlu",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
-      "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260909T034500Z",
+    "google_event_id": "0m537mfhmbtbb9b5jene8dpqoo_20260923T091500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:17.667422",
+    "created_at": "2026-09-28 09:03:16.261239",
     "status": "SCHEDULED"
   },
   {
@@ -10196,26 +9877,26 @@
     "status": "CANCELLED"
   },
   {
-    "id": "87926fa8-0d0e-4617-8d06-f86b0061c056",
-    "title": "Dev call, 9:20",
+    "id": "62cb6156-dc00-4992-a3f3-dc19da90f68d",
+    "title": "ClimAgro MKT Sept Plan ",
     "description": "",
-    "start_time": "2026-09-13 03:45:00",
-    "end_time": "2026-09-13 04:15:00",
+    "start_time": "2026-09-03 10:15:00",
+    "end_time": "2026-09-03 10:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://meet.google.com/ghn-marq-bct",
+    "organizer_id": "1e32f27a-d641-40ff-923c-05fef4836c10",
     "invitees": [
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
+      "neha@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
+      "fa0289e6-0109-4228-9f3d-f54b7164773c",
+      "1e32f27a-d641-40ff-923c-05fef4836c10",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260913T034500Z",
+    "google_event_id": "1v5lust8krmq1t6ilqgqf3ejp6",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:17.825336",
+    "created_at": "2026-09-28 09:03:12.873007",
     "status": "SCHEDULED"
   },
   {
@@ -10352,26 +10033,23 @@
     "status": "CANCELLED"
   },
   {
-    "id": "c1b7008a-b093-4818-a803-c1ae6f073bdc",
-    "title": "Dev call, 9:20",
+    "id": "3022afda-417e-408c-b6c3-b96821d8c992",
+    "title": "CityAdapt",
     "description": "",
-    "start_time": "2026-09-17 03:45:00",
-    "end_time": "2026-09-17 04:15:00",
+    "start_time": "2026-09-14 09:00:00",
+    "end_time": "2026-09-14 09:30:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/zjw-pnaf-jke",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260917T034500Z",
+    "google_event_id": "0u8sj4qf69qob9h95o43tefetb",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:17.983422",
+    "created_at": "2026-09-28 09:03:19.520987",
     "status": "SCHEDULED"
   },
   {
@@ -10394,256 +10072,260 @@
     "status": "CANCELLED"
   },
   {
-    "id": "eb47d089-fa56-4a63-bf8f-3190278a9c6f",
-    "title": "Dev call, 9:20",
+    "id": "4431ab37-4e1b-420b-ab3b-0af5e95129e4",
+    "title": "Agra Proposal - Waste Module",
     "description": "",
-    "start_time": "2026-09-19 03:45:00",
-    "end_time": "2026-09-19 04:15:00",
+    "start_time": "2026-09-15 15:30:00",
+    "end_time": "2026-09-15 16:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/ckj-axxh-yca",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
+      "utsav@ehmconsultancy.co.in",
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260919T034500Z",
+    "google_event_id": "504agc98qtg7o6em4hm3c2n4ef",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:18.142027",
+    "created_at": "2026-09-28 09:03:19.675141",
     "status": "SCHEDULED"
   },
   {
-    "id": "6539af99-d31c-4360-897b-c8679a9849b8",
-    "title": "Dev call, 9:20",
+    "id": "09456189-eb6b-42e7-aa7c-120156f258dd",
+    "title": "Sales CRM Meeting",
     "description": "",
-    "start_time": "2026-09-20 03:45:00",
-    "end_time": "2026-09-20 04:15:00",
+    "start_time": "2026-09-16 10:30:00",
+    "end_time": "2026-09-16 11:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/cyn-nscu-aym",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260920T034500Z",
+    "google_event_id": "4hqmoved9ih3uencnp601k501o",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:18.300061",
+    "created_at": "2026-09-28 09:03:19.829446",
     "status": "SCHEDULED"
   },
   {
-    "id": "f5124952-7f25-411c-921b-9313f7d799a2",
-    "title": "Dev call, 9:20",
+    "id": "b7339009-f970-498a-a563-906c96f54ad6",
+    "title": "Weekly Progress Call",
     "description": "",
-    "start_time": "2026-09-07 03:45:00",
-    "end_time": "2026-09-07 04:15:00",
+    "start_time": "2026-09-19 09:30:00",
+    "end_time": "2026-09-19 10:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "google_meet_url": "https://meet.google.com/seh-ottt-sbk",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
     "invitees": [
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260907T034500Z",
+    "google_event_id": "7d0f5eh4lkub33d5b0pdjm6quu",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:23.352182",
+    "created_at": "2026-09-28 09:03:04.205033",
     "status": "SCHEDULED"
   },
   {
-    "id": "ce277286-82b8-4830-aa6f-f388d7814f76",
-    "title": "Dev call, 9:20",
+    "id": "01871a83-1c13-474f-9e1a-7c5d0c775b39",
+    "title": "DOMS IITK Delivery & Quotation",
     "description": "",
-    "start_time": "2026-09-08 03:45:00",
-    "end_time": "2026-09-08 04:15:00",
+    "start_time": "2026-09-22 03:30:00",
+    "end_time": "2026-09-22 03:45:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/ghs-ywor-gwp",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
       "dubey.pranshu@gmail.com",
       "jitendra@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260908T034500Z",
+    "google_event_id": "50fplrro84ppr00af1hbtqjfdd",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:23.510063",
+    "created_at": "2026-09-28 09:03:20.137666",
     "status": "SCHEDULED"
   },
   {
-    "id": "6c0b6246-8472-4c38-a70b-1086fa6c94c4",
-    "title": "Dev call, 9:20",
+    "id": "7518e8ed-c66b-41c0-9654-d4023a702f1f",
+    "title": "Agra Waste Management - Dashboard and Final Deck",
     "description": "",
-    "start_time": "2026-09-10 03:45:00",
-    "end_time": "2026-09-10 04:15:00",
+    "start_time": "2026-09-24 10:45:00",
+    "end_time": "2026-09-24 11:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/xjn-xzbg-onz",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
+      "utsav@ehmconsultancy.co.in",
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260910T034500Z",
+    "google_event_id": "1o5f56j0mai03d3qvlu5puueoi",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:23.668255",
+    "created_at": "2026-09-28 09:03:20.291544",
     "status": "SCHEDULED"
   },
   {
-    "id": "f7754944-0c61-40dd-a54a-d9e6f6b1015f",
-    "title": "Dev call, 9:20",
+    "id": "2afc7079-0cec-4943-9b2b-e630828c9a5e",
+    "title": "ClimAgro Company call",
     "description": "",
-    "start_time": "2026-09-11 03:45:00",
-    "end_time": "2026-09-11 04:15:00",
+    "start_time": "2026-09-05 05:30:00",
+    "end_time": "2026-09-05 06:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/kni-opev-xfu",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "jitendra@climagroanalytics.com",
+      "neha@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
       "tarul@climagroanalytics.com",
+      "dubey.pranshu@gmail.com",
+      "utsav@ehmconsultancy.co.in",
       "neeraj@climagroanalytics.com",
+      "utsavm@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260911T034500Z",
+    "google_event_id": "19ro6nds1825bcp69ihbvm10sb_20260905T053000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:23.826189",
+    "created_at": "2026-09-28 09:03:20.522169",
     "status": "SCHEDULED"
   },
   {
-    "id": "2fd2d24e-1920-4ad1-ac78-d1760f4b837c",
-    "title": "Dev call, 9:20",
+    "id": "2e3ca607-c8ba-4b3f-b942-f75c635ee5b0",
+    "title": "ClimAgro Company call",
     "description": "",
-    "start_time": "2026-09-12 03:45:00",
-    "end_time": "2026-09-12 04:15:00",
+    "start_time": "2026-09-13 05:30:00",
+    "end_time": "2026-09-13 06:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/kni-opev-xfu",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "jitendra@climagroanalytics.com",
+      "neha@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
       "tarul@climagroanalytics.com",
+      "dubey.pranshu@gmail.com",
+      "utsav@ehmconsultancy.co.in",
       "neeraj@climagroanalytics.com",
+      "utsavm@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260912T034500Z",
+    "google_event_id": "19ro6nds1825bcp69ihbvm10sb_20260912T053000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:23.984638",
+    "created_at": "2026-09-28 09:03:20.675989",
     "status": "SCHEDULED"
   },
   {
-    "id": "76cc8cc3-8ea7-4b51-b6c2-14e99e7d0b5e",
-    "title": "Dev call, 9:20",
+    "id": "ee9712fe-25d8-4db3-ad0f-ecc6cb1849ee",
+    "title": "ClimAgro Company call",
     "description": "",
-    "start_time": "2026-09-14 03:45:00",
-    "end_time": "2026-09-14 04:15:00",
+    "start_time": "2026-09-19 05:30:00",
+    "end_time": "2026-09-19 06:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/kni-opev-xfu",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "dubey.pranshu@gmail.com",
       "jitendra@climagroanalytics.com",
+      "neha@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
       "tarul@climagroanalytics.com",
+      "dubey.pranshu@gmail.com",
+      "utsav@ehmconsultancy.co.in",
       "neeraj@climagroanalytics.com",
+      "utsavm@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260914T034500Z",
+    "google_event_id": "19ro6nds1825bcp69ihbvm10sb_20260919T053000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:24.14283",
+    "created_at": "2026-09-28 09:03:20.829544",
     "status": "SCHEDULED"
   },
   {
-    "id": "bb742af1-a927-42c5-bcc7-99d7a37c8f19",
-    "title": "Dev call, 9:20",
+    "id": "2ffa168d-2460-43e0-9b72-307d7bb4ab0d",
+    "title": "Sales CRM Meeting",
     "description": "",
-    "start_time": "2026-09-15 03:45:00",
-    "end_time": "2026-09-15 04:15:00",
+    "start_time": "2026-09-18 10:30:00",
+    "end_time": "2026-09-18 11:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260915T034500Z",
+    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260918T103000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:24.300966",
+    "created_at": "2026-09-28 09:03:21.75616",
     "status": "SCHEDULED"
   },
   {
-    "id": "2ae2d5d6-077a-43b3-b8fd-8f7b9d4e9635",
-    "title": "Dev call, 9:20",
+    "id": "8a73de0c-0bdc-42a2-bb43-96a0ed38bec2",
+    "title": "Sales CRM Meeting",
     "description": "",
-    "start_time": "2026-09-16 03:45:00",
-    "end_time": "2026-09-16 04:15:00",
+    "start_time": "2026-09-21 10:30:00",
+    "end_time": "2026-09-21 11:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260916T034500Z",
+    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260921T103000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:24.459297",
+    "created_at": "2026-09-28 09:03:21.90971",
     "status": "SCHEDULED"
   },
   {
-    "id": "71c7f5cb-dd8d-4dc4-8008-537f8413349b",
-    "title": "Dev call, 9:20",
+    "id": "bd0cb582-54fb-4ace-bd85-3f4864485988",
+    "title": "Sales CRM Meeting",
     "description": "",
-    "start_time": "2026-09-18 03:45:00",
-    "end_time": "2026-09-18 04:15:00",
+    "start_time": "2026-09-22 10:30:00",
+    "end_time": "2026-09-22 11:00:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
       "dubey.pranshu@gmail.com",
-      "jitendra@climagroanalytics.com",
-      "harshit@ehmconsultancy.co.in",
-      "tarul@climagroanalytics.com",
-      "neeraj@climagroanalytics.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260918T034500Z",
+    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260922T103000Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:24.617384",
+    "created_at": "2026-09-28 09:03:22.063228",
     "status": "SCHEDULED"
   },
   {
@@ -10780,11 +10462,77 @@
     "status": "CANCELLED"
   },
   {
-    "id": "175b48e9-eb15-4c99-a991-0e78d5fac393",
+    "id": "5f10ec41-825d-4b3e-bdfa-36ac07a48eee",
+    "title": "Sales CRM Meeting",
+    "description": "",
+    "start_time": "2026-09-23 10:30:00",
+    "end_time": "2026-09-23 11:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260923T103000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:22.217261",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "8fedc97c-eee5-422d-8a3c-a96846254816",
+    "title": "Sales CRM Meeting",
+    "description": "",
+    "start_time": "2026-09-24 10:30:00",
+    "end_time": "2026-09-24 11:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260924T103000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:22.37115",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "8bc4d76c-265d-4a56-aae8-a2c5906526e7",
+    "title": "Sales CRM Meeting",
+    "description": "",
+    "start_time": "2026-09-17 10:30:00",
+    "end_time": "2026-09-17 11:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ibg-yuxg-qce",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "03nmib7skuvgmjjs9lnkknhatj_20260917T103000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:26.094686",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "c1996fdb-60e7-46c6-b15f-6b8c63db7595",
     "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-09-21 03:45:00",
-    "end_time": "2026-09-21 04:15:00",
+    "start_time": "2026-09-05 03:45:00",
+    "end_time": "2026-09-05 04:15:00",
     "location": "Google Meet",
     "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
@@ -10797,17 +10545,17 @@
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260921T034500Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260905T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:24.775395",
+    "created_at": "2026-09-28 09:03:26.248485",
     "status": "SCHEDULED"
   },
   {
-    "id": "a18c3ec4-2b73-49f5-93af-895225546743",
+    "id": "d5dde8b2-be7a-4289-a971-db37d63bcb01",
     "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-09-22 03:45:00",
-    "end_time": "2026-09-22 04:15:00",
+    "start_time": "2026-09-06 03:45:00",
+    "end_time": "2026-09-06 04:15:00",
     "location": "Google Meet",
     "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
@@ -10820,17 +10568,17 @@
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260922T034500Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260906T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:24.93377",
+    "created_at": "2026-09-28 09:03:26.402674",
     "status": "SCHEDULED"
   },
   {
-    "id": "a84772df-573d-4c84-ad19-e168036870e5",
+    "id": "5f2c0046-428a-41f3-8b96-069efc5c5b71",
     "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-09-23 03:45:00",
-    "end_time": "2026-09-23 04:15:00",
+    "start_time": "2026-09-09 03:45:00",
+    "end_time": "2026-09-09 04:15:00",
     "location": "Google Meet",
     "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
@@ -10843,17 +10591,17 @@
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260923T034500Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260909T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:25.09209",
+    "created_at": "2026-09-28 09:03:26.556514",
     "status": "SCHEDULED"
   },
   {
-    "id": "1ef7273f-ac50-49ce-bce4-3bf7b8186fb6",
+    "id": "66487260-5854-4c7c-8a3a-a9b1223bca14",
     "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-09-24 03:45:00",
-    "end_time": "2026-09-24 04:15:00",
+    "start_time": "2026-09-13 03:45:00",
+    "end_time": "2026-09-13 04:15:00",
     "location": "Google Meet",
     "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
@@ -10866,125 +10614,78 @@
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260924T034500Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260913T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:25.254024",
+    "created_at": "2026-09-28 09:03:26.783033",
     "status": "SCHEDULED"
   },
   {
-    "id": "f256d95f-b768-4d30-a8c7-c5b1db878871",
-    "title": "Company Call",
+    "id": "1d2c7462-db82-4b91-a1cf-8a295c9fbbcb",
+    "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-09-04 05:00:00",
-    "end_time": "2026-09-04 05:30:00",
+    "start_time": "2026-09-17 03:45:00",
+    "end_time": "2026-09-17 04:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
       "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260904T050000Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260917T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:02.376146",
+    "created_at": "2026-09-28 09:03:26.982753",
     "status": "SCHEDULED"
   },
   {
-    "id": "37fbbace-400d-4bc5-86bf-082907ed848b",
-    "title": "Company Call",
+    "id": "5c2b5845-8342-4cfe-b119-79a0687ae131",
+    "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-09-08 05:00:00",
-    "end_time": "2026-09-08 05:30:00",
+    "start_time": "2026-09-19 03:45:00",
+    "end_time": "2026-09-19 04:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
       "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260908T050000Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260919T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:02.693957",
+    "created_at": "2026-09-28 09:03:27.136594",
     "status": "SCHEDULED"
   },
   {
-    "id": "a6fa0fa3-f920-4210-add9-b5bad2a8f552",
-    "title": "Company Call",
+    "id": "760c1779-36f5-431d-b07b-b02a174f6454",
+    "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-09-17 05:00:00",
-    "end_time": "2026-09-17 05:30:00",
+    "start_time": "2026-09-20 03:45:00",
+    "end_time": "2026-09-20 04:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
       "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260917T050000Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260920T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:03.494982",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "43167a8f-c36b-45a2-8995-1f385efc7cde",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-21 05:00:00",
-    "end_time": "2026-09-21 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260921T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:03.812389",
+    "created_at": "2026-09-28 09:03:27.290646",
     "status": "SCHEDULED"
   },
   {
@@ -11004,6 +10705,36 @@
     "google_event_id": "rfdagktgq79tko03s05g96e3bl_20261110T074500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:54.621277",
+    "status": "CANCELLED"
+  },
+  {
+    "id": "b9115e20-637f-4d93-a22c-fd6f17c0d9c3",
+    "title": "EHM Weekly Updates",
+    "description": "",
+    "start_time": "2026-10-31 06:30:00",
+    "end_time": "2026-10-31 07:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ckr-uwko-tak",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "ashutoshmishraup78@gmail.com",
+      "shreyanshsiladar@gmail.com",
+      "priyankasharma121202@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "dubey.pranshu@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutosh@ehmconsultancy.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+      "officialutkarshmishra01@gmail.com"
+    ],
+    "google_event_id": "2gmivrrb8u56002on1dt6hp31c_20261031T063000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-22 08:06:12.185634",
     "status": "CANCELLED"
   },
   {
@@ -11045,61 +10776,26 @@
     "status": "CANCELLED"
   },
   {
-    "id": "424091b5-5dba-4091-ac39-7469751d5342",
-    "title": "Company Call",
+    "id": "af668dfc-7b44-4c25-b2c9-b39682726188",
+    "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-08-31 05:00:00",
-    "end_time": "2026-08-31 05:30:00",
+    "start_time": "2026-09-07 03:45:00",
+    "end_time": "2026-09-07 04:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
       "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
       "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260831T050000Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260907T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:01.900211",
-    "status": "SCHEDULED"
-  },
-  {
-    "id": "a0e8a585-de14-4fb0-a5e8-b541ccd7d8ee",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-09-03 05:00:00",
-    "end_time": "2026-09-03 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260903T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-28 08:53:02.217452",
+    "created_at": "2026-09-28 09:03:32.210347",
     "status": "SCHEDULED"
   },
   {
@@ -11120,6 +10816,29 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:49.505236",
     "status": "CANCELLED"
+  },
+  {
+    "id": "d2bf9fd7-b064-4d60-8238-a6aae01ec708",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-08 03:45:00",
+    "end_time": "2026-09-08 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260908T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:32.364147",
+    "status": "SCHEDULED"
   },
   {
     "id": "25abeddb-9bcf-4988-90af-c73d55e85b14",
@@ -11160,34 +10879,119 @@
     "status": "CANCELLED"
   },
   {
-    "id": "b9115e20-637f-4d93-a22c-fd6f17c0d9c3",
-    "title": "EHM Weekly Updates",
+    "id": "a02be318-50d5-4a8e-934f-fc44061029e1",
+    "title": "Dev call, 9:20",
     "description": "",
-    "start_time": "2026-10-31 06:30:00",
-    "end_time": "2026-10-31 07:00:00",
+    "start_time": "2026-09-10 03:45:00",
+    "end_time": "2026-09-10 04:15:00",
     "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ckr-uwko-tak",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
     "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
     "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "shreyanshsiladar@gmail.com",
-      "priyankasharma121202@gmail.com",
-      "utsav@ehmconsultancy.co.in",
       "dubey.pranshu@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
+      "jitendra@climagroanalytics.com",
       "harshit@ehmconsultancy.co.in",
-      "ashutosh@ehmconsultancy.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
       "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816",
-      "officialutkarshmishra01@gmail.com"
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
     ],
-    "google_event_id": "2gmivrrb8u56002on1dt6hp31c_20261031T063000Z",
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260910T034500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-22 08:06:12.185634",
-    "status": "CANCELLED"
+    "created_at": "2026-09-28 09:03:32.518063",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "9a02b695-e966-438a-a7a1-e2c4338f4af3",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-11 03:45:00",
+    "end_time": "2026-09-11 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260911T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:32.671836",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "553cb211-7169-48ef-82f3-9431366f9825",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-12 03:45:00",
+    "end_time": "2026-09-12 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260912T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:32.826054",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "3a3d7a64-6f0c-43f4-99c2-68919c205162",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-14 03:45:00",
+    "end_time": "2026-09-14 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260914T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:32.979688",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "8c4927b8-8b9f-4f91-a03e-0892a785a34c",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-15 03:45:00",
+    "end_time": "2026-09-15 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260915T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:33.133368",
+    "status": "SCHEDULED"
   },
   {
     "id": "667046b0-5207-4a31-b60b-10676bd9aee8",
@@ -11266,35 +11070,6 @@
     "status": "CANCELLED"
   },
   {
-    "id": "2d2a30b1-1fd4-441f-9be4-6de21d49a38a",
-    "title": "Company Call",
-    "description": "",
-    "start_time": "2026-11-26 05:00:00",
-    "end_time": "2026-11-26 05:30:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
-    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
-    "invitees": [
-      "shreyanshsiladar@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "priyankasharma121202@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutoshmishraup78@gmail.com",
-      "officialutkarshmishra01@gmail.com",
-      "dubey.pranshu@gmail.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
-    ],
-    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20261126T050000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-27 05:01:11.370949",
-    "status": "SCHEDULED"
-  },
-  {
     "id": "955f9c88-b754-4d12-a630-41966f8d19ce",
     "title": "EHM Weekly Updates",
     "description": "",
@@ -11325,6 +11100,58 @@
     "status": "CANCELLED"
   },
   {
+    "id": "2d2a30b1-1fd4-441f-9be4-6de21d49a38a",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-11-26 05:00:00",
+    "end_time": "2026-11-26 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20261126T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-27 05:01:11.370949",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "00c8ba5c-b933-47e1-82f7-6e69101c1a98",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-16 03:45:00",
+    "end_time": "2026-09-16 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260916T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:33.287725",
+    "status": "SCHEDULED"
+  },
+  {
     "id": "6e5c9902-ac34-4921-aad2-13f0ff59db96",
     "title": "EHM CRM Meeting",
     "description": "",
@@ -11342,6 +11169,98 @@
     "google_event_id": "2lk7d39ku8d79oek47sfm6sq81",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-28 08:48:24.968569",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "0b6a3cd2-555d-43e4-b1a9-9f3c2e6212e3",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-18 03:45:00",
+    "end_time": "2026-09-18 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260918T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:33.441728",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "77893d40-86c6-4159-8e54-faefa34e6a7e",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-21 03:45:00",
+    "end_time": "2026-09-21 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260921T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:33.595969",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "2442e44f-4d80-4459-a216-86e34f3316ab",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-22 03:45:00",
+    "end_time": "2026-09-22 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260922T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:33.751135",
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "a3e3e81a-4e8e-4013-b4a9-57d2b57dd642",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-23 03:45:00",
+    "end_time": "2026-09-23 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260923T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:33.905723",
     "status": "SCHEDULED"
   },
   {
@@ -11451,36 +11370,6 @@
     "status": "CANCELLED"
   },
   {
-    "id": "995db240-33b8-4144-a313-9120e4e509c0",
-    "title": "EHM Weekly Updates",
-    "description": "",
-    "start_time": "2026-10-03 06:30:00",
-    "end_time": "2026-10-03 07:00:00",
-    "location": "Google Meet",
-    "google_meet_url": "https://meet.google.com/ckr-uwko-tak",
-    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
-    "invitees": [
-      "ashutoshmishraup78@gmail.com",
-      "shreyanshsiladar@gmail.com",
-      "priyankasharma121202@gmail.com",
-      "utsav@ehmconsultancy.co.in",
-      "dubey.pranshu@gmail.com",
-      "neha@ehmconsultancy.co.in",
-      "prernashukla566@gmail.com",
-      "harshit@ehmconsultancy.co.in",
-      "ashutosh@ehmconsultancy.com",
-      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
-      "c30c78d7-9398-4517-a54a-64005b90d555",
-      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
-      "67f526ba-afcf-4ec0-bf41-da1468bfb816",
-      "officialutkarshmishra01@gmail.com"
-    ],
-    "google_event_id": "2gmivrrb8u56002on1dt6hp31c_20261003T063000Z",
-    "source": "GOOGLE_CALENDAR_IMPORTED",
-    "created_at": "2026-09-22 08:06:10.260099",
-    "status": "CANCELLED"
-  },
-  {
     "id": "e22790fa-b83f-4139-a895-ea64dff7580c",
     "title": "EHM Weekly Updates",
     "description": "",
@@ -11509,6 +11398,29 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-22 08:06:11.218716",
     "status": "CANCELLED"
+  },
+  {
+    "id": "03bcdff0-faae-4761-8a67-24939f690bca",
+    "title": "Dev call, 9:20",
+    "description": "",
+    "start_time": "2026-09-24 03:45:00",
+    "end_time": "2026-09-24 04:15:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ger-vadd-qfg",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "dubey.pranshu@gmail.com",
+      "jitendra@climagroanalytics.com",
+      "harshit@ehmconsultancy.co.in",
+      "tarul@climagroanalytics.com",
+      "neeraj@climagroanalytics.com",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "193nc69sguqbi728mcqo1vlm0p_20260924T034500Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:34.059587",
+    "status": "SCHEDULED"
   },
   {
     "id": "c372f181-49e8-4495-a9c3-55129033973e",
@@ -11568,6 +11480,35 @@
     "status": "CANCELLED"
   },
   {
+    "id": "6d7274f1-2574-4ee1-b371-5e427de4be8f",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-08-31 05:00:00",
+    "end_time": "2026-08-31 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260831T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:09.130781",
+    "status": "SCHEDULED"
+  },
+  {
     "id": "e9d5cbf7-d42f-420d-8a8c-2aeb6205dd10",
     "title": "EHM Weekly Updates",
     "description": "",
@@ -11596,6 +11537,35 @@
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-22 08:06:11.702291",
     "status": "CANCELLED"
+  },
+  {
+    "id": "1d2627a6-a927-4c42-9bb2-8768fefe9ec8",
+    "title": "Company Call",
+    "description": "",
+    "start_time": "2026-09-01 05:00:00",
+    "end_time": "2026-09-01 05:30:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/yoj-opxb-qdz",
+    "organizer_id": "c30c78d7-9398-4517-a54a-64005b90d555",
+    "invitees": [
+      "shreyanshsiladar@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "priyankasharma121202@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutoshmishraup78@gmail.com",
+      "officialutkarshmishra01@gmail.com",
+      "dubey.pranshu@gmail.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816"
+    ],
+    "google_event_id": "ohlu4ojc919i06ca7vmr9u54kq_20260901T050000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-28 09:03:02.386061",
+    "status": "SCHEDULED"
   },
   {
     "id": "9c85c9f9-5df5-4ca9-8bae-a9ebcb6f2d69",
@@ -11750,6 +11720,36 @@
     "google_event_id": "rfdagktgq79tko03s05g96e3bl_20261019T074500Z",
     "source": "GOOGLE_CALENDAR_IMPORTED",
     "created_at": "2026-09-27 18:36:51.983565",
+    "status": "CANCELLED"
+  },
+  {
+    "id": "995db240-33b8-4144-a313-9120e4e509c0",
+    "title": "EHM Weekly Updates",
+    "description": "",
+    "start_time": "2026-10-03 06:30:00",
+    "end_time": "2026-10-03 07:00:00",
+    "location": "Google Meet",
+    "google_meet_url": "https://meet.google.com/ckr-uwko-tak",
+    "organizer_id": "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+    "invitees": [
+      "ashutoshmishraup78@gmail.com",
+      "shreyanshsiladar@gmail.com",
+      "priyankasharma121202@gmail.com",
+      "utsav@ehmconsultancy.co.in",
+      "dubey.pranshu@gmail.com",
+      "neha@ehmconsultancy.co.in",
+      "prernashukla566@gmail.com",
+      "harshit@ehmconsultancy.co.in",
+      "ashutosh@ehmconsultancy.com",
+      "c20f5e78-aa5b-49ea-9a01-f69f34d91fb7",
+      "c30c78d7-9398-4517-a54a-64005b90d555",
+      "6a82e692-0b48-441e-b26f-09dbfd6c0ca9",
+      "67f526ba-afcf-4ec0-bf41-da1468bfb816",
+      "officialutkarshmishra01@gmail.com"
+    ],
+    "google_event_id": "2gmivrrb8u56002on1dt6hp31c_20261003T063000Z",
+    "source": "GOOGLE_CALENDAR_IMPORTED",
+    "created_at": "2026-09-22 08:06:10.260099",
     "status": "CANCELLED"
   },
   {
