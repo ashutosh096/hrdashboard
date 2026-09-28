@@ -38,10 +38,24 @@ router.get('/', async (req, res) => {
       const entity = allEntities.find(e => e.id === init.entityId);
       const dept = allDepts.find(d => d.id === init.departmentId);
       const linkedEpics = allEpics.filter(e => e.initiativeId === init.id);
+      const resolvedEntity = entity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : entity?.code === 'COMMON'
+        ? 'COMMON'
+        : entity?.code === 'EHM'
+        ? 'EHM'
+        : init.initiativeCode.startsWith('CAG')
+        ? 'CLIMAGRO'
+        : (init.initiativeCode.startsWith('COMMON') || init.initiativeCode.startsWith('COM-'))
+        ? 'COMMON'
+        : 'EHM';
+      const resolvedCode = entity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
+
       return {
         ...init,
-        entityName: (entity?.name || '').toLowerCase().includes('cag') || (entity?.name || '').toLowerCase().includes('climagro') || init.initiativeCode.startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
-        entityCode: entity?.code || (init.initiativeCode.startsWith('CAG') ? 'CAG' : 'EHM'),
+        entity: resolvedEntity,
+        entityName: entity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+        entityCode: resolvedCode,
         departmentName: dept?.name || init.subDepartment || 'Product & Tech',
         epicsCount: linkedEpics.length,
         epics: linkedEpics,
@@ -145,13 +159,21 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
 
     if (entityId !== undefined) {
+      const entTarget = String(entityId || '').toLowerCase().trim();
       const allEntities = await db.select().from(entities);
-      let entity = allEntities.find(e =>
-        e.id === entityId ||
-        e.code.toLowerCase() === (entityId || '').toLowerCase() ||
-        ((entityId || '').toLowerCase().includes('ehm') && e.code === 'EHM') ||
-        ((entityId || '').toLowerCase().includes('climagro') && e.code === 'CAG')
-      );
+      let entity = allEntities.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
       if (entity) updatePayload.entityId = entity.id;
     }
 
@@ -193,13 +215,21 @@ router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
 
     if (entityId !== undefined) {
+      const entTarget = String(entityId || '').toLowerCase().trim();
       const allEntities = await db.select().from(entities);
-      let entity = allEntities.find(e =>
-        e.id === entityId ||
-        e.code.toLowerCase() === (entityId || '').toLowerCase() ||
-        ((entityId || '').toLowerCase().includes('ehm') && e.code === 'EHM') ||
-        ((entityId || '').toLowerCase().includes('climagro') && e.code === 'CAG')
-      );
+      let entity = allEntities.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
       if (entity) updatePayload.entityId = entity.id;
     }
 

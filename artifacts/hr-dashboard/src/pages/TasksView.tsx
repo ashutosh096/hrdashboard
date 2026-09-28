@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
@@ -115,20 +115,11 @@ export const TasksView: React.FC = () => {
         const parentEpic = (epicsData || []).find((ep: any) => ep.id === t.epicId);
         const parentInit = (initsData || []).find((init: any) => init.id === (t.initiativeId || parentEpic?.initiativeId));
 
-        const isCAG = (
-          t.entityId === 'cag' ||
-          t.taskCode?.startsWith('CAG') ||
-          parentEpic?.epicCode?.startsWith('CAG') ||
-          parentInit?.initiativeCode?.startsWith('CAG')
-        );
+        const badge = getEntityBadge(t);
+        const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
+        const resolvedEntityLabel = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
 
-        const entityCode = isCAG ? 'CAG' : 'EHM';
-        const entityName = isCAG ? 'climagroanalytics' : 'ehmconsultancy';
-
-        let taskCode = t.taskCode || t.id;
-        if (isCAG && taskCode.startsWith('EHM-')) {
-          taskCode = taskCode.replace(/^EHM-/, 'CAG-');
-        }
+        const taskCode = t.taskCode || t.id;
 
         const matchedAssignee = (employeesData || []).find((e: any) =>
           e.id === t.assigneeId ||
@@ -157,11 +148,13 @@ export const TasksView: React.FC = () => {
           id: t.id,
           taskCode,
           title: t.title,
-          entityCode,
-          entityName,
+          entity: resolvedEntityLabel,
+          entityCode: resolvedEntityCode,
+          entityId: t.entityId,
+          entityName: t.entityName,
           epicId: t.epicId || parentEpic?.id,
           initiativeId: t.initiativeId || parentInit?.id || parentEpic?.initiativeId,
-          parentInitiativeCode: parentInit?.initiativeCode || (parentEpic ? (isCAG ? 'CAG-INIT-001' : 'EHM-INIT-001') : null),
+          parentInitiativeCode: parentInit?.initiativeCode || (parentEpic ? (badge.isCAG ? 'CAG-INIT-001' : 'EHM-INIT-001') : null),
           parentInitiativeTitle: parentInit?.title || '',
           parentEpicCode: parentEpic?.epicCode || null,
           parentEpicTitle: parentEpic?.title || '',
@@ -192,6 +185,14 @@ export const TasksView: React.FC = () => {
   useEffect(() => {
     loadTasks();
   }, [currentPage, employeeFilter, priorityFilter, statusFilter, debouncedSearch, user]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      loadTasks();
+    };
+    window.addEventListener('tasks-updated', handleUpdate);
+    return () => window.removeEventListener('tasks-updated', handleUpdate);
+  }, []);
 
   const isTaskAssignedToUser = (task: any) => {
     if (isManager) return true;
@@ -303,6 +304,7 @@ export const TasksView: React.FC = () => {
         body: JSON.stringify({
           title: updated.title,
           entity: updated.entity,
+          entityCode: updated.entityCode || (updated.entity === 'CLIMAGRO' ? 'CAG' : updated.entity === 'COMMON' ? 'COMMON' : 'EHM'),
           assigneeName: updated.assignee,
           assigneeId: updated.assigneeId,
           reviewingLead: updated.reviewingLead,
@@ -320,6 +322,7 @@ export const TasksView: React.FC = () => {
       });
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
       await loadTasks();
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
     } catch (err: any) {
       console.error('[TASK PATCH ERROR]:', err);
       toast.error(err?.message || 'Failed to update task in database');
@@ -330,6 +333,10 @@ export const TasksView: React.FC = () => {
     const sourceTask = tasks.find(t => t.id === sourceTaskItem.id || t.taskCode === sourceTaskItem.taskId) || sourceTaskItem;
     const sourceCode = sourceTask.taskCode || sourceTaskItem.taskId || sourceTask.id;
     
+    const sourceBadge = getEntityBadge(sourceTask);
+    const resolvedEntityCode = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM';
+    const resolvedEntityLabel = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CLIMAGRO' : 'EHM';
+
     let createdFromApi: any = null;
     try {
       createdFromApi = await fetchApi<any>('/api/tasks', {
@@ -339,7 +346,7 @@ export const TasksView: React.FC = () => {
           description: sourceTask.description || sourceTaskItem.notes || `Cloned from ${sourceCode}`,
           status: 'BACKLOG',
           priority: sourceTask.priority || 'P3',
-          entityCode: sourceTask.entityCode || 'CAG',
+          entityCode: resolvedEntityCode,
           epicId: sourceTask.epicId || null,
           deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
         }),
@@ -363,7 +370,9 @@ export const TasksView: React.FC = () => {
       id: newId,
       taskCode: newCode,
       title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
-      entityCode: sourceTask.entityCode || 'CAG',
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
+      entityId: sourceTask.entityId,
       status: 'BACKLOG',
       parentEpicCode: sourceTask.parentEpicCode || 'CAG-EPIC-001',
       parentEpicTitle: sourceTask.parentEpicTitle || 'Parent Epic Details',
@@ -379,16 +388,13 @@ export const TasksView: React.FC = () => {
 
     setTasks(prev => [clonedTaskObj, ...prev]);
 
-    const clonedCode = clonedTaskObj.taskCode || '';
-    const isClonedCommon = clonedCode.startsWith('COMMON') || clonedCode.startsWith('COM-') || sourceTask.entity === 'COMMON';
-    const isClonedCAG = !isClonedCommon && (clonedCode.startsWith('CAG') || sourceTask.entity === 'CLIMAGRO');
-
     setSelectedTaskToUpdate({
       id: clonedTaskObj.id,
       taskId: clonedTaskObj.taskCode,
       taskCode: clonedTaskObj.taskCode,
       title: clonedTaskObj.title,
-      entity: isClonedCommon ? 'COMMON' : isClonedCAG ? 'CLIMAGRO' : 'EHM',
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
       assignee: clonedTaskObj.assigneeName,
       reviewingLead: clonedTaskObj.reviewingLead,
       status: 'In Progress',

@@ -11,7 +11,8 @@ import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
-import { getEntityBadge } from '../utils/entityUtils';
+import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 interface EpicItem {
   id: string;
@@ -19,6 +20,10 @@ interface EpicItem {
   title: string;
   description: string;
   status: string;
+  entityId?: string | null;
+  entity?: string | null;
+  entityCode?: string | null;
+  entityName?: string | null;
   initiativeId?: string | null;
   projectId?: string | null;
   department?: string | null;
@@ -70,6 +75,7 @@ const TARGET_WEEK_OPTIONS = [
 
 export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSelectInitiative, selectedEpicIdToView, onClearSelectedEpic }) => {
   const { user } = useAuth();
+  const { selectedEntity } = useEntity();
   const isAdmin = user?.role === 'ADMIN';
   const [epics, setEpics] = useState<EpicItem[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -91,6 +97,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   // New Epic Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [createEntity, setCreateEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
   const [selectedInitiativeId, setSelectedInitiativeId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [title, setTitle] = useState('');
@@ -106,6 +113,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [viewingEpic, setViewingEpic] = useState<EpicItem | null>(null);
   const [viewingInitiativeInEpics, setViewingInitiativeInEpics] = useState<any | null>(null);
   const [editingEpic, setEditingEpic] = useState<EpicItem | null>(null);
+  const [editEntity, setEditEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editInitiativeId, setEditInitiativeId] = useState('');
@@ -150,16 +158,16 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   const handleOpenTaskModal = (taskItem: any) => {
     const code = taskItem.taskCode || taskItem.taskId || taskItem.id || 'CAG-EMP01-001';
-    const isCommon = taskItem.entity === 'COMMON' || taskItem.entityCode === 'COMMON' || code.startsWith('COMMON') || code.startsWith('COM-');
-    const isCAG = !isCommon && (taskItem.entityId === 'cag' || code.startsWith('CAG') || taskItem.entity === 'CLIMAGRO' || taskItem.entityCode === 'CAG');
-    const resolvedEntity = isCommon ? 'COMMON' : isCAG ? 'CLIMAGRO' : 'EHM';
+    const badge = getEntityBadge(taskItem);
+    const resolvedEntity = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+    const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
     setSelectedTaskToView({
       id: taskItem.id || 'tsk-1',
       taskId: code,
       taskCode: code,
       title: taskItem.title || 'Task Deliverable',
       entity: resolvedEntity,
-      entityCode: isCommon ? 'COMMON' : isCAG ? 'CAG' : 'EHM',
+      entityCode: resolvedEntityCode,
       assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
       status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
@@ -352,6 +360,33 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     }
   }, [selectedEpicIdToView, epics]);
 
+  // Auto-suggest entity based on selected parent or active entity filter
+  useEffect(() => {
+    if (selectedEntity === 'CAG') setCreateEntity('CAG');
+    else if (selectedEntity === 'COMMON') setCreateEntity('COMMON');
+    else setCreateEntity('EHM');
+  }, [selectedEntity, isModalOpen]);
+
+  useEffect(() => {
+    if (selectedInitiativeId) {
+      const init = initiatives.find(i => i.id === selectedInitiativeId);
+      if (init) {
+        const initBadge = getEntityBadge(init);
+        setCreateEntity(initBadge.isCommon ? 'COMMON' : initBadge.isCAG ? 'CAG' : 'EHM');
+      }
+    }
+  }, [selectedInitiativeId, initiatives]);
+
+  useEffect(() => {
+    if (selectedProjectId && !selectedInitiativeId) {
+      const proj = projects.find(p => p.id === selectedProjectId);
+      if (proj) {
+        const projBadge = getEntityBadge(proj);
+        setCreateEntity(projBadge.isCommon ? 'COMMON' : projBadge.isCAG ? 'CAG' : 'EHM');
+      }
+    }
+  }, [selectedProjectId, selectedInitiativeId, projects]);
+
   const handleCreateEpic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error('Please enter an epic title');
@@ -363,6 +398,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         body: JSON.stringify({
           title,
           description,
+          entity: createEntity,
+          entityCode: createEntity,
           initiativeId: selectedInitiativeId || undefined,
           projectId: selectedProjectId || undefined,
           department,
@@ -397,6 +434,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     setEditTargetWeek(epic.targetWeek || '');
     setEditSprintsCountTarget(epic.sprintsCountTarget || 0);
     setEditStatus(epic.status === 'COMPLETED' ? 'DONE' : (epic.status || 'PLANNED'));
+    const badge = getEntityBadge(epic);
+    const resolvedEnt = epic.entity === 'CLIMAGRO' || epic.entityCode === 'CAG' || badge.isCAG ? 'CAG'
+      : epic.entity === 'COMMON' || epic.entityCode === 'COMMON' || badge.isCommon ? 'COMMON'
+      : 'EHM';
+    setEditEntity(resolvedEnt);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -412,6 +454,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
+          entity: editEntity,
+          entityCode: editEntity,
           initiativeId: editInitiativeId || null,
           projectId: editProjectId || null,
           department: editDepartment,
@@ -482,9 +526,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     }
   };
 
-  // Active vs Archived pools
-  const activeEpics = epics.filter(e => e.status !== 'DONE' && e.status !== 'COMPLETED' && e.status !== 'ARCHIVED');
-  const archivedEpics = epics.filter(e => e.status === 'DONE' || e.status === 'COMPLETED' || e.status === 'ARCHIVED');
+  // Active vs Archived pools scoped by Entity filter
+  const scopedEpics = epics.filter(e => matchesEntityFilter(e, selectedEntity));
+  const activeEpics = scopedEpics.filter(e => e.status !== 'DONE' && e.status !== 'COMPLETED' && e.status !== 'ARCHIVED');
+  const archivedEpics = scopedEpics.filter(e => e.status === 'DONE' || e.status === 'COMPLETED' || e.status === 'ARCHIVED');
   const baseEpicsPool = viewMode === 'ACTIVE' ? activeEpics : archivedEpics;
 
   // Filtered Epics calculation
@@ -1374,14 +1419,27 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 />
               </div>
 
-              {/* Department & Target Week */}
+              {/* Brand / Entity & Department */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Brand / Entity *</label>
+                  <select
+                    value={editEntity}
+                    onChange={(e) => setEditEntity(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                  >
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
+                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Department *</label>
                   <select
                     value={editDepartment}
                     onChange={(e) => setEditDepartment(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
                     {DEPARTMENT_OPTIONS.map((dept) => (
                       <option key={dept} value={dept}>
@@ -1390,16 +1448,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
-                  <CalendarPicker
-                    value={editTargetWeek}
-                    onChange={(formatted) => setEditTargetWeek(formatted)}
-                    placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
-                    formatMode="date"
-                  />
-                </div>
+              {/* Target Week / Date */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                <CalendarPicker
+                  value={editTargetWeek}
+                  onChange={(formatted) => setEditTargetWeek(formatted)}
+                  placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
+                  formatMode="date"
+                />
               </div>
 
               {/* Target Tasks Count & Status */}
@@ -1543,14 +1602,27 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 />
               </div>
 
-              {/* Department & Target Week */}
+              {/* Brand / Entity & Department */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Brand / Entity *</label>
+                  <select
+                    value={createEntity}
+                    onChange={(e) => setCreateEntity(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                  >
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
+                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Department *</label>
                   <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
                     {DEPARTMENT_OPTIONS.map((dept) => (
                       <option key={dept} value={dept}>
@@ -1559,16 +1631,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
-                  <CalendarPicker
-                    value={targetWeek}
-                    onChange={(formatted) => setTargetWeek(formatted)}
-                    placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
-                    formatMode="date"
-                  />
-                </div>
+              {/* Target Week / Date */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                <CalendarPicker
+                  value={targetWeek}
+                  onChange={(formatted) => setTargetWeek(formatted)}
+                  placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
+                  formatMode="date"
+                />
               </div>
 
               {/* Planned Tasks Target */}
@@ -1648,6 +1721,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                           if (source.department) setDepartment(source.department);
                           if (source.targetWeek) setTargetWeek(source.targetWeek);
                           if (source.sprintsCountTarget) setSprintsCountTarget(source.sprintsCountTarget);
+                          const sourceBadge = getEntityBadge(source);
+                          setCreateEntity(sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM');
                           toast.success(`Form pre-filled with data from "${source.title}"!`);
                         }
                       }}

@@ -47,8 +47,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
-import { fetchApi } from '@workspace/api-client-react';
-import { matchesEntityFilter } from '../utils/entityUtils';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { TaskProgressSprintAnalytics } from './TaskProgressSprintAnalytics';
 import { PinnedAnnouncementBanner } from './PinnedAnnouncementBanner';
@@ -228,13 +227,14 @@ export const EmployeeDashboardView: React.FC = () => {
             const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Manager Lead');
             const resolvedSprintName = t.sprintId ? sprintMap.get(t.sprintId) : t.sprintWeek;
 
+            const taskBadge = getEntityBadge(t);
             return {
               id: t.id,
               taskId: t.taskCode || t.id,
               taskCode: t.taskCode || t.id,
               title: t.title,
               dept: currentTargetEmp?.departmentName || 'Product & Tech',
-              entity: t.entity === 'COMMON' || t.entityCode === 'COMMON' || t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-') ? 'COMMON' : (t.entity === 'CLIMAGRO' || t.entityCode === 'CAG' || t.taskCode?.startsWith('CAG')) ? 'CLIMAGRO' : 'EHM',
+              entity: taskBadge.isCommon ? 'COMMON' : taskBadge.isCAG ? 'CLIMAGRO' : 'EHM',
               priority: t.priority || 'MEDIUM',
               lead: leadName,
               reviewingLeadId: t.reviewingLeadId || matchedLeadEmp?.id,
@@ -299,6 +299,14 @@ export const EmployeeDashboardView: React.FC = () => {
     loadData();
   }, [user, selectedEmployeeId]);
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      loadData(true);
+    };
+    window.addEventListener('tasks-updated', handleUpdate);
+    return () => window.removeEventListener('tasks-updated', handleUpdate);
+  }, []);
+
   // Scope Employee Tasks & Meetings by Selected Entity (EHM / CAG / ALL)
   const scopedMyTasks = myTasks.filter((t) => matchesEntityFilter(t, selectedEntity));
   const scopedTodaysMeetings = todaysMeetings.filter((m) => matchesEntityFilter(m, selectedEntity));
@@ -340,9 +348,16 @@ export const EmployeeDashboardView: React.FC = () => {
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
     try {
+      const badge = getEntityBadge(updated);
+      const resolvedEntityLabel = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+      const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
+
       await fetchApi(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
+          title: updated.title,
+          entity: resolvedEntityLabel,
+          entityCode: resolvedEntityCode,
           status: updated.status,
           deliverableUrl: updated.outputUrl || '',
           description: updated.notes || '',
@@ -351,11 +366,14 @@ export const EmployeeDashboardView: React.FC = () => {
           dueDate: updated.dueDate,
         }),
       });
-      setMyTasks(
-        myTasks.map((t) =>
+      setMyTasks((prev) =>
+        prev.map((t) =>
           t.id === updated.id
             ? {
               ...t,
+              title: updated.title || t.title,
+              entity: resolvedEntityLabel,
+              priority: updated.priority || t.priority,
               status: updated.status,
               outputUrl: updated.outputUrl || '',
               waitingOn: updated.waitingOn || 'None (Self)',
@@ -365,7 +383,9 @@ export const EmployeeDashboardView: React.FC = () => {
             : t
         )
       );
-      toast.success(`Personal task ${updated.taskId} updated & saved to live database!`);
+      toast.success(`Task ${updated.taskId} updated & saved to live database!`);
+      await loadData(true);
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
     } catch (err: any) {
       console.error('[EMPLOYEE DASH TASK UPDATE ERROR]:', err);
       toast.error(err?.message || 'Failed to save task update to database');

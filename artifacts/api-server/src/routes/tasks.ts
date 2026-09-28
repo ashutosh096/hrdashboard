@@ -224,9 +224,19 @@ export async function enrichTasks(tasksList: any[]) {
       projectId: t.projectId || parentEpic?.projectId || null,
       taskId: t.taskCode || t.id,
       taskCode: t.taskCode,
-      entity: entity?.code === 'CAG' || t.taskCode?.startsWith('CAG') ? 'CLIMAGRO' : entity?.code === 'COMMON' || t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-') ? 'COMMON' : 'EHM',
+      entity: entity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : entity?.code === 'COMMON'
+        ? 'COMMON'
+        : entity?.code === 'EHM'
+        ? 'EHM'
+        : t.taskCode?.startsWith('CAG')
+        ? 'CLIMAGRO'
+        : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-'))
+        ? 'COMMON'
+        : 'EHM',
       entityCode: entity?.code || (t.taskCode?.startsWith('CAG') ? 'CAG' : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-')) ? 'COMMON' : 'EHM'),
-      entityName: entity?.name || (t.taskCode?.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'),
+      entityName: entity?.name || (t.taskCode?.startsWith('CAG') ? 'Climagro Analytics' : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-')) ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
     };
   });
 }
@@ -613,6 +623,7 @@ const handleTaskUpdate = async (req: any, res: any) => {
     dueDate,
     entityId,
     entity,
+    entityCode,
     waitingOn,
     checklists,
     comments,
@@ -711,23 +722,29 @@ const handleTaskUpdate = async (req: any, res: any) => {
         }
       }
 
-      // Handle Entity
-      if (entityId && typeof entityId === 'string' && entityId.length === 36) {
-        updateData.entityId = entityId;
-      } else if (entity && typeof entity === 'string') {
+      // Handle Entity (Prioritize explicit entity/entityCode selection over stale entityId)
+      const targetEntityStr = (entity || entityCode || '').toString().trim();
+      if (targetEntityStr) {
+        const entStr = targetEntityStr.toLowerCase();
         const allEnts = await tx.select().from(entities);
-        const matchedEnt = allEnts.find(
-          (e) =>
-            e.id === entity ||
-            e.code.toLowerCase() === entity.toLowerCase() ||
-            e.name.toLowerCase().includes(entity.toLowerCase()) ||
-            (entity.toLowerCase().includes('ehm') && e.code === 'EHM') ||
-            ((entity.toLowerCase().includes('cag') || entity.toLowerCase().includes('climagro')) && e.code === 'CAG') ||
-            ((entity.toLowerCase().includes('common') || entity.toLowerCase().includes('both')) && (e.code === 'COMMON' || e.name.toLowerCase().includes('common')))
-        );
+        const matchedEnt = allEnts.find((e) => {
+          if (entStr === e.id) return true;
+          if (entStr === 'common' || entStr.includes('common') || entStr.includes('both') || entStr.includes('&')) {
+            return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+          }
+          if (entStr === 'cag' || entStr === 'climagro' || entStr.includes('climagro')) {
+            return e.code === 'CAG';
+          }
+          if (entStr === 'ehm' || (!entStr.includes('&') && entStr.includes('ehm'))) {
+            return e.code === 'EHM';
+          }
+          return e.code.toLowerCase() === entStr || e.name.toLowerCase().includes(entStr);
+        });
         if (matchedEnt) {
           updateData.entityId = matchedEnt.id;
         }
+      } else if (entityId && typeof entityId === 'string' && entityId.length === 36) {
+        updateData.entityId = entityId;
       }
 
       // Handle Lineage Updates (Epic / Sprint reassignment) while keeping taskCode IMMUTABLE

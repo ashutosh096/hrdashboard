@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send } from 'lucide-react';
 import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
@@ -341,6 +341,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   useEffect(() => {
     loadData();
 
+    const handleTaskUpdated = () => {
+      loadData(true);
+    };
+    window.addEventListener('tasks-updated', handleTaskUpdated);
+
     // Silent background refresh every 10s and on tab focus
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible' && !isModalOpen && !selectedTaskToUpdate) {
@@ -359,6 +364,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('tasks-updated', handleTaskUpdated);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
@@ -791,11 +797,16 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
     try {
+      const badge = getEntityBadge(updated);
+      const resolvedEntityLabel = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+      const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
+
       await fetchApi<any>(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           title: updated.title,
-          entity: updated.entity,
+          entity: resolvedEntityLabel,
+          entityCode: resolvedEntityCode,
           assigneeName: updated.assignee,
           assigneeId: updated.assigneeId,
           reviewingLead: updated.reviewingLead,
@@ -811,6 +822,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       });
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
       await loadData();
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
     } catch (err: any) {
       console.error('[SPRINTS TASK PATCH ERROR]:', err);
       toast.error(err?.message || 'Failed to save task update');
@@ -832,11 +844,18 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       createdAt: new Date().toISOString(),
     };
 
+    const sourceBadge = getEntityBadge(sourceTask);
+    const resolvedEntityCode = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM';
+    const resolvedEntityLabel = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CLIMAGRO' : 'EHM';
+
     const clonedTaskObj = {
       id: newId,
       taskCode: newCode,
       title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
       status: 'PLANNED',
+      entityId: sourceTask.entityId,
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
       assigneeId: sourceTask.assigneeId || null,
       assigneeName: sourceTask.assigneeName || sourceTaskItem.assignee || 'Unassigned',
       assigneeEmail: sourceTask.assigneeEmail || '',
@@ -854,16 +873,13 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     setAllTasks(prev => [clonedTaskObj, ...prev]);
 
-    const clonedCode = clonedTaskObj.taskCode || '';
-    const isClonedCommon = clonedCode.startsWith('COMMON') || clonedCode.startsWith('COM-') || sourceTask.entity === 'COMMON';
-    const isClonedCAG = !isClonedCommon && (clonedCode.startsWith('CAG') || sourceTask.entity === 'CLIMAGRO');
-
     setSelectedTaskToUpdate({
       id: clonedTaskObj.id,
       taskId: clonedTaskObj.taskCode,
       taskCode: clonedTaskObj.taskCode,
       title: clonedTaskObj.title,
-      entity: isClonedCommon ? 'COMMON' : isClonedCAG ? 'CLIMAGRO' : 'EHM',
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
       assignee: clonedTaskObj.assigneeName,
       reviewingLead: clonedTaskObj.reviewingLead,
       status: 'In Progress',

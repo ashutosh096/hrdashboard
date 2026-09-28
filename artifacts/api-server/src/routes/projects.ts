@@ -108,9 +108,9 @@ router.get('/', async (req, res) => {
     if (entity && entity !== 'ALL') {
       const entUpper = String(entity).toUpperCase().trim();
       if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
-        conditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO')`);
+        conditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO', 'COMMON')`);
       } else if (entUpper === 'EHM') {
-        conditions.push(sql`UPPER(${projects.entity}) = 'EHM'`);
+        conditions.push(sql`UPPER(${projects.entity}) IN ('EHM', 'COMMON')`);
       }
     }
 
@@ -220,9 +220,9 @@ router.get('/', async (req, res) => {
     if (entity && entity !== 'ALL') {
       const entUpper = String(entity).toUpperCase().trim();
       if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
-        statConditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO')`);
+        statConditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO', 'COMMON')`);
       } else if (entUpper === 'EHM') {
-        statConditions.push(sql`UPPER(${projects.entity}) = 'EHM'`);
+        statConditions.push(sql`UPPER(${projects.entity}) IN ('EHM', 'COMMON')`);
       }
     }
 
@@ -330,8 +330,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Project name is required' });
     }
 
-    const finalEntity = (entity === 'CAG' ? 'CAG' : 'EHM') as 'EHM' | 'CAG';
-    const finalEntityName = entityName || (finalEntity === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy');
+    const finalEntity = (entity === 'CAG' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM') as any;
+    const finalEntityName = entityName || (finalEntity === 'CAG' ? 'climagroanalytics' : finalEntity === 'COMMON' ? 'common' : 'ehmconsultancy');
 
     // Auto-generate guaranteed unique code if code is missing or already exists in DB
     const allExisting = await db.select({ code: projects.code }).from(projects);

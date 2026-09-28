@@ -23,14 +23,31 @@ router.get('/', async (req, res) => {
     const allTasks = await db.select().from(tasks);
     const allEmployees = await db.select().from(employees);
     const allEpics = await db.select().from(epics);
+    const allEntities = await db.select().from(entities);
 
     const enriched = allSprints.map(sprint => {
       const sprintTasks = allTasks.filter(t => t.sprintId === sprint.id);
       const sprintEmp = allEmployees.find(e => e.id === sprint.employeeId);
       const sprintEpic = allEpics.find(e => e.id === sprint.epicId);
+      const sprintEntity = allEntities.find(ent => ent.id === (sprint.entityId || sprintEmp?.entityId));
+      const resolvedEntity = sprintEntity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : sprintEntity?.code === 'COMMON'
+        ? 'COMMON'
+        : sprintEntity?.code === 'EHM'
+        ? 'EHM'
+        : sprint.sprintCode?.startsWith('CAG')
+        ? 'CLIMAGRO'
+        : (sprint.sprintCode?.startsWith('COMMON') || sprint.sprintCode?.startsWith('COM-'))
+        ? 'COMMON'
+        : 'EHM';
+      const resolvedCode = sprintEntity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
 
       return {
         ...sprint,
+        entity: resolvedEntity,
+        entityCode: resolvedCode,
+        entityName: sprintEntity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
         tasks: sprintTasks,
         tasksCount: sprintTasks.length,
         employeeName: sprintEmp ? `${sprintEmp.firstName} ${sprintEmp.lastName}` : 'Unassigned',
@@ -152,7 +169,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // PUT /api/sprints/:id - Manager/Admin protected sprint properties update
 router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
-  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId } = req.body;
+  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId, entityId, entity } = req.body;
 
   try {
     const updatePayload: any = {};
@@ -165,6 +182,25 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (department !== undefined) updatePayload.department = department;
     if (epicId !== undefined) updatePayload.epicId = epicId || null;
     if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;
+
+    if (entityId || entity) {
+      const entTarget = String(entityId || entity || '').toLowerCase().trim();
+      const allEnts = await db.select().from(entities);
+      const matched = allEnts.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
+      if (matched) updatePayload.entityId = matched.id;
+    }
 
     const [updated] = await db
       .update(sprints)
@@ -186,7 +222,7 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // Also support PATCH /api/sprints/:id
 router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
-  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId } = req.body;
+  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId, entityId, entity } = req.body;
 
   try {
     const updatePayload: any = {};
@@ -199,6 +235,25 @@ router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (department !== undefined) updatePayload.department = department;
     if (epicId !== undefined) updatePayload.epicId = epicId || null;
     if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;
+
+    if (entityId || entity) {
+      const entTarget = String(entityId || entity || '').toLowerCase().trim();
+      const allEnts = await db.select().from(entities);
+      const matched = allEnts.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
+      if (matched) updatePayload.entityId = matched.id;
+    }
 
     const [updated] = await db
       .update(sprints)

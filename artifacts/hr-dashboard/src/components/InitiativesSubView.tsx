@@ -191,16 +191,16 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
   const handleOpenTaskModal = (taskItem: any) => {
     const code = taskItem.taskCode || taskItem.taskId || taskItem.id || 'CAG-EMP01-001';
-    const isCommon = taskItem.entity === 'COMMON' || taskItem.entityCode === 'COMMON' || code.startsWith('COMMON') || code.startsWith('COM-');
-    const isCAG = !isCommon && (taskItem.entityId === 'cag' || code.startsWith('CAG') || taskItem.entity === 'CLIMAGRO' || taskItem.entityCode === 'CAG');
-    const resolvedEntity = isCommon ? 'COMMON' : isCAG ? 'CLIMAGRO' : 'EHM';
+    const badge = getEntityBadge(taskItem);
+    const resolvedEntity = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+    const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
     setSelectedTaskToView({
       id: taskItem.id || 'tsk-1',
       taskId: code,
       taskCode: code,
       title: taskItem.title || 'Task Deliverable',
       entity: resolvedEntity,
-      entityCode: isCommon ? 'COMMON' : isCAG ? 'CAG' : 'EHM',
+      entityCode: resolvedEntityCode,
       assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
       status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
@@ -214,14 +214,16 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     if (!viewingEpicDetails || !quickTaskTitle.trim()) return;
     try {
       setIsSubmittingQuickTask(true);
-      const isCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG');
+      const epicBadge = getEntityBadge(viewingEpicDetails);
+      const isCAG = epicBadge.isCAG;
+      const isCommon = epicBadge.isCommon;
       const created = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
           title: quickTaskTitle.trim(),
           epicId: viewingEpicDetails.id,
           initiativeId: viewingEpicDetails.initiativeId || viewingInitiative?.id,
-          entityCode: isCAG ? 'CAG' : 'EHM',
+          entityCode: isCommon ? 'COMMON' : isCAG ? 'CAG' : 'EHM',
           department: viewingEpicDetails.department || 'Operations & Delivery',
           status: 'BACKLOG',
           priority: 'P3',

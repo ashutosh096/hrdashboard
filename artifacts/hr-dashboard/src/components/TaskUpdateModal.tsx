@@ -320,12 +320,15 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
     if (onSave) {
       try {
         setIsSavingTask(true);
+        const resolvedCode = entity === 'CLIMAGRO' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM';
         await onSave({
           ...task,
           taskId: parentTaskId,
           taskCode: parentTaskId,
           title: taskName,
           entity,
+          entityCode: resolvedCode,
+          entityId: undefined,
           assignee,
           assigneeId,
           reviewingLead,
