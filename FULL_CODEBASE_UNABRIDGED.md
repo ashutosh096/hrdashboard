@@ -1,6 +1,6 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-28T16:20:47.700Z
+> Generated on: 2026-09-28T16:26:31.344Z
 > Total Source Files Included: 201
 
 ## Table of Contents
@@ -79508,7 +79508,11 @@ import fs from 'node:fs';
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('[FATAL] DATABASE_URL is not set.');
+  process.exit(1);
+}
 const client = new pg.Client({ connectionString });
 await client.connect();
 
@@ -79573,7 +79577,11 @@ import path from 'node:path';
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('[FATAL] DATABASE_URL is not set.');
+  process.exit(1);
+}
 const client = new pg.Client({ connectionString });
 await client.connect();
 
@@ -90649,7 +90657,24 @@ import path from 'node:path';
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
+// SAFETY: this script must ONLY run against a local DB copy, never the live Supabase instance.
+// Set LOCAL_TEST_DB_URL to point to your local Postgres (e.g. postgresql://postgres@localhost:5432/hrdash_test).
+const connectionString = process.env.LOCAL_TEST_DB_URL;
+
+if (!connectionString) {
+  console.error('[FATAL] LOCAL_TEST_DB_URL is not set. This script must target a local DB copy only.');
+  console.error('        Set LOCAL_TEST_DB_URL=postgresql://user@localhost:5432/your_local_db and retry.');
+  process.exit(1);
+}
+
+const LIVE_SUPABASE_HOST = 'supabase.com';
+if (connectionString.includes(LIVE_SUPABASE_HOST)) {
+  console.error('[FATAL] LOCAL_TEST_DB_URL appears to point to the live Supabase instance.');
+  console.error('        This script refuses to run against production. Use a local DB copy.');
+  process.exit(1);
+}
+
+console.log('[INFO] LOCAL_TEST_DB_URL is set and does not match live Supabase host. Proceeding.');
 const client = new pg.Client({ connectionString });
 await client.connect();
 
@@ -90830,7 +90855,11 @@ import path from 'node:path';
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../../artifacts/api-server/.env') });
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.qlnghemivzcyazvtndhv:Hrdash%40123%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('[FATAL] DATABASE_URL is not set.');
+  process.exit(1);
+}
 const client = new pg.Client({ connectionString });
 await client.connect();
 
