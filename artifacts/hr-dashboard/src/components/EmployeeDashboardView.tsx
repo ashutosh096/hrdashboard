@@ -46,6 +46,7 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchApi } from '@workspace/api-client-react';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
@@ -181,7 +182,7 @@ export const EmployeeDashboardView: React.FC = () => {
   const [plannedTomorrow, setPlannedTomorrow] = useState('');
   const [blockers, setBlockers] = useState('');
 
-  const loadData = async () => {
+  const loadData = async (_silent = false) => {
     try {
       const [empData, tasksData, meetingsData, sprintsData] = await Promise.all([
         fetchApi<any[]>('/api/employees').catch(() => []),

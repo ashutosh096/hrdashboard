@@ -7,10 +7,24 @@ dist/
 build/
 *.log
 
-# Environment variables & secrets
+# Environment variables & secrets (exclude .env.example which is safe)
 .env
 .env.local
 .env.production
+.env.development
+*/.env
+*/.env.local
+*/.env.production
+*/.env.development
+
+# Generated database backups & large exports (contain credentials / PII)
+DATABASE_BACKUP.json
+DATABASE_BACKUP.md
+DATABASE_BACKUP.sql
+DATABASE_BACKUP_AFTER.json
+DATABASE_BACKUP_BEFORE.json
+FULL_CODEBASE_UNABRIDGED.md
+migration_mapping_step2.*
 
 # IDE & System
 .DS_Store
