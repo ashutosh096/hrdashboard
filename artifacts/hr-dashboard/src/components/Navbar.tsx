@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles, ArrowRight, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
@@ -87,23 +87,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const getNotificationTarget = (n: any) => {
     const payload = n.payload || {};
-    let taskCode = payload.taskCode || null;
-    if (!taskCode) {
-      const match = (n.title || '').match(/\[([A-Z0-9_-]+)\]/i) || (n.message || '').match(/\[([A-Z0-9_-]+)\]/i);
-      if (match) taskCode = match[1];
-    }
+    const type = n.type || '';
+    const taskCode = payload.taskCode || null;
     const taskId = payload.taskId || null;
-    const isSprint = Boolean(
-      payload.sprintId ||
-      n.type?.includes('SPRINT') ||
-      (taskCode && (taskCode.includes('SPR') || taskCode.includes('-SP-') || taskCode.includes('-S-')))
-    );
-    const isMeeting = Boolean(payload.meetingId || n.type?.includes('MEETING'));
-    const isAnnouncement = Boolean(payload.announcementId || n.type?.includes('ANNOUNCEMENT'));
+    const isSprint = Boolean(payload.sprintId || type.includes('SPRINT'));
+    const isMeeting = Boolean(payload.meetingId || type.includes('MEETING'));
+    const isAnnouncement = Boolean(payload.announcementId || type.includes('ANNOUNCEMENT'));
 
     let label = 'Details';
     if (isSprint) label = 'Sprint Task';
-    else if (taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')) label = 'Task';
+    else if (taskId || taskCode || type.includes('TASK') || type.includes('DELAY')) label = 'Task';
     else if (isMeeting) label = 'Meeting';
     else if (isAnnouncement) label = 'Announcement';
 
@@ -113,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       isSprint,
       isMeeting,
       isAnnouncement,
-      isTask: Boolean(taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')),
+      isTask: Boolean(taskId || taskCode || type.includes('TASK') || type.includes('DELAY')),
       label,
     };
   };
@@ -164,7 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         if (taskData && taskData.id) {
           const resolvedCode = taskData.taskCode || taskData.taskId || target.taskCode || target.taskId || '';
-          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || (resolvedCode.startsWith('CAG') ? 'CLIMAGRO' : resolvedCode.startsWith('COMMON') || resolvedCode.startsWith('COM-') ? 'COMMON' : 'EHM');
+          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || 'EHM';
 
           setSelectedTaskForModal({
             ...taskData,

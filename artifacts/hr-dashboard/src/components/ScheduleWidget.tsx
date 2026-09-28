@@ -43,7 +43,7 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
               return {
                 id: t.id,
                 title: `${t.taskCode}: ${t.title}`,
-                entity: t.taskCode.startsWith('CAG') ? 'CAG' : 'EHM',
+                entity: (t.entityCode || t.entity) === 'CAG' ? 'CAG' : 'EHM',
                 rank,
                 badge,
                 badgeColor,

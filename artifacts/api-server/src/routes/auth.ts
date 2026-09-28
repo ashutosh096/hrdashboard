@@ -399,18 +399,14 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
       });
     }
 
-    // Resolve details
+    // Resolve details strictly from stored data
     if (matchingEmployee) {
       employeeId = matchingEmployee.id;
-      const code = (matchingEmployee.employeeCode || '').toUpperCase();
-      if (code.includes('ADM')) assignedRole = 'ADMIN';
-      else if (code.includes('MGR')) assignedRole = 'MANAGER';
-      else assignedRole = 'EMPLOYEE';
     }
 
     if (matchingInvite) {
       inviteRecordId = matchingInvite.id;
-      if (!assignedRole && matchingInvite.role) {
+      if (matchingInvite.role) {
         assignedRole = matchingInvite.role as any;
       }
       if (!employeeId && matchingInvite.employeeId) {

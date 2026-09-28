@@ -42,12 +42,6 @@ router.get('/', async (req, res) => {
         ? 'CLIMAGRO'
         : entity?.code === 'COMMON'
         ? 'COMMON'
-        : entity?.code === 'EHM'
-        ? 'EHM'
-        : init.initiativeCode.startsWith('CAG')
-        ? 'CLIMAGRO'
-        : (init.initiativeCode.startsWith('COMMON') || init.initiativeCode.startsWith('COM-'))
-        ? 'COMMON'
         : 'EHM';
       const resolvedCode = entity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
 

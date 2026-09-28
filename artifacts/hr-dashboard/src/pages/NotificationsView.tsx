@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { formatDateTime } from '../utils/dateUtils';
 import { fetchApi, clearApiCache } from '@workspace/api-client-react';
@@ -69,23 +69,16 @@ export const NotificationsView: React.FC = () => {
 
   const getNotificationTarget = (n: any) => {
     const payload = n.payload || {};
-    let taskCode = payload.taskCode || null;
-    if (!taskCode) {
-      const match = (n.title || '').match(/\[([A-Z0-9_-]+)\]/i) || (n.message || '').match(/\[([A-Z0-9_-]+)\]/i);
-      if (match) taskCode = match[1];
-    }
+    const type = n.type || '';
+    const taskCode = payload.taskCode || null;
     const taskId = payload.taskId || null;
-    const isSprint = Boolean(
-      payload.sprintId ||
-      n.type?.includes('SPRINT') ||
-      (taskCode && (taskCode.includes('SPR') || taskCode.includes('-SP-') || taskCode.includes('-S-')))
-    );
-    const isMeeting = Boolean(payload.meetingId || n.type?.includes('MEETING'));
-    const isAnnouncement = Boolean(payload.announcementId || n.type?.includes('ANNOUNCEMENT'));
+    const isSprint = Boolean(payload.sprintId || type.includes('SPRINT'));
+    const isMeeting = Boolean(payload.meetingId || type.includes('MEETING'));
+    const isAnnouncement = Boolean(payload.announcementId || type.includes('ANNOUNCEMENT'));
 
     let label = 'Details';
     if (isSprint) label = 'Sprint Task';
-    else if (taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')) label = 'Task';
+    else if (taskId || taskCode || type.includes('TASK') || type.includes('DELAY')) label = 'Task';
     else if (isMeeting) label = 'Meeting';
     else if (isAnnouncement) label = 'Announcement';
 
@@ -95,7 +88,7 @@ export const NotificationsView: React.FC = () => {
       isSprint,
       isMeeting,
       isAnnouncement,
-      isTask: Boolean(taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')),
+      isTask: Boolean(taskId || taskCode || type.includes('TASK') || type.includes('DELAY')),
       label,
     };
   };
@@ -137,7 +130,7 @@ export const NotificationsView: React.FC = () => {
 
         if (taskData && taskData.id) {
           const resolvedCode = taskData.taskCode || taskData.taskId || target.taskCode || target.taskId || '';
-          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || (resolvedCode.startsWith('CAG') ? 'CLIMAGRO' : resolvedCode.startsWith('COMMON') || resolvedCode.startsWith('COM-') ? 'COMMON' : 'EHM');
+          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || 'EHM';
 
           setSelectedTaskForModal({
             ...taskData,

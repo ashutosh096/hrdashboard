@@ -380,7 +380,7 @@ export const TasksView: React.FC = () => {
       entityCode: resolvedEntityCode,
       entityId: sourceTask.entityId,
       status: 'BACKLOG',
-      parentEpicCode: sourceTask.parentEpicCode || 'CAG-EPIC-001',
+      parentEpicCode: sourceTask.parentEpicCode || '',
       parentEpicTitle: sourceTask.parentEpicTitle || 'Parent Epic Details',
       priority: sourceTask.priority || 'P3',
       description: sourceTask.description || sourceTaskItem.notes || '',
@@ -431,8 +431,8 @@ export const TasksView: React.FC = () => {
   };
 
   const renderTaskRow = (t: any) => {
-    const isCAG = t.entityCode === 'CAG' || (t.taskCode || '').startsWith('CAG');
-    const entityLabel = isCAG ? 'CLIMAGRO' : 'EHM';
+    const isCAG = t.entityCode === 'CAG';
+    const entityLabel = t.entityCode === 'COMMON' ? 'EHM & CLIMAGRO' : isCAG ? 'CLIMAGRO' : 'EHM';
     const postedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '23 Sept';
 
     const p = (t.priority || '').toUpperCase();
@@ -965,7 +965,7 @@ export const TasksView: React.FC = () => {
               {(() => {
                 const parentInit = (initiatives || []).find((i: any) => i.id === viewingEpicInTasks.initiativeId || i.initiativeCode === viewingEpicInTasks.initiativeId);
                 const parentTitle = parentInit?.title || 'Initiative';
-                const isCAG = (viewingEpicInTasks.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const isCAG = viewingEpicInTasks.entityCode === 'CAG';
                 const rawStatus = viewingEpicInTasks.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -1070,7 +1070,7 @@ export const TasksView: React.FC = () => {
 
               {/* Linked Tasks Section with Progress Bar */}
               {(() => {
-                const isEpicCAG = (viewingEpicInTasks.epicCode || '').startsWith('CAG');
+                const isEpicCAG = viewingEpicInTasks.entityCode === 'CAG';
                 const linkedTasks = tasks.filter((t: any) => t.epicId === viewingEpicInTasks.id || t.parentEpicCode === viewingEpicInTasks.epicCode);
                 const targetTasksCount = Math.max(linkedTasks.length, 3);
                 const doneCount = linkedTasks.filter((t: any) => t.status === 'DONE' || t.status === 'Done' || t.status === 'COMPLETED').length;
@@ -1096,9 +1096,7 @@ export const TasksView: React.FC = () => {
                     {/* Tasks List */}
                     <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
                       {linkedTasks.map((taskItem: any, idx: number) => {
-                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                          : (taskItem.taskCode || 'TSK-001');
+                        const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';

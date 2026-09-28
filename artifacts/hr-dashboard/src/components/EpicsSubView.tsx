@@ -203,7 +203,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     const targetEpic = taskAssignEpic || viewingEpic;
     if (!targetEpic) return;
     try {
-      const isEpicCAG = (targetEpic.epicCode || '').startsWith('CAG');
+      const isEpicCAG = (targetEpic.entityCode || targetEpic.entity) === 'CAG';
       const created = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
@@ -237,7 +237,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     if (!viewingEpic || !quickTaskTitle.trim()) return;
     try {
       setIsSubmittingQuickTask(true);
-      const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
+      const isEpicCAG = (viewingEpic.entityCode || viewingEpic.entity) === 'CAG';
       const created = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
@@ -939,7 +939,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId || i.initiativeCode === viewingEpic.initiativeId);
                 const parentProj = projects.find((p) => p.id === viewingEpic.projectId || p.code === viewingEpic.projectId);
-                const isCAG = (viewingEpic.epicCode || '').startsWith('CAG') || (parentInit?.initiativeCode || '').startsWith('CAG') || (parentProj?.entity === 'CAG');
+                const isCAG = (viewingEpic.entityCode || viewingEpic.entity) === 'CAG' || (parentInit?.entityCode || parentInit?.entity) === 'CAG' || (parentProj?.entity === 'CAG');
                 const rawStatus = viewingEpic.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -1090,7 +1090,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
               {/* Linked Tasks Section with Progress Bar */}
               {(() => {
-                const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
+                const isEpicCAG = (viewingEpic.entityCode || viewingEpic.entity) === 'CAG';
                 const combined = [
                   ...(viewingEpic.tasks || []),
                   ...allTasks.filter((t: any) => t.epicId === viewingEpic.id || t.parentEpicCode === viewingEpic.epicCode)
@@ -1160,9 +1160,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     {/* Tasks List */}
                     <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
                       {linkedTasks.map((taskItem: any, idx: number) => {
-                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                          : (taskItem.taskCode || 'TSK-001');
+                        const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
@@ -2076,7 +2074,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         }}
         onSubmit={handleCreateTaskForEpic}
         initialEpicId={taskAssignEpic?.id || viewingEpic?.id}
-        initialEntityId={(taskAssignEpic?.epicCode || viewingEpic?.epicCode || '').startsWith('CAG') ? 'CAG' : 'EHM'}
+        initialEntityId={(taskAssignEpic?.entityCode || taskAssignEpic?.entity || viewingEpic?.entityCode || viewingEpic?.entity) === 'CAG' ? 'CAG' : 'EHM'}
         initialDepartment={taskAssignEpic?.department || viewingEpic?.department || 'Operations & Delivery'}
       />
     </div>

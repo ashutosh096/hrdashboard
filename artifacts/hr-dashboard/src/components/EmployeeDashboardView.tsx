@@ -144,7 +144,7 @@ export const EmployeeDashboardView: React.FC = () => {
       return;
     }
 
-    const entityCode = activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM';
+    const entityCode = activeEmployee?.entityCode || (activeEmployee as any)?.entity || 'EHM';
     const targetEmpId = activeEmployee?.id || user?.employeeId || user?.id;
 
     try {
@@ -504,7 +504,7 @@ export const EmployeeDashboardView: React.FC = () => {
     name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member',
     role: emp.designation || 'Specialist',
     dept: emp.departmentName || 'Engineering',
-    entity: emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM',
+    entity: emp.entityCode || (emp as any).entity || 'EHM',
     status: 'Active',
   }));
 

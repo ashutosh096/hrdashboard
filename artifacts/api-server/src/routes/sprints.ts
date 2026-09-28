@@ -34,12 +34,6 @@ router.get('/', async (req, res) => {
         ? 'CLIMAGRO'
         : sprintEntity?.code === 'COMMON'
         ? 'COMMON'
-        : sprintEntity?.code === 'EHM'
-        ? 'EHM'
-        : sprint.sprintCode?.startsWith('CAG')
-        ? 'CLIMAGRO'
-        : (sprint.sprintCode?.startsWith('COMMON') || sprint.sprintCode?.startsWith('COM-'))
-        ? 'COMMON'
         : 'EHM';
       const resolvedCode = sprintEntity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
 
@@ -81,10 +75,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       const [entity] = await tx.select().from(entities).where(eq(entities.id, emp.entityId));
       if (!entity) throw new Error('Entity not found');
 
-      const entityCode = entity.code; // "EHM" or "CAG"
-      const empShortCode = emp.employeeCode.replace(/^[^-]+-/, ''); // "EMP01"
-
-      // 2. Concurrency-safe atomic counter for Sprint sequence
+      // Atomic counter for Sprint sequence
       await tx
         .insert(entityCounters)
         .values({ entityId: emp.entityId, nextSprintSeq: 1 })
@@ -101,15 +92,15 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         const match = String(targetWeek).match(/\d+/);
         if (match) weekNum = match[0];
       }
-      const empCodeFormatted = emp.employeeCode.replace('-EMP', '-E');
-      let sprintCode = `${empCodeFormatted}-W${weekNum}`;
+      const empCode = (emp.employeeCode || 'EHM-E01').replace('-EMP', '-E');
+      let sprintCode = `${empCode}-W${weekNum}`;
       const [existingWithCode] = await tx
         .select({ id: sprints.id })
         .from(sprints)
         .where(eq(sprints.sprintCode, sprintCode))
         .limit(1);
       if (existingWithCode) {
-        sprintCode = `${empCodeFormatted}-W${weekNum}-${counter?.nextSprintSeq || Date.now().toString().slice(-4)}`;
+        sprintCode = `${empCode}-W${weekNum}-${counter?.nextSprintSeq || Date.now().toString().slice(-4)}`;
       }
 
       // 3. Insert Personal Sprint

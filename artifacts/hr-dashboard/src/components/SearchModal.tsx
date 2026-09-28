@@ -201,7 +201,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
       const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim() || 'Team Member';
       const roleType = (e.role || 'EMPLOYEE').toUpperCase();
       const roleBadge = roleType === 'ADMIN' ? 'Admin' : roleType === 'MANAGER' ? 'Manager' : (e.designation || 'Specialist');
-      const entityStr = e.entityCode || (e.employeeCode?.startsWith('CAG') ? 'CLIMAGRO' : 'EHM');
+      const entityStr = (e.entityCode || (e as any).entity) === 'CAG' ? 'CLIMAGRO' : 'EHM';
 
       return {
         id: `emp-${e.id}`,

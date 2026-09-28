@@ -88,24 +88,13 @@ router.get('/', async (req: Request, res: Response) => {
       const userRole = userMapByEmpId.get(emp.id) || userMapByEmail.get(emailLower);
       const inviteRole = inviteMapByEmpId.get(emp.id) || inviteMapByEmail.get(emailLower);
 
-      let resolvedRole = userRole || inviteRole;
-      if (!resolvedRole) {
-        if (emailLower === 'admin@example.com' || emailLower.startsWith('admin@')) {
-          resolvedRole = 'ADMIN';
-        } else if (emp.employeeCode && (emp.employeeCode.includes('-ADM') || emp.employeeCode.includes('ADM'))) {
-          resolvedRole = 'ADMIN';
-        } else if (emp.employeeCode && (emp.employeeCode.includes('-MGR') || emp.employeeCode.includes('MGR'))) {
-          resolvedRole = 'MANAGER';
-        } else {
-          resolvedRole = 'EMPLOYEE';
-        }
-      }
+      const resolvedRole = userRole || inviteRole || 'EMPLOYEE';
 
       // Explicitly omit salary field
       const { salary: _omitSalary, ...safeEmp } = emp;
 
       const ent = entityMap.get(emp.entityId);
-      const entityCode = ent ? ent.code : (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
+      const entityCode = ent?.code || 'EHM';
 
       return {
         ...safeEmp,
@@ -200,31 +189,19 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
       const rolePrefix = isAdm ? 'ADM' : isMgr ? 'MGR' : 'EMP';
       const prefix = `${resEntityCode}-${rolePrefix}`;
 
-      const allExisting = await tx
-        .select({ employeeCode: employees.employeeCode })
-        .from(employees)
-        .where(eq(employees.entityId, targetEntityId));
-
-      let maxNum = 0;
-      for (const e of allExisting) {
-        if (e.employeeCode && e.employeeCode.startsWith(prefix)) {
-          const numPart = parseInt(e.employeeCode.slice(prefix.length), 10);
-          if (!isNaN(numPart) && numPart > maxNum) {
-            maxNum = numPart;
-          }
-        }
-      }
-
-      const seq = maxNum + 1;
-      const employeeCode = `${prefix}${String(seq).padStart(2, '0')}`;
-
       await tx
         .insert(entityCounters)
-        .values({ entityId: targetEntityId, nextEmployeeSeq: seq + 1 })
-        .onConflictDoUpdate({
-          target: entityCounters.entityId,
-          set: { nextEmployeeSeq: seq + 1 },
-        });
+        .values({ entityId: targetEntityId, nextEmployeeSeq: 1 })
+        .onConflictDoNothing();
+
+      const [counter] = await tx
+        .update(entityCounters)
+        .set({ nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` })
+        .where(eq(entityCounters.entityId, targetEntityId))
+        .returning();
+
+      const seq = counter?.nextEmployeeSeq ? counter.nextEmployeeSeq - 1 : 1;
+      const employeeCode = `${prefix}${String(seq).padStart(2, '0')}`;
 
       let targetDeptId = departmentId;
       if (!targetDeptId && departmentName) {
@@ -525,21 +502,21 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     const codePrefix = finalEntityCode === 'COMMON' ? 'COM' : finalEntityCode;
     const expectedPrefix = `${codePrefix}-${roleCode}`;
 
-    if (!emp.employeeCode || !emp.employeeCode.startsWith(expectedPrefix)) {
-      const allExisting = await db
-        .select({ employeeCode: employees.employeeCode })
-        .from(employees)
-        .where(eq(employees.entityId, finalEntityId));
-      let maxNum = 0;
-      for (const e of allExisting) {
-        if (e.employeeCode && e.employeeCode.startsWith(expectedPrefix)) {
-          const numPart = parseInt(e.employeeCode.slice(expectedPrefix.length), 10);
-          if (!isNaN(numPart) && numPart > maxNum) {
-            maxNum = numPart;
-          }
-        }
-      }
-      const seq = maxNum + 1;
+    const entityChanged = finalEntityId !== emp.entityId;
+    const roleChanged = effectiveRole !== (targetUser?.role || 'EMPLOYEE');
+    if (!emp.employeeCode || entityChanged || roleChanged) {
+      await db
+        .insert(entityCounters)
+        .values({ entityId: finalEntityId, nextEmployeeSeq: 1 })
+        .onConflictDoNothing();
+
+      const [counter] = await db
+        .update(entityCounters)
+        .set({ nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` })
+        .where(eq(entityCounters.entityId, finalEntityId))
+        .returning();
+
+      const seq = counter?.nextEmployeeSeq ? counter.nextEmployeeSeq - 1 : 1;
       updateData.employeeCode = `${expectedPrefix}${String(seq).padStart(2, '0')}`;
     }
 

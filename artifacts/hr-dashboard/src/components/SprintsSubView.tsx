@@ -312,7 +312,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           ? t.reviewingLead
           : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Manager lead');
 
-        const epicCode = t.epicCode || parentEpic?.epicCode || (t.taskCode?.startsWith('CAG') ? 'CAG-EPIC-001' : 'EHM-EPIC-001');
+        const epicCode = t.epicCode || parentEpic?.epicCode || '';
 
         return {
           ...t,
@@ -688,9 +688,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       console.warn('[BACKEND SPRINT API NOTICE]: Using local sprint task state fallback.', err);
     }
 
-    if (sprintEntity === 'CAG' && createdCode.startsWith('TSK-')) {
-      createdCode = createdCode.replace(/^TSK-/, 'CAG-TSK-');
-    }
+
 
     const assignedEmpNames = selectedEmpIds
       .map(id => {
@@ -1338,7 +1336,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       });
 
                       return sortedColumnTasks.map(t => {
-                        const entityName = (t.taskCode || '').startsWith('CAG') || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
+                        const entityName = t.entityCode === 'CAG' || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
                         const assignedEmp = employees.find(e => e.id === t.assigneeId || e.employeeCode === t.assigneeId);
                         const leadEmp = employees.find(e => e.id === t.reviewingLeadId || e.employeeCode === t.reviewingLeadId);
 
@@ -1354,7 +1352,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           assigneeInitials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0].slice(0, 2);
                         }
 
-                        const epicCode = t.epicCode || t.epicTitle || (entityName === 'Climagro' ? 'CAG-EPIC-001' : 'EHM-EPIC-001');
+                        const epicCode = t.epicCode || t.epicTitle || '';
 
                         let dueDateInfo = null;
                         if (t.dueDate) {

@@ -230,15 +230,9 @@ export async function enrichTasks(tasksList: any[]) {
         ? 'CLIMAGRO'
         : entity?.code === 'COMMON'
         ? 'COMMON'
-        : entity?.code === 'EHM'
-        ? 'EHM'
-        : t.taskCode?.startsWith('CAG')
-        ? 'CLIMAGRO'
-        : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-'))
-        ? 'COMMON'
         : 'EHM',
-      entityCode: entity?.code || (t.taskCode?.startsWith('CAG') ? 'CAG' : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-')) ? 'COMMON' : 'EHM'),
-      entityName: entity?.name || (t.taskCode?.startsWith('CAG') ? 'Climagro Analytics' : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-')) ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+      entityCode: entity?.code || 'EHM',
+      entityName: entity?.name || (entity?.code === 'CAG' ? 'Climagro Analytics' : entity?.code === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
     };
   });
 }

@@ -82,7 +82,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
 
   const employeeAnalytics: EmployeeAnalytics[] = employees
     .map((emp) => {
-      const empEntity = (emp.employeeCode || '').startsWith('CAG') ? 'CAG' : 'EHM';
+      const empEntity = (emp.entityCode || (emp as any).entity) === 'CAG' ? 'CAG' : 'EHM';
       let empTasks = tasks.filter((t) => t.assigneeId === emp.id);
 
       // Month Filter Modulation

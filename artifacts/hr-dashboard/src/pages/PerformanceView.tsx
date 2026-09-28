@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -116,7 +116,7 @@ export const PerformanceView: React.FC = () => {
 
   const processedEmployees: ProcessedEmployee[] = employees
     .map((emp, index) => {
-      const entity = (emp.employeeCode || '').startsWith('CAG') ? 'CAG' : 'EHM';
+      const entity = (emp.entityCode || emp.entity) === 'CAG' ? 'CAG' : 'EHM';
       const empTasks = tasks.filter((t) => t.assigneeId === emp.id);
 
       const assigned = empTasks.length;

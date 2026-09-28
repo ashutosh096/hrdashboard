@@ -32,12 +32,6 @@ router.get('/', async (req, res) => {
         ? 'CLIMAGRO'
         : epicEntity?.code === 'COMMON'
         ? 'COMMON'
-        : epicEntity?.code === 'EHM'
-        ? 'EHM'
-        : epic.epicCode?.startsWith('CAG')
-        ? 'CLIMAGRO'
-        : (epic.epicCode?.startsWith('COMMON') || epic.epicCode?.startsWith('COM-'))
-        ? 'COMMON'
         : 'EHM';
       const resolvedEntityCode = epicEntity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
 
@@ -253,12 +247,6 @@ async function handleEpicUpdate(req: any, res: any) {
     const resolvedEntity = entRow?.code === 'CAG'
       ? 'CLIMAGRO'
       : entRow?.code === 'COMMON'
-      ? 'COMMON'
-      : entRow?.code === 'EHM'
-      ? 'EHM'
-      : updated.epicCode?.startsWith('CAG')
-      ? 'CLIMAGRO'
-      : (updated.epicCode?.startsWith('COMMON') || updated.epicCode?.startsWith('COM-'))
       ? 'COMMON'
       : 'EHM';
 

@@ -1,7 +1,7 @@
 # 📦 EHM-CLIMAGRO OS — FULL UNABRIDGED CODEBASE DUMP
 
-> Generated on: 2026-09-27T20:18:39.917Z
-> Total Source Files Included: 176
+> Generated on: 2026-09-28T09:01:35.414Z
+> Total Source Files Included: 177
 
 ## Table of Contents
 
@@ -55,6 +55,7 @@
 - [artifacts/api-server/src/routes/reports.ts](#file-artifacts-api-server-src-routes-reports-ts)
 - [artifacts/api-server/src/routes/sprints.ts](#file-artifacts-api-server-src-routes-sprints-ts)
 - [artifacts/api-server/src/routes/tasks.ts](#file-artifacts-api-server-src-routes-tasks-ts)
+- [artifacts/api-server/src/run_comparison_real.ts](#file-artifacts-api-server-src-run_comparison_real-ts)
 - [artifacts/api-server/src/run_full_audit.ts](#file-artifacts-api-server-src-run_full_audit-ts)
 - [artifacts/api-server/src/seed_projects.ts](#file-artifacts-api-server-src-seed_projects-ts)
 - [artifacts/api-server/src/services/calendar-sync.ts](#file-artifacts-api-server-src-services-calendar-sync-ts)
@@ -39179,18 +39180,14 @@ router.post('/accept-invite', async (req: Request, res: Response) => {
       });
     }
 
-    // Resolve details
+    // Resolve details strictly from stored data
     if (matchingEmployee) {
       employeeId = matchingEmployee.id;
-      const code = (matchingEmployee.employeeCode || '').toUpperCase();
-      if (code.includes('ADM')) assignedRole = 'ADMIN';
-      else if (code.includes('MGR')) assignedRole = 'MANAGER';
-      else assignedRole = 'EMPLOYEE';
     }
 
     if (matchingInvite) {
       inviteRecordId = matchingInvite.id;
-      if (!assignedRole && matchingInvite.role) {
+      if (matchingInvite.role) {
         assignedRole = matchingInvite.role as any;
       }
       if (!employeeId && matchingInvite.employeeId) {
@@ -39932,24 +39929,13 @@ router.get('/', async (req: Request, res: Response) => {
       const userRole = userMapByEmpId.get(emp.id) || userMapByEmail.get(emailLower);
       const inviteRole = inviteMapByEmpId.get(emp.id) || inviteMapByEmail.get(emailLower);
 
-      let resolvedRole = userRole || inviteRole;
-      if (!resolvedRole) {
-        if (emailLower === 'admin@example.com' || emailLower.startsWith('admin@')) {
-          resolvedRole = 'ADMIN';
-        } else if (emp.employeeCode && (emp.employeeCode.includes('-ADM') || emp.employeeCode.includes('ADM'))) {
-          resolvedRole = 'ADMIN';
-        } else if (emp.employeeCode && (emp.employeeCode.includes('-MGR') || emp.employeeCode.includes('MGR'))) {
-          resolvedRole = 'MANAGER';
-        } else {
-          resolvedRole = 'EMPLOYEE';
-        }
-      }
+      const resolvedRole = userRole || inviteRole || 'EMPLOYEE';
 
       // Explicitly omit salary field
       const { salary: _omitSalary, ...safeEmp } = emp;
 
       const ent = entityMap.get(emp.entityId);
-      const entityCode = ent ? ent.code : (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
+      const entityCode = ent?.code || 'EHM';
 
       return {
         ...safeEmp,
@@ -40044,31 +40030,19 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Re
       const rolePrefix = isAdm ? 'ADM' : isMgr ? 'MGR' : 'EMP';
       const prefix = `${resEntityCode}-${rolePrefix}`;
 
-      const allExisting = await tx
-        .select({ employeeCode: employees.employeeCode })
-        .from(employees)
-        .where(eq(employees.entityId, targetEntityId));
-
-      let maxNum = 0;
-      for (const e of allExisting) {
-        if (e.employeeCode && e.employeeCode.startsWith(prefix)) {
-          const numPart = parseInt(e.employeeCode.slice(prefix.length), 10);
-          if (!isNaN(numPart) && numPart > maxNum) {
-            maxNum = numPart;
-          }
-        }
-      }
-
-      const seq = maxNum + 1;
-      const employeeCode = `${prefix}${String(seq).padStart(2, '0')}`;
-
       await tx
         .insert(entityCounters)
-        .values({ entityId: targetEntityId, nextEmployeeSeq: seq + 1 })
-        .onConflictDoUpdate({
-          target: entityCounters.entityId,
-          set: { nextEmployeeSeq: seq + 1 },
-        });
+        .values({ entityId: targetEntityId, nextEmployeeSeq: 1 })
+        .onConflictDoNothing();
+
+      const [counter] = await tx
+        .update(entityCounters)
+        .set({ nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` })
+        .where(eq(entityCounters.entityId, targetEntityId))
+        .returning();
+
+      const seq = counter?.nextEmployeeSeq ? counter.nextEmployeeSeq - 1 : 1;
+      const employeeCode = `${prefix}${String(seq).padStart(2, '0')}`;
 
       let targetDeptId = departmentId;
       if (!targetDeptId && departmentName) {
@@ -40369,21 +40343,21 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     const codePrefix = finalEntityCode === 'COMMON' ? 'COM' : finalEntityCode;
     const expectedPrefix = `${codePrefix}-${roleCode}`;
 
-    if (!emp.employeeCode || !emp.employeeCode.startsWith(expectedPrefix)) {
-      const allExisting = await db
-        .select({ employeeCode: employees.employeeCode })
-        .from(employees)
-        .where(eq(employees.entityId, finalEntityId));
-      let maxNum = 0;
-      for (const e of allExisting) {
-        if (e.employeeCode && e.employeeCode.startsWith(expectedPrefix)) {
-          const numPart = parseInt(e.employeeCode.slice(expectedPrefix.length), 10);
-          if (!isNaN(numPart) && numPart > maxNum) {
-            maxNum = numPart;
-          }
-        }
-      }
-      const seq = maxNum + 1;
+    const entityChanged = finalEntityId !== emp.entityId;
+    const roleChanged = effectiveRole !== (targetUser?.role || 'EMPLOYEE');
+    if (!emp.employeeCode || entityChanged || roleChanged) {
+      await db
+        .insert(entityCounters)
+        .values({ entityId: finalEntityId, nextEmployeeSeq: 1 })
+        .onConflictDoNothing();
+
+      const [counter] = await db
+        .update(entityCounters)
+        .set({ nextEmployeeSeq: sql`${entityCounters.nextEmployeeSeq} + 1` })
+        .where(eq(entityCounters.entityId, finalEntityId))
+        .returning();
+
+      const seq = counter?.nextEmployeeSeq ? counter.nextEmployeeSeq - 1 : 1;
       updateData.employeeCode = `${expectedPrefix}${String(seq).padStart(2, '0')}`;
     }
 
@@ -40544,12 +40518,24 @@ router.get('/', async (req, res) => {
     const allEpics = await query;
     const allSprints = await db.select().from(sprints);
     const allTasks = await db.select().from(tasks);
+    const allEntities = await db.select().from(entities);
 
     const enriched = allEpics.map(epic => {
       const linkedSprints = allSprints.filter(s => s.epicId === epic.id);
       const linkedTasks = allTasks.filter(t => t.epicId === epic.id);
+      const epicEntity = allEntities.find(ent => ent.id === epic.entityId);
+      const resolvedEntity = epicEntity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : epicEntity?.code === 'COMMON'
+        ? 'COMMON'
+        : 'EHM';
+      const resolvedEntityCode = epicEntity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
+
       return {
         ...epic,
+        entity: resolvedEntity,
+        entityCode: resolvedEntityCode,
+        entityName: epicEntity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
         sprintsCount: linkedSprints.length,
         tasksCount: linkedTasks.length,
         sprints: linkedSprints,
@@ -40566,14 +40552,34 @@ router.get('/', async (req, res) => {
 
 // POST /api/epics - Manager protected epic creation with atomic code sequence
 router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const { title, description, initiativeId, projectId, entityId, department, targetWeek, sprintsCountTarget, ownerId, targetDate, status } = req.body;
+  const { title, description, initiativeId, projectId, entityId, entity, entityCode, department, targetWeek, sprintsCountTarget, ownerId, targetDate, status } = req.body;
 
   try {
     const created = await db.transaction(async (tx) => {
       let targetEntityId = entityId;
       let prefixCode = 'EP';
 
-      // 1. Resolve Initiative if provided
+      // 1. Explicit entity provided in request body
+      if (entityId || entity || entityCode) {
+        const entTarget = String(entityId || entity || entityCode).toLowerCase().trim();
+        const allEnts = await tx.select().from(entities);
+        const matched = allEnts.find((e: any) => {
+          if (e.id === entityId) return true;
+          if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+            return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+          }
+          if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+            return e.code === 'CAG';
+          }
+          if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+            return e.code === 'EHM';
+          }
+          return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+        });
+        if (matched) targetEntityId = matched.id;
+      }
+
+      // 2. Resolve Initiative if provided
       if (initiativeId) {
         const [init] = await tx.select().from(initiatives).where(eq(initiatives.id, initiativeId));
         if (init) {
@@ -40582,7 +40588,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         }
       }
 
-      // 2. Resolve Project if provided
+      // 3. Resolve Project if provided
       if (projectId) {
         const [proj] = await tx.select().from(projects).where(eq(projects.id, projectId));
         if (proj) {
@@ -40590,14 +40596,14 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
             prefixCode = proj.code || 'PRJ';
           }
           if (!targetEntityId) {
-            const entCode = proj.entity === 'CAG' ? 'CAG' : 'EHM';
+            const entCode = proj.entity === 'CAG' ? 'CAG' : proj.entity === 'COMMON' ? 'COMMON' : 'EHM';
             const [matchedEnt] = await tx.select().from(entities).where(eq(entities.code, entCode));
             if (matchedEnt) targetEntityId = matchedEnt.id;
           }
         }
       }
 
-      // 3. Fallback entity resolution
+      // 4. Fallback entity resolution
       if (!targetEntityId) {
         const [firstEntity] = await tx.select().from(entities);
         targetEntityId = firstEntity?.id;
@@ -40607,10 +40613,10 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         throw new Error('Could not resolve entity for epic creation');
       }
 
-      const [entity] = await tx.select().from(entities).where(eq(entities.id, targetEntityId));
-      const entityCode = entity?.code || 'EHM';
+      const [entRow] = await tx.select().from(entities).where(eq(entities.id, targetEntityId));
+      const entCode = entRow?.code || 'EHM';
 
-      // 4. Concurrency-safe atomic counter update
+      // 5. Concurrency-safe atomic counter update
       await tx
         .insert(entityCounters)
         .values({ entityId: targetEntityId, nextEpicSeq: 1 })
@@ -40627,10 +40633,18 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       if (prefixCode && prefixCode !== 'EP') {
         epicCode = `${prefixCode}-EP${String(seqNumber).padStart(2, '0')}`;
       } else {
-        epicCode = `${entityCode}-EPIC-${String(seqNumber).padStart(2, '0')}`;
+        epicCode = `${entCode}-EPIC-${String(seqNumber).padStart(2, '0')}`;
       }
 
-      // 5. Insert Epic
+      let resolvedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' = 'PLANNED';
+      if (status) {
+        const s = String(status).toUpperCase();
+        if (['DONE', 'COMPLETED', 'ARCHIVED'].includes(s)) resolvedStatus = 'COMPLETED';
+        else if (['IN_PROGRESS', 'ACTIVE', 'IN PROGRESS'].includes(s)) resolvedStatus = 'IN_PROGRESS';
+        else resolvedStatus = 'PLANNED';
+      }
+
+      // 6. Insert Epic
       const [newEpic] = await tx
         .insert(epics)
         .values({
@@ -40643,13 +40657,18 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           department: department || '',
           targetWeek: targetWeek || 'Week 1 (Days 1–7)',
           sprintsCountTarget: sprintsCountTarget ? Number(sprintsCountTarget) : 2,
-          status: status || 'PLANNED',
+          status: resolvedStatus,
           ownerId: ownerId || null,
           targetDate: targetDate ? new Date(targetDate) : null,
         })
         .returning();
 
-      return newEpic;
+      return {
+        ...newEpic,
+        entity: entCode === 'CAG' ? 'CLIMAGRO' : entCode === 'COMMON' ? 'COMMON' : 'EHM',
+        entityCode: entCode,
+        entityName: entRow?.name || (entCode === 'CAG' ? 'Climagro Analytics' : entCode === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+      };
     });
 
     res.status(201).json(created);
@@ -40659,32 +40678,57 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   }
 });
 
-// PUT /api/epics/:id - Update Epic details
-router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+// Helper for epic updates
+async function handleEpicUpdate(req: any, res: any) {
   const epicId = req.params.id as string;
-  const { title, description, initiativeId, projectId, department, targetWeek, sprintsCountTarget, status } = req.body;
+  if (!epicId || epicId === 'undefined' || epicId === 'null') {
+    return res.status(400).json({ message: 'Valid Epic ID required' });
+  }
+  const { title, description, initiativeId, projectId, entityId, entity, entityCode, department, targetWeek, sprintsCountTarget, status } = req.body;
 
   let mappedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | undefined = undefined;
   if (status !== undefined) {
     const s = String(status).toUpperCase();
     if (['DONE', 'COMPLETED', 'ARCHIVED'].includes(s)) mappedStatus = 'COMPLETED';
-    else if (['IN_PROGRESS', 'ACTIVE'].includes(s)) mappedStatus = 'IN_PROGRESS';
-    else if (s === 'PLANNED') mappedStatus = 'PLANNED';
+    else if (['IN_PROGRESS', 'ACTIVE', 'IN PROGRESS'].includes(s)) mappedStatus = 'IN_PROGRESS';
+    else mappedStatus = 'PLANNED';
   }
 
   try {
+    const updatePayload: any = {};
+    if (title !== undefined) updatePayload.title = title;
+    if (description !== undefined) updatePayload.description = description;
+    if (initiativeId !== undefined) updatePayload.initiativeId = initiativeId || null;
+    if (projectId !== undefined) updatePayload.projectId = projectId || null;
+    if (department !== undefined) updatePayload.department = department;
+    if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek;
+    if (sprintsCountTarget !== undefined) updatePayload.sprintsCountTarget = Number(sprintsCountTarget);
+    if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
+
+    if (entityId || entity || entityCode) {
+      const entTarget = String(entityId || entity || entityCode).toLowerCase().trim();
+      const allEnts = await db.select().from(entities);
+      const matched = allEnts.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
+      if (matched) {
+        updatePayload.entityId = matched.id;
+      }
+    }
+
     const [updated] = await db
       .update(epics)
-      .set({
-        title: title !== undefined ? title : undefined,
-        description: description !== undefined ? description : undefined,
-        initiativeId: initiativeId !== undefined ? (initiativeId || null) : undefined,
-        projectId: projectId !== undefined ? (projectId || null) : undefined,
-        department: department !== undefined ? department : undefined,
-        targetWeek: targetWeek !== undefined ? targetWeek : undefined,
-        sprintsCountTarget: sprintsCountTarget !== undefined ? Number(sprintsCountTarget) : undefined,
-        status: mappedStatus !== undefined ? mappedStatus : undefined,
-      })
+      .set(updatePayload)
       .where(eq(epics.id, epicId))
       .returning();
 
@@ -40692,56 +40736,40 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       return res.status(404).json({ message: 'Epic not found' });
     }
 
-    res.json(updated);
+    const [entRow] = updated.entityId
+      ? await db.select().from(entities).where(eq(entities.id, updated.entityId))
+      : [null];
+
+    const resolvedEntity = entRow?.code === 'CAG'
+      ? 'CLIMAGRO'
+      : entRow?.code === 'COMMON'
+      ? 'COMMON'
+      : 'EHM';
+
+    res.json({
+      ...updated,
+      entity: resolvedEntity,
+      entityCode: entRow?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM'),
+      entityName: entRow?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+    });
   } catch (err: any) {
     console.error('[UPDATE EPIC ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update epic' });
   }
-});
+}
+
+// PUT /api/epics/:id - Update Epic details
+router.put('/:id', requireRole(['ADMIN', 'MANAGER']), handleEpicUpdate);
 
 // PATCH /api/epics/:id - Update Epic details
-router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
-  const epicId = req.params.id as string;
-  const { title, description, initiativeId, projectId, department, targetWeek, sprintsCountTarget, status } = req.body;
-
-  let mappedStatus: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | undefined = undefined;
-  if (status !== undefined) {
-    const s = String(status).toUpperCase();
-    if (['DONE', 'COMPLETED', 'ARCHIVED'].includes(s)) mappedStatus = 'COMPLETED';
-    else if (['IN_PROGRESS', 'ACTIVE'].includes(s)) mappedStatus = 'IN_PROGRESS';
-    else if (s === 'PLANNED') mappedStatus = 'PLANNED';
-  }
-
-  try {
-    const [updated] = await db
-      .update(epics)
-      .set({
-        title: title !== undefined ? title : undefined,
-        description: description !== undefined ? description : undefined,
-        initiativeId: initiativeId !== undefined ? (initiativeId || null) : undefined,
-        projectId: projectId !== undefined ? (projectId || null) : undefined,
-        department: department !== undefined ? department : undefined,
-        targetWeek: targetWeek !== undefined ? targetWeek : undefined,
-        sprintsCountTarget: sprintsCountTarget !== undefined ? Number(sprintsCountTarget) : undefined,
-        status: mappedStatus !== undefined ? mappedStatus : undefined,
-      })
-      .where(eq(epics.id, epicId))
-      .returning();
-
-    if (!updated) {
-      return res.status(404).json({ message: 'Epic not found' });
-    }
-
-    res.json(updated);
-  } catch (err: any) {
-    console.error('[PATCH EPIC ERROR]:', err);
-    res.status(500).json({ message: err.message || 'Failed to update epic' });
-  }
-});
+router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), handleEpicUpdate);
 
 // DELETE /api/epics/:id - Admin protected epic deletion
 router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
   const epicId = req.params.id as string;
+  if (!epicId || epicId === 'undefined' || epicId === 'null') {
+    return res.status(400).json({ message: 'Valid Epic ID required' });
+  }
   try {
     const [epic] = await db.select().from(epics).where(eq(epics.id, epicId));
     if (!epic) {
@@ -40834,10 +40862,18 @@ router.get('/', async (req, res) => {
       const entity = allEntities.find(e => e.id === init.entityId);
       const dept = allDepts.find(d => d.id === init.departmentId);
       const linkedEpics = allEpics.filter(e => e.initiativeId === init.id);
+      const resolvedEntity = entity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : entity?.code === 'COMMON'
+        ? 'COMMON'
+        : 'EHM';
+      const resolvedCode = entity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
+
       return {
         ...init,
-        entityName: (entity?.name || '').toLowerCase().includes('cag') || (entity?.name || '').toLowerCase().includes('climagro') || init.initiativeCode.startsWith('CAG') ? 'CLIMAGRO' : 'EHM',
-        entityCode: entity?.code || (init.initiativeCode.startsWith('CAG') ? 'CAG' : 'EHM'),
+        entity: resolvedEntity,
+        entityName: entity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+        entityCode: resolvedCode,
         departmentName: dept?.name || init.subDepartment || 'Product & Tech',
         epicsCount: linkedEpics.length,
         epics: linkedEpics,
@@ -40941,13 +40977,21 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
 
     if (entityId !== undefined) {
+      const entTarget = String(entityId || '').toLowerCase().trim();
       const allEntities = await db.select().from(entities);
-      let entity = allEntities.find(e =>
-        e.id === entityId ||
-        e.code.toLowerCase() === (entityId || '').toLowerCase() ||
-        ((entityId || '').toLowerCase().includes('ehm') && e.code === 'EHM') ||
-        ((entityId || '').toLowerCase().includes('climagro') && e.code === 'CAG')
-      );
+      let entity = allEntities.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
       if (entity) updatePayload.entityId = entity.id;
     }
 
@@ -40989,13 +41033,21 @@ router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;
 
     if (entityId !== undefined) {
+      const entTarget = String(entityId || '').toLowerCase().trim();
       const allEntities = await db.select().from(entities);
-      let entity = allEntities.find(e =>
-        e.id === entityId ||
-        e.code.toLowerCase() === (entityId || '').toLowerCase() ||
-        ((entityId || '').toLowerCase().includes('ehm') && e.code === 'EHM') ||
-        ((entityId || '').toLowerCase().includes('climagro') && e.code === 'CAG')
-      );
+      let entity = allEntities.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
       if (entity) updatePayload.entityId = entity.id;
     }
 
@@ -41742,9 +41794,9 @@ router.get('/', async (req, res) => {
     if (entity && entity !== 'ALL') {
       const entUpper = String(entity).toUpperCase().trim();
       if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
-        conditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO')`);
+        conditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO', 'COMMON')`);
       } else if (entUpper === 'EHM') {
-        conditions.push(sql`UPPER(${projects.entity}) = 'EHM'`);
+        conditions.push(sql`UPPER(${projects.entity}) IN ('EHM', 'COMMON')`);
       }
     }
 
@@ -41854,9 +41906,9 @@ router.get('/', async (req, res) => {
     if (entity && entity !== 'ALL') {
       const entUpper = String(entity).toUpperCase().trim();
       if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
-        statConditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO')`);
+        statConditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO', 'COMMON')`);
       } else if (entUpper === 'EHM') {
-        statConditions.push(sql`UPPER(${projects.entity}) = 'EHM'`);
+        statConditions.push(sql`UPPER(${projects.entity}) IN ('EHM', 'COMMON')`);
       }
     }
 
@@ -41964,8 +42016,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Project name is required' });
     }
 
-    const finalEntity = (entity === 'CAG' ? 'CAG' : 'EHM') as 'EHM' | 'CAG';
-    const finalEntityName = entityName || (finalEntity === 'CAG' ? 'climagroanalytics' : 'ehmconsultancy');
+    const finalEntity = (entity === 'CAG' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM') as any;
+    const finalEntityName = entityName || (finalEntity === 'CAG' ? 'climagroanalytics' : finalEntity === 'COMMON' ? 'common' : 'ehmconsultancy');
 
     // Auto-generate guaranteed unique code if code is missing or already exists in DB
     const allExisting = await db.select({ code: projects.code }).from(projects);
@@ -42220,14 +42272,25 @@ router.get('/', async (req, res) => {
     const allTasks = await db.select().from(tasks);
     const allEmployees = await db.select().from(employees);
     const allEpics = await db.select().from(epics);
+    const allEntities = await db.select().from(entities);
 
     const enriched = allSprints.map(sprint => {
       const sprintTasks = allTasks.filter(t => t.sprintId === sprint.id);
       const sprintEmp = allEmployees.find(e => e.id === sprint.employeeId);
       const sprintEpic = allEpics.find(e => e.id === sprint.epicId);
+      const sprintEntity = allEntities.find(ent => ent.id === (sprint.entityId || sprintEmp?.entityId));
+      const resolvedEntity = sprintEntity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : sprintEntity?.code === 'COMMON'
+        ? 'COMMON'
+        : 'EHM';
+      const resolvedCode = sprintEntity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
 
       return {
         ...sprint,
+        entity: resolvedEntity,
+        entityCode: resolvedCode,
+        entityName: sprintEntity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
         tasks: sprintTasks,
         tasksCount: sprintTasks.length,
         employeeName: sprintEmp ? `${sprintEmp.firstName} ${sprintEmp.lastName}` : 'Unassigned',
@@ -42261,10 +42324,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       const [entity] = await tx.select().from(entities).where(eq(entities.id, emp.entityId));
       if (!entity) throw new Error('Entity not found');
 
-      const entityCode = entity.code; // "EHM" or "CAG"
-      const empShortCode = emp.employeeCode.replace(/^[^-]+-/, ''); // "EMP01"
-
-      // 2. Concurrency-safe atomic counter for Sprint sequence
+      // Atomic counter for Sprint sequence
       await tx
         .insert(entityCounters)
         .values({ entityId: emp.entityId, nextSprintSeq: 1 })
@@ -42281,15 +42341,15 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         const match = String(targetWeek).match(/\d+/);
         if (match) weekNum = match[0];
       }
-      const empCodeFormatted = emp.employeeCode.replace('-EMP', '-E');
-      let sprintCode = `${empCodeFormatted}-W${weekNum}`;
+      const empCode = (emp.employeeCode || 'EHM-E01').replace('-EMP', '-E');
+      let sprintCode = `${empCode}-W${weekNum}`;
       const [existingWithCode] = await tx
         .select({ id: sprints.id })
         .from(sprints)
         .where(eq(sprints.sprintCode, sprintCode))
         .limit(1);
       if (existingWithCode) {
-        sprintCode = `${empCodeFormatted}-W${weekNum}-${counter?.nextSprintSeq || Date.now().toString().slice(-4)}`;
+        sprintCode = `${empCode}-W${weekNum}-${counter?.nextSprintSeq || Date.now().toString().slice(-4)}`;
       }
 
       // 3. Insert Personal Sprint
@@ -42349,7 +42409,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // PUT /api/sprints/:id - Manager/Admin protected sprint properties update
 router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
-  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId } = req.body;
+  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId, entityId, entity } = req.body;
 
   try {
     const updatePayload: any = {};
@@ -42362,6 +42422,25 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (department !== undefined) updatePayload.department = department;
     if (epicId !== undefined) updatePayload.epicId = epicId || null;
     if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;
+
+    if (entityId || entity) {
+      const entTarget = String(entityId || entity || '').toLowerCase().trim();
+      const allEnts = await db.select().from(entities);
+      const matched = allEnts.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
+      if (matched) updatePayload.entityId = matched.id;
+    }
 
     const [updated] = await db
       .update(sprints)
@@ -42383,7 +42462,7 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 // Also support PATCH /api/sprints/:id
 router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
-  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId } = req.body;
+  const { name, goal, startDate, endDate, status, targetWeek, department, epicId, reviewingLeadId, entityId, entity } = req.body;
 
   try {
     const updatePayload: any = {};
@@ -42396,6 +42475,25 @@ router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     if (department !== undefined) updatePayload.department = department;
     if (epicId !== undefined) updatePayload.epicId = epicId || null;
     if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;
+
+    if (entityId || entity) {
+      const entTarget = String(entityId || entity || '').toLowerCase().trim();
+      const allEnts = await db.select().from(entities);
+      const matched = allEnts.find((e: any) => {
+        if (e.id === entityId) return true;
+        if (entTarget === 'common' || entTarget.includes('common') || entTarget.includes('both') || entTarget.includes('&')) {
+          return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+        }
+        if (entTarget === 'cag' || entTarget === 'climagro' || entTarget.includes('climagro')) {
+          return e.code === 'CAG';
+        }
+        if (entTarget === 'ehm' || (!entTarget.includes('&') && entTarget.includes('ehm'))) {
+          return e.code === 'EHM';
+        }
+        return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
+      });
+      if (matched) updatePayload.entityId = matched.id;
+    }
 
     const [updated] = await db
       .update(sprints)
@@ -42673,6 +42771,8 @@ export async function enrichTasks(tasksList: any[]) {
       creatorName: creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin',
       epicCode: parentEpic?.epicCode || null,
       epicTitle: parentEpic?.title || null,
+      parentEpicCode: parentEpic?.epicCode || null,
+      parentEpicTitle: parentEpic?.title || null,
       initiativeCode: parentInit?.initiativeCode || null,
       initiativeTitle: parentInit?.title || null,
       projectCode: parentProj?.code || null,
@@ -42680,9 +42780,13 @@ export async function enrichTasks(tasksList: any[]) {
       projectId: t.projectId || parentEpic?.projectId || null,
       taskId: t.taskCode || t.id,
       taskCode: t.taskCode,
-      entity: entity?.code === 'CAG' || t.taskCode?.startsWith('CAG') ? 'CLIMAGRO' : entity?.code === 'COMMON' || t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-') ? 'COMMON' : 'EHM',
-      entityCode: entity?.code || (t.taskCode?.startsWith('CAG') ? 'CAG' : (t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-')) ? 'COMMON' : 'EHM'),
-      entityName: entity?.name || (t.taskCode?.startsWith('CAG') ? 'climagroanalytics' : 'ehmconsultancy'),
+      entity: entity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : entity?.code === 'COMMON'
+        ? 'COMMON'
+        : 'EHM',
+      entityCode: entity?.code || 'EHM',
+      entityName: entity?.name || (entity?.code === 'CAG' ? 'Climagro Analytics' : entity?.code === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
     };
   });
 }
@@ -43069,6 +43173,7 @@ const handleTaskUpdate = async (req: any, res: any) => {
     dueDate,
     entityId,
     entity,
+    entityCode,
     waitingOn,
     checklists,
     comments,
@@ -43167,23 +43272,29 @@ const handleTaskUpdate = async (req: any, res: any) => {
         }
       }
 
-      // Handle Entity
-      if (entityId && typeof entityId === 'string' && entityId.length === 36) {
-        updateData.entityId = entityId;
-      } else if (entity && typeof entity === 'string') {
+      // Handle Entity (Prioritize explicit entity/entityCode selection over stale entityId)
+      const targetEntityStr = (entity || entityCode || '').toString().trim();
+      if (targetEntityStr) {
+        const entStr = targetEntityStr.toLowerCase();
         const allEnts = await tx.select().from(entities);
-        const matchedEnt = allEnts.find(
-          (e) =>
-            e.id === entity ||
-            e.code.toLowerCase() === entity.toLowerCase() ||
-            e.name.toLowerCase().includes(entity.toLowerCase()) ||
-            (entity.toLowerCase().includes('ehm') && e.code === 'EHM') ||
-            ((entity.toLowerCase().includes('cag') || entity.toLowerCase().includes('climagro')) && e.code === 'CAG') ||
-            ((entity.toLowerCase().includes('common') || entity.toLowerCase().includes('both')) && (e.code === 'COMMON' || e.name.toLowerCase().includes('common')))
-        );
+        const matchedEnt = allEnts.find((e) => {
+          if (entStr === e.id) return true;
+          if (entStr === 'common' || entStr.includes('common') || entStr.includes('both') || entStr.includes('&')) {
+            return e.code === 'COMMON' || e.name.toLowerCase().includes('common');
+          }
+          if (entStr === 'cag' || entStr === 'climagro' || entStr.includes('climagro')) {
+            return e.code === 'CAG';
+          }
+          if (entStr === 'ehm' || (!entStr.includes('&') && entStr.includes('ehm'))) {
+            return e.code === 'EHM';
+          }
+          return e.code.toLowerCase() === entStr || e.name.toLowerCase().includes(entStr);
+        });
         if (matchedEnt) {
           updateData.entityId = matchedEnt.id;
         }
+      } else if (entityId && typeof entityId === 'string' && entityId.length === 36) {
+        updateData.entityId = entityId;
       }
 
       // Handle Lineage Updates (Epic / Sprint reassignment) while keeping taskCode IMMUTABLE
@@ -43193,16 +43304,16 @@ const handleTaskUpdate = async (req: any, res: any) => {
           if (!newEpic) throw new Error('Target epic not found');
 
           updateData.epicId = epicId;
-          updateData.sprintId = null;
-          updateData.taskType = 'EPIC_TASK';
-          updateData.initiativeId = newEpic.initiativeId;
+          updateData.taskType = existingTaskCheck.sprintId ? 'SPRINT_TASK' : 'EPIC_TASK';
+          updateData.initiativeId = newEpic.initiativeId || existingTaskCheck.initiativeId;
           if (!updateData.projectId && newEpic.projectId) {
             updateData.projectId = newEpic.projectId;
           }
         } else {
           updateData.epicId = null;
-          updateData.taskType = 'BACKLOG';
-          updateData.initiativeId = null;
+          if (!existingTaskCheck.sprintId) {
+            updateData.taskType = 'BACKLOG';
+          }
         }
       } else if (sprintId !== undefined) {
         if (sprintId) {
@@ -43833,6 +43944,257 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 });
 
 export default router;
+
+```
+
+---
+
+### File: `artifacts/api-server/src/run_comparison_real.ts`
+
+```typescript
+import { db } from '../../../lib/db/src/index';
+import { sql } from 'drizzle-orm';
+
+async function run() {
+  const entitiesRes = await db.execute(sql`SELECT * FROM entities`);
+  const entities: any[] = entitiesRes.rows;
+  const entityMap = new Map(entities.map(e => [e.id, e]));
+
+  const tasksRes = await db.execute(sql`SELECT * FROM tasks ORDER BY task_code ASC`);
+  const tasks: any[] = tasksRes.rows;
+
+  const epicsRes = await db.execute(sql`SELECT * FROM epics`);
+  const epics: any[] = epicsRes.rows;
+  const epicMap = new Map(epics.map(e => [e.id, e]));
+
+  console.log(`Loaded ${tasks.length} tasks and ${entities.length} entities.`);
+
+  // --- Pre-Step-1 (HEAD commit 06477e4) Backend enrichTasks ---
+  function enrichOld(t: any) {
+    const entity = entityMap.get(t.entity_id);
+    return {
+      entity: entity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : entity?.code === 'COMMON'
+        ? 'COMMON'
+        : entity?.code === 'EHM'
+        ? 'EHM'
+        : t.task_code?.startsWith('CAG')
+        ? 'CLIMAGRO'
+        : (t.task_code?.startsWith('COMMON') || t.task_code?.startsWith('COM-'))
+        ? 'COMMON'
+        : 'EHM',
+      entityCode: entity?.code || (t.task_code?.startsWith('CAG') ? 'CAG' : (t.task_code?.startsWith('COMMON') || t.task_code?.startsWith('COM-')) ? 'COMMON' : 'EHM'),
+      entityName: entity?.name || (t.task_code?.startsWith('CAG') ? 'Climagro Analytics' : (t.task_code?.startsWith('COMMON') || t.task_code?.startsWith('COM-')) ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+    };
+  }
+
+  // --- Post-Step-1 (Current working tree) Backend enrichTasks ---
+  function enrichNew(t: any) {
+    const entity = entityMap.get(t.entity_id);
+    return {
+      entity: entity?.code === 'CAG'
+        ? 'CLIMAGRO'
+        : entity?.code === 'COMMON'
+        ? 'COMMON'
+        : 'EHM',
+      entityCode: entity?.code || 'EHM',
+      entityName: entity?.name || (entity?.code === 'CAG' ? 'Climagro Analytics' : entity?.code === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+    };
+  }
+
+  // --- Pre-Step-1 entityUtils.getEntityBadge(item) ---
+  function getEntityBadgeOld(item: any) {
+    const rawEntity = (item.entity || item.entityCode || '').toUpperCase().trim();
+    const rawEntityName = (item.entityName || '').toLowerCase().trim();
+    const rawEntityId = (item.entityId || '').toLowerCase().trim();
+
+    if (
+      rawEntity === 'COMMON' ||
+      rawEntity === 'BOTH' ||
+      rawEntity === 'EHM & CLIMAGRO' ||
+      rawEntity.includes('COMMON') ||
+      rawEntity.includes('BOTH') ||
+      rawEntityId === '539ba160-88b8-4fdd-a5ef-39c09c97516a' ||
+      rawEntityId === 'common' ||
+      rawEntityName.includes('common') ||
+      rawEntityName.includes('&')
+    ) {
+      return { label: 'EHM & CLIMAGRO', isCAG: false, isCommon: true };
+    }
+    if (
+      rawEntity === 'CAG' ||
+      rawEntity === 'CLIMAGRO' ||
+      rawEntityId === 'ebbf77f7-c1ac-423d-a29d-8db50beac25f' ||
+      rawEntityId === 'cag' ||
+      rawEntityId === 'climagroanalytics' ||
+      rawEntityName.includes('climagro')
+    ) {
+      return { label: 'CLIMAGRO', isCAG: true, isCommon: false };
+    }
+    if (
+      rawEntity === 'EHM' ||
+      rawEntityId === '886d7680-6a7c-482e-ae61-159ec359f881' ||
+      rawEntityId === 'ehm' ||
+      rawEntityId === 'ehmconsultancy' ||
+      rawEntityName.includes('ehm')
+    ) {
+      return { label: 'EHM', isCAG: false, isCommon: false };
+    }
+    const code = (item.taskCode || '').toUpperCase().trim();
+    if (code.startsWith('COMMON') || code.startsWith('COM-')) {
+      return { label: 'EHM & CLIMAGRO', isCAG: false, isCommon: true };
+    }
+    if (code.startsWith('CAG') || code.startsWith('CLIMAGRO')) {
+      return { label: 'CLIMAGRO', isCAG: true, isCommon: false };
+    }
+    return { label: 'EHM', isCAG: false, isCommon: false };
+  }
+
+  // --- Post-Step-1 entityUtils.getEntityBadge(item) ---
+  function getEntityBadgeNew(item: any) {
+    const rawEntity = (item.entity || item.entityCode || '').toUpperCase().trim();
+    const rawEntityName = (item.entityName || '').toLowerCase().trim();
+    const rawEntityId = (item.entityId || '').toLowerCase().trim();
+
+    if (
+      rawEntity === 'COMMON' ||
+      rawEntity === 'BOTH' ||
+      rawEntity === 'EHM & CLIMAGRO' ||
+      rawEntity.includes('COMMON') ||
+      rawEntity.includes('BOTH') ||
+      rawEntityId === '539ba160-88b8-4fdd-a5ef-39c09c97516a' ||
+      rawEntityId === 'common' ||
+      rawEntityName.includes('common') ||
+      rawEntityName.includes('&')
+    ) {
+      return { label: 'EHM & CLIMAGRO', isCAG: false, isCommon: true };
+    }
+    if (
+      rawEntity === 'CAG' ||
+      rawEntity === 'CLIMAGRO' ||
+      rawEntityId === 'ebbf77f7-c1ac-423d-a29d-8db50beac25f' ||
+      rawEntityId === 'cag' ||
+      rawEntityId === 'climagroanalytics' ||
+      rawEntityName.includes('climagro')
+    ) {
+      return { label: 'CLIMAGRO', isCAG: true, isCommon: false };
+    }
+    if (
+      rawEntity === 'EHM' ||
+      rawEntityId === '886d7680-6a7c-482e-ae61-159ec359f881' ||
+      rawEntityId === 'ehm' ||
+      rawEntityId === 'ehmconsultancy' ||
+      rawEntityName.includes('ehm')
+    ) {
+      return { label: 'EHM', isCAG: false, isCommon: false };
+    }
+    return { label: 'EHM', isCAG: false, isCommon: false };
+  }
+
+  // Evaluate for each task
+  const rows = [];
+  for (const t of tasks) {
+    const parentEpic = epicMap.get(t.epic_id);
+    const oldApi = enrichOld(t);
+    const newApi = enrichNew(t);
+
+    const oldTaskObj = {
+      ...t,
+      taskCode: t.task_code,
+      entityId: t.entity_id,
+      ...oldApi,
+    };
+    const newTaskObj = {
+      ...t,
+      taskCode: t.task_code,
+      entityId: t.entity_id,
+      ...newApi,
+    };
+
+    // 1. TasksView
+    // Table badge: uses getEntityBadge(t).label
+    const tvOldBadge = getEntityBadgeOld(oldTaskObj).label;
+    const tvNewBadge = getEntityBadgeNew(newTaskObj).label;
+
+    // 2. EpicsSubView
+    // Inside EpicsSubView:
+    // a) In epic card task item: task.taskCode || task.id (no badge)
+    // b) In linked tasks list:
+    // old: isEpicCAG && taskCode.startsWith('EHM-') ? replace('EHM-', 'CAG-') : taskCode
+    const oldIsEpicCAG = (parentEpic?.epic_code || '').startsWith('CAG');
+    const newIsEpicCAG = (parentEpic?.entity_code || parentEpic?.entity) === 'CAG';
+    const epicsOldCodeRender = oldIsEpicCAG && t.task_code?.startsWith('EHM-')
+      ? t.task_code.replace(/^EHM-/, 'CAG-')
+      : t.task_code;
+    const epicsNewCodeRender = t.task_code;
+
+    // 3. InitiativesSubView
+    // Similar to EpicsSubView linked tasks modal:
+    const initsOldCodeRender = oldIsEpicCAG && t.task_code?.startsWith('EHM-')
+      ? t.task_code.replace(/^EHM-/, 'CAG-')
+      : t.task_code;
+    const initsNewCodeRender = t.task_code;
+
+    // 4. SprintsSubView
+    // In sprint task card (line 1414): uses getEntityBadge(t).label
+    const sprintsOldBadge = getEntityBadgeOld(oldTaskObj).label;
+    const sprintsNewBadge = getEntityBadgeNew(newTaskObj).label;
+    // SprintsSubView entityName resolution:
+    const sprintsOldEntityName = (t.task_code || '').startsWith('CAG') || (oldApi.entityName || '').toLowerCase().includes('climagro') || (t.entity_id || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
+    const sprintsNewEntityName = newApi.entityCode === 'CAG' || (newApi.entityName || '').toLowerCase().includes('climagro') || (t.entity_id || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
+
+    rows.push({
+      taskCode: t.task_code,
+      dbEntityCode: entityMap.get(t.entity_id)?.code,
+      oldApiEntity: oldApi.entity,
+      newApiEntity: newApi.entity,
+      oldApiEntityCode: oldApi.entityCode,
+      newApiEntityCode: newApi.entityCode,
+      oldApiEntityName: oldApi.entityName,
+      newApiEntityName: newApi.entityName,
+      apiEqual: JSON.stringify(oldApi) === JSON.stringify(newApi),
+      tvOldBadge,
+      tvNewBadge,
+      tvEqual: tvOldBadge === tvNewBadge,
+      epicsOldCodeRender,
+      epicsNewCodeRender,
+      epicsEqual: epicsOldCodeRender === epicsNewCodeRender,
+      initsOldCodeRender,
+      initsNewCodeRender,
+      initsEqual: initsOldCodeRender === initsNewCodeRender,
+      sprintsOldBadge,
+      sprintsNewBadge,
+      sprintsBadgeEqual: sprintsOldBadge === sprintsNewBadge,
+      sprintsOldEntityName,
+      sprintsNewEntityName,
+      sprintsEntityEqual: sprintsOldEntityName === sprintsNewEntityName,
+    });
+  }
+
+  console.log('\n| Task Code | DB Entity | Pre /api/tasks (entity, entityCode, entityName) | Post /api/tasks (entity, entityCode, entityName) | TasksView (Pre -> Post) | EpicsSubView (Pre -> Post) | InitiativesSubView (Pre -> Post) | SprintsSubView (Pre -> Post) |');
+  console.log('|---|---|---|---|---|---|---|---|');
+  for (const r of rows) {
+    const preApi = `${r.oldApiEntity} / ${r.oldApiEntityCode} / "${r.oldApiEntityName}"`;
+    const postApi = `${r.newApiEntity} / ${r.newApiEntityCode} / "${r.newApiEntityName}"`;
+    const tv = r.tvOldBadge === r.tvNewBadge ? r.tvOldBadge : `${r.tvOldBadge} -> ${r.tvNewBadge}`;
+    const epics = r.epicsOldCodeRender === r.epicsNewCodeRender ? r.epicsOldCodeRender : `${r.epicsOldCodeRender} -> ${r.epicsNewCodeRender}`;
+    const inits = r.initsOldCodeRender === r.initsNewCodeRender ? r.initsOldCodeRender : `${r.initsOldCodeRender} -> ${r.initsNewCodeRender}`;
+    const sprints = r.sprintsOldBadge === r.sprintsNewBadge ? r.sprintsOldBadge : `${r.sprintsOldBadge} -> ${r.sprintsNewBadge}`;
+    console.log(`| \`${r.taskCode}\` | **${r.dbEntityCode}** | \`${preApi}\` | \`${postApi}\` | ${tv} | \`${epics}\` | \`${inits}\` | ${sprints} |`);
+  }
+
+  // Check audit_logs and notifications for COM-E01-W1-T001
+  const auditRes = await db.execute(sql`SELECT * FROM audit_logs WHERE details::text ILIKE '%COM-E01-W1-T001%' OR details::text ILIKE '%ebbf77f7-c1ac-423d-a29d-8db50beac25f%'`);
+  console.log('Audit logs for COM-E01-W1-T001:', auditRes.rows);
+
+  const tRowRes = await db.execute(sql`SELECT id, task_code, title, entity_id, created_at, updated_at FROM tasks WHERE task_code = 'COM-E01-W1-T001'`);
+  console.log('Current DB row for COM-E01-W1-T001:', tRowRes.rows);
+
+  process.exit(0);
+}
+
+run().catch(console.error);
 
 ```
 
@@ -45507,7 +45869,19 @@ verify();
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "src/cleanup_*.ts",
+    "src/e2e_*.ts",
+    "src/test_*.ts",
+    "src/qa_*.ts",
+    "src/run_*.ts",
+    "src/dump_*.ts",
+    "src/db_*.ts",
+    "src/check_*.ts",
+    "src/export_*.ts",
+    "src/generate_*.ts"
+  ]
 }
 
 ```
@@ -46207,8 +46581,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
-import { fetchApi } from '@workspace/api-client-react';
-import { matchesEntityFilter } from '../utils/entityUtils';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
 import { TaskProgressSprintAnalytics } from './TaskProgressSprintAnalytics';
 import { PinnedAnnouncementBanner } from './PinnedAnnouncementBanner';
@@ -46305,7 +46678,7 @@ export const EmployeeDashboardView: React.FC = () => {
       return;
     }
 
-    const entityCode = activeEmpCode.startsWith('CAG') ? 'CAG' : 'EHM';
+    const entityCode = activeEmployee?.entityCode || (activeEmployee as any)?.entity || 'EHM';
     const targetEmpId = activeEmployee?.id || user?.employeeId || user?.id;
 
     try {
@@ -46388,13 +46761,14 @@ export const EmployeeDashboardView: React.FC = () => {
             const leadName = matchedLeadEmp ? `${matchedLeadEmp.firstName} ${matchedLeadEmp.lastName}`.trim() : (t.reviewingLead || 'Manager Lead');
             const resolvedSprintName = t.sprintId ? sprintMap.get(t.sprintId) : t.sprintWeek;
 
+            const taskBadge = getEntityBadge(t);
             return {
               id: t.id,
               taskId: t.taskCode || t.id,
               taskCode: t.taskCode || t.id,
               title: t.title,
               dept: currentTargetEmp?.departmentName || 'Product & Tech',
-              entity: t.entity === 'COMMON' || t.entityCode === 'COMMON' || t.taskCode?.startsWith('COMMON') || t.taskCode?.startsWith('COM-') ? 'COMMON' : (t.entity === 'CLIMAGRO' || t.entityCode === 'CAG' || t.taskCode?.startsWith('CAG')) ? 'CLIMAGRO' : 'EHM',
+              entity: taskBadge.isCommon ? 'COMMON' : taskBadge.isCAG ? 'CLIMAGRO' : 'EHM',
               priority: t.priority || 'MEDIUM',
               lead: leadName,
               reviewingLeadId: t.reviewingLeadId || matchedLeadEmp?.id,
@@ -46459,6 +46833,14 @@ export const EmployeeDashboardView: React.FC = () => {
     loadData();
   }, [user, selectedEmployeeId]);
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      loadData(true);
+    };
+    window.addEventListener('tasks-updated', handleUpdate);
+    return () => window.removeEventListener('tasks-updated', handleUpdate);
+  }, []);
+
   // Scope Employee Tasks & Meetings by Selected Entity (EHM / CAG / ALL)
   const scopedMyTasks = myTasks.filter((t) => matchesEntityFilter(t, selectedEntity));
   const scopedTodaysMeetings = todaysMeetings.filter((m) => matchesEntityFilter(m, selectedEntity));
@@ -46495,14 +46877,23 @@ export const EmployeeDashboardView: React.FC = () => {
       outputUrl: t.outputUrl,
       waitingOn: t.waitingOn,
       notes: t.notes,
+      epicId: (t as any).epicId || null,
     });
   };
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
     try {
+      const badge = getEntityBadge(updated);
+      const resolvedEntityLabel = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+      const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
+
       await fetchApi(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
+          title: updated.title,
+          entity: resolvedEntityLabel,
+          entityCode: resolvedEntityCode,
+          epicId: updated.epicId !== undefined ? updated.epicId : null,
           status: updated.status,
           deliverableUrl: updated.outputUrl || '',
           description: updated.notes || '',
@@ -46511,11 +46902,14 @@ export const EmployeeDashboardView: React.FC = () => {
           dueDate: updated.dueDate,
         }),
       });
-      setMyTasks(
-        myTasks.map((t) =>
+      setMyTasks((prev) =>
+        prev.map((t) =>
           t.id === updated.id
             ? {
               ...t,
+              title: updated.title || t.title,
+              entity: resolvedEntityLabel,
+              priority: updated.priority || t.priority,
               status: updated.status,
               outputUrl: updated.outputUrl || '',
               waitingOn: updated.waitingOn || 'None (Self)',
@@ -46525,7 +46919,9 @@ export const EmployeeDashboardView: React.FC = () => {
             : t
         )
       );
-      toast.success(`Personal task ${updated.taskId} updated & saved to live database!`);
+      toast.success(`Task ${updated.taskId} updated & saved to live database!`);
+      await loadData(true);
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
     } catch (err: any) {
       console.error('[EMPLOYEE DASH TASK UPDATE ERROR]:', err);
       toast.error(err?.message || 'Failed to save task update to database');
@@ -46642,7 +47038,7 @@ export const EmployeeDashboardView: React.FC = () => {
     name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member',
     role: emp.designation || 'Specialist',
     dept: emp.departmentName || 'Engineering',
-    entity: emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM',
+    entity: emp.entityCode || (emp as any).entity || 'EHM',
     status: 'Active',
   }));
 
@@ -47449,7 +47845,7 @@ export const EmployeeDashboardView: React.FC = () => {
                 </p>
               </div>
               <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Employee Workspace
+                Team Workspace
               </span>
             </div>
 
@@ -47617,7 +48013,8 @@ import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
-import { getEntityBadge } from '../utils/entityUtils';
+import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 interface EpicItem {
   id: string;
@@ -47625,6 +48022,10 @@ interface EpicItem {
   title: string;
   description: string;
   status: string;
+  entityId?: string | null;
+  entity?: string | null;
+  entityCode?: string | null;
+  entityName?: string | null;
   initiativeId?: string | null;
   projectId?: string | null;
   department?: string | null;
@@ -47676,6 +48077,7 @@ const TARGET_WEEK_OPTIONS = [
 
 export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSelectInitiative, selectedEpicIdToView, onClearSelectedEpic }) => {
   const { user } = useAuth();
+  const { selectedEntity } = useEntity();
   const isAdmin = user?.role === 'ADMIN';
   const [epics, setEpics] = useState<EpicItem[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -47697,6 +48099,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   // New Epic Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [createEntity, setCreateEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
   const [selectedInitiativeId, setSelectedInitiativeId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [title, setTitle] = useState('');
@@ -47712,6 +48115,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [viewingEpic, setViewingEpic] = useState<EpicItem | null>(null);
   const [viewingInitiativeInEpics, setViewingInitiativeInEpics] = useState<any | null>(null);
   const [editingEpic, setEditingEpic] = useState<EpicItem | null>(null);
+  const [editEntity, setEditEntity] = useState<'EHM' | 'CAG' | 'COMMON'>('EHM');
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editInitiativeId, setEditInitiativeId] = useState('');
@@ -47756,16 +48160,16 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   const handleOpenTaskModal = (taskItem: any) => {
     const code = taskItem.taskCode || taskItem.taskId || taskItem.id || 'CAG-EMP01-001';
-    const isCommon = taskItem.entity === 'COMMON' || taskItem.entityCode === 'COMMON' || code.startsWith('COMMON') || code.startsWith('COM-');
-    const isCAG = !isCommon && (taskItem.entityId === 'cag' || code.startsWith('CAG') || taskItem.entity === 'CLIMAGRO' || taskItem.entityCode === 'CAG');
-    const resolvedEntity = isCommon ? 'COMMON' : isCAG ? 'CLIMAGRO' : 'EHM';
+    const badge = getEntityBadge(taskItem);
+    const resolvedEntity = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+    const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
     setSelectedTaskToView({
       id: taskItem.id || 'tsk-1',
       taskId: code,
       taskCode: code,
       title: taskItem.title || 'Task Deliverable',
       entity: resolvedEntity,
-      entityCode: isCommon ? 'COMMON' : isCAG ? 'CAG' : 'EHM',
+      entityCode: resolvedEntityCode,
       assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
       status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
@@ -47801,7 +48205,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     const targetEpic = taskAssignEpic || viewingEpic;
     if (!targetEpic) return;
     try {
-      const isEpicCAG = (targetEpic.epicCode || '').startsWith('CAG');
+      const isEpicCAG = (targetEpic.entityCode || targetEpic.entity) === 'CAG';
       const created = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
@@ -47835,7 +48239,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     if (!viewingEpic || !quickTaskTitle.trim()) return;
     try {
       setIsSubmittingQuickTask(true);
-      const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
+      const isEpicCAG = (viewingEpic.entityCode || viewingEpic.entity) === 'CAG';
       const created = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
@@ -47958,6 +48362,33 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     }
   }, [selectedEpicIdToView, epics]);
 
+  // Auto-suggest entity based on selected parent or active entity filter
+  useEffect(() => {
+    if (selectedEntity === 'CAG') setCreateEntity('CAG');
+    else if (selectedEntity === 'COMMON') setCreateEntity('COMMON');
+    else setCreateEntity('EHM');
+  }, [selectedEntity, isModalOpen]);
+
+  useEffect(() => {
+    if (selectedInitiativeId) {
+      const init = initiatives.find(i => i.id === selectedInitiativeId);
+      if (init) {
+        const initBadge = getEntityBadge(init);
+        setCreateEntity(initBadge.isCommon ? 'COMMON' : initBadge.isCAG ? 'CAG' : 'EHM');
+      }
+    }
+  }, [selectedInitiativeId, initiatives]);
+
+  useEffect(() => {
+    if (selectedProjectId && !selectedInitiativeId) {
+      const proj = projects.find(p => p.id === selectedProjectId);
+      if (proj) {
+        const projBadge = getEntityBadge(proj);
+        setCreateEntity(projBadge.isCommon ? 'COMMON' : projBadge.isCAG ? 'CAG' : 'EHM');
+      }
+    }
+  }, [selectedProjectId, selectedInitiativeId, projects]);
+
   const handleCreateEpic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error('Please enter an epic title');
@@ -47969,6 +48400,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         body: JSON.stringify({
           title,
           description,
+          entity: createEntity,
+          entityCode: createEntity,
           initiativeId: selectedInitiativeId || undefined,
           projectId: selectedProjectId || undefined,
           department,
@@ -48003,6 +48436,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     setEditTargetWeek(epic.targetWeek || '');
     setEditSprintsCountTarget(epic.sprintsCountTarget || 0);
     setEditStatus(epic.status === 'COMPLETED' ? 'DONE' : (epic.status || 'PLANNED'));
+    const badge = getEntityBadge(epic);
+    const resolvedEnt = epic.entity === 'CLIMAGRO' || epic.entityCode === 'CAG' || badge.isCAG ? 'CAG'
+      : epic.entity === 'COMMON' || epic.entityCode === 'COMMON' || badge.isCommon ? 'COMMON'
+      : 'EHM';
+    setEditEntity(resolvedEnt);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -48018,6 +48456,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
+          entity: editEntity,
+          entityCode: editEntity,
           initiativeId: editInitiativeId || null,
           projectId: editProjectId || null,
           department: editDepartment,
@@ -48088,9 +48528,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     }
   };
 
-  // Active vs Archived pools
-  const activeEpics = epics.filter(e => e.status !== 'DONE' && e.status !== 'COMPLETED' && e.status !== 'ARCHIVED');
-  const archivedEpics = epics.filter(e => e.status === 'DONE' || e.status === 'COMPLETED' || e.status === 'ARCHIVED');
+  // Active vs Archived pools scoped by Entity filter
+  const scopedEpics = epics.filter(e => matchesEntityFilter(e, selectedEntity));
+  const activeEpics = scopedEpics.filter(e => e.status !== 'DONE' && e.status !== 'COMPLETED' && e.status !== 'ARCHIVED');
+  const archivedEpics = scopedEpics.filter(e => e.status === 'DONE' || e.status === 'COMPLETED' || e.status === 'ARCHIVED');
   const baseEpicsPool = viewMode === 'ACTIVE' ? activeEpics : archivedEpics;
 
   // Filtered Epics calculation
@@ -48500,7 +48941,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpic.initiativeId || i.initiativeCode === viewingEpic.initiativeId);
                 const parentProj = projects.find((p) => p.id === viewingEpic.projectId || p.code === viewingEpic.projectId);
-                const isCAG = (viewingEpic.epicCode || '').startsWith('CAG') || (parentInit?.initiativeCode || '').startsWith('CAG') || (parentProj?.entity === 'CAG');
+                const isCAG = (viewingEpic.entityCode || viewingEpic.entity) === 'CAG' || (parentInit?.entityCode || parentInit?.entity) === 'CAG' || (parentProj?.entity === 'CAG');
                 const rawStatus = viewingEpic.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -48651,7 +49092,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
               {/* Linked Tasks Section with Progress Bar */}
               {(() => {
-                const isEpicCAG = (viewingEpic.epicCode || '').startsWith('CAG');
+                const isEpicCAG = (viewingEpic.entityCode || viewingEpic.entity) === 'CAG';
                 const combined = [
                   ...(viewingEpic.tasks || []),
                   ...allTasks.filter((t: any) => t.epicId === viewingEpic.id || t.parentEpicCode === viewingEpic.epicCode)
@@ -48721,9 +49162,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     {/* Tasks List */}
                     <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
                       {linkedTasks.map((taskItem: any, idx: number) => {
-                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                          : (taskItem.taskCode || 'TSK-001');
+                        const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
@@ -48980,14 +49419,27 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 />
               </div>
 
-              {/* Department & Target Week */}
+              {/* Brand / Entity & Department */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Brand / Entity *</label>
+                  <select
+                    value={editEntity}
+                    onChange={(e) => setEditEntity(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                  >
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
+                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Department *</label>
                   <select
                     value={editDepartment}
                     onChange={(e) => setEditDepartment(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
                     {DEPARTMENT_OPTIONS.map((dept) => (
                       <option key={dept} value={dept}>
@@ -48996,16 +49448,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
-                  <CalendarPicker
-                    value={editTargetWeek}
-                    onChange={(formatted) => setEditTargetWeek(formatted)}
-                    placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
-                    formatMode="date"
-                  />
-                </div>
+              {/* Target Week / Date */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                <CalendarPicker
+                  value={editTargetWeek}
+                  onChange={(formatted) => setEditTargetWeek(formatted)}
+                  placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
+                  formatMode="date"
+                />
               </div>
 
               {/* Target Tasks Count & Status */}
@@ -49149,14 +49602,27 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 />
               </div>
 
-              {/* Department & Target Week */}
+              {/* Brand / Entity & Department */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Brand / Entity *</label>
+                  <select
+                    value={createEntity}
+                    onChange={(e) => setCreateEntity(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                  >
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
+                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Department *</label>
                   <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
                     {DEPARTMENT_OPTIONS.map((dept) => (
                       <option key={dept} value={dept}>
@@ -49165,16 +49631,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
-                  <CalendarPicker
-                    value={targetWeek}
-                    onChange={(formatted) => setTargetWeek(formatted)}
-                    placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
-                    formatMode="date"
-                  />
-                </div>
+              {/* Target Week / Date */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                <CalendarPicker
+                  value={targetWeek}
+                  onChange={(formatted) => setTargetWeek(formatted)}
+                  placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
+                  formatMode="date"
+                />
               </div>
 
               {/* Planned Tasks Target */}
@@ -49254,6 +49721,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                           if (source.department) setDepartment(source.department);
                           if (source.targetWeek) setTargetWeek(source.targetWeek);
                           if (source.sprintsCountTarget) setSprintsCountTarget(source.sprintsCountTarget);
+                          const sourceBadge = getEntityBadge(source);
+                          setCreateEntity(sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM');
                           toast.success(`Form pre-filled with data from "${source.title}"!`);
                         }
                       }}
@@ -49607,7 +50076,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         }}
         onSubmit={handleCreateTaskForEpic}
         initialEpicId={taskAssignEpic?.id || viewingEpic?.id}
-        initialEntityId={(taskAssignEpic?.epicCode || viewingEpic?.epicCode || '').startsWith('CAG') ? 'CAG' : 'EHM'}
+        initialEntityId={(taskAssignEpic?.entityCode || taskAssignEpic?.entity || viewingEpic?.entityCode || viewingEpic?.entity) === 'CAG' ? 'CAG' : 'EHM'}
         initialDepartment={taskAssignEpic?.department || viewingEpic?.department || 'Operations & Delivery'}
       />
     </div>
@@ -50503,16 +50972,16 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
   const handleOpenTaskModal = (taskItem: any) => {
     const code = taskItem.taskCode || taskItem.taskId || taskItem.id || 'CAG-EMP01-001';
-    const isCommon = taskItem.entity === 'COMMON' || taskItem.entityCode === 'COMMON' || code.startsWith('COMMON') || code.startsWith('COM-');
-    const isCAG = !isCommon && (taskItem.entityId === 'cag' || code.startsWith('CAG') || taskItem.entity === 'CLIMAGRO' || taskItem.entityCode === 'CAG');
-    const resolvedEntity = isCommon ? 'COMMON' : isCAG ? 'CLIMAGRO' : 'EHM';
+    const badge = getEntityBadge(taskItem);
+    const resolvedEntity = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+    const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
     setSelectedTaskToView({
       id: taskItem.id || 'tsk-1',
       taskId: code,
       taskCode: code,
       title: taskItem.title || 'Task Deliverable',
       entity: resolvedEntity,
-      entityCode: isCommon ? 'COMMON' : isCAG ? 'CAG' : 'EHM',
+      entityCode: resolvedEntityCode,
       assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
       status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
@@ -50526,14 +50995,16 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     if (!viewingEpicDetails || !quickTaskTitle.trim()) return;
     try {
       setIsSubmittingQuickTask(true);
-      const isCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG');
+      const epicBadge = getEntityBadge(viewingEpicDetails);
+      const isCAG = epicBadge.isCAG;
+      const isCommon = epicBadge.isCommon;
       const created = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
           title: quickTaskTitle.trim(),
           epicId: viewingEpicDetails.id,
           initiativeId: viewingEpicDetails.initiativeId || viewingInitiative?.id,
-          entityCode: isCAG ? 'CAG' : 'EHM',
+          entityCode: isCommon ? 'COMMON' : isCAG ? 'CAG' : 'EHM',
           department: viewingEpicDetails.department || 'Operations & Delivery',
           status: 'BACKLOG',
           priority: 'P3',
@@ -51147,7 +51618,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
               {/* Breadcrumb & Badges */}
               {(() => {
-                const isCAG = viewingInitiative.entityId === 'climagroanalytics' || viewingInitiative.initiativeCode.startsWith('CAG');
+                const isCAG = (viewingInitiative.entityCode || viewingInitiative.entity) === 'CAG' || viewingInitiative.entityId === 'climagroanalytics';
                 const rawStatus = viewingInitiative.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -51880,7 +52351,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpicDetails.initiativeId) || viewingInitiative;
                 const parentTitle = parentInit?.title || 'Initiative';
-                const isCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const isCAG = (viewingEpicDetails.entityCode || viewingEpicDetails.entity) === 'CAG' || (parentInit?.entityCode || parentInit?.entity) === 'CAG';
                 const rawStatus = viewingEpicDetails.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -52005,7 +52476,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
               {/* Linked Tasks Section with Progress Bar */}
               {(() => {
-                const isEpicCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG');
+                const isEpicCAG = (viewingEpicDetails.entityCode || viewingEpicDetails.entity) === 'CAG';
                 const combined = [
                   ...(viewingEpicDetails.tasks || []),
                   ...allTasks.filter((t: any) => t.epicId === viewingEpicDetails.id || t.parentEpicCode === viewingEpicDetails.epicCode)
@@ -52035,9 +52506,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     {/* Tasks List */}
                     <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
                       {linkedTasks.map((taskItem: any, idx: number) => {
-                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                          : (taskItem.taskCode || 'TSK-001');
+                        const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
@@ -52759,7 +53228,7 @@ export const MarkdownViewer: React.FC<Props> = ({ content, className = '' }) => 
 ### File: `artifacts/hr-dashboard/src/components/Navbar.tsx`
 
 ```tsx
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles, ArrowRight, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
@@ -52848,23 +53317,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const getNotificationTarget = (n: any) => {
     const payload = n.payload || {};
-    let taskCode = payload.taskCode || null;
-    if (!taskCode) {
-      const match = (n.title || '').match(/\[([A-Z0-9_-]+)\]/i) || (n.message || '').match(/\[([A-Z0-9_-]+)\]/i);
-      if (match) taskCode = match[1];
-    }
+    const type = n.type || '';
+    const taskCode = payload.taskCode || null;
     const taskId = payload.taskId || null;
-    const isSprint = Boolean(
-      payload.sprintId ||
-      n.type?.includes('SPRINT') ||
-      (taskCode && (taskCode.includes('SPR') || taskCode.includes('-SP-') || taskCode.includes('-S-')))
-    );
-    const isMeeting = Boolean(payload.meetingId || n.type?.includes('MEETING'));
-    const isAnnouncement = Boolean(payload.announcementId || n.type?.includes('ANNOUNCEMENT'));
+    const isSprint = Boolean(payload.sprintId || type.includes('SPRINT'));
+    const isMeeting = Boolean(payload.meetingId || type.includes('MEETING'));
+    const isAnnouncement = Boolean(payload.announcementId || type.includes('ANNOUNCEMENT'));
 
     let label = 'Details';
     if (isSprint) label = 'Sprint Task';
-    else if (taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')) label = 'Task';
+    else if (taskId || taskCode || type.includes('TASK') || type.includes('DELAY')) label = 'Task';
     else if (isMeeting) label = 'Meeting';
     else if (isAnnouncement) label = 'Announcement';
 
@@ -52874,7 +53336,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       isSprint,
       isMeeting,
       isAnnouncement,
-      isTask: Boolean(taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')),
+      isTask: Boolean(taskId || taskCode || type.includes('TASK') || type.includes('DELAY')),
       label,
     };
   };
@@ -52925,7 +53387,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         if (taskData && taskData.id) {
           const resolvedCode = taskData.taskCode || taskData.taskId || target.taskCode || target.taskId || '';
-          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || (resolvedCode.startsWith('CAG') ? 'CLIMAGRO' : resolvedCode.startsWith('COMMON') || resolvedCode.startsWith('COM-') ? 'COMMON' : 'EHM');
+          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || 'EHM';
 
           setSelectedTaskForModal({
             ...taskData,
@@ -53577,7 +54039,7 @@ export const PinnedAnnouncementBanner: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/components/ProfileModal.tsx`
 
 ```tsx
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Shield, Building2, User as UserIcon, LogOut, Edit2, Phone, Check, Loader2, Lock, Briefcase, Sparkles } from 'lucide-react';
 import { useAuth, UserRole } from '../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -53609,7 +54071,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const handleRolePreviewChange = (role: UserRole) => {
     if (actualRole !== 'ADMIN') return;
     setPreviewRole(role);
-    toast.success(`Previewing layout as ${role}!`);
+    const label = role === 'EMPLOYEE' ? 'Team' : role === 'MANAGER' ? 'Manager' : 'Admin';
+    toast.success(`Previewing layout as ${label}!`);
   };
 
   const handleLogout = () => {
@@ -53740,14 +54203,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleRolePreviewChange('Team Member')}
+                    onClick={() => handleRolePreviewChange('EMPLOYEE')}
                     className={`py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      previewRole === 'Team Member'
+                      previewRole === 'EMPLOYEE' || (previewRole as any) === 'Team Member'
                         ? 'bg-emerald-600 text-white shadow-2xs'
                         : 'text-gray-600 hover:text-gray-900 font-medium hover:bg-gray-100'
                     }`}
                   >
-                    Employee
+                    Team
                   </button>
                 </div>
               </div>
@@ -54759,7 +55222,7 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ className }) => 
               return {
                 id: t.id,
                 title: `${t.taskCode}: ${t.title}`,
-                entity: t.taskCode.startsWith('CAG') ? 'CAG' : 'EHM',
+                entity: (t.entityCode || t.entity) === 'CAG' ? 'CAG' : 'EHM',
                 rank,
                 badge,
                 badgeColor,
@@ -55047,7 +55510,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
       const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim() || 'Team Member';
       const roleType = (e.role || 'EMPLOYEE').toUpperCase();
       const roleBadge = roleType === 'ADMIN' ? 'Admin' : roleType === 'MANAGER' ? 'Manager' : (e.designation || 'Specialist');
-      const entityStr = e.entityCode || (e.employeeCode?.startsWith('CAG') ? 'CLIMAGRO' : 'EHM');
+      const entityStr = (e.entityCode || (e as any).entity) === 'CAG' ? 'CLIMAGRO' : 'EHM';
 
       return {
         id: `emp-${e.id}`,
@@ -56170,7 +56633,7 @@ export const Sidebar: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/components/SprintsSubView.tsx`
 
 ```tsx
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send } from 'lucide-react';
 import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
@@ -56484,7 +56947,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           ? t.reviewingLead
           : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Manager lead');
 
-        const epicCode = t.epicCode || parentEpic?.epicCode || (t.taskCode?.startsWith('CAG') ? 'CAG-EPIC-001' : 'EHM-EPIC-001');
+        const epicCode = t.epicCode || parentEpic?.epicCode || '';
 
         return {
           ...t,
@@ -56513,6 +56976,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   useEffect(() => {
     loadData();
 
+    const handleTaskUpdated = () => {
+      loadData(true);
+    };
+    window.addEventListener('tasks-updated', handleTaskUpdated);
+
     // Silent background refresh every 10s and on tab focus
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible' && !isModalOpen && !selectedTaskToUpdate) {
@@ -56531,6 +56999,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('tasks-updated', handleTaskUpdated);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
@@ -56854,9 +57323,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       console.warn('[BACKEND SPRINT API NOTICE]: Using local sprint task state fallback.', err);
     }
 
-    if (sprintEntity === 'CAG' && createdCode.startsWith('TSK-')) {
-      createdCode = createdCode.replace(/^TSK-/, 'CAG-TSK-');
-    }
+
 
     const assignedEmpNames = selectedEmpIds
       .map(id => {
@@ -56939,8 +57406,13 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     setSelectedTaskToUpdate({
       id: task.id,
       taskId: task.taskCode || task.id,
+      taskCode: task.taskCode || task.id,
       title: task.title || '',
       entity: resolvedEntity,
+      entityCode: task.entityCode || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM'),
+      epicId: task.epicId || (task.parentEpicCode ? (epics.find((e: any) => e.epicCode === task.parentEpicCode)?.id || null) : null),
+      parentEpicCode: task.epicCode || task.parentEpicCode || null,
+      parentEpicTitle: task.epicTitle || task.parentEpicTitle || null,
       assignee: resolvedAssignee,
       assigneeId: task.assigneeId || (assignedEmp?.id || ''),
       reviewingLead: resolvedLead,
@@ -56963,11 +57435,17 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
     try {
+      const badge = getEntityBadge(updated);
+      const resolvedEntityLabel = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
+      const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
+
       await fetchApi<any>(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           title: updated.title,
-          entity: updated.entity,
+          entity: resolvedEntityLabel,
+          entityCode: resolvedEntityCode,
+          epicId: updated.epicId !== undefined ? updated.epicId : null,
           assigneeName: updated.assignee,
           assigneeId: updated.assigneeId,
           reviewingLead: updated.reviewingLead,
@@ -56983,6 +57461,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       });
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
       await loadData();
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
     } catch (err: any) {
       console.error('[SPRINTS TASK PATCH ERROR]:', err);
       toast.error(err?.message || 'Failed to save task update');
@@ -57004,11 +57483,18 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       createdAt: new Date().toISOString(),
     };
 
+    const sourceBadge = getEntityBadge(sourceTask);
+    const resolvedEntityCode = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM';
+    const resolvedEntityLabel = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CLIMAGRO' : 'EHM';
+
     const clonedTaskObj = {
       id: newId,
       taskCode: newCode,
       title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
       status: 'PLANNED',
+      entityId: sourceTask.entityId,
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
       assigneeId: sourceTask.assigneeId || null,
       assigneeName: sourceTask.assigneeName || sourceTaskItem.assignee || 'Unassigned',
       assigneeEmail: sourceTask.assigneeEmail || '',
@@ -57026,16 +57512,13 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     setAllTasks(prev => [clonedTaskObj, ...prev]);
 
-    const clonedCode = clonedTaskObj.taskCode || '';
-    const isClonedCommon = clonedCode.startsWith('COMMON') || clonedCode.startsWith('COM-') || sourceTask.entity === 'COMMON';
-    const isClonedCAG = !isClonedCommon && (clonedCode.startsWith('CAG') || sourceTask.entity === 'CLIMAGRO');
-
     setSelectedTaskToUpdate({
       id: clonedTaskObj.id,
       taskId: clonedTaskObj.taskCode,
       taskCode: clonedTaskObj.taskCode,
       title: clonedTaskObj.title,
-      entity: isClonedCommon ? 'COMMON' : isClonedCAG ? 'CLIMAGRO' : 'EHM',
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
       assignee: clonedTaskObj.assigneeName,
       reviewingLead: clonedTaskObj.reviewingLead,
       status: 'In Progress',
@@ -57488,7 +57971,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       });
 
                       return sortedColumnTasks.map(t => {
-                        const entityName = (t.taskCode || '').startsWith('CAG') || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
+                        const entityName = t.entityCode === 'CAG' || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
                         const assignedEmp = employees.find(e => e.id === t.assigneeId || e.employeeCode === t.assigneeId);
                         const leadEmp = employees.find(e => e.id === t.reviewingLeadId || e.employeeCode === t.reviewingLeadId);
 
@@ -57504,7 +57987,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           assigneeInitials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0].slice(0, 2);
                         }
 
-                        const epicCode = t.epicCode || t.epicTitle || (entityName === 'Climagro' ? 'CAG-EPIC-001' : 'EHM-EPIC-001');
+                        const epicCode = t.epicCode || t.epicTitle || '';
 
                         let dueDateInfo = null;
                         if (t.dueDate) {
@@ -58777,7 +59260,7 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, label, trend, 
 ### File: `artifacts/hr-dashboard/src/components/TaskAnalyticsPanel.tsx`
 
 ```tsx
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BarChart3, Calendar, CheckCircle2, Clock, Search } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi } from '@workspace/api-client-react';
@@ -58861,7 +59344,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
 
   const employeeAnalytics: EmployeeAnalytics[] = employees
     .map((emp) => {
-      const empEntity = (emp.employeeCode || '').startsWith('CAG') ? 'CAG' : 'EHM';
+      const empEntity = (emp.entityCode || (emp as any).entity) === 'CAG' ? 'CAG' : 'EHM';
       let empTasks = tasks.filter((t) => t.assigneeId === emp.id);
 
       // Month Filter Modulation
@@ -59030,7 +59513,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
             {filteredEmpAnalytics.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-6 text-center text-xs text-gray-400 font-medium">
-                  No employee performance records match criteria.
+                  No team member performance records match criteria.
                 </td>
               </tr>
             ) : (
@@ -60314,6 +60797,9 @@ export interface TaskItem {
   entity: string; // EHM or CLIMAGRO / CAG or COMMON
   entityCode?: string;
   entityName?: string;
+  epicId?: string | null;
+  parentEpicCode?: string | null;
+  parentEpicTitle?: string | null;
   assignee: string;
   assigneeId?: string;
   reviewingLead: string;
@@ -60435,6 +60921,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   const [employeesList, setEmployeesList] = useState<{ id: string; name: string; designation: string }[]>([]);
+  const [epicsList, setEpicsList] = useState<{ id: string; epicCode: string; title: string; entityCode?: string }[]>([]);
+  const [selectedEpicId, setSelectedEpicId] = useState<string>('');
   const [entity, setEntity] = useState('EHM');
   const [parentTaskId, setParentTaskId] = useState('');
   const [taskName, setTaskName] = useState('');
@@ -60459,18 +60947,28 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      fetchApi<any[]>('/api/employees')
-        .then((data) => {
-          if (Array.isArray(data)) {
-            const list = data.map((e) => ({
-              id: e.id,
-              name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Team Member',
-              designation: e.designation || 'Team Member',
-            }));
-            setEmployeesList(list);
-          }
-        })
-        .catch(() => {});
+      Promise.all([
+        fetchApi<any[]>('/api/employees').catch(() => []),
+        fetchApi<any[]>('/api/epics').catch(() => []),
+      ]).then(([empData, epicsData]) => {
+        if (Array.isArray(empData)) {
+          const list = empData.map((e) => ({
+            id: e.id,
+            name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.employeeCode || 'Team Member',
+            designation: e.designation || 'Team Member',
+          }));
+          setEmployeesList(list);
+        }
+        if (Array.isArray(epicsData)) {
+          const list = epicsData.map((ep: any) => ({
+            id: ep.id,
+            epicCode: ep.epicCode,
+            title: ep.title,
+            entityCode: ep.entityCode || ep.entity,
+          }));
+          setEpicsList(list);
+        }
+      }).catch(() => {});
     }
   }, [isOpen]);
 
@@ -60549,6 +61047,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setTargetWeek(task.targetWeek || 'Week 1 (Days 1–7)');
       setPriority(normalizePriorityCode(task.priority));
       setDueDate(parseDateForInput(task.dueDate));
+      setSelectedEpicId(task.epicId || (task as any).parentEpicId || '');
       loadTaskData();
     }
   }, [task?.id, isOpen]);
@@ -60617,12 +61116,19 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
     if (onSave) {
       try {
         setIsSavingTask(true);
+        const resolvedCode = entity === 'CLIMAGRO' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM';
+        const matchedEpic = epicsList.find((e) => e.id === selectedEpicId);
         await onSave({
           ...task,
           taskId: parentTaskId,
           taskCode: parentTaskId,
           title: taskName,
           entity,
+          entityCode: resolvedCode,
+          entityId: undefined,
+          epicId: selectedEpicId || null,
+          parentEpicCode: matchedEpic ? matchedEpic.epicCode : selectedEpicId ? task.parentEpicCode : null,
+          parentEpicTitle: matchedEpic ? matchedEpic.title : selectedEpicId ? task.parentEpicTitle : null,
           assignee,
           assigneeId,
           reviewingLead,
@@ -60881,6 +61387,52 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     placeholder="Enter task title / deliverable name..."
                     className="w-full text-xs font-semibold bg-white border border-gray-300 rounded-xl p-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
                   />
+                )}
+              </div>
+
+              {/* Parent Feature Epic */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Parent Feature Epic
+                  </label>
+                  {selectedEpicId ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      ✓ Linked to Feature Epic
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-gray-400">
+                      No Parent Epic (Standalone Backlog Task)
+                    </span>
+                  )}
+                </div>
+                {readOnlyMode ? (
+                  <input
+                    type="text"
+                    disabled
+                    value={
+                      (() => {
+                        const matched = epicsList.find((e) => e.id === selectedEpicId);
+                        if (matched) return `${matched.epicCode}: ${matched.title}`;
+                        if (task.parentEpicCode) return `${task.parentEpicCode}: ${task.parentEpicTitle || ''}`.trim();
+                        return 'No parent epic (Standalone Backlog)';
+                      })()
+                    }
+                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                  />
+                ) : (
+                  <select
+                    value={selectedEpicId}
+                    onChange={(e) => setSelectedEpicId(e.target.value)}
+                    className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="">No parent epic (Standalone Backlog)</option>
+                    {epicsList.map((ep) => (
+                      <option key={ep.id} value={ep.id}>
+                        {ep.epicCode} - {ep.title} ({ep.entityCode || 'ALL'})
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
 
@@ -62490,6 +63042,7 @@ import {
   Link as LinkIcon,
   Copy,
   Users,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -62589,6 +63142,7 @@ export const ApplicationsView: React.FC = () => {
   const [selectedProjectToUpdate, setSelectedProjectToUpdate] = useState<ProjectItem | null>(null);
   const [selectedProjectForView, setSelectedProjectForView] = useState<ProjectItem | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
 
   const isEmployee = user?.role === 'EMPLOYEE';
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
@@ -62961,106 +63515,113 @@ export const ApplicationsView: React.FC = () => {
 
   const handleAddProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
+    if (isSubmittingProject) return;
+    setIsSubmittingProject(true);
 
-    const finalCheckpoints = projectChecklists;
-    const finalTeam = selectedTeamMemberNames;
-    const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : projectLead;
-    const finalDeliverableUrl = projectDeliverableUrl || projectTechStack;
-    const finalCategory = selectedCategoryType === 'Other'
-      ? (customCategoryText.trim() || 'Other')
-      : (selectedCategoryType || projectCategory);
+    try {
+      const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
 
-    if (editingProjectId) {
-      const payload = {
-        code: projectCode.trim() || undefined,
-        name: projectName,
-        entity: projectEntity,
-        entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-        category: finalCategory,
-        lead: finalLead,
-        team: finalTeam,
-        budget: projectBudget,
-        startDate: projectStartDate,
-        targetDate: projectTargetDate,
-        priority: projectPriority,
-        techStack: finalDeliverableUrl,
-        deliverableUrl: finalDeliverableUrl,
-        milestonesCount: finalCheckpoints.length,
-        description: projectDescription,
-        checkpoints: finalCheckpoints,
-        comments: projectComments,
-      };
+      const finalCheckpoints = projectChecklists;
+      const finalTeam = selectedTeamMemberNames;
+      const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : projectLead;
+      const finalDeliverableUrl = projectDeliverableUrl || projectTechStack;
+      const finalCategory = selectedCategoryType === 'Other'
+        ? (customCategoryText.trim() || 'Other')
+        : (selectedCategoryType || projectCategory);
 
-      try {
-        const updated = await fetchApi<ProjectItem>(`/api/projects/${editingProjectId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-        });
+      if (editingProjectId) {
+        const payload = {
+          code: projectCode.trim() || undefined,
+          name: projectName,
+          entity: projectEntity,
+          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
+          category: finalCategory,
+          lead: finalLead,
+          team: finalTeam,
+          budget: projectBudget,
+          startDate: projectStartDate,
+          targetDate: projectTargetDate,
+          priority: projectPriority,
+          techStack: finalDeliverableUrl,
+          deliverableUrl: finalDeliverableUrl,
+          milestonesCount: finalCheckpoints.length,
+          description: projectDescription,
+          checkpoints: finalCheckpoints,
+          comments: projectComments,
+        };
 
-        toast.success(`Project "${projectName}" updated and saved to database!`);
-        await loadProjects();
-        if (selectedProjectForView?.id === editingProjectId) {
-          setSelectedProjectForView(updated || { ...selectedProjectForView, ...payload });
+        try {
+          const updated = await fetchApi<ProjectItem>(`/api/projects/${editingProjectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          });
+
+          toast.success(`Project "${projectName}" updated and saved to database!`);
+          await loadProjects();
+          if (selectedProjectForView?.id === editingProjectId) {
+            setSelectedProjectForView(updated || { ...selectedProjectForView, ...payload });
+          }
+        } catch (err: any) {
+          console.error('[PROJECT UPDATE ERROR]:', err);
+          toast.error(`Failed to update project: ${err?.message || 'Server error'}`);
         }
-      } catch (err: any) {
-        console.error('[PROJECT UPDATE ERROR]:', err);
-        toast.error(`Failed to update project: ${err?.message || 'Server error'}`);
-      }
-    } else {
-      const payload = {
-        code: projectCode.trim() || undefined,
-        name: projectName,
-        entity: projectEntity,
-        entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-        category: finalCategory,
-        lead: finalLead,
-        team: finalTeam,
-        budget: projectBudget,
-        startDate: projectStartDate,
-        targetDate: projectTargetDate,
-        status: 'Planning' as const,
-        priority: projectPriority,
-        techStack: finalDeliverableUrl,
-        deliverableUrl: finalDeliverableUrl,
-        milestonesCount: finalCheckpoints.length,
-        description: projectDescription,
-        checkpoints: finalCheckpoints,
-        comments: projectComments,
-      };
+      } else {
+        const payload = {
+          code: projectCode.trim() || undefined,
+          name: projectName,
+          entity: projectEntity,
+          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
+          category: finalCategory,
+          lead: finalLead,
+          team: finalTeam,
+          budget: projectBudget,
+          startDate: projectStartDate,
+          targetDate: projectTargetDate,
+          status: 'Planning' as const,
+          priority: projectPriority,
+          techStack: finalDeliverableUrl,
+          deliverableUrl: finalDeliverableUrl,
+          milestonesCount: finalCheckpoints.length,
+          description: projectDescription,
+          checkpoints: finalCheckpoints,
+          comments: projectComments,
+        };
 
-      try {
-        const created = await fetchApi<ProjectItem>('/api/projects', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
+        try {
+          const created = await fetchApi<ProjectItem>('/api/projects', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
 
-        toast.success(`New project "${projectName}" (${created?.code || 'Created'}) saved permanently to database!`);
-        await loadProjects();
-      } catch (err: any) {
-        console.error('[PROJECT CREATE ERROR]:', err);
-        toast.error(`Failed to create project: ${err?.message || 'Server error'}`);
+          toast.success(`New project "${projectName}" (${created?.code || 'Created'}) saved permanently to database!`);
+          await loadProjects();
+        } catch (err: any) {
+          console.error('[PROJECT CREATE ERROR]:', err);
+          toast.error(`Failed to create project: ${err?.message || 'Server error'}`);
+        }
       }
+
+      setShowAddProjectModal(false);
+      setEditingProjectId(null);
+      setProjectName('');
+      setProjectCode('');
+      setProjectLead('');
+      setSelectedProjectLeads([]);
+      setSelectedTeamMemberNames([]);
+      setProjectStartDate('');
+      setProjectTargetDate('');
+      setProjectTechStack('');
+      setProjectDeliverableUrl('');
+      setProjectCategory('');
+      setSelectedCategoryType('');
+      setCustomCategoryText('');
+      setProjectDescription('');
+      setProjectChecklists([]);
+      setNewCheckpointText('');
+      setProjectComments([]);
+    } finally {
+      setIsSubmittingProject(false);
     }
-
-    setShowAddProjectModal(false);
-    setEditingProjectId(null);
-    setProjectName('');
-    setProjectCode('');
-    setProjectLead('');
-    setSelectedProjectLeads([]);
-    setSelectedTeamMemberNames([]);
-    setProjectStartDate('');
-    setProjectTargetDate('');
-    setProjectTechStack('');
-    setProjectDeliverableUrl('');
-    setProjectCategory('');
-    setSelectedCategoryType('');
-    setCustomCategoryText('');
-    setProjectDescription('');
-    setProjectChecklists([]);
-    setNewCheckpointText('');
-    setProjectComments([]);
   };
 
   const handleDeleteProject = async (projectId: string, projName: string) => {
@@ -63357,7 +63918,7 @@ export const ApplicationsView: React.FC = () => {
                       const totalCheckpoints = prj.checkpoints ? prj.checkpoints.length : 0;
                       const checkpointPercent = totalCheckpoints > 0 ? Math.round((completedCheckpoints / totalCheckpoints) * 100) : 0;
 
-                      const isCAG = prj.entity === 'CAG' || prj.code?.startsWith('CAG') || prj.entityName?.toLowerCase().includes('cag');
+                      const isCAG = (prj.entityCode || prj.entity) === 'CAG' || prj.entityName?.toLowerCase().includes('cag');
                       const entityLabel = isCAG ? 'CLIMAGRO' : 'EHM';
 
                       const statusLower = (prj.status || '').toLowerCase();
@@ -64256,10 +64817,27 @@ export const ApplicationsView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                    disabled={isSubmittingProject}
+                    className={`flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer ${
+                      isSubmittingProject
+                        ? 'bg-emerald-400 cursor-not-allowed text-white opacity-75'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    }`}
                   >
-                    {editingProjectId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                    <span>{editingProjectId ? 'Save Changes' : 'Save New Project'}</span>
+                    {isSubmittingProject ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : editingProjectId ? (
+                      <Edit3 className="w-4 h-4" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    <span>
+                      {isSubmittingProject
+                        ? 'Saving...'
+                        : editingProjectId
+                        ? 'Save Changes'
+                        : 'Save New Project'}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -64396,7 +64974,7 @@ export const ApplicationsView: React.FC = () => {
       {/* Expanded View Project Details Modal Popup */}
       {selectedProjectForView && (() => {
         const p = selectedProjectForView;
-        const isCAG = p.entity === 'CAG' || p.code?.startsWith('CAG') || p.entityName?.toLowerCase().includes('cag');
+        const isCAG = (p.entityCode || p.entity) === 'CAG' || p.entityName?.toLowerCase().includes('cag');
         const entityLabel = isCAG ? 'CLIMAGROANALYTICS' : 'EHMCONSULTANCY';
 
         const priorityColor =
@@ -66066,7 +66644,7 @@ export const MeetingsView: React.FC = () => {
     const now = new Date();
 
     return employees.map((emp, idx) => {
-      const entity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM');
+      const entity = emp.entityCode || emp.entity || 'EHM';
       const entityName = entity === 'CAG' ? 'CLIMAGRO' : entity === 'COMMON' ? 'EHM & CLIMAGRO' : 'EHM';
 
       const isSelf =
@@ -67518,7 +68096,7 @@ export const MeetingsView: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/pages/NotificationsView.tsx`
 
 ```tsx
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { formatDateTime } from '../utils/dateUtils';
 import { fetchApi, clearApiCache } from '@workspace/api-client-react';
@@ -67589,23 +68167,16 @@ export const NotificationsView: React.FC = () => {
 
   const getNotificationTarget = (n: any) => {
     const payload = n.payload || {};
-    let taskCode = payload.taskCode || null;
-    if (!taskCode) {
-      const match = (n.title || '').match(/\[([A-Z0-9_-]+)\]/i) || (n.message || '').match(/\[([A-Z0-9_-]+)\]/i);
-      if (match) taskCode = match[1];
-    }
+    const type = n.type || '';
+    const taskCode = payload.taskCode || null;
     const taskId = payload.taskId || null;
-    const isSprint = Boolean(
-      payload.sprintId ||
-      n.type?.includes('SPRINT') ||
-      (taskCode && (taskCode.includes('SPR') || taskCode.includes('-SP-') || taskCode.includes('-S-')))
-    );
-    const isMeeting = Boolean(payload.meetingId || n.type?.includes('MEETING'));
-    const isAnnouncement = Boolean(payload.announcementId || n.type?.includes('ANNOUNCEMENT'));
+    const isSprint = Boolean(payload.sprintId || type.includes('SPRINT'));
+    const isMeeting = Boolean(payload.meetingId || type.includes('MEETING'));
+    const isAnnouncement = Boolean(payload.announcementId || type.includes('ANNOUNCEMENT'));
 
     let label = 'Details';
     if (isSprint) label = 'Sprint Task';
-    else if (taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')) label = 'Task';
+    else if (taskId || taskCode || type.includes('TASK') || type.includes('DELAY')) label = 'Task';
     else if (isMeeting) label = 'Meeting';
     else if (isAnnouncement) label = 'Announcement';
 
@@ -67615,7 +68186,7 @@ export const NotificationsView: React.FC = () => {
       isSprint,
       isMeeting,
       isAnnouncement,
-      isTask: Boolean(taskId || taskCode || n.type?.includes('TASK') || n.type?.includes('DELAY')),
+      isTask: Boolean(taskId || taskCode || type.includes('TASK') || type.includes('DELAY')),
       label,
     };
   };
@@ -67657,7 +68228,7 @@ export const NotificationsView: React.FC = () => {
 
         if (taskData && taskData.id) {
           const resolvedCode = taskData.taskCode || taskData.taskId || target.taskCode || target.taskId || '';
-          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || (resolvedCode.startsWith('CAG') ? 'CLIMAGRO' : resolvedCode.startsWith('COMMON') || resolvedCode.startsWith('COM-') ? 'COMMON' : 'EHM');
+          const resolvedEntity = taskData.entityCode || taskData.entity || taskData.entityName || 'EHM';
 
           setSelectedTaskForModal({
             ...taskData,
@@ -68032,7 +68603,7 @@ export const OfficeTodayView: React.FC = () => {
     const now = new Date();
 
     return (employees.length > 0 ? employees : []).map((emp, idx) => {
-      const entity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM');
+      const entity = emp.entityCode || emp.entity || 'EHM';
       const entityName = entity === 'CAG' ? 'CLIMAGRO' : entity === 'COMMON' ? 'EHM & CLIMAGRO' : 'EHM';
 
       const isSelf =
@@ -68329,7 +68900,7 @@ export const OfficeTodayView: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/pages/PerformanceView.tsx`
 
 ```tsx
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -68447,7 +69018,7 @@ export const PerformanceView: React.FC = () => {
 
   const processedEmployees: ProcessedEmployee[] = employees
     .map((emp, index) => {
-      const entity = (emp.employeeCode || '').startsWith('CAG') ? 'CAG' : 'EHM';
+      const entity = (emp.entityCode || emp.entity) === 'CAG' ? 'CAG' : 'EHM';
       const empTasks = tasks.filter((t) => t.assigneeId === emp.id);
 
       const assigned = empTasks.length;
@@ -68868,7 +69439,7 @@ export const ReportsView: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/pages/SalaryView.tsx`
 
 ```tsx
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, Download, CreditCard, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -68910,7 +69481,7 @@ export const SalaryView: React.FC = () => {
   const payroll = (employees.length > 0
     ? employees.map((emp, i) => {
         const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member';
-        const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM');
+        const rawEntity = emp.entityCode || emp.entity || 'EHM';
         const entity = rawEntity === 'CAG' ? 'CAG' : 'EHM';
         const matchingFallback = fallbackPayroll.find(f => f.name.toLowerCase() === name.toLowerCase());
         if (matchingFallback) return { ...matchingFallback, entity };
@@ -69061,7 +69632,7 @@ export const SprintsView: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/pages/TasksView.tsx`
 
 ```tsx
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
@@ -69178,20 +69749,11 @@ export const TasksView: React.FC = () => {
         const parentEpic = (epicsData || []).find((ep: any) => ep.id === t.epicId);
         const parentInit = (initsData || []).find((init: any) => init.id === (t.initiativeId || parentEpic?.initiativeId));
 
-        const isCAG = (
-          t.entityId === 'cag' ||
-          t.taskCode?.startsWith('CAG') ||
-          parentEpic?.epicCode?.startsWith('CAG') ||
-          parentInit?.initiativeCode?.startsWith('CAG')
-        );
+        const badge = getEntityBadge(t);
+        const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
+        const resolvedEntityLabel = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
 
-        const entityCode = isCAG ? 'CAG' : 'EHM';
-        const entityName = isCAG ? 'climagroanalytics' : 'ehmconsultancy';
-
-        let taskCode = t.taskCode || t.id;
-        if (isCAG && taskCode.startsWith('EHM-')) {
-          taskCode = taskCode.replace(/^EHM-/, 'CAG-');
-        }
+        const taskCode = t.taskCode || t.id;
 
         const matchedAssignee = (employeesData || []).find((e: any) =>
           e.id === t.assigneeId ||
@@ -69220,11 +69782,13 @@ export const TasksView: React.FC = () => {
           id: t.id,
           taskCode,
           title: t.title,
-          entityCode,
-          entityName,
+          entity: resolvedEntityLabel,
+          entityCode: resolvedEntityCode,
+          entityId: t.entityId,
+          entityName: t.entityName,
           epicId: t.epicId || parentEpic?.id,
           initiativeId: t.initiativeId || parentInit?.id || parentEpic?.initiativeId,
-          parentInitiativeCode: parentInit?.initiativeCode || (parentEpic ? (isCAG ? 'CAG-INIT-001' : 'EHM-INIT-001') : null),
+          parentInitiativeCode: parentInit?.initiativeCode || (parentEpic ? (badge.isCAG ? 'CAG-INIT-001' : 'EHM-INIT-001') : null),
           parentInitiativeTitle: parentInit?.title || '',
           parentEpicCode: parentEpic?.epicCode || null,
           parentEpicTitle: parentEpic?.title || '',
@@ -69255,6 +69819,14 @@ export const TasksView: React.FC = () => {
   useEffect(() => {
     loadTasks();
   }, [currentPage, employeeFilter, priorityFilter, statusFilter, debouncedSearch, user]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      loadTasks();
+    };
+    window.addEventListener('tasks-updated', handleUpdate);
+    return () => window.removeEventListener('tasks-updated', handleUpdate);
+  }, []);
 
   const isTaskAssignedToUser = (task: any) => {
     if (isManager) return true;
@@ -69339,8 +69911,13 @@ export const TasksView: React.FC = () => {
     setSelectedTaskToUpdate({
       id: task.id,
       taskId: task.taskCode || task.id,
+      taskCode: task.taskCode || task.id,
       title: task.title || '',
       entity: resolvedEntity,
+      entityCode: task.entityCode || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM'),
+      epicId: task.epicId || (task.parentEpicCode ? (rawEpics.find((e: any) => e.epicCode === task.parentEpicCode)?.id || null) : null),
+      parentEpicCode: task.parentEpicCode || null,
+      parentEpicTitle: task.parentEpicTitle || null,
       assignee: task.assigneeName || task.assignee || 'Unassigned',
       assigneeId: task.assigneeId || '',
       reviewingLead: task.reviewingLead || 'Manager Lead',
@@ -69366,6 +69943,8 @@ export const TasksView: React.FC = () => {
         body: JSON.stringify({
           title: updated.title,
           entity: updated.entity,
+          entityCode: updated.entityCode || (updated.entity === 'CLIMAGRO' ? 'CAG' : updated.entity === 'COMMON' ? 'COMMON' : 'EHM'),
+          epicId: updated.epicId !== undefined ? updated.epicId : null,
           assigneeName: updated.assignee,
           assigneeId: updated.assigneeId,
           reviewingLead: updated.reviewingLead,
@@ -69383,6 +69962,7 @@ export const TasksView: React.FC = () => {
       });
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
       await loadTasks();
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
     } catch (err: any) {
       console.error('[TASK PATCH ERROR]:', err);
       toast.error(err?.message || 'Failed to update task in database');
@@ -69393,6 +69973,10 @@ export const TasksView: React.FC = () => {
     const sourceTask = tasks.find(t => t.id === sourceTaskItem.id || t.taskCode === sourceTaskItem.taskId) || sourceTaskItem;
     const sourceCode = sourceTask.taskCode || sourceTaskItem.taskId || sourceTask.id;
     
+    const sourceBadge = getEntityBadge(sourceTask);
+    const resolvedEntityCode = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM';
+    const resolvedEntityLabel = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CLIMAGRO' : 'EHM';
+
     let createdFromApi: any = null;
     try {
       createdFromApi = await fetchApi<any>('/api/tasks', {
@@ -69402,7 +69986,7 @@ export const TasksView: React.FC = () => {
           description: sourceTask.description || sourceTaskItem.notes || `Cloned from ${sourceCode}`,
           status: 'BACKLOG',
           priority: sourceTask.priority || 'P3',
-          entityCode: sourceTask.entityCode || 'CAG',
+          entityCode: resolvedEntityCode,
           epicId: sourceTask.epicId || null,
           deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
         }),
@@ -69426,9 +70010,11 @@ export const TasksView: React.FC = () => {
       id: newId,
       taskCode: newCode,
       title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
-      entityCode: sourceTask.entityCode || 'CAG',
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
+      entityId: sourceTask.entityId,
       status: 'BACKLOG',
-      parentEpicCode: sourceTask.parentEpicCode || 'CAG-EPIC-001',
+      parentEpicCode: sourceTask.parentEpicCode || '',
       parentEpicTitle: sourceTask.parentEpicTitle || 'Parent Epic Details',
       priority: sourceTask.priority || 'P3',
       description: sourceTask.description || sourceTaskItem.notes || '',
@@ -69442,16 +70028,13 @@ export const TasksView: React.FC = () => {
 
     setTasks(prev => [clonedTaskObj, ...prev]);
 
-    const clonedCode = clonedTaskObj.taskCode || '';
-    const isClonedCommon = clonedCode.startsWith('COMMON') || clonedCode.startsWith('COM-') || sourceTask.entity === 'COMMON';
-    const isClonedCAG = !isClonedCommon && (clonedCode.startsWith('CAG') || sourceTask.entity === 'CLIMAGRO');
-
     setSelectedTaskToUpdate({
       id: clonedTaskObj.id,
       taskId: clonedTaskObj.taskCode,
       taskCode: clonedTaskObj.taskCode,
       title: clonedTaskObj.title,
-      entity: isClonedCommon ? 'COMMON' : isClonedCAG ? 'CLIMAGRO' : 'EHM',
+      entity: resolvedEntityLabel,
+      entityCode: resolvedEntityCode,
       assignee: clonedTaskObj.assigneeName,
       reviewingLead: clonedTaskObj.reviewingLead,
       status: 'In Progress',
@@ -69482,8 +70065,8 @@ export const TasksView: React.FC = () => {
   };
 
   const renderTaskRow = (t: any) => {
-    const isCAG = t.entityCode === 'CAG' || (t.taskCode || '').startsWith('CAG');
-    const entityLabel = isCAG ? 'CLIMAGRO' : 'EHM';
+    const isCAG = t.entityCode === 'CAG';
+    const entityLabel = t.entityCode === 'COMMON' ? 'EHM & CLIMAGRO' : isCAG ? 'CLIMAGRO' : 'EHM';
     const postedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '23 Sept';
 
     const p = (t.priority || '').toUpperCase();
@@ -70016,7 +70599,7 @@ export const TasksView: React.FC = () => {
               {(() => {
                 const parentInit = (initiatives || []).find((i: any) => i.id === viewingEpicInTasks.initiativeId || i.initiativeCode === viewingEpicInTasks.initiativeId);
                 const parentTitle = parentInit?.title || 'Initiative';
-                const isCAG = (viewingEpicInTasks.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const isCAG = viewingEpicInTasks.entityCode === 'CAG';
                 const rawStatus = viewingEpicInTasks.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -70121,7 +70704,7 @@ export const TasksView: React.FC = () => {
 
               {/* Linked Tasks Section with Progress Bar */}
               {(() => {
-                const isEpicCAG = (viewingEpicInTasks.epicCode || '').startsWith('CAG');
+                const isEpicCAG = viewingEpicInTasks.entityCode === 'CAG';
                 const linkedTasks = tasks.filter((t: any) => t.epicId === viewingEpicInTasks.id || t.parentEpicCode === viewingEpicInTasks.epicCode);
                 const targetTasksCount = Math.max(linkedTasks.length, 3);
                 const doneCount = linkedTasks.filter((t: any) => t.status === 'DONE' || t.status === 'Done' || t.status === 'COMPLETED').length;
@@ -70147,9 +70730,7 @@ export const TasksView: React.FC = () => {
                     {/* Tasks List */}
                     <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
                       {linkedTasks.map((taskItem: any, idx: number) => {
-                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                          : (taskItem.taskCode || 'TSK-001');
+                        const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
@@ -70282,7 +70863,7 @@ export const TasksView: React.FC = () => {
 ### File: `artifacts/hr-dashboard/src/pages/TeamDirectoryView.tsx`
 
 ```tsx
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   ChevronLeft, 
@@ -70385,7 +70966,7 @@ export const TeamDirectoryView: React.FC = () => {
       if (Array.isArray(data)) {
         const formatted = data.map(emp => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member';
-          const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
+          const rawEntity = emp.entityCode || emp.entity || 'EHM';
           const roleType = (emp.role || 'Team Member').toUpperCase();
           const defaultCode = roleType === 'ADMIN'
             ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-ADM01`
@@ -70448,14 +71029,14 @@ export const TeamDirectoryView: React.FC = () => {
     if (!matchesEntityFilter(member, selectedEntity)) return false;
 
     if (entityFilter !== 'ALL') {
-      const entUpper = (member.entity || '').toUpperCase();
-      if (entityFilter === 'COMMON' && entUpper !== 'COMMON' && entUpper !== 'BOTH' && !member.employeeCode?.startsWith('COM')) {
+      const entUpper = (member.entity || member.entityCode || '').toUpperCase();
+      if (entityFilter === 'COMMON' && entUpper !== 'COMMON' && entUpper !== 'BOTH') {
         return false;
       }
-      if (entityFilter === 'CAG' && entUpper !== 'CAG' && entUpper !== 'CLIMAGRO' && !member.employeeCode?.startsWith('CAG')) {
+      if (entityFilter === 'CAG' && entUpper !== 'CAG' && entUpper !== 'CLIMAGRO') {
         return false;
       }
-      if (entityFilter === 'EHM' && entUpper !== 'EHM' && !member.employeeCode?.startsWith('EHM')) {
+      if (entityFilter === 'EHM' && entUpper !== 'EHM') {
         return false;
       }
     }
@@ -70630,12 +71211,11 @@ export const TeamDirectoryView: React.FC = () => {
   };
 
   const getEntityDisplayName = (member: any): string => {
-    const entityUpper = (member.entity || '').toUpperCase();
-    const code = member.employeeCode || '';
-    if (entityUpper === 'COMMON' || entityUpper === 'BOTH' || code.startsWith('COM')) {
+    const entityUpper = (member.entity || member.entityCode || '').toUpperCase();
+    if (entityUpper === 'COMMON' || entityUpper === 'BOTH') {
       return 'EHM & CLIMAGRO';
     }
-    if (entityUpper === 'CAG' || entityUpper === 'CLIMAGRO' || code.startsWith('CAG')) {
+    if (entityUpper === 'CAG' || entityUpper === 'CLIMAGRO') {
       return 'CLIMAGRO';
     }
     return 'EHM';
@@ -71533,122 +72113,8 @@ export const getKolkataDateString = (d: Date = new Date()): string => {
 ```typescript
 /**
  * Robust Entity Filtering Utility for HR & Task Management Dashboard
- * Enforces global scoping between EHM, CLIMAGRO (CAG), and ALL.
+ * Enforces global scoping between EHM, CLIMAGRO (CAG), and COMMON.
  */
-
-export function matchesEntityFilter(item: any, selectedEntity: string): boolean {
-  if (!selectedEntity || selectedEntity === 'ALL') {
-    return true;
-  }
-
-  if (!item) {
-    return true; // Avoid hiding empty undefined records prematurely
-  }
-
-  // Handle primitive string items (e.g., entity codes directly)
-  if (typeof item === 'string') {
-    const str = item.toUpperCase();
-    if (selectedEntity === 'EHM') return str.includes('EHM');
-    if (selectedEntity === 'CAG') return str.includes('CAG') || str.includes('CLIMAGRO');
-    return true;
-  }
-
-  const target = selectedEntity.toUpperCase(); // 'EHM' or 'CAG'
-  const isCAGTarget = target === 'CAG' || target === 'CLIMAGRO';
-  const isEHMTarget = target === 'EHM';
-
-  // Check 'BOTH', 'COMMON', or 'ALL' on item properties (means applies to both entities)
-  const entityCode = (item.entityCode || '').toUpperCase();
-  const entity = (item.entity || '').toUpperCase();
-  if (entityCode === 'BOTH' || entityCode === 'ALL' || entityCode === 'COMMON' || entity === 'BOTH' || entity === 'ALL' || entity === 'COMMON') {
-    return true;
-  }
-
-  const entityId = (item.entityId || '').toLowerCase();
-  const entityName = (item.entityName || '').toLowerCase();
-
-  // 1. Direct Entity Property Matching
-  if (isEHMTarget) {
-    if (
-      entityCode === 'EHM' ||
-      entity === 'EHM' ||
-      entityId === 'ehm' ||
-      entityId === 'ehmconsultancy' ||
-      entityName.includes('ehm')
-    ) {
-      return true;
-    }
-  }
-
-  if (isCAGTarget) {
-    if (
-      entityCode === 'CAG' ||
-      entityCode === 'CLIMAGRO' ||
-      entity === 'CAG' ||
-      entity === 'CLIMAGRO' ||
-      entityId === 'cag' ||
-      entityId === 'climagroanalytics' ||
-      entityName.includes('cag') ||
-      entityName.includes('climagro')
-    ) {
-      return true;
-    }
-  }
-
-  // 2. Code Prefix Matching (e.g., EHM-EMP01, CAG-TSK-001, EHM-SPR-01, CAG-INIT-01)
-  const code = (
-    item.taskCode ||
-    item.employeeCode ||
-    item.sprintCode ||
-    item.initiativeCode ||
-    item.epicCode ||
-    item.taskId ||
-    item.code ||
-    (typeof item.id === 'string' ? item.id : '')
-  ).toUpperCase();
-
-  if (isEHMTarget && code.startsWith('EHM')) {
-    return true;
-  }
-
-  if (isCAGTarget && (code.startsWith('CAG') || code.startsWith('CLIMAGRO'))) {
-    return true;
-  }
-
-  return false;
-}
-
-export function isCAGEntity(item: any): boolean {
-  if (!item) return false;
-  if (typeof item === 'string') {
-    const s = item.toUpperCase();
-    return s === 'CAG' || s === 'CLIMAGRO' || s.startsWith('CAG') || s.startsWith('CLIMAGRO') || s.includes('CLIMAGRO');
-  }
-  const entity = (item.entity || '').toUpperCase();
-  const entityCode = (item.entityCode || '').toUpperCase();
-  const entityName = (item.entityName || '').toLowerCase();
-  const entityId = (item.entityId || '').toLowerCase();
-
-  // 1. Direct entity property (CAG vs EHM vs COMMON)
-  if (entity === 'CAG' || entity === 'CLIMAGRO' || entityCode === 'CAG' || entityCode === 'CLIMAGRO' || entityId === 'ebbf77f7-c1ac-423d-a29d-8db50beac25f') return true;
-  if (entity === 'EHM' || entityCode === 'EHM' || entityId === '886d7680-6a7c-482e-ae61-159ec359f881') return false;
-  if (entityId === 'cag' || entityId === 'climagroanalytics' || entityName.includes('climagro')) return true;
-  if (entityId === 'ehm' || entityId === 'ehmconsultancy' || entityName.includes('ehm')) return false;
-
-  // 2. Code prefix fallback
-  const code = (
-    item.taskCode ||
-    item.initiativeCode ||
-    item.epicCode ||
-    item.sprintCode ||
-    item.taskId ||
-    item.code ||
-    (typeof item.id === 'string' ? item.id : '')
-  ).toUpperCase();
-
-  if (code.startsWith('CAG') || code.startsWith('CLIMAGRO')) return true;
-  return false;
-}
 
 export interface EntityBadgeInfo {
   label: 'CLIMAGRO' | 'EHM' | 'EHM & CLIMAGRO';
@@ -71671,8 +72137,8 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
 
   // Handle primitive string items
   if (typeof item === 'string') {
-    const s = item.toUpperCase();
-    if (s === 'COMMON' || s === 'BOTH' || s.includes('EHM & CLIMAGRO') || s.startsWith('COM')) {
+    const s = item.toUpperCase().trim();
+    if (s === 'COMMON' || s === 'BOTH' || s.includes('EHM & CLIMAGRO') || s === 'EHM & CLIMAGRO (COMMON)') {
       return {
         label: 'EHM & CLIMAGRO',
         isCAG: false,
@@ -71681,7 +72147,7 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
         dotColor: 'bg-purple-500',
       };
     }
-    if (s === 'CAG' || s === 'CLIMAGRO' || s.startsWith('CAG') || s.includes('CLIMAGRO')) {
+    if (s === 'CAG' || s === 'CLIMAGRO' || s.includes('CLIMAGRO')) {
       return {
         label: 'CLIMAGRO',
         isCAG: true,
@@ -71699,32 +72165,22 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
     };
   }
 
-  const entity = (item.entity || item.entityCode || '').toUpperCase();
-  const entityName = (item.entityName || '').toLowerCase();
-  const entityId = (item.entityId || '').toLowerCase();
-  const code = (
-    item.taskCode ||
-    item.employeeCode ||
-    item.initiativeCode ||
-    item.epicCode ||
-    item.sprintCode ||
-    item.taskId ||
-    item.code ||
-    (typeof item.id === 'string' ? item.id : '')
-  ).toUpperCase();
+  const rawEntity = (item.entity || item.entityCode || '').toUpperCase().trim();
+  const rawEntityName = (item.entityName || '').toLowerCase().trim();
+  const rawEntityId = (item.entityId || '').toLowerCase().trim();
 
-  // 1. Check COMMON / BOTH (Mixed EHM & ClimAgro Pool)
+  // 1. EXPLICIT ENTITY PROPERTY PRIORITY
+  // Check COMMON / BOTH
   if (
-    entity === 'COMMON' ||
-    entity === 'BOTH' ||
-    entity === 'EHM & CLIMAGRO' ||
-    entity.includes('COMMON') ||
-    entity.includes('BOTH') ||
-    entityId === '539ba160-88b8-4fdd-a5ef-39c09c97516a' ||
-    entityName.includes('common') ||
-    entityName.includes('&') ||
-    code.startsWith('COMMON') ||
-    code.startsWith('COM-')
+    rawEntity === 'COMMON' ||
+    rawEntity === 'BOTH' ||
+    rawEntity === 'EHM & CLIMAGRO' ||
+    rawEntity.includes('COMMON') ||
+    rawEntity.includes('BOTH') ||
+    rawEntityId === '539ba160-88b8-4fdd-a5ef-39c09c97516a' ||
+    rawEntityId === 'common' ||
+    rawEntityName.includes('common') ||
+    rawEntityName.includes('&')
   ) {
     return {
       label: 'EHM & CLIMAGRO',
@@ -71735,16 +72191,14 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
     };
   }
 
-  // 2. Check CLIMAGRO
+  // Check CLIMAGRO / CAG
   if (
-    entity === 'CAG' ||
-    entity === 'CLIMAGRO' ||
-    entityId === 'ebbf77f7-c1ac-423d-a29d-8db50beac25f' ||
-    entityName.includes('climagro') ||
-    entityId.includes('climagro') ||
-    entityId === 'cag' ||
-    code.startsWith('CAG') ||
-    code.startsWith('CLIMAGRO')
+    rawEntity === 'CAG' ||
+    rawEntity === 'CLIMAGRO' ||
+    rawEntityId === 'ebbf77f7-c1ac-423d-a29d-8db50beac25f' ||
+    rawEntityId === 'cag' ||
+    rawEntityId === 'climagroanalytics' ||
+    rawEntityName.includes('climagro')
   ) {
     return {
       label: 'CLIMAGRO',
@@ -71755,7 +72209,24 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
     };
   }
 
-  // 3. Default to EHM
+  // Check EHM
+  if (
+    rawEntity === 'EHM' ||
+    rawEntityId === '886d7680-6a7c-482e-ae61-159ec359f881' ||
+    rawEntityId === 'ehm' ||
+    rawEntityId === 'ehmconsultancy' ||
+    rawEntityName.includes('ehm')
+  ) {
+    return {
+      label: 'EHM',
+      isCAG: false,
+      isCommon: false,
+      className: 'bg-amber-50 text-amber-800 border-amber-200 font-extrabold',
+      dotColor: 'bg-amber-500',
+    };
+  }
+
+  // Fallback to default EHM when entity is unassigned
   return {
     label: 'EHM',
     isCAG: false,
@@ -71763,6 +72234,38 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
     className: 'bg-amber-50 text-amber-800 border-amber-200 font-extrabold',
     dotColor: 'bg-amber-500',
   };
+}
+
+export function matchesEntityFilter(item: any, selectedEntity: string): boolean {
+  if (!selectedEntity || selectedEntity === 'ALL') {
+    return true;
+  }
+
+  if (!item) {
+    return true;
+  }
+
+  const badge = getEntityBadge(item);
+  // Shared / Common items appear under both EHM and CAG views
+  if (badge.isCommon) {
+    return true;
+  }
+
+  const target = selectedEntity.toUpperCase().trim();
+  if (target === 'CAG' || target === 'CLIMAGRO') {
+    return badge.isCAG;
+  }
+  if (target === 'EHM') {
+    return !badge.isCAG && !badge.isCommon;
+  }
+
+  return true;
+}
+
+export function isCAGEntity(item: any): boolean {
+  if (!item) return false;
+  const badge = getEntityBadge(item);
+  return badge.isCAG;
 }
 
 ```

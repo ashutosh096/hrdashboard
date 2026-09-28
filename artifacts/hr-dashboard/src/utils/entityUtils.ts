@@ -25,7 +25,7 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
   // Handle primitive string items
   if (typeof item === 'string') {
     const s = item.toUpperCase().trim();
-    if (s === 'COMMON' || s === 'BOTH' || s.includes('EHM & CLIMAGRO') || s.startsWith('COM')) {
+    if (s === 'COMMON' || s === 'BOTH' || s.includes('EHM & CLIMAGRO') || s === 'EHM & CLIMAGRO (COMMON)') {
       return {
         label: 'EHM & CLIMAGRO',
         isCAG: false,
@@ -113,38 +113,7 @@ export function getEntityBadge(item: any): EntityBadgeInfo {
     };
   }
 
-  // 2. CODE PREFIX FALLBACK (ONLY IF NO EXPLICIT ENTITY PROPERTY WAS MATCHED)
-  const code = (
-    item.taskCode ||
-    item.employeeCode ||
-    item.initiativeCode ||
-    item.epicCode ||
-    item.sprintCode ||
-    item.taskId ||
-    item.code ||
-    (typeof item.id === 'string' ? item.id : '')
-  ).toUpperCase().trim();
-
-  if (code.startsWith('COMMON') || code.startsWith('COM-')) {
-    return {
-      label: 'EHM & CLIMAGRO',
-      isCAG: false,
-      isCommon: true,
-      className: 'bg-purple-50 text-purple-700 border-purple-200 font-extrabold',
-      dotColor: 'bg-purple-500',
-    };
-  }
-
-  if (code.startsWith('CAG') || code.startsWith('CLIMAGRO')) {
-    return {
-      label: 'CLIMAGRO',
-      isCAG: true,
-      isCommon: false,
-      className: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold',
-      dotColor: 'bg-emerald-500',
-    };
-  }
-
+  // Fallback to default EHM when entity is unassigned
   return {
     label: 'EHM',
     isCAG: false,

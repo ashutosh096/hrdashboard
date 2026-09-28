@@ -77,7 +77,7 @@ export const OfficeTodayView: React.FC = () => {
     const now = new Date();
 
     return (employees.length > 0 ? employees : []).map((emp, idx) => {
-      const entity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM');
+      const entity = emp.entityCode || emp.entity || 'EHM';
       const entityName = entity === 'CAG' ? 'CLIMAGRO' : entity === 'COMMON' ? 'EHM & CLIMAGRO' : 'EHM';
 
       const isSelf =

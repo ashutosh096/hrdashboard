@@ -29,6 +29,7 @@ import {
   Link as LinkIcon,
   Copy,
   Users,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -128,6 +129,7 @@ export const ApplicationsView: React.FC = () => {
   const [selectedProjectToUpdate, setSelectedProjectToUpdate] = useState<ProjectItem | null>(null);
   const [selectedProjectForView, setSelectedProjectForView] = useState<ProjectItem | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
 
   const isEmployee = user?.role === 'EMPLOYEE';
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
@@ -500,106 +502,113 @@ export const ApplicationsView: React.FC = () => {
 
   const handleAddProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
+    if (isSubmittingProject) return;
+    setIsSubmittingProject(true);
 
-    const finalCheckpoints = projectChecklists;
-    const finalTeam = selectedTeamMemberNames;
-    const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : projectLead;
-    const finalDeliverableUrl = projectDeliverableUrl || projectTechStack;
-    const finalCategory = selectedCategoryType === 'Other'
-      ? (customCategoryText.trim() || 'Other')
-      : (selectedCategoryType || projectCategory);
+    try {
+      const generatedCode = projectCode || `${projectEntity}-PRJ-${new Date().getFullYear()}-0${projects.length + 1}`;
 
-    if (editingProjectId) {
-      const payload = {
-        code: projectCode.trim() || undefined,
-        name: projectName,
-        entity: projectEntity,
-        entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-        category: finalCategory,
-        lead: finalLead,
-        team: finalTeam,
-        budget: projectBudget,
-        startDate: projectStartDate,
-        targetDate: projectTargetDate,
-        priority: projectPriority,
-        techStack: finalDeliverableUrl,
-        deliverableUrl: finalDeliverableUrl,
-        milestonesCount: finalCheckpoints.length,
-        description: projectDescription,
-        checkpoints: finalCheckpoints,
-        comments: projectComments,
-      };
+      const finalCheckpoints = projectChecklists;
+      const finalTeam = selectedTeamMemberNames;
+      const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : projectLead;
+      const finalDeliverableUrl = projectDeliverableUrl || projectTechStack;
+      const finalCategory = selectedCategoryType === 'Other'
+        ? (customCategoryText.trim() || 'Other')
+        : (selectedCategoryType || projectCategory);
 
-      try {
-        const updated = await fetchApi<ProjectItem>(`/api/projects/${editingProjectId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-        });
+      if (editingProjectId) {
+        const payload = {
+          code: projectCode.trim() || undefined,
+          name: projectName,
+          entity: projectEntity,
+          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
+          category: finalCategory,
+          lead: finalLead,
+          team: finalTeam,
+          budget: projectBudget,
+          startDate: projectStartDate,
+          targetDate: projectTargetDate,
+          priority: projectPriority,
+          techStack: finalDeliverableUrl,
+          deliverableUrl: finalDeliverableUrl,
+          milestonesCount: finalCheckpoints.length,
+          description: projectDescription,
+          checkpoints: finalCheckpoints,
+          comments: projectComments,
+        };
 
-        toast.success(`Project "${projectName}" updated and saved to database!`);
-        await loadProjects();
-        if (selectedProjectForView?.id === editingProjectId) {
-          setSelectedProjectForView(updated || { ...selectedProjectForView, ...payload });
+        try {
+          const updated = await fetchApi<ProjectItem>(`/api/projects/${editingProjectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          });
+
+          toast.success(`Project "${projectName}" updated and saved to database!`);
+          await loadProjects();
+          if (selectedProjectForView?.id === editingProjectId) {
+            setSelectedProjectForView(updated || { ...selectedProjectForView, ...payload });
+          }
+        } catch (err: any) {
+          console.error('[PROJECT UPDATE ERROR]:', err);
+          toast.error(`Failed to update project: ${err?.message || 'Server error'}`);
         }
-      } catch (err: any) {
-        console.error('[PROJECT UPDATE ERROR]:', err);
-        toast.error(`Failed to update project: ${err?.message || 'Server error'}`);
-      }
-    } else {
-      const payload = {
-        code: projectCode.trim() || undefined,
-        name: projectName,
-        entity: projectEntity,
-        entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
-        category: finalCategory,
-        lead: finalLead,
-        team: finalTeam,
-        budget: projectBudget,
-        startDate: projectStartDate,
-        targetDate: projectTargetDate,
-        status: 'Planning' as const,
-        priority: projectPriority,
-        techStack: finalDeliverableUrl,
-        deliverableUrl: finalDeliverableUrl,
-        milestonesCount: finalCheckpoints.length,
-        description: projectDescription,
-        checkpoints: finalCheckpoints,
-        comments: projectComments,
-      };
+      } else {
+        const payload = {
+          code: projectCode.trim() || undefined,
+          name: projectName,
+          entity: projectEntity,
+          entityName: projectEntity === 'EHM' ? 'ehmconsultancy' : 'climagroanalytics',
+          category: finalCategory,
+          lead: finalLead,
+          team: finalTeam,
+          budget: projectBudget,
+          startDate: projectStartDate,
+          targetDate: projectTargetDate,
+          status: 'Planning' as const,
+          priority: projectPriority,
+          techStack: finalDeliverableUrl,
+          deliverableUrl: finalDeliverableUrl,
+          milestonesCount: finalCheckpoints.length,
+          description: projectDescription,
+          checkpoints: finalCheckpoints,
+          comments: projectComments,
+        };
 
-      try {
-        const created = await fetchApi<ProjectItem>('/api/projects', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
+        try {
+          const created = await fetchApi<ProjectItem>('/api/projects', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
 
-        toast.success(`New project "${projectName}" (${created?.code || 'Created'}) saved permanently to database!`);
-        await loadProjects();
-      } catch (err: any) {
-        console.error('[PROJECT CREATE ERROR]:', err);
-        toast.error(`Failed to create project: ${err?.message || 'Server error'}`);
+          toast.success(`New project "${projectName}" (${created?.code || 'Created'}) saved permanently to database!`);
+          await loadProjects();
+        } catch (err: any) {
+          console.error('[PROJECT CREATE ERROR]:', err);
+          toast.error(`Failed to create project: ${err?.message || 'Server error'}`);
+        }
       }
+
+      setShowAddProjectModal(false);
+      setEditingProjectId(null);
+      setProjectName('');
+      setProjectCode('');
+      setProjectLead('');
+      setSelectedProjectLeads([]);
+      setSelectedTeamMemberNames([]);
+      setProjectStartDate('');
+      setProjectTargetDate('');
+      setProjectTechStack('');
+      setProjectDeliverableUrl('');
+      setProjectCategory('');
+      setSelectedCategoryType('');
+      setCustomCategoryText('');
+      setProjectDescription('');
+      setProjectChecklists([]);
+      setNewCheckpointText('');
+      setProjectComments([]);
+    } finally {
+      setIsSubmittingProject(false);
     }
-
-    setShowAddProjectModal(false);
-    setEditingProjectId(null);
-    setProjectName('');
-    setProjectCode('');
-    setProjectLead('');
-    setSelectedProjectLeads([]);
-    setSelectedTeamMemberNames([]);
-    setProjectStartDate('');
-    setProjectTargetDate('');
-    setProjectTechStack('');
-    setProjectDeliverableUrl('');
-    setProjectCategory('');
-    setSelectedCategoryType('');
-    setCustomCategoryText('');
-    setProjectDescription('');
-    setProjectChecklists([]);
-    setNewCheckpointText('');
-    setProjectComments([]);
   };
 
   const handleDeleteProject = async (projectId: string, projName: string) => {
@@ -896,7 +905,7 @@ export const ApplicationsView: React.FC = () => {
                       const totalCheckpoints = prj.checkpoints ? prj.checkpoints.length : 0;
                       const checkpointPercent = totalCheckpoints > 0 ? Math.round((completedCheckpoints / totalCheckpoints) * 100) : 0;
 
-                      const isCAG = prj.entity === 'CAG' || prj.code?.startsWith('CAG') || prj.entityName?.toLowerCase().includes('cag');
+                      const isCAG = (prj.entityCode || prj.entity) === 'CAG' || prj.entityName?.toLowerCase().includes('cag');
                       const entityLabel = isCAG ? 'CLIMAGRO' : 'EHM';
 
                       const statusLower = (prj.status || '').toLowerCase();
@@ -1795,10 +1804,27 @@ export const ApplicationsView: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                    disabled={isSubmittingProject}
+                    className={`flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer ${
+                      isSubmittingProject
+                        ? 'bg-emerald-400 cursor-not-allowed text-white opacity-75'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    }`}
                   >
-                    {editingProjectId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                    <span>{editingProjectId ? 'Save Changes' : 'Save New Project'}</span>
+                    {isSubmittingProject ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : editingProjectId ? (
+                      <Edit3 className="w-4 h-4" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    <span>
+                      {isSubmittingProject
+                        ? 'Saving...'
+                        : editingProjectId
+                        ? 'Save Changes'
+                        : 'Save New Project'}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -1935,7 +1961,7 @@ export const ApplicationsView: React.FC = () => {
       {/* Expanded View Project Details Modal Popup */}
       {selectedProjectForView && (() => {
         const p = selectedProjectForView;
-        const isCAG = p.entity === 'CAG' || p.code?.startsWith('CAG') || p.entityName?.toLowerCase().includes('cag');
+        const isCAG = (p.entityCode || p.entity) === 'CAG' || p.entityName?.toLowerCase().includes('cag');
         const entityLabel = isCAG ? 'CLIMAGROANALYTICS' : 'EHMCONSULTANCY';
 
         const priorityColor =

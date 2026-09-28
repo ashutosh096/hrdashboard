@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, Download, CreditCard, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,7 +40,7 @@ export const SalaryView: React.FC = () => {
   const payroll = (employees.length > 0
     ? employees.map((emp, i) => {
         const name = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member';
-        const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : 'EHM');
+        const rawEntity = emp.entityCode || emp.entity || 'EHM';
         const entity = rawEntity === 'CAG' ? 'CAG' : 'EHM';
         const matchingFallback = fallbackPayroll.find(f => f.name.toLowerCase() === name.toLowerCase());
         if (matchingFallback) return { ...matchingFallback, entity };

@@ -837,7 +837,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
               {/* Breadcrumb & Badges */}
               {(() => {
-                const isCAG = viewingInitiative.entityId === 'climagroanalytics' || viewingInitiative.initiativeCode.startsWith('CAG');
+                const isCAG = (viewingInitiative.entityCode || viewingInitiative.entity) === 'CAG' || viewingInitiative.entityId === 'climagroanalytics';
                 const rawStatus = viewingInitiative.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -1570,7 +1570,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               {(() => {
                 const parentInit = initiatives.find((i) => i.id === viewingEpicDetails.initiativeId) || viewingInitiative;
                 const parentTitle = parentInit?.title || 'Initiative';
-                const isCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG') || parentInit?.initiativeCode?.startsWith('CAG');
+                const isCAG = (viewingEpicDetails.entityCode || viewingEpicDetails.entity) === 'CAG' || (parentInit?.entityCode || parentInit?.entity) === 'CAG';
                 const rawStatus = viewingEpicDetails.status || 'PLANNED';
                 const statusLabel = rawStatus === 'COMPLETED' || rawStatus === 'DONE' ? 'Done' : rawStatus === 'IN_PROGRESS' || rawStatus === 'ACTIVE' ? 'In progress' : 'Planned';
 
@@ -1695,7 +1695,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
               {/* Linked Tasks Section with Progress Bar */}
               {(() => {
-                const isEpicCAG = (viewingEpicDetails.epicCode || '').startsWith('CAG');
+                const isEpicCAG = (viewingEpicDetails.entityCode || viewingEpicDetails.entity) === 'CAG';
                 const combined = [
                   ...(viewingEpicDetails.tasks || []),
                   ...allTasks.filter((t: any) => t.epicId === viewingEpicDetails.id || t.parentEpicCode === viewingEpicDetails.epicCode)
@@ -1725,9 +1725,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     {/* Tasks List */}
                     <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
                       {linkedTasks.map((taskItem: any, idx: number) => {
-                        const displayTaskCode = isEpicCAG && taskItem.taskCode?.startsWith('EHM-')
-                          ? taskItem.taskCode.replace(/^EHM-/, 'CAG-')
-                          : (taskItem.taskCode || 'TSK-001');
+                        const displayTaskCode = taskItem.taskCode || 'TSK-001';
 
                         const assigneeStr = taskItem.assigneeName || taskItem.assignee || 'unassigned';
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   ChevronLeft, 
@@ -101,7 +101,7 @@ export const TeamDirectoryView: React.FC = () => {
       if (Array.isArray(data)) {
         const formatted = data.map(emp => {
           const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Team Member';
-          const rawEntity = emp.entityCode || (emp.employeeCode?.startsWith('CAG') ? 'CAG' : (emp.employeeCode?.startsWith('COM') ? 'COMMON' : 'EHM'));
+          const rawEntity = emp.entityCode || emp.entity || 'EHM';
           const roleType = (emp.role || 'Team Member').toUpperCase();
           const defaultCode = roleType === 'ADMIN'
             ? `${rawEntity === 'CAG' ? 'CAG' : (rawEntity === 'COMMON' ? 'COM' : 'EHM')}-ADM01`
@@ -164,14 +164,14 @@ export const TeamDirectoryView: React.FC = () => {
     if (!matchesEntityFilter(member, selectedEntity)) return false;
 
     if (entityFilter !== 'ALL') {
-      const entUpper = (member.entity || '').toUpperCase();
-      if (entityFilter === 'COMMON' && entUpper !== 'COMMON' && entUpper !== 'BOTH' && !member.employeeCode?.startsWith('COM')) {
+      const entUpper = (member.entity || member.entityCode || '').toUpperCase();
+      if (entityFilter === 'COMMON' && entUpper !== 'COMMON' && entUpper !== 'BOTH') {
         return false;
       }
-      if (entityFilter === 'CAG' && entUpper !== 'CAG' && entUpper !== 'CLIMAGRO' && !member.employeeCode?.startsWith('CAG')) {
+      if (entityFilter === 'CAG' && entUpper !== 'CAG' && entUpper !== 'CLIMAGRO') {
         return false;
       }
-      if (entityFilter === 'EHM' && entUpper !== 'EHM' && !member.employeeCode?.startsWith('EHM')) {
+      if (entityFilter === 'EHM' && entUpper !== 'EHM') {
         return false;
       }
     }
@@ -346,12 +346,11 @@ export const TeamDirectoryView: React.FC = () => {
   };
 
   const getEntityDisplayName = (member: any): string => {
-    const entityUpper = (member.entity || '').toUpperCase();
-    const code = member.employeeCode || '';
-    if (entityUpper === 'COMMON' || entityUpper === 'BOTH' || code.startsWith('COM')) {
+    const entityUpper = (member.entity || member.entityCode || '').toUpperCase();
+    if (entityUpper === 'COMMON' || entityUpper === 'BOTH') {
       return 'EHM & CLIMAGRO';
     }
-    if (entityUpper === 'CAG' || entityUpper === 'CLIMAGRO' || code.startsWith('CAG')) {
+    if (entityUpper === 'CAG' || entityUpper === 'CLIMAGRO') {
       return 'CLIMAGRO';
     }
     return 'EHM';
