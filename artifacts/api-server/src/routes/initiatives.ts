@@ -146,7 +146,7 @@ async function handleInitiativeUpdate(req: any, res: any) {
 
   let mappedStatus: 'PLANNED' | 'ACTIVE' | 'DONE' | undefined = undefined;
   if (status === 'IN_PROGRESS' || status === 'ACTIVE') mappedStatus = 'ACTIVE';
-  else if (status === 'COMPLETED' || status === 'DONE') mappedStatus = 'DONE';
+  else if (status === 'COMPLETED' || status === 'DONE' || status === 'ARCHIVED') mappedStatus = 'DONE';
   else if (status === 'PLANNED') mappedStatus = 'PLANNED';
 
   try {
@@ -182,6 +182,10 @@ async function handleInitiativeUpdate(req: any, res: any) {
           return e.code.toLowerCase() === entTarget || e.name.toLowerCase().includes(entTarget);
         });
         if (entity) updatePayload.entityId = entity.id;
+      }
+
+      if (Object.keys(updatePayload).length === 0) {
+        return oldInit;
       }
 
       const [resInit] = await tx
@@ -233,8 +237,8 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), handleInitiativeUpdate);
 // PATCH /api/initiatives/:id - Update initiative status & details
 router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), handleInitiativeUpdate);
 
-// DELETE /api/initiatives/:id - Admin protected initiative deletion
-router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
+// DELETE /api/initiatives/:id - Admin/Manager protected initiative deletion
+router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const initId = req.params.id as string;
   try {
     const [init] = await db.select().from(initiatives).where(eq(initiatives.id, initId));

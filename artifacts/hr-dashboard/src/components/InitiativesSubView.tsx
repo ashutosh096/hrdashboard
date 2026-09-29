@@ -843,12 +843,12 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               <span className="text-sm font-bold text-gray-700">Initiative</span>
 
               <div className="flex items-center gap-2">
-                {isAdmin && (
+                {(isAdmin || isManager) && (
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
-                    title="Delete Initiative (Admin Only)"
+                    title="Delete Initiative"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete</span>
@@ -1281,26 +1281,26 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         </div>
       )}
 
-      {/* ⚠️ CONFIRMATION POPUP MODAL FOR INITIATIVE DELETION (ADMIN ONLY) */}
+      {/* ⚠️ CONFIRMATION POPUP MODAL FOR INITIATIVE DELETION */}
       {showDeleteConfirm && viewingInitiative && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 select-none">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150 text-left">
             <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
-              <div className="p-2 rounded-xl bg-purple-50 text-purple-600 border border-purple-200">
-                <Archive className="w-5 h-5" />
+              <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-200">
+                <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">Archive Strategic Initiative</h3>
-                <p className="text-xs text-gray-400 font-medium">Soft Archive Action</p>
+                <h3 className="text-base font-bold text-gray-900">Delete Strategic Initiative</h3>
+                <p className="text-xs text-gray-400 font-medium">Permanent Action</p>
               </div>
             </div>
 
             <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
-              Are you sure you want to archive initiative{' '}
-              <span className="font-bold font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+              Are you sure you want to permanently delete initiative{' '}
+              <span className="font-bold font-mono text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
                 {viewingInitiative.initiativeCode}
               </span>{' '}
-              "{viewingInitiative.title}"? This will move the initiative to the Archive view without deleting underlying records.
+              "{viewingInitiative.title}"? This will detach linked epics and delete the initiative record.
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
@@ -1318,25 +1318,26 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   try {
                     setIsDeleting(true);
                     await fetchApi(`/api/initiatives/${viewingInitiative.id}`, {
-                      method: 'PUT',
-                      body: JSON.stringify({ status: 'ARCHIVED' }),
+                      method: 'DELETE',
                     });
-                    toast.success(`Initiative ${viewingInitiative.initiativeCode} archived successfully!`);
+                    toast.success(`Initiative ${viewingInitiative.initiativeCode} deleted successfully!`);
                     setShowDeleteConfirm(false);
                     setViewingInitiative(null);
                     setIsEditMode(false);
                     onClearSelectedInitiative?.();
+                    window.dispatchEvent(new CustomEvent('initiatives-updated'));
+                    window.dispatchEvent(new CustomEvent('epics-updated'));
                     loadData();
                   } catch (err: any) {
-                    toast.error(err?.message || 'Failed to archive initiative');
+                    toast.error(err?.message || 'Failed to delete initiative');
                   } finally {
                     setIsDeleting(false);
                   }
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
               >
-                <Archive className="w-4 h-4" />
-                <span>{isDeleting ? 'Archiving...' : 'Yes, Archive Initiative'}</span>
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Initiative'}</span>
               </button>
             </div>
           </div>
