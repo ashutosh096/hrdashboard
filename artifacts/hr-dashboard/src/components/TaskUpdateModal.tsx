@@ -558,8 +558,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           {/* Left Column (Task Info & Checklist) */}
           <div className="lg:col-span-7 space-y-5 text-left">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Brand / Entity & Parent Task ID */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Brand / Entity & Parent Task ID & Created At & Created By */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Brand / Entity</label>
                   {readOnlyMode ? (
@@ -599,7 +599,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Posted Date & Time</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Created At</label>
                   <input
                     type="text"
                     disabled
@@ -607,15 +607,23 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Created By</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={task.createdByName || task.creatorName || 'Dr. Harshit Mishra'}
+                    className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                  />
+                </div>
               </div>
 
               {/* Created By Info */}
-              {(task.createdByName || task.creatorName) && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/90 rounded-xl border border-gray-200 text-xs text-gray-700">
-                  <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Created by: <strong className="text-gray-900 font-semibold">{task.createdByName || task.creatorName}</strong></span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/90 rounded-xl border border-gray-200 text-xs text-gray-700">
+                <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Created by: <strong className="text-gray-900 font-semibold">{task.createdByName || task.creatorName || 'Dr. Harshit Mishra'}</strong></span>
+              </div>
 
               {/* Deliverable / Task Name */}
               <div>

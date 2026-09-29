@@ -12,9 +12,9 @@ export const projects = pgTable(
     category: text('category').notNull().default('Technology & Systems'),
     lead: text('lead').notNull().default('Dr. Harshit Mishra'),
     team: jsonb('team').$type<string[]>().default([]),
-    budget: text('budget').default('$45,000'),
-    startDate: text('start_date').default('2026-09-01'),
-    targetDate: text('target_date').default('2026-12-15'),
+    budget: text('budget'),
+    startDate: text('start_date'),
+    targetDate: text('target_date'),
     status: text('status').notNull().default('Planning'), // 'Planning' | 'Active' | 'In Review' | 'Completed'
     priority: text('priority').notNull().default('High'), // 'Low' | 'Medium' | 'High' | 'Urgent'
     techStack: text('tech_stack').default(''),

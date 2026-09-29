@@ -466,7 +466,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
         const caller = await getCallerInfo(req.user, tx);
 
         // 5. Insert Task
-        const dueDateVal = dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 86400000);
+        const dueDateVal = dueDate ? new Date(dueDate) : null;
         const [newTask] = await tx
           .insert(tasks)
           .values({
@@ -592,7 +592,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
 
         if (assigneeUser) {
           const notifTitle = `New Sprint Task Assigned: [${newTask.taskCode}] "${newTask.title}"`;
-          const notifMsg = `You have been assigned to sprint task [${newTask.taskCode}] "${newTask.title}". Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.`;
+          const notifMsg = `You have been assigned to sprint task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`;
           await tx.insert(notifications).values({
             userId: assigneeUser.id,
             type: 'TASK_ASSIGNED',
@@ -604,7 +604,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
               message: notifMsg,
               assigneeId: assignee.id,
               assigneeName: `${assignee.firstName} ${assignee.lastName}`.trim(),
-              dueDate: dueDateVal.toISOString().split('T')[0],
+              dueDate: dueDateVal ? dueDateVal.toISOString().split('T')[0] : null,
               tagged: true,
             },
           });
@@ -821,10 +821,17 @@ const handleTaskUpdate = async (req: any, res: any) => {
       const caller = await getCallerInfo(req.user, tx);
       const changes: { field: string; old: any; new: any }[] = [];
       for (const [key, newVal] of Object.entries(updateData)) {
+        if (key.toLowerCase() === 'updatedat' || key.toLowerCase() === 'updated_at' || key.toLowerCase() === 'createdat' || key.toLowerCase() === 'created_at') continue;
         const oldVal = (existingTaskCheck as any)[key];
         const oldStr = oldVal instanceof Date ? oldVal.toISOString() : String(oldVal ?? '');
         const newStr = newVal instanceof Date ? newVal.toISOString() : String(newVal ?? '');
         if (oldStr !== newStr) {
+          if (oldStr.trim() === newStr.trim()) continue;
+          if (key.toLowerCase().includes('date') || oldVal instanceof Date || newVal instanceof Date) {
+            const d1 = oldStr ? oldStr.split('T')[0] : '';
+            const d2 = newStr ? newStr.split('T')[0] : '';
+            if (d1 === d2) continue;
+          }
           changes.push({ field: key, old: oldVal, new: newVal });
         }
       }
@@ -845,6 +852,22 @@ const handleTaskUpdate = async (req: any, res: any) => {
         for (let i = 0; i < checklists.length; i++) {
           const chk = checklists[i];
           if (chk.id && chk.id.length === 36) {
+            const [existingChk] = await tx.select().from(taskChecklists).where(eq(taskChecklists.id, chk.id));
+            if (existingChk && existingChk.isCompleted !== Boolean(chk.isCompleted)) {
+              const verb = Boolean(chk.isCompleted) ? 'Completed' : 'Marked pending';
+              await recordHistory(tx, {
+                tableName: 'tasks',
+                recordId: taskId,
+                action: 'STATUS_CHANGED',
+                changes: [{
+                  field: 'checklist',
+                  old: existingChk.isCompleted ? 'Completed' : 'Pending',
+                  new: `${verb} subtask: "${chk.itemText || chk.title || existingChk.itemText}"`,
+                }],
+                changedById: caller.employeeId,
+                changedByName: caller.callerName,
+              });
+            }
             await tx.update(taskChecklists)
               .set({
                 itemText: chk.itemText || chk.title,
@@ -853,11 +876,24 @@ const handleTaskUpdate = async (req: any, res: any) => {
               })
               .where(eq(taskChecklists.id, chk.id));
           } else if (chk.itemText || chk.title) {
+            const text = (chk.itemText || chk.title).trim();
             await tx.insert(taskChecklists).values({
               taskId: taskId,
-              itemText: (chk.itemText || chk.title).trim(),
+              itemText: text,
               isCompleted: Boolean(chk.isCompleted),
               sortOrder: i + 1,
+            });
+            await recordHistory(tx, {
+              tableName: 'tasks',
+              recordId: taskId,
+              action: 'CHILD_ADDED',
+              changes: [{
+                field: 'checklist',
+                old: null,
+                new: `Added subtask item: "${text}"`,
+              }],
+              changedById: caller.employeeId,
+              changedByName: caller.callerName,
             });
           }
         }
@@ -1249,6 +1285,20 @@ router.post('/:id/checklists', async (req, res) => {
       })
       .returning();
 
+    const caller = await getCallerInfo(req.user);
+    await recordHistory(db, {
+      tableName: 'tasks',
+      recordId: id,
+      action: 'CHILD_ADDED',
+      changes: [{
+        field: 'checklist',
+        old: null,
+        new: `Added subtask item: "${itemText}"`,
+      }],
+      changedById: caller.employeeId,
+      changedByName: caller.callerName,
+    });
+
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ message: 'Failed to add checklist item' });
@@ -1291,6 +1341,23 @@ router.patch('/checklists/:checklistId', async (req, res) => {
       .set(updatePayload)
       .where(eq(taskChecklists.id, checklistId))
       .returning();
+
+    const caller = await getCallerInfo(req.user);
+    if (typeof isCompleted === 'boolean') {
+      const verb = isCompleted ? 'Completed' : 'Marked pending';
+      await recordHistory(db, {
+        tableName: 'tasks',
+        recordId: targetTask.id,
+        action: 'STATUS_CHANGED',
+        changes: [{
+          field: 'checklist',
+          old: checklist.isCompleted ? 'Completed' : 'Pending',
+          new: `${verb} subtask: "${checklist.itemText}"`,
+        }],
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+    }
 
     // Check if all checklists are now completed:
     if (isCompleted) {

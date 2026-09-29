@@ -18,6 +18,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEntity } from '../contexts/EntityContext';
@@ -74,7 +75,7 @@ export const Sidebar: React.FC = () => {
       title: 'Company',
       items: [
         { label: 'Announcements', path: '/announcements', icon: Megaphone },
-        { label: 'Reports', path: '/reports', icon: BarChart3 },
+        { label: 'Role & Governance', path: '/reports', icon: ShieldCheck },
         { label: 'Settings', path: '/settings', icon: Settings },
       ],
     },

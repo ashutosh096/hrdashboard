@@ -227,49 +227,10 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Overview Stat Cards Grid (Executive Balanced 5 Tiles Sequence) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard
-          title="Active Team Members"
-          value={activeEmployeesCount}
-          icon={<Users className="w-5 h-5 text-emerald-700" />}
-          trend={`${activeEmployeesCount} of ${totalEmployeesCount} Team Members (${activeEmployeesPercent}%)`}
-          onClick={() => setActiveModalType('TEAM')}
-        />
-        <StatCard
-          title="Today's Tasks (In Progress)"
-          value={inProgressTasks}
-          icon={<Clock className="w-5 h-5 text-emerald-700" />}
-          trend="Active sprint items being executed"
-          onClick={() => setActiveModalType('IN_PROGRESS')}
-        />
-        <StatCard
-          title="Overdue Alerts & Critical"
-          value={overdueTasksCount}
-          icon={<AlertTriangle className="w-5 h-5 text-amber-600" />}
-          trend={`${overdueTasksCount} tasks past due date`}
-          onClick={() => setActiveModalType('OVERDUE')}
-        />
-        <StatCard
-          title="Active Sprints"
-          value={activeSprintsCount}
-          icon={<Zap className="w-5 h-5 text-emerald-700" />}
-          trend={`${activeSprintsCount} Sprint Cycles Active`}
-          onClick={() => setActiveModalType('SPRINTS')}
-        />
-        <StatCard
-          title="Completion Velocity Rate"
-          value={`${completionRate}%`}
-          icon={<TrendingUp className="w-5 h-5 text-emerald-700" />}
-          trend={`${completedTasks} of ${totalTasks} Tasks Completed`}
-          onClick={() => setActiveModalType('VELOCITY')}
-        />
-      </div>
-
       {/* Task Progress & Sprint Analytics Graph + Schedule & Deliverables Widget Side-by-Side Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         <div className="lg:col-span-2 flex flex-col">
-          <TaskProgressSprintAnalytics className="h-full" />
+          <TaskProgressSprintAnalytics className="h-full" viewType="ADMIN" title="Task Completion" />
         </div>
         <div className="lg:col-span-1 flex flex-col">
           <ScheduleWidget className="h-full" />

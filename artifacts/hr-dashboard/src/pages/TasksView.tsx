@@ -194,7 +194,7 @@ export const TasksView: React.FC = () => {
           reviewingLeadId: t.reviewingLeadId || matchedLead?.id || '',
           status: t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : t.status === 'PLANNED' ? 'PLANNED' : 'BACKLOG',
           priority: pNormalized,
-          dueDate: t.dueDate ? String(t.dueDate).split('T')[0] : '2026-09-02',
+          dueDate: t.dueDate ? String(t.dueDate).split('T')[0] : '',
           notesCount: 1,
           outputUrl: t.deliverableUrl || '',
           notes: t.description || '',
@@ -202,7 +202,8 @@ export const TasksView: React.FC = () => {
           createdAt: t.createdAt,
         };
       });
-      setTasks(formatted);
+      const entityFiltered = formatted.filter((t: any) => matchesEntityFilter(t, selectedEntity));
+      setTasks(entityFiltered);
     } catch (err) {
       console.error('[TASKS VIEW FETCH ERROR]:', err);
     } finally {
@@ -212,7 +213,7 @@ export const TasksView: React.FC = () => {
 
   useEffect(() => {
     loadTasks();
-  }, [currentPage, employeeFilter, priorityFilter, statusFilter, debouncedSearch, user]);
+  }, [currentPage, employeeFilter, priorityFilter, statusFilter, debouncedSearch, selectedEntity, user]);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -1084,8 +1085,8 @@ export const TasksView: React.FC = () => {
                 </div>
               ) : null}
 
-              {/* 3-Column Metadata Grid */}
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+              {/* 4-Column Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Target week</span>
                   <span className="text-xs font-bold text-gray-900 block">
@@ -1108,9 +1109,16 @@ export const TasksView: React.FC = () => {
                 </div>
 
                 <div>
-                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created At</span>
                   <span className="text-xs font-bold text-gray-900 block">
                     {viewingEpicInTasks.createdAt ? new Date(viewingEpicInTasks.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 Sept 2026'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {(viewingEpicInTasks as any).createdByName || 'Dr. Harshit Mishra'}
                   </span>
                 </div>
               </div>

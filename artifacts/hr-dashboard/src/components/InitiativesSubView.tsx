@@ -777,12 +777,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                           <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently'}</span>
                         </div>
 
-                        {item.createdByName && (
-                          <div className="flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200/60" title={`Created by ${item.createdByName}`}>
-                            <UserCheck className="w-3 h-3 text-emerald-600" />
-                            <span>Created by: <strong className="text-gray-800 font-semibold">{item.createdByName}</strong></span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200/60" title={`Created by ${item.createdByName || 'Dr. Harshit Mishra'}`}>
+                          <UserCheck className="w-3 h-3 text-emerald-600" />
+                          <span>Created by: <strong className="text-gray-800 font-semibold">{item.createdByName || 'Dr. Harshit Mishra'}</strong></span>
+                        </div>
                       </div>
 
                       {/* Progress Bar */}
@@ -1014,8 +1012,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 </div>
               ) : null}
 
-              {/* 3-Column Metadata Grid */}
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+              {/* 4-Column Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Timeline / Month</span>
                   {isEditMode ? (
@@ -1059,9 +1057,16 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 </div>
 
                 <div>
-                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created At</span>
                   <span className="text-xs font-bold text-gray-900 block">
                     {viewingInitiative.createdAt ? new Date(viewingInitiative.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingInitiative.createdByName || 'Dr. Harshit Mishra'}
                   </span>
                 </div>
               </div>
@@ -1219,17 +1224,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
               {/* Created By & Audit History Header */}
               <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                {viewingInitiative.createdByName ? (
-                  <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Created by: <strong className="text-gray-900 font-semibold">{viewingInitiative.createdByName}</strong></span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Created {viewingInitiative.createdAt ? new Date(viewingInitiative.createdAt).toLocaleDateString('en-GB') : 'recently'}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Created by: <strong className="text-gray-900 font-semibold">{viewingInitiative.createdByName || 'Dr. Harshit Mishra'}</strong></span>
+                </div>
 
                 <button
                   type="button"
@@ -1791,8 +1789,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 </div>
               ) : null}
 
-              {/* 3-Column Metadata Grid */}
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+              {/* 4-Column Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Target week</span>
                   <span className="text-xs font-bold text-gray-900 block">
@@ -1814,9 +1812,16 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 </div>
 
                 <div>
-                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created At</span>
                   <span className="text-xs font-bold text-gray-900 block">
                     {viewingEpicDetails.createdAt ? new Date(viewingEpicDetails.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {(viewingEpicDetails as any).createdByName || 'Dr. Harshit Mishra'}
                   </span>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { db, tasks, employees, users, notifications, googleTokens, eq, and, ne, lt, lte, gt, gte, sql } from '@workspace/db';
+import { db, tasks, employees, users, notifications, googleTokens, eq, and, ne, lt, lte, gt, gte, sql, isNotNull } from '@workspace/db';
 import { sendOverdueTaskAlertEmail, sendCalendarReconnectEmail } from '../services/email.js';
 
 export function startOverdueCheckCron() {
@@ -20,9 +20,10 @@ export async function runOverdueAndTokenChecks() {
     const overdueTasks = await db
       .select()
       .from(tasks)
-      .where(and(lt(tasks.dueDate, now), ne(tasks.status, 'DONE')));
+      .where(and(isNotNull(tasks.dueDate), lt(tasks.dueDate, now), ne(tasks.status, 'DONE')));
 
     for (const task of overdueTasks) {
+      if (!task.dueDate) continue;
       const daysOverdue = Math.max(1, Math.ceil((now.getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24)));
 
       // 1. Resolve Assignee details and Assignee User Account

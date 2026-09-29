@@ -6,7 +6,6 @@ import { getCallerInfo } from '../utils/userSnapshot.js';
 const router = Router();
 
 router.use(requireAuth);
-router.use(requireRole(['ADMIN', 'MANAGER']));
 
 // GET /api/epics - List epics with linked sprints and tasks summary
 router.get('/', async (req, res) => {
@@ -272,10 +271,17 @@ async function handleEpicUpdate(req: any, res: any) {
       const caller = await getCallerInfo(req.user, tx);
       const changes: { field: string; old: any; new: any }[] = [];
       for (const [key, newVal] of Object.entries(updatePayload)) {
+        if (key.toLowerCase() === 'updatedat' || key.toLowerCase() === 'updated_at' || key.toLowerCase() === 'createdat' || key.toLowerCase() === 'created_at') continue;
         const oldVal = (oldEpic as any)[key];
         const oldStr = oldVal instanceof Date ? oldVal.toISOString() : String(oldVal ?? '');
         const newStr = newVal instanceof Date ? newVal.toISOString() : String(newVal ?? '');
         if (oldStr !== newStr) {
+          if (oldStr.trim() === newStr.trim()) continue;
+          if (key.toLowerCase().includes('date') || oldVal instanceof Date || newVal instanceof Date) {
+            const d1 = oldStr ? oldStr.split('T')[0] : '';
+            const d2 = newStr ? newStr.split('T')[0] : '';
+            if (d1 === d2) continue;
+          }
           changes.push({ field: key, old: oldVal, new: newVal });
         }
       }

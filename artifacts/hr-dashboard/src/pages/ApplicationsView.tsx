@@ -173,11 +173,12 @@ export const ApplicationsView: React.FC = () => {
   const loadProjects = async () => {
     setLoadingProjects(true);
     try {
+      const effectiveEntity = selectedEntity !== 'ALL' ? selectedEntity : entityFilter;
       const queryParams = new URLSearchParams({
         page: String(currentPage),
         pageSize: String(pageSize),
         subTab: projectSubTab,
-        entity: entityFilter,
+        entity: effectiveEntity,
         status: statusFilter,
         lead: leadFilter,
         search: debouncedSearch,
@@ -249,7 +250,7 @@ export const ApplicationsView: React.FC = () => {
 
     loadProjects();
     loadApplications();
-  }, [currentPage, projectSubTab, entityFilter, statusFilter, leadFilter, debouncedSearch]);
+  }, [currentPage, projectSubTab, entityFilter, selectedEntity, statusFilter, leadFilter, debouncedSearch]);
 
   // Close overflow menu on outside click
   useEffect(() => {
@@ -2098,7 +2099,7 @@ export const ApplicationsView: React.FC = () => {
 
               <hr className="border-gray-100" />
 
-              {/* 2-Column Grid: Lead & Target Deadline */}
+              {/* 2-Column Grid: Lead, Target Deadline, Created At, Created By */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Project Lead */}
                 <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
@@ -2127,6 +2128,28 @@ export const ApplicationsView: React.FC = () => {
                     ) : (
                       <span className="italic font-normal text-gray-400">Not set</span>
                     )}
+                  </div>
+                </div>
+
+                {/* Created At */}
+                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                    <span>CREATED AT</span>
+                  </div>
+                  <div className="text-xs font-bold text-gray-800">
+                    {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
+                  </div>
+                </div>
+
+                {/* Created By (Right Below Created At) */}
+                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>CREATED BY</span>
+                  </div>
+                  <div className="text-xs font-bold text-gray-800">
+                    {p.createdByName || p.lead || 'Dr. Harshit Mishra'}
                   </div>
                 </div>
               </div>
@@ -2242,17 +2265,10 @@ export const ApplicationsView: React.FC = () => {
 
               {/* Created By & Audit History */}
               <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                {p.createdByName ? (
-                  <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Created by: <strong className="text-gray-900 font-semibold">{p.createdByName}</strong></span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Created {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB') : 'recently'}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Created by: <strong className="text-gray-900 font-semibold">{p.createdByName || p.lead || 'Dr. Harshit Mishra'}</strong></span>
+                </div>
 
                 <button
                   type="button"

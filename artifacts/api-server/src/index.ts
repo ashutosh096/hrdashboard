@@ -48,9 +48,9 @@ async function ensureTablesExist() {
         category TEXT NOT NULL DEFAULT 'Technology & Systems',
         lead TEXT NOT NULL DEFAULT 'Dr. Harshit Mishra',
         team JSONB DEFAULT '[]'::jsonb,
-        budget TEXT DEFAULT '$45,000',
-        start_date TEXT DEFAULT '2026-09-01',
-        target_date TEXT DEFAULT '2026-12-15',
+        budget TEXT,
+        start_date TEXT,
+        target_date TEXT,
         status TEXT NOT NULL DEFAULT 'Planning',
         priority TEXT NOT NULL DEFAULT 'High',
         tech_stack TEXT DEFAULT 'React, Node.js, Python, GIS',
@@ -114,6 +114,19 @@ async function ensureTablesExist() {
         ) THEN
           ALTER TABLE projects ADD COLUMN comments JSONB DEFAULT '[]'::jsonb;
         END IF;
+
+        -- Ensure tasks.due_date is nullable
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'tasks' AND column_name = 'due_date' AND is_nullable = 'NO'
+        ) THEN
+          ALTER TABLE tasks ALTER COLUMN due_date DROP NOT NULL;
+        END IF;
+
+        -- Ensure projects date/budget columns have no hardcoded defaults
+        ALTER TABLE projects ALTER COLUMN budget DROP DEFAULT;
+        ALTER TABLE projects ALTER COLUMN start_date DROP DEFAULT;
+        ALTER TABLE projects ALTER COLUMN target_date DROP DEFAULT;
       END $$;
     `);
 

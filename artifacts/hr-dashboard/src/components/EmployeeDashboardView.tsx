@@ -149,6 +149,7 @@ export const EmployeeDashboardView: React.FC = () => {
     const targetEmpId = activeEmployee?.id || user?.employeeId || user?.id;
 
     try {
+      const leadEmp = dbEmployees.find((e) => `${e.firstName} ${e.lastName}`.trim() === newLead.trim());
       const createdTask = await fetchApi<any>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
@@ -158,6 +159,8 @@ export const EmployeeDashboardView: React.FC = () => {
           dueDate: newDueDate,
           deliverableUrl: newOutputUrl.trim() || undefined,
           assigneeId: targetEmpId,
+          reviewingLead: newLead,
+          reviewingLeadId: leadEmp?.id || undefined,
           entityCode: entityCode,
           entity: entityCode,
           sprintWeek: newSprintWeek,
@@ -596,8 +599,8 @@ export const EmployeeDashboardView: React.FC = () => {
 
       {/* OVERVIEW & VISUAL ANALYTICS */}
       <div className="space-y-6">
-          {/* STAT TILES — 4 tiles total, in exact order with top-right logos */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* STAT TILES — 3 tiles in exact order with top-right logos (Completion velocity removed per user request) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3">
             {/* Tile 1: Task (Pending / Total) with click-to-filter & Top-Right Logo */}
             <div
               onClick={() => setShowPendingOnly(prev => !prev)}
@@ -677,33 +680,6 @@ export const EmployeeDashboardView: React.FC = () => {
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform">
                   <Calendar className="w-4 h-4" />
-                </div>
-              </div>
-            </div>
-
-            {/* Tile 4: Completion velocity & Top-Right Logo */}
-            <div
-              onClick={() => setActiveModalType('COMPLETION_RATE')}
-              className="bg-white border border-gray-200/80 rounded-xl p-3.5 shadow-2xs space-y-1.5 cursor-pointer hover:border-emerald-400 hover:shadow-xs transition-all group"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <span className="text-[11px] text-gray-500 font-semibold block leading-tight">Completion velocity</span>
-                  <div className="flex items-baseline gap-1 pt-1">
-                    <span className="text-xl sm:text-2xl font-black text-gray-900 leading-tight">
-                      {completionVelocityPct}%
-                    </span>
-                    <span className="text-xs text-gray-500 font-bold">velocity</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mt-2">
-                    <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${completionVelocityPct}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform ml-2">
-                  <TrendingUp className="w-4 h-4" />
                 </div>
               </div>
             </div>
@@ -821,68 +797,14 @@ export const EmployeeDashboardView: React.FC = () => {
 
           {/* 2. LOWER SECTION: SHRUNK COMBINED ANALYTICS (LEFT 2/3) + GOOGLE MEETINGS (RIGHT 1/3) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-            {/* Left 2 Cols: Combined Shrunk Analytics Card with Threshold */}
-            <div className="lg:col-span-2">
-              {doneTasksCount > 5 ? (
-                <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4 h-full flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm tracking-tight">Task Progress & Sprint Analytics</h3>
-                      <p className="text-[11px] text-gray-400 font-medium">Weekly execution velocity & deliverable trends.</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
-                      {doneTasksCount} Completed
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                    <div className="md:col-span-2 h-44 w-full">
-                      <TaskProgressSprintAnalytics className="h-full" />
-                    </div>
-                    <div className="md:col-span-1 h-44 flex flex-col items-center justify-center">
-                      <ResponsiveContainer width="100%" height="80%">
-                        <PieChart>
-                          <Pie
-                            data={personalTaskPieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={30}
-                            outerRadius={50}
-                            paddingAngle={3}
-                            dataKey="value"
-                          >
-                            {personalTaskPieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{ backgroundColor: '#111827', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="flex items-center gap-2 text-[10px] text-gray-500 font-semibold">
-                        <span>Done: {doneCount}</span>
-                        <span>·</span>
-                        <span>In Progress: {inProgressCount}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-xs h-full flex flex-col justify-center items-center text-center space-y-3 min-h-[190px]">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <div className="max-w-md space-y-1">
-                    <h4 className="text-sm font-bold text-gray-900">Task Progress & Sprint Analytics</h4>
-                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                      You're just getting started — progress trends will show here once you've completed a few deliverables.
-                    </p>
-                    <p className="text-[11px] text-emerald-700 font-bold pt-1">
-                      {doneTasksCount} of 6 completed deliverables logged
-                    </p>
-                  </div>
-                </div>
-              )}
+            {/* Left 2 Cols: Refunctioned Task Analysis (Functional with user selector dropdown) */}
+            <div className="lg:col-span-2 flex flex-col">
+              <TaskProgressSprintAnalytics
+                className="h-full"
+                viewType="EMPLOYEE"
+                title="Task Analysis"
+                defaultEmployeeId={activeEmployee?.id || user?.employeeId || user?.id}
+              />
             </div>
 
             {/* Right 1 Col: Today's Google Meetings */}

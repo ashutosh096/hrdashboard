@@ -14,6 +14,7 @@ import {
   Edit3,
   Loader2,
   AlertCircle,
+  CheckSquare,
 } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 
@@ -42,8 +43,13 @@ export function formatHistoryDate(dateStr: string | Date | null | undefined): st
   if (isNaN(d.getTime())) return '';
   const day = d.getDate();
   const month = d.toLocaleDateString('en-GB', { month: 'short' });
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  return `${day} ${month}, ${time}`;
+  const year = d.getFullYear();
+  const time = d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${day} ${month} ${year}, ${time}`;
 }
 
 export function formatHistoryChange(item: HistoryItem): { title: string; subtitle?: string } {
@@ -58,42 +64,179 @@ export function formatHistoryChange(item: HistoryItem): { title: string; subtitl
   if (action === 'CLONED') {
     return { title: 'Record cloned' };
   }
+
+  // Subtask Checklist items
+  if (fieldName?.toLowerCase().includes('checklist')) {
+    return {
+      title: 'Subtask Checklist updated',
+      subtitle: newValue || 'Subtask item updated',
+    };
+  }
+
   if (action === 'CHILD_ADDED') {
     return { title: newValue || 'Child item added' };
   }
+
   if (action === 'STATUS_CHANGED' || fieldName?.toLowerCase() === 'status') {
     return {
       title: 'Status changed',
       subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
     };
   }
+
+  const fLower = (fieldName || '').toLowerCase().replace(/_/g, '');
+  if (fLower === 'reviewinglead' || fLower === 'reviewingleadid') {
+    return {
+      title: 'Reviewing Lead updated',
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
+    };
+  }
+
+  if (fLower === 'assignee' || fLower === 'assigneeid') {
+    return {
+      title: 'Assignee updated',
+      subtitle: `${oldValue || 'Unassigned'} → ${newValue || 'Unassigned'}`,
+    };
+  }
+
+  if (fLower === 'entity' || fLower === 'entityid') {
+    return {
+      title: 'Entity updated',
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
+    };
+  }
+
+  if (fLower === 'department' || fLower === 'departmentid') {
+    return {
+      title: 'Department updated',
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
+    };
+  }
+
+  if (fLower === 'project' || fLower === 'projectid') {
+    return {
+      title: 'Project updated',
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
+    };
+  }
+
+  if (fLower === 'epic' || fLower === 'epicid') {
+    return {
+      title: 'Epic updated',
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
+    };
+  }
+
+  if (fLower === 'initiative' || fLower === 'initiativeid') {
+    return {
+      title: 'Initiative updated',
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
+    };
+  }
+
+  if (fLower === 'sprint' || fLower === 'sprintid') {
+    return {
+      title: 'Sprint updated',
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
+    };
+  }
+
   if (action === 'ASSIGNED') {
     return {
       title: 'Assignment updated',
       subtitle: `${oldValue || 'Unassigned'} → ${newValue || 'Unassigned'}`,
     };
   }
-  if (action === 'DUE_DATE_CHANGED') {
-    const oldFmt = oldValue ? new Date(oldValue).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'None';
-    const newFmt = newValue ? new Date(newValue).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'None';
+  if (action === 'DUE_DATE_CHANGED' || fLower.includes('duedate')) {
     return {
       title: 'Due date changed',
-      subtitle: `${oldFmt} → ${newFmt}`,
+      subtitle: `${oldValue || 'None'} → ${newValue || 'None'}`,
     };
   }
+
+  // Clean comment formatting: Never display JSON array/object code
+  if (fieldName?.toLowerCase() === 'comments') {
+    let commentSnippet = '';
+    const extractText = (val: string | null | undefined): string => {
+      if (!val) return '';
+      const trimmed = val.trim();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const last = parsed[parsed.length - 1];
+            return last?.content || last?.text || '';
+          }
+          if (parsed && typeof parsed === 'object') {
+            return parsed.content || parsed.text || '';
+          }
+        } catch {}
+      }
+      return trimmed;
+    };
+
+    commentSnippet = extractText(newValue) || extractText(oldValue);
+    return {
+      title: 'Comment added',
+      subtitle: commentSnippet ? `"${commentSnippet}"` : 'New team comment added',
+    };
+  }
+
+  if (fieldName?.toLowerCase() === 'budget') {
+    const formatBudget = (v: string | null | undefined) => {
+      if (!v || v === 'empty' || v === '(empty)') return '(empty)';
+      if (v.startsWith('$')) return v;
+      const num = Number(v.replace(/[^0-9.-]+/g, ''));
+      return isNaN(num) ? v : `$${num.toLocaleString()}`;
+    };
+    return {
+      title: 'Budget updated',
+      subtitle: `${formatBudget(oldValue)} → ${formatBudget(newValue)}`,
+    };
+  }
+
   if (fieldName) {
-    const cleanField = fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+    const cleanField = fieldName
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, (str) => str.toUpperCase())
+      .replace(/\s+Id$/i, '')
+      .replace(/\s+_id$/i, '');
+    
+    // Clean raw JSON strings
+    let cleanOld = (oldValue || '').trim();
+    let cleanNew = (newValue || '').trim();
+
+    if (cleanOld.startsWith('[') || cleanOld.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(cleanOld);
+        cleanOld = Array.isArray(parsed) ? `${parsed.length} items` : 'Updated object';
+      } catch {
+        cleanOld = '(details)';
+      }
+    }
+    if (cleanNew.startsWith('[') || cleanNew.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(cleanNew);
+        cleanNew = Array.isArray(parsed) ? `${parsed.length} items` : 'Updated object';
+      } catch {
+        cleanNew = '(details)';
+      }
+    }
+
     return {
       title: `${cleanField} updated`,
-      subtitle: `${oldValue || '(empty)'} → ${newValue || '(empty)'}`,
+      subtitle: `${cleanOld || '(empty)'} → ${cleanNew || '(empty)'}`,
     };
   }
 
   return { title: 'Record updated' };
 }
 
-function getActionIcon(action: string) {
-  switch (action) {
+function getActionIcon(item: HistoryItem) {
+  if (item.fieldName?.toLowerCase().includes('checklist')) {
+    return <CheckSquare className="w-4 h-4 text-emerald-600" />;
+  }
+  switch (item.action) {
     case 'CREATED':
       return <PlusCircle className="w-4 h-4 text-emerald-600" />;
     case 'STATUS_CHANGED':
@@ -245,13 +388,21 @@ export const RecordHistoryPanel: React.FC<RecordHistoryPanelProps> = ({
               </div>
             ) : (
               <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                {history.map((item) => {
+                {history
+                  .filter((item) => {
+                    const f = (item.fieldName || '').toLowerCase();
+                    if (f.includes('updated_at') || f.includes('updatedat') || f.includes('created_at') || f.includes('createdat')) return false;
+                    if (item.action === 'UPDATED' && (item.oldValue || '').trim().toLowerCase() === (item.newValue || '').trim().toLowerCase()) return false;
+                    return true;
+                  })
+                  .slice(0, 20)
+                  .map((item) => {
                   const { title: changeTitle, subtitle } = formatHistoryChange(item);
                   return (
                     <div key={item.id} className="relative group text-left">
                       {/* Timeline Dot with action icon */}
                       <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-white border border-gray-200 shadow-xs flex items-center justify-center">
-                        {getActionIcon(item.action)}
+                        {getActionIcon(item)}
                       </div>
 
                       <div className="space-y-1">
@@ -263,40 +414,19 @@ export const RecordHistoryPanel: React.FC<RecordHistoryPanelProps> = ({
                         </div>
 
                         {subtitle && (
-                          <div className="text-xs font-medium text-gray-600 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 flex items-center gap-1.5">
+                          <div className="text-xs font-medium text-gray-600 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 flex items-center gap-1.5 break-words">
                             <span>{subtitle}</span>
                           </div>
                         )}
 
                         <div className="text-[11px] text-gray-500 flex items-center gap-1">
                           <span>by</span>
-                          <span className="font-semibold text-gray-700">{item.changedByName || 'Unknown'}</span>
+                          <span className="font-semibold text-gray-700">{item.changedByName || 'Team Member'}</span>
                         </div>
                       </div>
                     </div>
                   );
                 })}
-
-                {/* Load More Button */}
-                {hasMore && (
-                  <div className="pt-4">
-                    <button
-                      type="button"
-                      onClick={() => fetchHistory(nextBefore)}
-                      disabled={loadingMore}
-                      className="w-full py-2 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      {loadingMore ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Loading more...</span>
-                        </>
-                      ) : (
-                        <span>Load more (20 items)</span>
-                      )}
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>

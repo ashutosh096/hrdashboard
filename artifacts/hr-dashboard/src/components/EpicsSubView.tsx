@@ -818,7 +818,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       </div>
                       <p className="text-xs text-gray-400 font-medium truncate mt-0.5">
                         {parentInit?.title ? `Init: ${parentInit.title} • ` : ''}{parentProj?.name ? `Project: ${parentProj.name} • ` : ''}{epic.department || 'Product & Tech'} • {tasksSummary}
-                        {epic.createdByName ? ` • Created by: ${epic.createdByName}` : ''}
+                        {` • Created by: ${epic.createdByName || 'Dr. Harshit Mishra'}`}
                       </p>
                     </div>
                   </div>
@@ -1140,8 +1140,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               ) : null}
 
-              {/* 3-Column Metadata Grid */}
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+              {/* 4-Column Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Target week</span>
                   <span className="text-xs font-bold text-gray-900 block">
@@ -1163,9 +1163,16 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
 
                 <div>
-                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created At</span>
                   <span className="text-xs font-bold text-gray-900 block">
                     {viewingEpic.createdAt ? new Date(viewingEpic.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingEpic.createdByName || 'Dr. Harshit Mishra'}
                   </span>
                 </div>
               </div>
@@ -1363,17 +1370,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
               {/* Created By & Audit History Header */}
               <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                {viewingEpic.createdByName ? (
-                  <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Created by: <strong className="text-gray-900 font-semibold">{viewingEpic.createdByName}</strong></span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Created {viewingEpic.createdAt ? new Date(viewingEpic.createdAt).toLocaleDateString('en-GB') : 'recently'}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Created by: <strong className="text-gray-900 font-semibold">{viewingEpic.createdByName || 'Dr. Harshit Mishra'}</strong></span>
+                </div>
 
                 <button
                   type="button"
@@ -2089,8 +2089,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               ) : null}
 
-              {/* 3-Column Metadata Grid */}
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+              {/* 4-Column Metadata Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Timeline</span>
                   <span className="text-xs font-bold text-gray-900 block">
@@ -2113,9 +2113,16 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
 
                 <div>
-                  <span className="text-xs text-gray-400 font-medium block mb-1">Created</span>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created At</span>
                   <span className="text-xs font-bold text-gray-900 block">
                     {viewingInitiativeInEpics.createdAt ? new Date(viewingInitiativeInEpics.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingInitiativeInEpics.createdByName || 'Dr. Harshit Mishra'}
                   </span>
                 </div>
               </div>

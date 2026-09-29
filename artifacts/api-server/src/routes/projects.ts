@@ -35,9 +35,10 @@ router.get('/', async (req, res) => {
 
     const conditions: any[] = [];
 
-    // 0. Employee Scoping: If user is EMPLOYEE, restrict to projects where they are lead, team member, or have assigned tasks
+    // 0. Employee Scoping: Restrict only when specifically requesting personal/assigned sub-tab
     const isEmployee = req.user?.role === 'EMPLOYEE';
-    if (isEmployee) {
+    const isMyProjectsOnly = isEmployee && (subTab === 'MY_PROJECTS' || subTab === 'ASSIGNED');
+    if (isMyProjectsOnly) {
       const userEmail = (req.user?.email || '').toLowerCase().trim();
       const userEmpId = req.user?.employeeId || req.user?.id;
 
@@ -455,7 +456,9 @@ router.patch('/:id', async (req, res) => {
       if (category !== undefined) updatePayload.category = category;
       if (lead !== undefined) updatePayload.lead = lead;
       if (team !== undefined) updatePayload.team = team;
-      if (budget !== undefined) updatePayload.budget = budget;
+      if (budget !== undefined && budget !== null && String(budget).trim() !== '') {
+        updatePayload.budget = budget;
+      }
       if (startDate !== undefined) updatePayload.startDate = startDate;
       if (targetDate !== undefined) updatePayload.targetDate = targetDate;
       if (status !== undefined) updatePayload.status = status;
@@ -481,9 +484,31 @@ router.patch('/:id', async (req, res) => {
       for (const [key, newVal] of Object.entries(updatePayload)) {
         if (key === 'updatedAt') continue;
         const oldVal = (existing as any)[key];
+
+        if (key === 'comments') {
+          const oldList = Array.isArray(oldVal) ? oldVal : [];
+          const newList = Array.isArray(newVal) ? newVal : [];
+          if (newList.length > oldList.length) {
+            const added = newList[newList.length - 1];
+            changes.push({
+              field: 'comments',
+              old: null,
+              new: added?.content || 'New comment added',
+            });
+          }
+          continue;
+        }
+        if (key.toLowerCase() === 'updatedat' || key.toLowerCase() === 'updated_at' || key.toLowerCase() === 'createdat' || key.toLowerCase() === 'created_at') continue;
+
         const oldStr = typeof oldVal === 'object' ? JSON.stringify(oldVal) : String(oldVal ?? '');
         const newStr = typeof newVal === 'object' ? JSON.stringify(newVal) : String(newVal ?? '');
         if (oldStr !== newStr) {
+          if (oldStr.trim() === newStr.trim()) continue;
+          if (key.toLowerCase().includes('date') || oldVal instanceof Date || newVal instanceof Date) {
+            const d1 = oldStr ? oldStr.split('T')[0] : '';
+            const d2 = newStr ? newStr.split('T')[0] : '';
+            if (d1 === d2) continue;
+          }
           changes.push({ field: key, old: oldVal, new: newVal });
         }
       }

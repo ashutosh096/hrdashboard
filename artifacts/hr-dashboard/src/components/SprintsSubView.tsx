@@ -1460,7 +1460,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                               </p>
                             </div>
 
-                            {/* 4. Metadata Spec Sheet (Assignee & Reviewer label-value pairs) */}
+                            {/* 4. Metadata Spec Sheet (Assignee, Reviewer, Created By) */}
                             <div className="space-y-1 pt-1 text-[11px]">
                               <div className="flex items-center justify-between text-gray-500 font-medium">
                                 <span className="text-gray-400 text-[10px]">Assignee</span>
@@ -1474,12 +1474,17 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                   {reviewerLead}
                                 </span>
                               </div>
-{/* Created by tag removed per user request */}
+                              <div className="flex items-center justify-between text-gray-500 font-medium">
+                                <span className="text-gray-400 text-[10px]">Created By</span>
+                                <span className="text-[11px] font-semibold text-emerald-700 truncate max-w-[140px] text-right">
+                                  {t.createdByName || t.creatorName || 'Dr. Harshit Mishra'}
+                                </span>
+                              </div>
                             </div>
 
                             {/* 5. Bottom Line: Left = Posted Date | Right = Target / Due Date */}
                             <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[10px] font-medium text-gray-400">
-                              <div className="flex items-center gap-1 text-gray-400">
+                              <div className="flex items-center gap-1 text-gray-400" title="Created At">
                                 <Calendar className="w-3 h-3 text-gray-400" />
                                 <span>{createdDateStr}</span>
                               </div>
@@ -1494,6 +1499,14 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                   <span>{entityName}</span>
                                 </div>
                               )}
+                            </div>
+
+                            {/* Created By below Created At */}
+                            <div className="flex items-center justify-between gap-1 pt-1 text-[10px] text-gray-500 border-t border-gray-50">
+                              <div className="flex items-center gap-1 text-emerald-700 font-semibold truncate">
+                                <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span className="truncate">Created by: <strong>{t.createdByName || t.creatorName || 'Dr. Harshit Mishra'}</strong></span>
+                              </div>
                             </div>
                           </div>
                         );

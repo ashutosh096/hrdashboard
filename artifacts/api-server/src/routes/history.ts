@@ -8,6 +8,8 @@ import {
   sprints,
   projects,
   employees,
+  entities,
+  departments,
   eq,
   and,
   lt,
@@ -21,6 +23,73 @@ router.use(requireAuth);
 
 const VALID_TABLES = ['initiatives', 'epics', 'tasks', 'sprints', 'projects'] as const;
 type ValidTable = typeof VALID_TABLES[number];
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+
+function resolveDisplayValue(val: string | null | undefined, lookup: Map<string, string>): string | null {
+  if (val === undefined || val === null) return null;
+  const trimmed = String(val).trim();
+  if (!trimmed || trimmed === '(empty)' || trimmed === 'empty') return null;
+
+  if (UUID_REGEX.test(trimmed)) {
+    return lookup.get(trimmed) || trimmed;
+  }
+
+  // Format ISO timestamps as clean date: "6 Oct 2026"
+  if (ISO_DATE_REGEX.test(trimmed)) {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      const day = d.getDate();
+      const month = d.toLocaleDateString('en-GB', { month: 'short' });
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
+    }
+  }
+
+  // JSON Array of UUIDs or items (e.g. team member IDs)
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => {
+            if (typeof item === 'string' && UUID_REGEX.test(item.trim())) {
+              return lookup.get(item.trim()) || item;
+            }
+            if (item && typeof item === 'object') {
+              return item.content || item.name || item.title || JSON.stringify(item);
+            }
+            return String(item);
+          })
+          .join(', ');
+      }
+    } catch {}
+  }
+
+  return trimmed;
+}
+
+function normalizeFieldName(fieldName: string | null | undefined): string | null {
+  if (!fieldName) return null;
+  const f = fieldName.toLowerCase().replace(/_/g, '');
+  if (f === 'reviewingleadid' || f === 'reviewinglead') return 'Reviewing Lead';
+  if (f === 'assigneeid' || f === 'assignee') return 'Assignee';
+  if (f === 'entityid' || f === 'entity') return 'Entity';
+  if (f === 'departmentid' || f === 'department') return 'Department';
+  if (f === 'projectid' || f === 'project') return 'Project';
+  if (f === 'epicid' || f === 'epic') return 'Epic';
+  if (f === 'initiativeid' || f === 'initiative') return 'Initiative';
+  if (f === 'sprintid' || f === 'sprint') return 'Sprint';
+  if (f === 'ownerid' || f === 'owner') return 'Owner';
+  if (f === 'creatorid' || f === 'createdbyid' || f === 'creator') return 'Creator';
+  if (f === 'duedate' || f === 'due_date') return 'Due Date';
+  if (f === 'startdate' || f === 'start_date') return 'Start Date';
+  if (f === 'targetdate' || f === 'target_date') return 'Target Date';
+  if (f === 'targetweek' || f === 'sprintweek') return 'Sprint Week';
+  if (f === 'checklist') return 'Subtask Checklist';
+  return fieldName;
+}
 
 // GET /api/history/:table/:id?limit=10&before=<timestamp>
 router.get('/:table/:id', async (req: Request, res: Response) => {
@@ -109,7 +178,7 @@ router.get('/:table/:id', async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Access denied: You can only view history for items created by or assigned to you' });
     }
 
-    // 2. Query history rows (newest first, paginated, returning names not ids)
+    // 2. Query history rows (newest first, paginated)
     const conditions: any[] = [
       eq(recordHistoryTable.tableName, table),
       eq(recordHistoryTable.recordId, recordId),
@@ -135,10 +204,80 @@ router.get('/:table/:id', async (req: Request, res: Response) => {
       .from(recordHistoryTable)
       .where(and(...conditions))
       .orderBy(desc(recordHistoryTable.changedAt))
-      .limit(limitNum + 1);
+      .limit(limitNum * 3);
 
-    const hasMore = rows.length > limitNum;
-    const historyList = hasMore ? rows.slice(0, limitNum) : rows;
+    // 3. Build resolution maps for human readable labels
+    const [allEmployees, allEntities, allDepts, allProjs, allEpics, allInits, allSprints] = await Promise.all([
+      db.select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName, code: employees.employeeCode }).from(employees),
+      db.select({ id: entities.id, name: entities.name, code: entities.code }).from(entities),
+      db.select({ id: departments.id, name: departments.name }).from(departments),
+      db.select({ id: projects.id, name: projects.name, code: projects.code }).from(projects),
+      db.select({ id: epics.id, title: epics.title, code: epics.epicCode }).from(epics),
+      db.select({ id: initiatives.id, title: initiatives.title, code: initiatives.initiativeCode }).from(initiatives),
+      db.select({ id: sprints.id, name: sprints.name }).from(sprints),
+    ]);
+
+    const lookup = new Map<string, string>();
+
+    for (const e of allEmployees) {
+      const name = `${e.firstName || ''} ${e.lastName || ''}`.trim() || 'Employee';
+      lookup.set(e.id, e.code ? `${name} (${e.code})` : name);
+    }
+    for (const ent of allEntities) {
+      lookup.set(ent.id, ent.code ? `${ent.code} (${ent.name})` : ent.name);
+    }
+    for (const d of allDepts) {
+      lookup.set(d.id, d.name);
+    }
+    for (const p of allProjs) {
+      lookup.set(p.id, p.code ? `${p.code} ${p.name}` : p.name);
+    }
+    for (const ep of allEpics) {
+      lookup.set(ep.id, ep.code ? `${ep.code} ${ep.title}` : ep.title);
+    }
+    for (const init of allInits) {
+      lookup.set(init.id, init.code ? `${init.code} ${init.title}` : init.title);
+    }
+    for (const s of allSprints) {
+      lookup.set(s.id, s.name);
+    }
+
+    // 4. Transform and filter rows
+    const transformedHistory = rows
+      .filter((row) => {
+        const f = (row.fieldName || '').toLowerCase();
+        if (f.includes('updatedat') || f.includes('updated_at') || f.includes('createdat') || f.includes('created_at')) {
+          return false;
+        }
+
+        const resolvedOld = resolveDisplayValue(row.oldValue, lookup);
+        const resolvedNew = resolveDisplayValue(row.newValue, lookup);
+
+        // Filter out fake changes where resolved value didn't change
+        if (row.action === 'UPDATED' && (resolvedOld || '').trim().toLowerCase() === (resolvedNew || '').trim().toLowerCase()) {
+          return false;
+        }
+        return true;
+      })
+      .map((row) => {
+        let changedBy = row.changedByName;
+        if (changedBy === 'admin' || !changedBy) {
+          changedBy = 'Ashutosh Mishra (ADMN0001)';
+        }
+
+        return {
+          id: row.id,
+          action: row.action,
+          fieldName: normalizeFieldName(row.fieldName),
+          oldValue: resolveDisplayValue(row.oldValue, lookup),
+          newValue: resolveDisplayValue(row.newValue, lookup),
+          changedByName: changedBy,
+          changedAt: row.changedAt,
+        };
+      });
+
+    const hasMore = transformedHistory.length > limitNum;
+    const historyList = hasMore ? transformedHistory.slice(0, limitNum) : transformedHistory;
 
     res.json({
       history: historyList,

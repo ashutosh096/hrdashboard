@@ -169,8 +169,8 @@ export const TaskAnalyticsPanel: React.FC = () => {
           </p>
         </div>
 
-        {/* Right Controls: Month Selector + Week Selector + Search (MIDDLE) + Metrics Badges */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Right Controls: Filters & Grouped Metric Badges */}
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3">
           {/* Dynamic Month Selection Dropdown */}
           <div className="relative flex items-center">
             <Calendar className="w-3.5 h-3.5 text-emerald-600 absolute left-3 pointer-events-none" />
@@ -203,7 +203,7 @@ export const TaskAnalyticsPanel: React.FC = () => {
             </select>
           </div>
 
-          {/* Employee Search Box in the MIDDLE */}
+          {/* Employee Search Box */}
           <div className="relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -215,21 +215,24 @@ export const TaskAnalyticsPanel: React.FC = () => {
             />
           </div>
 
-          {/* Completion Rate Pill */}
-          <div className="bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <div>
-              <span className="text-[10px] font-bold text-emerald-700 uppercase block">Completion Rate</span>
-              <span className="text-sm font-extrabold text-emerald-800">{overallRate}%</span>
+          {/* Grouped Metric Badges (Always Side-by-Side) */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Completion Rate Pill */}
+            <div className="bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase block leading-none">Completion Rate</span>
+                <span className="text-sm font-extrabold text-emerald-800 leading-tight">{overallRate}%</span>
+              </div>
             </div>
-          </div>
 
-          {/* Pending Rate Pill */}
-          <div className="bg-amber-50 border border-amber-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-600" />
-            <div>
-              <span className="text-[10px] font-bold text-amber-700 uppercase block">Pending Rate</span>
-              <span className="text-sm font-extrabold text-amber-800">{pendingRate}%</span>
+            {/* Pending Rate Pill */}
+            <div className="bg-amber-50 border border-amber-200/80 px-3 py-1.5 rounded-xl flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+              <div>
+                <span className="text-[10px] font-bold text-amber-700 uppercase block leading-none">Pending Rate</span>
+                <span className="text-sm font-extrabold text-amber-800 leading-tight">{pendingRate}%</span>
+              </div>
             </div>
           </div>
         </div>

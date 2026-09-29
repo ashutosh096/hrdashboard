@@ -7,6 +7,7 @@ import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
 import { formatAuthorDisplayName } from './TaskUpdateModal';
 import { formatDateTime } from '../utils/dateUtils';
+import { matchesEntityFilter } from '../utils/entityUtils';
 
 interface TaskAssignModalProps {
   isOpen: boolean;
@@ -95,27 +96,37 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
   const [newCommentText, setNewCommentText] = useState('');
 
   const epicOptions = React.useMemo(() => {
-    return epics.map((ep) => ({
+    const filtered = epics.filter((ep: any) => {
+      if (!selectedEntityId) return true;
+      return matchesEntityFilter(ep, selectedEntityId);
+    });
+    const listToUse = filtered.length > 0 ? filtered : epics;
+    return listToUse.map((ep) => ({
       id: ep.id,
       code: ep.epicCode,
       label: ep.title,
     }));
-  }, [epics]);
+  }, [epics, selectedEntityId]);
 
   const projectOptions = React.useMemo(() => {
-    return projects.map((proj) => ({
+    const filtered = projects.filter((proj: any) => {
+      if (!selectedEntityId) return true;
+      return matchesEntityFilter(proj, selectedEntityId);
+    });
+    const listToUse = filtered.length > 0 ? filtered : projects;
+    return listToUse.map((proj) => ({
       id: proj.id,
       code: proj.code,
       label: proj.name,
       subtitle: proj.entity,
     }));
-  }, [projects]);
+  }, [projects, selectedEntityId]);
 
   const employeeOptions = React.useMemo(() => {
     return employees.map((emp) => ({
       id: emp.id,
       code: emp.employeeCode,
-      label: `${emp.firstName} ${emp.lastName}`,
+      label: `${emp.firstName} ${emp.lastName}`.trim() || emp.employeeCode,
       subtitle: emp.designation,
     }));
   }, [employees]);
@@ -183,10 +194,10 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
     setLoading(true);
     try {
       const [epicsData, sprintsData, empsData, projsData] = await Promise.all([
-        fetchApi<any[]>('/api/epics'),
-        fetchApi<any[]>('/api/sprints'),
-        fetchApi<any[]>('/api/employees'),
-        fetchApi<any[]>('/api/projects'),
+        fetchApi<any[]>('/api/epics').catch(() => []),
+        fetchApi<any[]>('/api/sprints').catch(() => []),
+        fetchApi<any[]>('/api/employees').catch(() => []),
+        fetchApi<any[]>('/api/projects').catch(() => []),
       ]);
 
       const sortedEpics = [...(epicsData || [])].sort((a, b) =>
@@ -299,6 +310,8 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
 
     onSubmit({
       title,
+      entity: selectedEntityId,
+      entityCode: selectedEntityId,
       epicId: selectedEpicId || null,
       projectId: selectedProjectId || null,
       initiativeId: selectedEpic?.initiativeId || null,

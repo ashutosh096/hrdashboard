@@ -70,6 +70,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       });
       toast.success(`Task ${created?.taskCode || 'created'} saved to live database!`);
       queryClient.invalidateQueries();
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
     } catch (err: any) {
       console.error('[TASK ASSIGN MODAL SUBMIT ERROR]:', err);
       toast.error(err?.message || 'Failed to save task to database');
@@ -135,6 +136,7 @@ export const MainContent: React.FC = () => {
         <Route path="/performance" component={DashboardView} />
         <Route path="/team" component={TeamDirectoryView} />
         <Route path="/reports" component={ReportsView} />
+        <Route path="/roles" component={ReportsView} />
         <Route path="/notifications" component={NotificationsView} />
         <Route path="/settings" component={SettingsView} />
       </Switch>

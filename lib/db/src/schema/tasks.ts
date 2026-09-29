@@ -35,7 +35,7 @@ export const tasks = pgTable(
     groupTaskId: uuid('group_task_id'), // UUID linking cloned group tasks
     status: taskStatusEnum('status').default('TODO').notNull(),
     priority: taskPriorityEnum('priority').default('MEDIUM').notNull(),
-    dueDate: timestamp('due_date').notNull(),
+    dueDate: timestamp('due_date'),
     dependencyTaskId: uuid('dependency_task_id'),
     waitingOn: varchar('waiting_on', { length: 255 }).default('None (Self)'),
     createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),

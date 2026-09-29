@@ -26,13 +26,26 @@ export interface RecordHistoryParams {
   changedByName: string;
 }
 
-const SENSITIVE_FIELDS = new Set(['password', 'passwordhash', 'token', 'refreshtoken', 'googletoken', 'otp', 'salary']);
+const SENSITIVE_FIELDS = new Set(['password', 'passwordhash', 'token', 'refreshtoken', 'googletoken', 'otp', 'salary', 'updatedat', 'updated_at', 'createdat', 'created_at']);
 
 function formatValue(val: any): string | null {
   if (val === undefined || val === null) return null;
   if (val instanceof Date) return val.toISOString();
   if (typeof val === 'object') return JSON.stringify(val);
   return String(val);
+}
+
+function isMeaningfulChange(fieldName: string, oldVal: any, newVal: any, oldStr: string | null, newStr: string | null): boolean {
+  if (oldStr === newStr) return false;
+  if ((oldStr ?? '').trim() === (newStr ?? '').trim()) return false;
+  
+  // Date check: ignore ISO millisecond/time drift if calendar date is the same
+  if (fieldName.toLowerCase().includes('date') || oldVal instanceof Date || newVal instanceof Date) {
+    const d1 = oldStr ? oldStr.split('T')[0] : '';
+    const d2 = newStr ? newStr.split('T')[0] : '';
+    if (d1 === d2) return false;
+  }
+  return true;
 }
 
 export async function recordHistory(
@@ -43,6 +56,8 @@ export async function recordHistory(
   const snapshotName = changedByName || 'Unknown';
 
   const rowsToInsert: InsertRecordHistory[] = [];
+
+  const now = new Date();
 
   if (!changes || (Array.isArray(changes) && changes.length === 0)) {
     // Single general entry (e.g. CREATED, DELETED, CLONED, CHILD_ADDED)
@@ -55,6 +70,7 @@ export async function recordHistory(
       newValue: null,
       changedById: changedById || null,
       changedByName: snapshotName,
+      changedAt: now,
     });
   } else if (Array.isArray(changes)) {
     for (const c of changes) {
@@ -65,7 +81,7 @@ export async function recordHistory(
       const newStr = formatValue(c.new);
 
       // Only record if values actually changed or if non-update action
-      if (action === 'UPDATED' && oldStr === newStr) {
+      if (action === 'UPDATED' && !isMeaningfulChange(fName, c.old, c.new, oldStr, newStr)) {
         continue;
       }
 
@@ -78,6 +94,7 @@ export async function recordHistory(
         newValue: newStr,
         changedById: changedById || null,
         changedByName: snapshotName,
+        changedAt: now,
       });
     }
   } else if (typeof changes === 'object') {
@@ -87,7 +104,7 @@ export async function recordHistory(
       if (!fName || !SENSITIVE_FIELDS.has(fName.toLowerCase())) {
         const oldStr = formatValue(c.old);
         const newStr = formatValue(c.new);
-        if (action !== 'UPDATED' || oldStr !== newStr) {
+        if (action !== 'UPDATED' || isMeaningfulChange(fName, c.old, c.new, oldStr, newStr)) {
           rowsToInsert.push({
             tableName,
             recordId,
@@ -97,6 +114,7 @@ export async function recordHistory(
             newValue: newStr,
             changedById: changedById || null,
             changedByName: snapshotName,
+            changedAt: now,
           });
         }
       }
@@ -106,7 +124,7 @@ export async function recordHistory(
         if (SENSITIVE_FIELDS.has(fName.toLowerCase())) continue;
         const oldStr = formatValue((diff as any)?.old);
         const newStr = formatValue((diff as any)?.new);
-        if (oldStr === newStr) continue;
+        if (!isMeaningfulChange(fName, (diff as any)?.old, (diff as any)?.new, oldStr, newStr)) continue;
 
         let derivedAction = action;
         const lower = fName.toLowerCase();
@@ -123,6 +141,7 @@ export async function recordHistory(
           newValue: newStr,
           changedById: changedById || null,
           changedByName: snapshotName,
+          changedAt: now,
         });
       }
     }
