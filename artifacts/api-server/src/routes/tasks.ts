@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { db, tasks, employees, entities, users, notifications, sprints, epics, initiatives, projects, entityCounters, generateNextGlobalCode, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, sql, asc, desc, recordHistory } from '@workspace/db';
+import { db, tasks, employees, departments, entities, users, notifications, sprints, epics, initiatives, projects, entityCounters, generateNextGlobalCode, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, sql, asc, desc, recordHistory } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
@@ -210,6 +210,7 @@ export async function enrichTasks(tasksList: any[]) {
 
     return {
       ...t,
+      assignee: assigneeName,
       assigneeName,
       assigneeEmail: assigneeEmp?.email || '',
       assigneeCode: assigneeEmp?.employeeCode || '',
@@ -341,23 +342,19 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
     comments,
   } = req.body;
 
-  // Resolve array of target assignees
-  let targetAssigneeIds: string[] = [];
-  if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+  // Resolve array of target assignees (allows unassigned tasks when assignee is null or unassigned)
+  const isExplicitlyUnassigned = assigneeId === null || assigneeId === '' || assigneeId === 'unassigned' || req.body.unassigned === true;
+  let targetAssigneeIds: (string | null)[] = [];
+  if (isExplicitlyUnassigned) {
+    targetAssigneeIds = [null];
+  } else if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
     targetAssigneeIds = assigneeIds;
   } else if (assigneeId) {
     targetAssigneeIds = [assigneeId];
   } else if (req.user?.employeeId) {
     targetAssigneeIds = [req.user.employeeId];
-  }
-
-  if (targetAssigneeIds.length === 0) {
-    const [firstEmp] = await db.select().from(employees).limit(1);
-    if (firstEmp) targetAssigneeIds = [firstEmp.id];
-  }
-
-  if (targetAssigneeIds.length === 0) {
-    return res.status(400).json({ message: 'No assignee employee found' });
+  } else {
+    targetAssigneeIds = [null];
   }
 
   const isGroupTask = targetAssigneeIds.length > 1;
@@ -368,17 +365,17 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
 
     for (const empId of targetAssigneeIds) {
       const taskResult = await db.transaction(async (tx) => {
-        // 1. Fetch Assignee details
-        const [assignee] = await tx
-          .select()
-          .from(employees)
-          .where(eq(employees.id, empId));
-
-        if (!assignee) {
-          throw new Error(`Assignee employee not found for ID: ${empId}`);
+        // 1. Fetch Assignee details if assigned
+        let assignee: any = null;
+        if (empId) {
+          const [foundEmp] = await tx
+            .select()
+            .from(employees)
+            .where(eq(employees.id, empId));
+          assignee = foundEmp || null;
         }
 
-        let targetEntityId = assignee.entityId;
+        let targetEntityId = assignee?.entityId;
         if (req.body.entityId) {
           targetEntityId = req.body.entityId;
         } else if (req.body.entityCode) {
@@ -386,6 +383,11 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
           const mappedCode = entCodeUpper === 'CLIMAGRO' ? 'CAG' : entCodeUpper;
           const [foundEnt] = await tx.select().from(entities).where(eq(entities.code, mappedCode));
           if (foundEnt) targetEntityId = foundEnt.id;
+        }
+
+        if (!targetEntityId) {
+          const [defaultEnt] = await tx.select().from(entities).limit(1);
+          targetEntityId = defaultEnt?.id;
         }
 
         const [entity] = await tx
@@ -461,9 +463,16 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
         }
 
         // 4. Resolve Creator & Reviewing Lead
-        const targetCreatorId = creatorId || req.user?.employeeId || assignee.id;
-        const targetReviewingLeadId = reviewingLeadId || (req.user?.employeeId && req.user.employeeId !== assignee.id ? req.user.employeeId : null);
         const caller = await getCallerInfo(req.user, tx);
+        const targetCreatorId = creatorId || req.user?.employeeId || assignee?.id || caller.employeeId;
+        const targetReviewingLeadId = reviewingLeadId || (req.user?.employeeId && (!assignee || req.user.employeeId !== assignee.id) ? req.user.employeeId : null);
+
+        // Resolve Department ID safely
+        let finalDeptId = departmentId || assignee?.departmentId;
+        if (!finalDeptId) {
+          const [firstDept] = await tx.select().from(departments).limit(1);
+          finalDeptId = firstDept?.id;
+        }
 
         // 5. Insert Task
         const dueDateVal = dueDate ? new Date(dueDate) : null;
@@ -474,7 +483,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
             title: title || 'Untitled Task',
             description: description || '',
             entityId: entity.id,
-            departmentId: departmentId || assignee.departmentId,
+            departmentId: finalDeptId,
             taskType,
             sprintWeek: sprintWeekStr,
             sprintId: finalSprintId,
@@ -483,7 +492,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
             projectId: finalProjectId,
             groupTaskId,
             storyPoints: storyPoints ? Number(storyPoints) : null,
-            assigneeId: assignee.id,
+            assigneeId: assignee?.id || null,
             creatorId: targetCreatorId,
             reviewingLeadId: targetReviewingLeadId,
             status: normalizeTaskStatus(status),
@@ -610,17 +619,23 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
           });
         }
 
-        return { newTask, assigneeEmail: assignee.email, assigneeName: `${assignee.firstName} ${assignee.lastName}` };
+        return {
+          newTask,
+          assigneeEmail: assignee?.email || null,
+          assigneeName: assignee ? `${assignee.firstName} ${assignee.lastName}`.trim() : 'Unassigned',
+        };
       });
 
-      // Send Notification Email asynchronously
-      sendTaskAssignedEmail(
-        taskResult.assigneeEmail,
-        taskResult.assigneeName,
-        taskResult.newTask.taskCode,
-        taskResult.newTask.title,
-        taskResult.newTask.dueDate ? new Date(taskResult.newTask.dueDate).toISOString().split('T')[0] : ''
-      ).catch(console.error);
+      // Send Notification Email asynchronously if assignee exists
+      if (taskResult.assigneeEmail) {
+        sendTaskAssignedEmail(
+          taskResult.assigneeEmail,
+          taskResult.assigneeName,
+          taskResult.newTask.taskCode,
+          taskResult.newTask.title,
+          taskResult.newTask.dueDate ? new Date(taskResult.newTask.dueDate).toISOString().split('T')[0] : ''
+        ).catch(console.error);
+      }
 
       createdTasks.push(taskResult.newTask);
     }
@@ -709,39 +724,51 @@ const handleTaskUpdate = async (req: any, res: any) => {
         updateData.projectId = projectId || null;
       }
 
-      // Handle Assignee ID / Name
-      if (assigneeId && typeof assigneeId === 'string' && assigneeId.length === 36) {
+      // Handle Assignee ID / Name (Support removing assignee and keeping unassigned)
+      if (assigneeId === null || assigneeId === '' || assigneeName === '' || assigneeName === 'Unassigned' || assigneeName === 'None') {
+        updateData.assigneeId = null;
+      } else if (assigneeId && typeof assigneeId === 'string' && assigneeId.length === 36) {
         updateData.assigneeId = assigneeId;
       } else if (assigneeName || assigneeId) {
         const rawTarget = String(assigneeName || assigneeId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
-        const allEmps = await tx.select().from(employees);
-        const matchedEmp = allEmps.find(
-          (e) =>
-            e.id === assigneeId ||
-            `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
-            e.firstName.toLowerCase() === rawTarget ||
-            e.lastName?.toLowerCase() === rawTarget
-        );
-        if (matchedEmp) {
-          updateData.assigneeId = matchedEmp.id;
+        if (rawTarget === 'unassigned' || rawTarget === 'none' || rawTarget === '') {
+          updateData.assigneeId = null;
+        } else {
+          const allEmps = await tx.select().from(employees);
+          const matchedEmp = allEmps.find(
+            (e) =>
+              e.id === assigneeId ||
+              `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
+              e.firstName.toLowerCase() === rawTarget ||
+              e.lastName?.toLowerCase() === rawTarget
+          );
+          if (matchedEmp) {
+            updateData.assigneeId = matchedEmp.id;
+          }
         }
       }
 
-      // Handle Reviewing Lead ID / Name
-      if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.length === 36) {
+      // Handle Reviewing Lead ID / Name (Support removing lead and keeping unassigned/none)
+      if (reviewingLeadId === null || reviewingLeadId === '' || reviewingLead === '' || reviewingLead === 'Unassigned' || reviewingLead === 'None') {
+        updateData.reviewingLeadId = null;
+      } else if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.length === 36) {
         updateData.reviewingLeadId = reviewingLeadId;
       } else if (reviewingLead || reviewingLeadId) {
         const rawTarget = String(reviewingLead || reviewingLeadId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
-        const allEmps = await tx.select().from(employees);
-        const matchedLead = allEmps.find(
-          (e) =>
-            e.id === reviewingLeadId ||
-            `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
-            e.firstName.toLowerCase() === rawTarget ||
-            e.lastName?.toLowerCase() === rawTarget
-        );
-        if (matchedLead) {
-          updateData.reviewingLeadId = matchedLead.id;
+        if (rawTarget === 'unassigned' || rawTarget === 'none' || rawTarget === '' || rawTarget === 'manager lead') {
+          updateData.reviewingLeadId = null;
+        } else {
+          const allEmps = await tx.select().from(employees);
+          const matchedLead = allEmps.find(
+            (e) =>
+              e.id === reviewingLeadId ||
+              `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
+              e.firstName.toLowerCase() === rawTarget ||
+              e.lastName?.toLowerCase() === rawTarget
+          );
+          if (matchedLead) {
+            updateData.reviewingLeadId = matchedLead.id;
+          }
         }
       }
 

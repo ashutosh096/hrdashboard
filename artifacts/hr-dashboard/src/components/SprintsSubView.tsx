@@ -203,7 +203,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [projects, setProjects] = useState<any[]>([]);
   const [sprintName, setSprintName] = useState('');
   const [department, setDepartment] = useState('Product & Tech');
-  
+
   const [targetWeek, setTargetWeek] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -427,7 +427,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
             message: `Task ${taskCode} "${taskTitle}" has been pushed to To Review queue for your manager sign-off.`,
             isRead: false,
           }),
-        }).catch(() => {});
+        }).catch(() => { });
         toast.success(`Review Pending notification sent to Lead (${reviewingLead})!`);
       } else {
         toast.success(`Task ${taskCode} moved to ${newColumn}!`);
@@ -588,20 +588,20 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       prev.map(t =>
         t.id === task.id
           ? {
-              ...t,
-              status: apiStatus,
-              assigneeId,
-              assigneeName: assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}` : t.assigneeName,
-              assigneeEmail: assignedEmp?.email || t.assigneeEmail,
-              reviewingLeadId,
-              reviewingLead: leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}` : t.reviewingLead,
-              sprintWeek,
-              dueDate,
-              priority,
-              description,
-              checklists,
-              comments,
-            }
+            ...t,
+            status: apiStatus,
+            assigneeId,
+            assigneeName: assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}` : t.assigneeName,
+            assigneeEmail: assignedEmp?.email || t.assigneeEmail,
+            reviewingLeadId,
+            reviewingLead: leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}` : t.reviewingLead,
+            sprintWeek,
+            dueDate,
+            priority,
+            description,
+            checklists,
+            comments,
+          }
           : t
       )
     );
@@ -717,8 +717,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       })
       .filter(Boolean);
 
-    const assigneeNamesStr = assignedEmpNames.length > 0 
-      ? assignedEmpNames.join(', ') 
+    const assigneeNamesStr = assignedEmpNames.length > 0
+      ? assignedEmpNames.join(', ')
       : (assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}` : 'Unassigned');
 
     const newTask = {
@@ -803,11 +803,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       reviewingLead: resolvedLead,
       reviewingLeadId: task.reviewingLeadId || (leadEmp?.id || ''),
       status: task.status === 'DONE' || task.status === 'COMPLETED' ? 'Done' :
-              task.status === 'IN_REVIEW' || task.status === 'TO_REVIEW' ? 'To Review' :
-              task.status === 'PLANNED' ? 'Planned' :
-              task.status === 'BACKLOG' ? 'Backlog' :
+        task.status === 'IN_REVIEW' || task.status === 'TO_REVIEW' ? 'To Review' :
+          task.status === 'PLANNED' ? 'Planned' :
+            task.status === 'BACKLOG' ? 'Backlog' :
               task.status === 'DELAYED' ? 'Delayed' :
-              task.status === 'BLOCKED' ? 'Blocked' : 'In Progress',
+                task.status === 'BLOCKED' ? 'Blocked' : 'In Progress',
       outputUrl: task.deliverableUrl || task.outputUrl || '',
       waitingOn: task.waitingOn || 'None (Self)',
       notes: task.description || task.notes || '',
@@ -831,10 +831,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           entity: resolvedEntityLabel,
           entityCode: resolvedEntityCode,
           epicId: updated.epicId !== undefined ? updated.epicId : null,
-          assigneeName: updated.assignee,
-          assigneeId: updated.assigneeId,
-          reviewingLead: updated.reviewingLead,
-          reviewingLeadId: updated.reviewingLeadId,
+          assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
+          assigneeId: updated.assigneeId || null,
+          reviewingLead: updated.reviewingLead === 'Unassigned' ? '' : updated.reviewingLead,
+          reviewingLeadId: updated.reviewingLeadId || null,
           status: updated.status,
           deliverableUrl: updated.outputUrl,
           description: updated.notes,
@@ -1006,7 +1006,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     const matchesStatus = selectedStatus === 'ALL' || taskCol === selectedStatus;
 
-    const matchesQuery = !searchQuery.trim() || 
+    const matchesQuery = !searchQuery.trim() ||
       t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.taskCode?.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -1062,11 +1062,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                 }, 50);
               }
             }}
-            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-              viewMode === 'ARCHIVE'
+            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${viewMode === 'ARCHIVE'
                 ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700 shadow-xs'
                 : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-2xs'
-            }`}
+              }`}
           >
             <Archive className="w-3.5 h-3.5 text-gray-500" />
             <span>{viewMode === 'ACTIVE' ? 'Sprint archive' : 'Active sprints'}</span>
@@ -1092,33 +1091,30 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200/80">
           <button
             onClick={() => setSprintCategory('ACTIVE')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              sprintCategory === 'ACTIVE'
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${sprintCategory === 'ACTIVE'
                 ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-            }`}
+              }`}
           >
             Active sprint
           </button>
 
           <button
             onClick={() => setSprintCategory('FUTURE')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              sprintCategory === 'FUTURE'
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${sprintCategory === 'FUTURE'
                 ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-            }`}
+              }`}
           >
             Future and undecided
           </button>
 
           <button
             onClick={() => setSprintCategory('DATE_RANGE')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              sprintCategory === 'DATE_RANGE'
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${sprintCategory === 'DATE_RANGE'
                 ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-            }`}
+              }`}
           >
             Date range
           </button>
@@ -1190,7 +1186,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         </div>
       </div>
 
-{/* Week sub-nav removed — showing all weeks */}
+      {/* Week sub-nav removed — showing all weeks */}
 
       {/* 🚀 6-COLUMN KANBAN BOARD VIEW (Backlog -> Planned -> To Do -> In Progress -> To Review -> Done) */}
       {loading ? (
@@ -1226,307 +1222,306 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       className="w-12 shrink-0 bg-slate-100/90 hover:bg-slate-200/80 rounded-2xl border border-slate-300 p-2.5 min-h-[550px] flex flex-col items-center justify-between cursor-pointer transition-all shadow-xs group select-none"
                       title="Click arrow to expand Backlog column"
                     >
-                    <div className="flex flex-col items-center gap-4 pt-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsBacklogExpanded(true);
-                        }}
-                        className="p-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
-                        title="Expand Backlog"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                      <div className="[writing-mode:vertical-lr] font-black text-xs text-slate-600 tracking-wider flex items-center gap-2 pt-4">
-                        <span>BACKLOG</span>
-                        <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-800 text-[10px] font-black">
-                          {columnTasks.length}
-                        </span>
+                      <div className="flex flex-col items-center gap-4 pt-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsBacklogExpanded(true);
+                          }}
+                          className="p-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
+                          title="Expand Backlog"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <div className="[writing-mode:vertical-lr] font-black text-xs text-slate-600 tracking-wider flex items-center gap-2 pt-4">
+                          <span>BACKLOG</span>
+                          <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-800 text-[10px] font-black">
+                            {columnTasks.length}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              }
+                  );
+                }
 
                 return (
                   <div
                     key={col.id}
                     id={`kanban-column-${col.id}`}
                     onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const taskId = e.dataTransfer.getData('text/plain');
-                    if (taskId) handleTaskStatusTransition(taskId, col.id);
-                  }}
-                  className="w-[310px] shrink-0 bg-slate-50/70 rounded-2xl border border-gray-200/80 p-3.5 space-y-3.5 min-h-[550px] flex flex-col shadow-2xs transition-colors hover:border-emerald-200"
-                >
-                {/* Column Header */}
-                <div className={`p-2.5 rounded-xl border flex items-center justify-between font-bold text-xs ${col.color}`}>
-                  <div className="flex items-center gap-2">
-                    {col.id === 'BACKLOG' && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsBacklogExpanded(false);
-                        }}
-                        className="p-1 rounded-md bg-white/90 hover:bg-white text-slate-700 border border-slate-300 hover:text-emerald-700 transition-colors cursor-pointer"
-                        title="Click arrow to hide Backlog column"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <span>{col.label}</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${col.badgeColor}`}>
-                    {columnTasks.length}
-                  </span>
-                </div>
-
-                {/* Column Task Cards */}
-                <div className="space-y-3 flex-1 overflow-y-auto max-h-[650px] pr-0.5">
-                  {columnTasks.length === 0 ? (
-                    <div className="text-center py-10 text-[11px] text-gray-400 font-medium border border-dashed border-gray-200 rounded-xl bg-white/50">
-                      No tasks in {col.label}
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const taskId = e.dataTransfer.getData('text/plain');
+                      if (taskId) handleTaskStatusTransition(taskId, col.id);
+                    }}
+                    className="w-[310px] shrink-0 bg-slate-50/70 rounded-2xl border border-gray-200/80 p-3.5 space-y-3.5 min-h-[550px] flex flex-col shadow-2xs transition-colors hover:border-emerald-200"
+                  >
+                    {/* Column Header */}
+                    <div className={`p-2.5 rounded-xl border flex items-center justify-between font-bold text-xs ${col.color}`}>
+                      <div className="flex items-center gap-2">
+                        {col.id === 'BACKLOG' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsBacklogExpanded(false);
+                            }}
+                            className="p-1 rounded-md bg-white/90 hover:bg-white text-slate-700 border border-slate-300 hover:text-emerald-700 transition-colors cursor-pointer"
+                            title="Click arrow to hide Backlog column"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <span>{col.label}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${col.badgeColor}`}>
+                        {columnTasks.length}
+                      </span>
                     </div>
-                  ) : (
-                    (() => {
-                      const sortedColumnTasks = [...columnTasks].sort((a, b) => {
-                        const now = new Date();
-                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-                        const aDate = a.dueDate ? new Date(a.dueDate) : null;
-                        const bDate = b.dueDate ? new Date(b.dueDate) : null;
-
-                        const aOverdue = aDate && !['DONE', 'COMPLETED'].includes(a.status) && new Date(aDate.getFullYear(), aDate.getMonth(), aDate.getDate()) < today;
-                        const bOverdue = bDate && !['DONE', 'COMPLETED'].includes(b.status) && new Date(bDate.getFullYear(), bDate.getMonth(), bDate.getDate()) < today;
-
-                        if (aOverdue && !bOverdue) return -1;
-                        if (!aOverdue && bOverdue) return 1;
-
-                        if (aDate && bDate) return aDate.getTime() - bDate.getTime();
-                        if (aDate && !bDate) return -1;
-                        if (!aDate && bDate) return 1;
-
-                        return 0;
-                      });
-
-                      return sortedColumnTasks.map(t => {
-                        const entityName = t.entityCode === 'CAG' || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
-                        const assignedEmp = employees.find(e => e.id === t.assigneeId);
-                        const leadEmp = employees.find(e => e.id === t.reviewingLeadId);
-
-                        const resolvedAssigneeName = (t.assigneeName && t.assigneeName !== 'Unassigned')
-                          ? t.assigneeName
-                          : (assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}`.trim() : 'Unassigned');
-
-                        const isUnassigned = !t.assigneeId || resolvedAssigneeName === 'Unassigned';
-
-                        let assigneeInitials = 'U';
-                        if (!isUnassigned && resolvedAssigneeName) {
-                          const parts = resolvedAssigneeName.trim().split(' ');
-                          assigneeInitials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0].slice(0, 2);
-                        }
-
-                        const epicCode = t.epicCode || t.epicTitle || '';
-
-                        let dueDateInfo = null;
-                        if (t.dueDate) {
-                          const d = new Date(t.dueDate);
-                          if (!isNaN(d.getTime())) {
+                    {/* Column Task Cards */}
+                    <div className="space-y-3 flex-1 overflow-y-auto max-h-[650px] pr-0.5">
+                      {columnTasks.length === 0 ? (
+                        <div className="text-center py-10 text-[11px] text-gray-400 font-medium border border-dashed border-gray-200 rounded-xl bg-white/50">
+                          No tasks in {col.label}
+                        </div>
+                      ) : (
+                        (() => {
+                          const sortedColumnTasks = [...columnTasks].sort((a, b) => {
                             const now = new Date();
                             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                            const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-                            const isCompleted = t.status === 'DONE' || t.status === 'COMPLETED';
-                            const isOverdue = !isCompleted && target < today;
-                            const day = d.getDate();
-                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                            const month = monthNames[d.getMonth()];
-                            dueDateInfo = {
-                              label: isOverdue ? 'Overdue' : `${day} ${month}`,
-                              isOverdue,
-                            };
-                          }
-                        }
 
-                        const p = (t.priority || '').toUpperCase();
-                        const priorityLabel = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
-                        const priorityTextColor = (priorityLabel === 'P1') ? 'text-red-600' : (priorityLabel === 'P2') ? 'text-rose-600' : (priorityLabel === 'P3') ? 'text-amber-600' : 'text-slate-500';
-                        const priorityBarColor = (priorityLabel === 'P1') ? 'bg-red-500' : (priorityLabel === 'P2') ? 'bg-rose-500' : (priorityLabel === 'P3') ? 'bg-amber-500' : 'bg-slate-400';
+                            const aDate = a.dueDate ? new Date(a.dueDate) : null;
+                            const bDate = b.dueDate ? new Date(b.dueDate) : null;
 
-                        const createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
-                        const reviewerLead = (t.reviewingLead && t.reviewingLead !== 'Manager lead')
-                          ? t.reviewingLead
-                          : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Unassigned');
-                        const assigneeDisplayName = isUnassigned ? 'Unassigned' : resolvedAssigneeName;
+                            const aOverdue = aDate && !['DONE', 'COMPLETED'].includes(a.status) && new Date(aDate.getFullYear(), aDate.getMonth(), aDate.getDate()) < today;
+                            const bOverdue = bDate && !['DONE', 'COMPLETED'].includes(b.status) && new Date(bDate.getFullYear(), bDate.getMonth(), bDate.getDate()) < today;
 
-                        return (
-                          <div
-                            key={t.id}
-                            draggable={isManager || isTaskAssignedToUser(t)}
-                            onDragStart={(e) => {
-                              if (!isManager && !isTaskAssignedToUser(t)) {
-                                e.preventDefault();
-                                return;
+                            if (aOverdue && !bOverdue) return -1;
+                            if (!aOverdue && bOverdue) return 1;
+
+                            if (aDate && bDate) return aDate.getTime() - bDate.getTime();
+                            if (aDate && !bDate) return -1;
+                            if (!aDate && bDate) return 1;
+
+                            return 0;
+                          });
+
+                          return sortedColumnTasks.map(t => {
+                            const entityName = t.entityCode === 'CAG' || (t.entityName || '').toLowerCase().includes('climagro') || (t.entityId || '').toLowerCase().includes('cag') ? 'Climagro' : 'EHM';
+                            const assignedEmp = employees.find(e => e.id === t.assigneeId);
+                            const leadEmp = employees.find(e => e.id === t.reviewingLeadId);
+
+                            const resolvedAssigneeName = (t.assigneeName && t.assigneeName !== 'Unassigned')
+                              ? t.assigneeName
+                              : (assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}`.trim() : 'Unassigned');
+
+                            const isUnassigned = !t.assigneeId || resolvedAssigneeName === 'Unassigned';
+
+                            let assigneeInitials = 'U';
+                            if (!isUnassigned && resolvedAssigneeName) {
+                              const parts = resolvedAssigneeName.trim().split(' ');
+                              assigneeInitials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0].slice(0, 2);
+                            }
+
+                            const epicCode = t.epicCode || t.epicTitle || '';
+
+                            let dueDateInfo = null;
+                            if (t.dueDate) {
+                              const d = new Date(t.dueDate);
+                              if (!isNaN(d.getTime())) {
+                                const now = new Date();
+                                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                                const isCompleted = t.status === 'DONE' || t.status === 'COMPLETED';
+                                const isOverdue = !isCompleted && target < today;
+                                const day = d.getDate();
+                                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                const month = monthNames[d.getMonth()];
+                                dueDateInfo = {
+                                  label: isOverdue ? 'Overdue' : `${day} ${month}`,
+                                  isOverdue,
+                                };
                               }
-                              e.dataTransfer.setData('text/plain', t.id);
-                              e.dataTransfer.effectAllowed = 'move';
-                            }}
-                            onClick={() => handleTaskClick(t)}
-                            className={`relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2 hover:shadow-md hover:border-emerald-400 transition-all ${
-                              isManager || isTaskAssignedToUser(t) ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
-                            } group overflow-hidden select-none`}
-                          >
-                            {/* 1. Priority (Left Edge Color Bar) */}
-                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${priorityBarColor}`} />
+                            }
 
-                            {/* 2. Top Header Line: Left = Priority P1-P4 & Entity Badge | Right = Epic Code & Action Buttons */}
-                            <div className="flex items-center justify-between gap-2 text-xs">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className={`font-extrabold ${priorityTextColor}`}>
-                                  {priorityLabel}
-                                </span>
-                                {(() => {
-                                  const badge = getEntityBadge(t);
-                                  return (
-                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wide shrink-0 ${badge.className}`}>
-                                      {badge.label}
+                            const p = (t.priority || '').toUpperCase();
+                            const priorityLabel = (p === 'URGENT' || p === 'P1' || p === '1') ? 'P1' : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2' : (p === 'MEDIUM' || p === 'P3' || p === '3') ? 'P3' : 'P4';
+                            const priorityTextColor = (priorityLabel === 'P1') ? 'text-red-600' : (priorityLabel === 'P2') ? 'text-rose-600' : (priorityLabel === 'P3') ? 'text-amber-600' : 'text-slate-500';
+                            const priorityBarColor = (priorityLabel === 'P1') ? 'bg-red-500' : (priorityLabel === 'P2') ? 'bg-rose-500' : (priorityLabel === 'P3') ? 'bg-amber-500' : 'bg-slate-400';
+
+                            const createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
+                            const reviewerLead = (t.reviewingLead && t.reviewingLead !== 'Manager lead')
+                              ? t.reviewingLead
+                              : (leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}`.trim() : 'Unassigned');
+                            const assigneeDisplayName = isUnassigned ? 'Unassigned' : resolvedAssigneeName;
+
+                            return (
+                              <div
+                                key={t.id}
+                                draggable={isManager || isTaskAssignedToUser(t)}
+                                onDragStart={(e) => {
+                                  if (!isManager && !isTaskAssignedToUser(t)) {
+                                    e.preventDefault();
+                                    return;
+                                  }
+                                  e.dataTransfer.setData('text/plain', t.id);
+                                  e.dataTransfer.effectAllowed = 'move';
+                                }}
+                                onClick={() => handleTaskClick(t)}
+                                className={`relative bg-white rounded-xl p-3.5 pl-4 border border-gray-200/90 shadow-2xs space-y-2 hover:shadow-md hover:border-emerald-400 transition-all ${isManager || isTaskAssignedToUser(t) ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                                  } group overflow-hidden select-none`}
+                              >
+                                {/* 1. Priority (Left Edge Color Bar) */}
+                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${priorityBarColor}`} />
+
+                                {/* 2. Top Header Line: Left = Priority P1-P4 & Entity Badge | Right = Epic Code & Action Buttons */}
+                                <div className="flex items-center justify-between gap-2 text-xs">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className={`font-extrabold ${priorityTextColor}`}>
+                                      {priorityLabel}
                                     </span>
-                                  );
-                                })()}
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[10px] font-bold text-gray-400 truncate">
-                                  {epicCode}
-                                </span>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleTaskClick(t, true);
-                                    }}
-                                    className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
-                                    title="View Task Details (Read-Only)"
-                                  >
-                                    <Eye className="w-3 h-3 text-emerald-600" />
-                                  </button>
-                                  {(isManager || isTaskAssignedToUser(t)) && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleTaskClick(t, false);
-                                      }}
-                                      className="p-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer"
-                                      title={isManager ? "Edit Task Details (Manager Level)" : "Edit My Assigned Task"}
-                                    >
-                                      <Edit3 className="w-3 h-3 text-blue-600" />
-                                    </button>
+                                    {(() => {
+                                      const badge = getEntityBadge(t);
+                                      return (
+                                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wide shrink-0 ${badge.className}`}>
+                                          {badge.label}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono text-[10px] font-bold text-gray-400 truncate">
+                                      {epicCode}
+                                    </span>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleTaskClick(t, true);
+                                        }}
+                                        className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+                                        title="View Task Details (Read-Only)"
+                                      >
+                                        <Eye className="w-3 h-3 text-emerald-600" />
+                                      </button>
+                                      {(isManager || isTaskAssignedToUser(t)) && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleTaskClick(t, false);
+                                          }}
+                                          className="p-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer"
+                                          title={isManager ? "Edit Task Details (Manager Level)" : "Edit My Assigned Task"}
+                                        >
+                                          <Edit3 className="w-3 h-3 text-blue-600" />
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setHistoryTarget({
+                                            recordId: t.id,
+                                            title: t.title,
+                                            code: t.taskCode || t.taskId || t.id,
+                                          });
+                                        }}
+                                        className="p-1 rounded bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 transition-colors cursor-pointer"
+                                        title="View Task Audit History"
+                                      >
+                                        <History className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 3. Title (Middle, Full Width) */}
+                                <div>
+                                  <h5 className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors leading-snug">
+                                    {t.title}
+                                  </h5>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                                    {(() => {
+                                      const badge = getEntityBadge(t);
+                                      return `${badge.label} · ${priorityLabel}`;
+                                    })()}
+                                  </p>
+                                </div>
+
+                                {/* 4. Metadata Spec Sheet (Assignee, Reviewer, Created By) */}
+                                <div className="space-y-1 pt-1 text-[11px]">
+                                  <div className="flex items-center justify-between text-gray-500 font-medium">
+                                    <span className="text-gray-400 text-[10px]">Assignee</span>
+                                    <span className={`text-[11px] font-semibold ${isUnassigned ? 'text-gray-500 italic' : 'text-gray-800'}`}>
+                                      {assigneeDisplayName}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-gray-500 font-medium">
+                                    <span className="text-gray-400 text-[10px]">Reviewer</span>
+                                    <span className="text-[11px] font-semibold text-gray-800 truncate max-w-[140px] text-right">
+                                      {reviewerLead}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-gray-500 font-medium">
+                                    <span className="text-gray-400 text-[10px]">Created By</span>
+                                    <span className="text-[11px] font-semibold text-emerald-700 truncate max-w-[140px] text-right">
+                                      {t.createdByName || t.creatorName || 'Dr. Harshit Mishra'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* 5. Bottom Line: Left = Posted Date | Right = Target / Due Date */}
+                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[10px] font-medium text-gray-400">
+                                  <div className="flex items-center gap-1 text-gray-400" title="Created At">
+                                    <Calendar className="w-3 h-3 text-gray-400" />
+                                    <span>{createdDateStr}</span>
+                                  </div>
+
+                                  {dueDateInfo ? (
+                                    <div className={`flex items-center gap-1 font-bold ${dueDateInfo.isOverdue ? 'text-red-600 font-extrabold' : 'text-gray-500'}`}>
+                                      <Calendar className={`w-3 h-3 ${dueDateInfo.isOverdue ? 'text-red-500' : 'text-gray-400'}`} />
+                                      <span>Due {dueDateInfo.label}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-gray-400 font-medium">
+                                      <span>{entityName}</span>
+                                    </div>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setHistoryTarget({
-                                        recordId: t.id,
-                                        title: t.title,
-                                        code: t.taskCode || t.taskId || t.id,
-                                      });
-                                    }}
-                                    className="p-1 rounded bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 transition-colors cursor-pointer"
-                                    title="View Task Audit History"
-                                  >
-                                    <History className="w-3 h-3" />
-                                  </button>
+                                </div>
+
+                                {/* Created By below Created At */}
+                                <div className="flex items-center justify-between gap-1 pt-1 text-[10px] text-gray-500 border-t border-gray-50">
+                                  <div className="flex items-center gap-1 text-emerald-700 font-semibold truncate">
+                                    <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    <span className="truncate">Created by: <strong>{t.createdByName || t.creatorName || 'Dr. Harshit Mishra'}</strong></span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-
-                            {/* 3. Title (Middle, Full Width) */}
-                            <div>
-                              <h5 className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition-colors leading-snug">
-                                {t.title}
-                              </h5>
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                                {(() => {
-                                  const badge = getEntityBadge(t);
-                                  return `${badge.label} · ${priorityLabel}`;
-                                })()}
-                              </p>
-                            </div>
-
-                            {/* 4. Metadata Spec Sheet (Assignee, Reviewer, Created By) */}
-                            <div className="space-y-1 pt-1 text-[11px]">
-                              <div className="flex items-center justify-between text-gray-500 font-medium">
-                                <span className="text-gray-400 text-[10px]">Assignee</span>
-                                <span className={`text-[11px] font-semibold ${isUnassigned ? 'text-gray-500 italic' : 'text-gray-800'}`}>
-                                  {assigneeDisplayName}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-gray-500 font-medium">
-                                <span className="text-gray-400 text-[10px]">Reviewer</span>
-                                <span className="text-[11px] font-semibold text-gray-800 truncate max-w-[140px] text-right">
-                                  {reviewerLead}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-gray-500 font-medium">
-                                <span className="text-gray-400 text-[10px]">Created By</span>
-                                <span className="text-[11px] font-semibold text-emerald-700 truncate max-w-[140px] text-right">
-                                  {t.createdByName || t.creatorName || 'Dr. Harshit Mishra'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* 5. Bottom Line: Left = Posted Date | Right = Target / Due Date */}
-                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[10px] font-medium text-gray-400">
-                              <div className="flex items-center gap-1 text-gray-400" title="Created At">
-                                <Calendar className="w-3 h-3 text-gray-400" />
-                                <span>{createdDateStr}</span>
-                              </div>
-
-                              {dueDateInfo ? (
-                                <div className={`flex items-center gap-1 font-bold ${dueDateInfo.isOverdue ? 'text-red-600 font-extrabold' : 'text-gray-500'}`}>
-                                  <Calendar className={`w-3 h-3 ${dueDateInfo.isOverdue ? 'text-red-500' : 'text-gray-400'}`} />
-                                  <span>Due {dueDateInfo.label}</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 text-gray-400 font-medium">
-                                  <span>{entityName}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Created By below Created At */}
-                            <div className="flex items-center justify-between gap-1 pt-1 text-[10px] text-gray-500 border-t border-gray-50">
-                              <div className="flex items-center gap-1 text-emerald-700 font-semibold truncate">
-                                <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
-                                <span className="truncate">Created by: <strong>{t.createdByName || t.creatorName || 'Dr. Harshit Mishra'}</strong></span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                            );
+                          });
+                        })()
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
       {/* New Sprint Task Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
           <div className="bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 flex-shrink-0">
               <div className="flex items-center gap-2">
@@ -1545,10 +1540,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
             {/* 2-Column Content Body */}
             <form onSubmit={handleCreateSprint} className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0">
-              
+
               {/* Left Column (Task Info & Subtask Checklist) */}
               <div className="lg:col-span-7 space-y-4 text-left">
-                
+
                 {/* Select Parent Epic & Parent Project (Optional - Stacked on dedicated lines for maximum visibility) */}
                 <div className="space-y-3">
                   <div>
@@ -1717,9 +1712,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       modalChecklists.map((item) => (
                         <div
                           key={item.id}
-                          className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${
-                            item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                          }`}
+                          className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                            }`}
                         >
                           <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
                             <input
@@ -1768,7 +1762,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
               {/* Right Column (Template Cloning & Activity/Comments) */}
               <div className="lg:col-span-5 flex flex-col justify-between bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-left space-y-4">
                 <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                  
+
                   {/* Template Cloning Box */}
                   <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5 shrink-0">
                     <label className="flex items-start gap-2.5 cursor-pointer">
@@ -1847,11 +1841,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         modalComments.map((c) => (
                           <div
                             key={c.id}
-                            className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs ${
-                              c.isSystemLog
+                            className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs ${c.isSystemLog
                                 ? 'bg-purple-50/70 border-purple-200 text-purple-900'
                                 : 'bg-white border-gray-200 text-gray-800'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
                               <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
@@ -2099,9 +2092,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                     {assignTaskModal.checklists.map(chk => (
                       <div
                         key={chk.id}
-                        className={`flex items-center justify-between p-2 rounded-lg border text-xs font-semibold ${
-                          chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
-                        }`}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs font-semibold ${chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
+                          }`}
                       >
                         <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0 pr-2">
                           <input
@@ -2375,9 +2367,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       confirmDoneModal.checklists.map(chk => (
                         <div
                           key={chk.id}
-                          className={`flex items-center justify-between p-2 rounded-lg border text-xs font-semibold ${
-                            chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
-                          }`}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-xs font-semibold ${chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
+                            }`}
                         >
                           <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0 pr-2">
                             <input

@@ -9,7 +9,8 @@
     --card-bg: #FFFFFF;
   }
 
-  html, body {
+  html,
+  body {
     min-height: 100vh;
     margin: 0;
     padding: 0;
@@ -17,7 +18,8 @@
   }
 
   html {
-    font-size: 92.5%; /* Compact dashboard font scaling matching 90% display fit */
+    font-size: 92.5%;
+    /* Compact dashboard font scaling matching 90% display fit */
   }
 
   body {
@@ -40,26 +42,43 @@
   width: 7px;
   height: 7px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: #F1F5F9;
   border-radius: 9999px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #10B981;
   border-radius: 9999px;
   border: 1px solid #059669;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #059669;
 }
 
 /* Clothesline Hanging Swing Micro-Animations */
 @keyframes clotheslineSwing {
-  0% { transform: rotate(0deg); }
-  25% { transform: rotate(2deg); }
-  50% { transform: rotate(-1.5deg); }
-  75% { transform: rotate(1deg); }
-  100% { transform: rotate(0deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(2deg);
+  }
+
+  50% {
+    transform: rotate(-1.5deg);
+  }
+
+  75% {
+    transform: rotate(1deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 .animate-swing {

@@ -135,9 +135,9 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const isEmployee = user?.role === 'EMPLOYEE';
   const isAssignee = isEmployee
     ? Boolean(
-        (user?.employeeId && task?.assigneeId === user.employeeId) ||
-        (user?.name && task?.assignee && user.name.toLowerCase() === task.assignee.toLowerCase())
-      )
+      (user?.employeeId && task?.assigneeId === user.employeeId) ||
+      (user?.name && task?.assignee && user.name.toLowerCase() === task.assignee.toLowerCase())
+    )
     : true;
 
   const canUserEditTask = isManagerOrAdmin || isAssignee;
@@ -199,7 +199,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           list.sort((a, b) => (a.title || a.epicCode || '').localeCompare(b.title || b.epicCode || '', undefined, { sensitivity: 'base' }));
           setEpicsList(list);
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [isOpen]);
 
@@ -260,16 +260,28 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setEntity(isEnt);
       setParentTaskId(realCode || (task.id ? `TSK-${task.id.slice(0, 6)}` : 'TSK-001'));
       setTaskName(task.title || '');
-      
-      const cleanAssignee = (task.assignee || 'Unassigned').replace(/\(.*?\)/g, '').trim();
-      const matchedAssignee = employeesList.find(e => e.id === task.assigneeId || e.name.toLowerCase() === cleanAssignee.toLowerCase());
-      setAssignee(matchedAssignee ? matchedAssignee.name : cleanAssignee);
-      setAssigneeId(task.assigneeId || matchedAssignee?.id || '');
 
-      const cleanLead = ((task.reviewingLead && task.reviewingLead.toLowerCase() !== 'manager lead') ? task.reviewingLead : 'Unassigned').replace(/\(.*?\)/g, '').trim();
-      const matchedLead = employeesList.find(e => e.id === task.reviewingLeadId || e.name.toLowerCase() === cleanLead.toLowerCase());
-      setReviewingLead(matchedLead ? matchedLead.name : cleanLead);
-      setReviewingLeadId(task.reviewingLeadId || matchedLead?.id || '');
+      const rawAssignee = (task.assignee || '').replace(/\(.*?\)/g, '').trim();
+      const isActuallyUnassigned = !task.assigneeId || !rawAssignee || rawAssignee.toLowerCase() === 'unassigned';
+      if (isActuallyUnassigned) {
+        setAssignee('Unassigned');
+        setAssigneeId('');
+      } else {
+        const matchedAssignee = employeesList.find(e => e.id === task.assigneeId || e.name.toLowerCase() === rawAssignee.toLowerCase());
+        setAssignee(matchedAssignee ? matchedAssignee.name : rawAssignee);
+        setAssigneeId(task.assigneeId || matchedAssignee?.id || '');
+      }
+
+      const rawLead = (task.reviewingLead || '').replace(/\(.*?\)/g, '').trim();
+      const isLeadUnassigned = !task.reviewingLeadId || !rawLead || rawLead.toLowerCase() === 'unassigned' || rawLead.toLowerCase() === 'manager lead';
+      if (isLeadUnassigned) {
+        setReviewingLead('Unassigned');
+        setReviewingLeadId('');
+      } else {
+        const matchedLead = employeesList.find(e => e.id === task.reviewingLeadId || e.name.toLowerCase() === rawLead.toLowerCase());
+        setReviewingLead(matchedLead ? matchedLead.name : rawLead);
+        setReviewingLeadId(task.reviewingLeadId || matchedLead?.id || '');
+      }
 
       setOutputUrl(task.outputUrl || '');
       setStatus(task.status || 'In Progress');
@@ -360,10 +372,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           epicId: selectedEpicId || null,
           parentEpicCode: matchedEpic ? matchedEpic.epicCode : selectedEpicId ? task.parentEpicCode : null,
           parentEpicTitle: matchedEpic ? matchedEpic.title : selectedEpicId ? task.parentEpicTitle : null,
-          assignee,
-          assigneeId,
-          reviewingLead,
-          reviewingLeadId,
+          assignee: assigneeId ? assignee : 'Unassigned',
+          assigneeId: assigneeId || '',
+          reviewingLead: reviewingLeadId ? reviewingLead : 'Unassigned',
+          reviewingLeadId: reviewingLeadId || '',
           targetWeek,
           priority,
           dueDate,
@@ -391,16 +403,15 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
       <div className="bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-gray-900 text-base tracking-tight">
               {readOnlyMode ? `Submission Review: ${parentTaskId}` : `Edit Task Details: ${parentTaskId}`}
             </h3>
-            <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-bold ${
-              readOnlyMode ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            }`}>
+            <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-bold ${readOnlyMode ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
               {readOnlyMode ? 'Read-Only View 👁️' : 'Manager Edit Mode ✏️'}
             </span>
           </div>
@@ -515,7 +526,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 space-y-2">
                 <div>Are you sure you want to clone task <span className="font-mono text-purple-700 font-bold">[{parentTaskId}]</span> "{taskName}"?</div>
-                
+
                 <label className="flex items-center gap-2.5 pt-2 border-t border-gray-200 cursor-pointer font-bold text-gray-700">
                   <input
                     type="checkbox"
@@ -554,7 +565,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
         {/* 2-Column Content Body */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-y-auto pr-1 flex-1 min-h-0">
-          
+
           {/* Left Column (Task Info & Checklist) */}
           <div className="lg:col-span-7 space-y-5 text-left">
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -570,8 +581,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                         entity === 'COMMON' || entity === 'BOTH' || entity.includes('COMMON')
                           ? 'EHM & CLIMAGRO'
                           : entity === 'CAG' || entity === 'CLIMAGRO' || entity.includes('climagro')
-                          ? 'CLIMAGRO'
-                          : 'EHM'
+                            ? 'CLIMAGRO'
+                            : 'EHM'
                       }
                       className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                     />
@@ -705,22 +716,26 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     />
                   ) : (
                     <select
-                      value={assigneeId || (employeesList.find((e) => e.name.toLowerCase() === assignee.toLowerCase())?.id || '')}
+                      value={assigneeId}
                       onChange={(e) => {
                         const targetId = e.target.value;
                         setAssigneeId(targetId);
-                        const match = employeesList.find((emp) => emp.id === targetId);
-                        if (match) setAssignee(match.name);
+                        if (!targetId) {
+                          setAssignee('Unassigned');
+                        } else {
+                          const match = employeesList.find((emp) => emp.id === targetId);
+                          setAssignee(match ? match.name : 'Unassigned');
+                        }
                       }}
                       className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value="">Select Assignee...</option>
+                      <option value="">Select Assignee (Unassigned)</option>
                       {employeesList.map((emp) => (
                         <option key={emp.id} value={emp.id}>
                           {emp.name}
                         </option>
                       ))}
-                      {assignee && !employeesList.some((e) => e.name.toLowerCase() === assignee.toLowerCase() || e.id === assigneeId) && (
+                      {assignee && assignee !== 'Unassigned' && !employeesList.some((e) => e.name.toLowerCase() === assignee.toLowerCase() || e.id === assigneeId) && (
                         <option value={assigneeId || assignee}>{assignee}</option>
                       )}
                     </select>
@@ -738,22 +753,26 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     />
                   ) : (
                     <select
-                      value={reviewingLeadId || (employeesList.find((e) => e.name.toLowerCase() === reviewingLead.toLowerCase())?.id || '')}
+                      value={reviewingLeadId}
                       onChange={(e) => {
                         const targetId = e.target.value;
                         setReviewingLeadId(targetId);
-                        const match = employeesList.find((emp) => emp.id === targetId);
-                        if (match) setReviewingLead(match.name);
+                        if (!targetId) {
+                          setReviewingLead('Unassigned');
+                        } else {
+                          const match = employeesList.find((emp) => emp.id === targetId);
+                          setReviewingLead(match ? match.name : 'Unassigned');
+                        }
                       }}
                       className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value="">Select Reviewing Lead...</option>
+                      <option value="">Select Reviewing Lead (Unassigned / None)</option>
                       {employeesList.map((emp) => (
                         <option key={emp.id} value={emp.id}>
                           {emp.name}
                         </option>
                       ))}
-                      {reviewingLead && !employeesList.some((e) => e.name.toLowerCase() === reviewingLead.toLowerCase() || e.id === reviewingLeadId) && (
+                      {reviewingLead && reviewingLead !== 'Unassigned' && !employeesList.some((e) => e.name.toLowerCase() === reviewingLead.toLowerCase() || e.id === reviewingLeadId) && (
                         <option value={reviewingLeadId || reviewingLead}>{reviewingLead}</option>
                       )}
                     </select>
@@ -861,11 +880,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     placeholder={readOnlyMode ? "No deliverable link attached by team member" : "https://canva.link/... or https://github.com/..."}
                     value={outputUrl}
                     onChange={e => setOutputUrl(e.target.value)}
-                    className={`w-full text-xs border rounded-xl py-2.5 pl-9 pr-3 outline-none font-medium ${
-                      readOnlyMode
+                    className={`w-full text-xs border rounded-xl py-2.5 pl-9 pr-3 outline-none font-medium ${readOnlyMode
                         ? 'bg-gray-50 border-gray-200 text-gray-800 font-mono select-all cursor-default'
                         : 'border-gray-300 focus:ring-2 focus:ring-emerald-500'
-                    }`}
+                      }`}
                   />
                 </div>
               </div>
@@ -876,9 +894,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Status</label>
                   {readOnlyMode ? (
                     <div className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-900 flex items-center gap-2 cursor-default">
-                      <span className={`w-2.5 h-2.5 rounded-full ${
-                        status === 'Done' ? 'bg-emerald-500' : status === 'Delayed' ? 'bg-amber-500' : status === 'Blocked' ? 'bg-red-500' : 'bg-blue-500'
-                      }`}></span>
+                      <span className={`w-2.5 h-2.5 rounded-full ${status === 'Done' ? 'bg-emerald-500' : status === 'Delayed' ? 'bg-amber-500' : status === 'Blocked' ? 'bg-red-500' : 'bg-blue-500'
+                        }`}></span>
                       <span>{status}</span>
                     </div>
                   ) : (
@@ -999,9 +1016,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   checklists.map((item) => (
                     <div
                       key={item.id}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
-                        item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                      }`}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                        }`}
                     >
                       <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
                         <input
@@ -1067,11 +1083,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 comments.map((c) => (
                   <div
                     key={c.id}
-                    className={`p-3 rounded-xl border text-xs space-y-1 shadow-2xs ${
-                      c.isSystemLog
+                    className={`p-3 rounded-xl border text-xs space-y-1 shadow-2xs ${c.isSystemLog
                         ? 'bg-purple-50/70 border-purple-200 text-purple-900'
                         : 'bg-white border-gray-200 text-gray-800'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between text-[10px] font-bold text-gray-500">
                       <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>

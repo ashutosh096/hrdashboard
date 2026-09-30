@@ -162,7 +162,7 @@ router.get('/:table/:id', async (req: Request, res: Response) => {
       if (!isAuthorized) {
         if (
           (callerEmpId && proj.createdById === callerEmpId) ||
-          (callerName && proj.lead.toLowerCase() === callerName.toLowerCase()) ||
+          (callerName && proj.lead && proj.lead.toLowerCase() === callerName.toLowerCase()) ||
           (Array.isArray(proj.team) && callerName && proj.team.map((t: string) => t.toLowerCase()).includes(callerName.toLowerCase()))
         ) {
           isAuthorized = true;

@@ -538,7 +538,7 @@ export const ApplicationsView: React.FC = () => {
 
       const finalCheckpoints = projectChecklists;
       const finalTeam = selectedTeamMemberNames;
-      const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : projectLead;
+      const finalLead = selectedProjectLeads.length > 0 ? selectedProjectLeads.join(', ') : (projectLead ? projectLead.trim() : '');
       const finalDeliverableUrl = projectDeliverableUrl.trim();
       const finalCategory = selectedCategoryType === 'Other'
         ? (customCategoryText.trim() || 'Other')

@@ -461,9 +461,12 @@ router.delete('/:id', requireRole(['ADMIN']), async (req: Request, res: Response
 });
 
 // PUT /api/employees/:id - Update Employee Details (Strict Role Check)
-router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: Response) => {
+// Admin: Can edit everyone
+// Manager: Can edit manager and employee/team details, NOT admins
+// Employee: Can edit ONLY their own details, not others
+router.put('/:id', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req: Request, res: Response) => {
   const id = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
-  const { firstName, lastName, email, designation, role, entityId, entityCode, departmentId, departmentName } = req.body;
+  const { firstName, lastName, email, designation, role, entityId, entityCode, departmentId, departmentName, phone } = req.body;
   const callerUser = (req as any).user;
   const callerRole = (callerUser?.role || '').toUpperCase();
 
@@ -478,14 +481,25 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
       return res.status(403).json({ message: 'Only administrators can update employee roles.' });
     }
 
-    // Managers cannot edit Admin profiles
-    const [targetUser] = await db
-      .select({ role: users.role })
-      .from(users)
-      .where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+    // 1. Employee restriction: can edit ONLY their OWN details
+    if (callerRole === 'EMPLOYEE') {
+      const isSelf = (callerUser.employeeId && emp.id === callerUser.employeeId) ||
+                     (callerUser.email && emp.email && callerUser.email.toLowerCase() === emp.email.toLowerCase());
+      if (!isSelf) {
+        return res.status(403).json({ message: 'Team members can only edit their own details, not other employees.' });
+      }
+    }
 
-    if (targetUser?.role === 'ADMIN' && callerRole !== 'ADMIN') {
-      return res.status(403).json({ message: 'Managers cannot modify administrator accounts.' });
+    // 2. Manager restriction: cannot edit Admin accounts
+    if (callerRole === 'MANAGER') {
+      const [targetUser] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(or(eq(users.employeeId, id), eq(users.email, emp.email)));
+
+      if (targetUser?.role === 'ADMIN') {
+        return res.status(403).json({ message: 'Managers cannot modify administrator accounts.' });
+      }
     }
 
     const targetEmail = email ? email.toLowerCase().trim() : emp.email;
@@ -496,6 +510,7 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), async (req: Request, res: 
     if (firstName !== undefined) updateData.firstName = firstName.trim();
     if (lastName !== undefined) updateData.lastName = lastName.trim();
     if (email !== undefined) updateData.email = targetEmail;
+    if (phone !== undefined) updateData.phone = phone ? phone.trim() : null;
     if (designation !== undefined) updateData.designation = designation.trim();
 
     let targetEntityId = entityId;

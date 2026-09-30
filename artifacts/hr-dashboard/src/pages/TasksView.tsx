@@ -171,7 +171,7 @@ export const TasksView: React.FC = () => {
         const pRaw = (t.priority || '').toUpperCase();
         const pNormalized = (pRaw === 'URGENT' || pRaw === 'CRITICAL' || pRaw === 'P1' || pRaw === '1') ? 'P1'
           : (pRaw === 'HIGH' || pRaw === 'P2' || pRaw === '2') ? 'P2'
-          : (pRaw === 'LOW' || pRaw === 'P4' || pRaw === '4') ? 'P4' : 'P3';
+            : (pRaw === 'LOW' || pRaw === 'P4' || pRaw === '4') ? 'P4' : 'P3';
 
         return {
           id: t.id,
@@ -297,7 +297,7 @@ export const TasksView: React.FC = () => {
 
     const pCode = (task.priority === 'URGENT' || task.priority === 'CRITICAL' || task.priority === 'P1' || task.priority === '1') ? 'P1'
       : (task.priority === 'HIGH' || task.priority === 'P2' || task.priority === '2') ? 'P2'
-      : (task.priority === 'LOW' || task.priority === 'P4' || task.priority === '4') ? 'P4' : 'P3';
+        : (task.priority === 'LOW' || task.priority === 'P4' || task.priority === '4') ? 'P4' : 'P3';
 
     const taskBadge = getEntityBadge(task);
     const resolvedEntity = taskBadge.isCommon ? 'COMMON' : taskBadge.isCAG ? 'CLIMAGRO' : 'EHM';
@@ -318,9 +318,9 @@ export const TasksView: React.FC = () => {
       reviewingLead: ((task.reviewingLead && task.reviewingLead.toLowerCase() !== 'manager lead') ? task.reviewingLead : 'Unassigned'),
       reviewingLeadId: task.reviewingLeadId || '',
       status: task.status === 'DONE' || task.status === 'Done' ? 'Done' :
-              task.status === 'IN_REVIEW' || task.status === 'To Review' ? 'To Review' :
-              task.status === 'PLANNED' || task.status === 'Planned' ? 'Planned' :
-              task.status === 'BACKLOG' || task.status === 'Backlog' ? 'Backlog' : 'In Progress',
+        task.status === 'IN_REVIEW' || task.status === 'To Review' ? 'To Review' :
+          task.status === 'PLANNED' || task.status === 'Planned' ? 'Planned' :
+            task.status === 'BACKLOG' || task.status === 'Backlog' ? 'Backlog' : 'In Progress',
       outputUrl: task.outputUrl || task.deliverableUrl || '',
       waitingOn: task.waitingOn || 'None (Self)',
       notes: task.notes || task.description || '',
@@ -340,10 +340,10 @@ export const TasksView: React.FC = () => {
           entity: updated.entity,
           entityCode: updated.entityCode || (updated.entity === 'CLIMAGRO' ? 'CAG' : updated.entity === 'COMMON' ? 'COMMON' : 'EHM'),
           epicId: updated.epicId !== undefined ? updated.epicId : null,
-          assigneeName: updated.assignee,
-          assigneeId: updated.assigneeId,
-          reviewingLead: updated.reviewingLead,
-          reviewingLeadId: updated.reviewingLeadId,
+          assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
+          assigneeId: updated.assigneeId || null,
+          reviewingLead: updated.reviewingLead === 'Unassigned' ? '' : updated.reviewingLead,
+          reviewingLeadId: updated.reviewingLeadId || null,
           status: updated.status,
           deliverableUrl: updated.outputUrl || '',
           description: updated.notes || '',
@@ -367,7 +367,7 @@ export const TasksView: React.FC = () => {
   const handleCloneTask = async (sourceTaskItem: TaskItem, importChecklistAndLinks: boolean) => {
     const sourceTask = tasks.find(t => t.id === sourceTaskItem.id || t.taskCode === sourceTaskItem.taskId) || sourceTaskItem;
     const sourceCode = sourceTask.taskCode || sourceTaskItem.taskId || sourceTask.id;
-    
+
     const sourceBadge = getEntityBadge(sourceTask);
     const resolvedEntityCode = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM';
     const resolvedEntityLabel = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CLIMAGRO' : 'EHM';
@@ -467,7 +467,7 @@ export const TasksView: React.FC = () => {
     const p = (t.priority || '').toUpperCase();
     const priorityCode = (p === 'URGENT' || p === 'CRITICAL' || p === 'P1' || p === '1') ? 'P1'
       : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2'
-      : (p === 'LOW' || p === 'P4' || p === '4') ? 'P4' : 'P3';
+        : (p === 'LOW' || p === 'P4' || p === '4') ? 'P4' : 'P3';
 
     const statusVal = t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'BACKLOG';
 
@@ -542,15 +542,14 @@ export const TasksView: React.FC = () => {
         {/* Priority Badge */}
         <td className="py-3 px-3 text-center whitespace-nowrap">
           <span
-            className={`inline-flex items-center justify-center font-extrabold text-[11px] px-2 py-0.5 rounded ${
-              priorityCode === 'P1'
+            className={`inline-flex items-center justify-center font-extrabold text-[11px] px-2 py-0.5 rounded ${priorityCode === 'P1'
                 ? 'bg-rose-50 text-rose-700 border border-rose-200'
                 : priorityCode === 'P2'
-                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                : priorityCode === 'P3'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                : 'bg-gray-100 text-gray-700 border border-gray-200'
-            }`}
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                  : priorityCode === 'P3'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'bg-gray-100 text-gray-700 border border-gray-200'
+              }`}
           >
             {priorityCode}
           </span>
@@ -561,13 +560,12 @@ export const TasksView: React.FC = () => {
           <select
             value={statusVal}
             onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}
-            className={`text-xs font-bold px-2.5 py-1 rounded-lg border outline-none cursor-pointer transition-all ${
-              statusVal === 'DONE'
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg border outline-none cursor-pointer transition-all ${statusVal === 'DONE'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : statusVal === 'IN_PROGRESS'
-                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                : 'bg-blue-50 text-blue-700 border-blue-200'
-            }`}
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-200'
+              }`}
           >
             <option value="BACKLOG">Backlog</option>
             <option value="IN_PROGRESS">In progress</option>
@@ -642,22 +640,20 @@ export const TasksView: React.FC = () => {
                     setActiveTab(tab.id as TabType);
                   }
                 }}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  isLocked
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${isLocked
                     ? 'text-gray-400 opacity-60 cursor-not-allowed border border-transparent select-none'
                     : isActive
-                    ? 'bg-white text-emerald-700 shadow-xs border border-gray-200/60 cursor-pointer'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 cursor-pointer'
-                }`}
+                      ? 'bg-white text-emerald-700 shadow-xs border border-gray-200/60 cursor-pointer'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 cursor-pointer'
+                  }`}
                 title={isLocked ? "Manager & Admin access only" : undefined}
               >
-                <Icon className={`w-3.5 h-3.5 ${
-                  isLocked 
-                    ? 'text-gray-400' 
-                    : isActive 
-                    ? 'text-emerald-600' 
-                    : 'text-gray-400'
-                }`} />
+                <Icon className={`w-3.5 h-3.5 ${isLocked
+                    ? 'text-gray-400'
+                    : isActive
+                      ? 'text-emerald-600'
+                      : 'text-gray-400'
+                  }`} />
                 <span>{tab.label}</span>
                 {isLocked && (
                   <span className="text-[10px] bg-gray-200 text-gray-500 font-extrabold px-1.5 py-0.2 rounded">
@@ -1022,7 +1018,7 @@ export const TasksView: React.FC = () => {
                     {/* Breadcrumb */}
                     <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
                       {parentInit ? (
-                        <span 
+                        <span
                           onClick={() => {
                             setViewingEpicInTasks(null);
                             setActiveTab('INITIATIVES');
@@ -1141,7 +1137,7 @@ export const TasksView: React.FC = () => {
                         </span>
                       </div>
                       <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                           style={{ width: `${Math.min(100, Math.round((doneCount / Math.max(1, linkedTasks.length)) * 100))}%` }}
                         />
@@ -1178,12 +1174,11 @@ export const TasksView: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-3 shrink-0">
-                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
-                                isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                'bg-gray-100 text-gray-700 border-gray-200'
-                              }`}>
+                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                  isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                    taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                      'bg-gray-100 text-gray-700 border-gray-200'
+                                }`}>
                                 {taskStatusLabel}
                               </span>
                               <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />

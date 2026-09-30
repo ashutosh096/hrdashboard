@@ -100,7 +100,7 @@ router.get('/', async (req, res) => {
           taskId: t.taskCode,
           deliverable: t.title,
           entity: entCode,
-          assignee: empMap.get(t.assigneeId) || 'Unassigned',
+          assignee: t.assigneeId ? (empMap.get(t.assigneeId) || 'Unassigned') : 'Unassigned',
           sprintWeek: t.sprintId ? sprintMap.get(t.sprintId) || 'Sprint 35' : 'Backlog',
           dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '',
           status: t.status === 'DONE' ? 'Completed' : t.status === 'IN_PROGRESS' ? 'Ongoing' : 'Pending',

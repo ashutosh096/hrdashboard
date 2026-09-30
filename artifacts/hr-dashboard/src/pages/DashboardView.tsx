@@ -244,7 +244,7 @@ export const DashboardView: React.FC = () => {
       {activeModalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 select-text">
           <div className="bg-white rounded-2xl p-5 max-w-lg w-full shadow-xl border border-gray-200 max-h-[85vh] overflow-y-auto space-y-4">
-            
+
             {/* 1. ACTIVE TEAM MEMBERS MODAL */}
             {activeModalType === 'TEAM' && (
               <>
@@ -290,9 +290,8 @@ export const DashboardView: React.FC = () => {
                           </div>
                           <div className="text-right">
                             <span className="text-xs font-semibold text-gray-900 block">{clockInTime}</span>
-                            <span className={`text-[10px] font-bold block ${
-                              isRemote ? 'text-gray-500' : isHybrid ? 'text-amber-600' : 'text-emerald-600'
-                            }`}>
+                            <span className={`text-[10px] font-bold block ${isRemote ? 'text-gray-500' : isHybrid ? 'text-amber-600' : 'text-emerald-600'
+                              }`}>
                               {isRemote ? 'Remote' : isHybrid ? 'Hybrid' : 'In office'}
                             </span>
                           </div>

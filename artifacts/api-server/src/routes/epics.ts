@@ -238,7 +238,7 @@ async function handleEpicUpdate(req: any, res: any) {
       if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
       if (targetDate !== undefined) updatePayload.targetDate = targetDate ? new Date(targetDate) : null;
       if (ownerId !== undefined) updatePayload.ownerId = ownerId || null;
-      if (assignedTo !== undefined) updatePayload.assignedTo = assignedTo ? JSON.stringify(assignedTo) : null;
+      if (assignedTo !== undefined) updatePayload.assignedTo = (Array.isArray(assignedTo) && assignedTo.length > 0) ? JSON.stringify(assignedTo) : null;
 
       if (entityId || entity || entityCode) {
         const entTarget = String(entityId || entity || entityCode).toLowerCase().trim();

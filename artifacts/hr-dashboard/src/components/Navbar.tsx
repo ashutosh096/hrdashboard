@@ -116,7 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     // 1. Mark as read immediately in state & DB
     if (!n.isRead) {
-      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
+      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => { });
       setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
       setUnreadNotificationsCount((prev) => Math.max(0, prev - 1));
     }
@@ -144,7 +144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         let taskData: any = null;
         try {
           taskData = await fetchApi<any>(`/api/tasks/${identifier}`);
-        } catch {}
+        } catch { }
 
         if (!taskData || !taskData.id) {
           const allTasks = await fetchApi<any[]>('/api/tasks').catch(() => []);
@@ -203,8 +203,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             {selectedEntity === 'EHM'
               ? 'EHM'
               : selectedEntity === 'CAG'
-              ? 'CLIMAGRO'
-              : 'EHM & CLIMAGRO'}
+                ? 'CLIMAGRO'
+                : 'EHM & CLIMAGRO'}
           </span>
         </div>
 
@@ -325,11 +325,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div
                           key={n.id}
                           onClick={() => handleNotificationAction(n)}
-                          className={`p-3 rounded-2xl border text-xs space-y-1.5 transition-all cursor-pointer hover:shadow-xs group/card ${
-                            n.isRead
+                          className={`p-3 rounded-2xl border text-xs space-y-1.5 transition-all cursor-pointer hover:shadow-xs group/card ${n.isRead
                               ? 'bg-white border-gray-100 hover:border-gray-200 opacity-75 hover:opacity-100'
                               : 'bg-emerald-50/50 border-emerald-100/90 hover:border-emerald-200 shadow-2xs'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-bold text-gray-900 group-hover/card:text-emerald-700 transition-colors line-clamp-1">

@@ -46,7 +46,7 @@ export const Sidebar: React.FC = () => {
       const next = !prev;
       try {
         localStorage.setItem('hros_sidebar_collapsed', String(next));
-      } catch {}
+      } catch { }
       return next;
     });
     setHoveredTooltip(null);
@@ -84,9 +84,8 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       <aside
-        className={`border-r border-gray-200 bg-white flex flex-col h-screen sticky top-0 z-30 select-none transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'w-[72px]' : 'w-64'
-        }`}
+        className={`border-r border-gray-200 bg-white flex flex-col h-screen sticky top-0 z-30 select-none transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[72px]' : 'w-64'
+          }`}
       >
         {/* Brand Header */}
         <div className={`border-b border-gray-100 flex items-center ${isCollapsed ? 'p-3 justify-center' : 'p-4 justify-start'}`}>
@@ -125,18 +124,16 @@ export const Sidebar: React.FC = () => {
               className="w-9 h-9 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-black text-gray-800 transition-colors shadow-2xs cursor-pointer"
             >
               <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  selectedEntity === 'CAG' ? 'bg-amber-500' : selectedEntity === 'EHM' ? 'bg-blue-500' : 'bg-emerald-500'
-                }`}
+                className={`w-2.5 h-2.5 rounded-full ${selectedEntity === 'CAG' ? 'bg-amber-500' : selectedEntity === 'EHM' ? 'bg-blue-500' : 'bg-emerald-500'
+                  }`}
               />
             </button>
           ) : (
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-2">
                 <span
-                  className={`w-2 h-2 rounded-full ${
-                    selectedEntity === 'CAG' ? 'bg-amber-500' : selectedEntity === 'EHM' ? 'bg-blue-500' : 'bg-emerald-500'
-                  }`}
+                  className={`w-2 h-2 rounded-full ${selectedEntity === 'CAG' ? 'bg-amber-500' : selectedEntity === 'EHM' ? 'bg-blue-500' : 'bg-emerald-500'
+                    }`}
                 />
               </div>
               <select
@@ -160,9 +157,8 @@ export const Sidebar: React.FC = () => {
           onScroll={() => setHoveredTooltip(null)}
         >
           <div
-            className={`bg-gray-50/70 border border-gray-200/80 rounded-2xl shadow-2xs transition-all ${
-              isCollapsed ? 'p-1.5 space-y-3 flex flex-col items-center' : 'p-2.5 space-y-4'
-            }`}
+            className={`bg-gray-50/70 border border-gray-200/80 rounded-2xl shadow-2xs transition-all ${isCollapsed ? 'p-1.5 space-y-3 flex flex-col items-center' : 'p-2.5 space-y-4'
+              }`}
           >
             {navSections.map((section, sIdx) => (
               <div key={section.title} className={`w-full ${isCollapsed ? 'space-y-1.5' : 'space-y-1'}`}>
@@ -200,23 +196,19 @@ export const Sidebar: React.FC = () => {
                           }
                         }}
                         onMouseLeave={() => setHoveredTooltip(null)}
-                        className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
-                          isLocked
+                        className={`flex items-center rounded-xl text-xs font-semibold transition-all ${isLocked
                             ? 'opacity-60 cursor-not-allowed hover:bg-transparent'
                             : 'cursor-pointer'
-                        } ${
-                          isCollapsed
-                            ? `w-10 h-10 justify-center relative ${
-                                isActive
-                                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
-                                  : 'text-gray-600 hover:bg-white hover:text-gray-900 border border-transparent hover:border-gray-200 shadow-2xs'
-                              }`
-                            : `justify-between px-2.5 py-1.5 w-full ${
-                                isActive
-                                  ? 'bg-white text-emerald-800 border border-emerald-300 shadow-sm'
-                                  : 'text-gray-600 hover:bg-white/80 hover:text-gray-900'
-                              }`
-                        }`}
+                          } ${isCollapsed
+                            ? `w-10 h-10 justify-center relative ${isActive
+                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
+                              : 'text-gray-600 hover:bg-white hover:text-gray-900 border border-transparent hover:border-gray-200 shadow-2xs'
+                            }`
+                            : `justify-between px-2.5 py-1.5 w-full ${isActive
+                              ? 'bg-white text-emerald-800 border border-emerald-300 shadow-sm'
+                              : 'text-gray-600 hover:bg-white/80 hover:text-gray-900'
+                            }`
+                          }`}
                       >
                         {isCollapsed ? (
                           <div className="relative">
@@ -230,11 +222,10 @@ export const Sidebar: React.FC = () => {
                         ) : (
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-colors shrink-0 ${
-                                isActive
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-colors shrink-0 ${isActive
                                   ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs'
                                   : 'bg-white text-gray-500 border-gray-200'
-                              }`}
+                                }`}
                             >
                               <Icon className="w-3.5 h-3.5" />
                             </div>
@@ -276,11 +267,10 @@ export const Sidebar: React.FC = () => {
               }
             }}
             onMouseLeave={() => setHoveredTooltip(null)}
-            className={`flex items-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              isCollapsed
+            className={`flex items-center rounded-xl text-xs font-bold transition-all cursor-pointer ${isCollapsed
                 ? 'w-10 h-10 justify-center bg-gray-100 hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 border border-gray-200 hover:border-emerald-300 shadow-2xs'
                 : 'w-full justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-900 border border-gray-200/80 shadow-2xs'
-            }`}
+              }`}
             title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {isCollapsed ? (

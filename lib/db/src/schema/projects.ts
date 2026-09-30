@@ -10,7 +10,7 @@ export const projects = pgTable(
     entity: text('entity').notNull().default('EHM'), // 'EHM' | 'CAG'
     entityName: text('entity_name'),
     category: text('category').notNull().default('Technology & Systems'),
-    lead: text('lead').notNull().default('Dr. Harshit Mishra'),
+    lead: text('lead').default(''),
     team: jsonb('team').$type<string[]>().default([]),
     budget: text('budget'),
     startDate: text('start_date'),

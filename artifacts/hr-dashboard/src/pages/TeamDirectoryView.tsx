@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, 
-  ChevronLeft, 
-  ChevronRight, 
-  MoreHorizontal, 
-  Link as LinkIcon, 
-  UserPlus, 
-  Mail, 
-  Phone, 
-  Edit3, 
-  Trash2, 
-  Send, 
-  Loader2, 
-  X, 
-  Check, 
-  Copy, 
-  Shield, 
-  Building, 
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Link as LinkIcon,
+  UserPlus,
+  Mail,
+  Phone,
+  Edit3,
+  Trash2,
+  Send,
+  Loader2,
+  X,
+  Check,
+  Copy,
+  Shield,
+  Building,
   Briefcase,
   Eye,
   ExternalLink
@@ -46,7 +46,28 @@ export const TeamDirectoryView: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const isEmployee = user?.role === 'EMPLOYEE';
+  const isManager = user?.role === 'MANAGER';
   const isAdmin = user?.role === 'ADMIN';
+
+  // Permission rules:
+  // - Admin can edit everyone
+  // - Manager can edit only Manager and Employee/Team details (not Admins)
+  // - Employee can edit ONLY their own details (not others)
+  const canEditMember = (member: any) => {
+    if (!member) return false;
+    if (isAdmin) return true;
+    if (isManager) {
+      const targetRole = (member.roleType || member.role || '').toUpperCase();
+      return targetRole !== 'ADMIN';
+    }
+    if (isEmployee) {
+      return Boolean(
+        (user?.employeeId && member.id === user.employeeId) ||
+        (user?.email && member.email && user.email.toLowerCase() === member.email.toLowerCase())
+      );
+    }
+    return false;
+  };
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -220,7 +241,7 @@ export const TeamDirectoryView: React.FC = () => {
       const lastName = parts.slice(1).join(' ') || '';
 
       const targetMail = email.trim().toLowerCase();
-      const roleToAssign = user?.role === 'ADMIN' 
+      const roleToAssign = user?.role === 'ADMIN'
         ? (role === 'ADMIN' ? 'ADMIN' : role === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE')
         : 'EMPLOYEE';
 
@@ -517,8 +538,8 @@ export const TeamDirectoryView: React.FC = () => {
                   const isReinviting = reinvitingId === member.id;
 
                   return (
-                    <tr 
-                      key={member.id} 
+                    <tr
+                      key={member.id}
                       className="hover:bg-gray-50/80 transition-colors group"
                     >
                       {/* Name & ID Column */}
@@ -554,9 +575,9 @@ export const TeamDirectoryView: React.FC = () => {
 
                       {/* Contact Column */}
                       <td className="py-3.5 px-4 text-gray-600 truncate max-w-[220px]" title={member.email}>
-                        <a 
+                        <a
                           href={`mailto:${member.email}`}
-                          onClick={e => e.stopPropagation()} 
+                          onClick={e => e.stopPropagation()}
                           className="hover:text-emerald-700 hover:underline transition-colors"
                         >
                           {member.email || '—'}
@@ -589,20 +610,25 @@ export const TeamDirectoryView: React.FC = () => {
 
                         {/* Dropdown Action Menu */}
                         {isMenuOpen && (
-                          <div 
+                          <div
                             ref={menuRef}
                             className="absolute right-4 top-10 z-30 w-44 bg-white border border-gray-200 rounded-xl shadow-xl py-1 text-left animate-in fade-in zoom-in-95 duration-150"
                           >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleOpenEdit(member);
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                              <span>View / Edit details</span>
-                            </button>
+                            {(() => {
+                              const canEdit = canEditMember(member);
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleOpenEdit(member);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                  <Edit3 className={`w-3.5 h-3.5 ${canEdit ? 'text-blue-600' : 'text-gray-400'}`} />
+                                  <span>{canEdit ? (isEmployee ? 'Edit My Details' : 'Edit details') : 'View details'}</span>
+                                </button>
+                              );
+                            })()}
 
                             <button
                               type="button"
@@ -804,134 +830,154 @@ export const TeamDirectoryView: React.FC = () => {
       )}
 
       {/* Edit / View Employee Details Modal */}
-      {editingEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
-          <div className="bg-white text-gray-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-              <div>
-                <h3 className="font-bold text-gray-900 text-base">View / Edit Team Member Details</h3>
-                <p className="text-[11px] text-gray-500 font-medium">Update details for {editingEmployee.employeeCode}</p>
-              </div>
-              <button
-                onClick={() => setEditingEmployee(null)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="space-y-4 text-left">
-              <div className="grid grid-cols-2 gap-4">
+      {editingEmployee && (() => {
+        const canEdit = canEditMember(editingEmployee);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none">
+            <div className="bg-white text-gray-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={editFullName}
-                    onChange={e => setEditFullName(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900"
-                  />
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-900 text-base">
+                      {canEdit ? (isEmployee ? 'Edit My Profile Details' : 'Edit Team Member Details') : 'View Team Member Details'}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${canEdit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                      {canEdit ? (isAdmin ? 'Admin Edit' : isManager ? 'Manager Edit' : 'Self Edit') : 'Read-Only View'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    {canEdit ? `Update details for ${editingEmployee.employeeCode}` : `Profile details for ${editingEmployee.employeeCode} (read-only)`}
+                  </p>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Role</label>
-                  <select
-                    value={editRole}
-                    onChange={e => setEditRole(e.target.value as any)}
-                    disabled={user?.role !== 'ADMIN'}
-                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer disabled:bg-gray-100 disabled:text-gray-500"
-                  >
-                    <option value="EMPLOYEE">Team Member</option>
-                    <option value="MANAGER">Manager</option>
-                    {user?.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Registered Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={editEmail}
-                    onChange={e => setEditEmail(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={editPhone}
-                    onChange={e => setEditPhone(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Designation / Position</label>
-                  <input
-                    type="text"
-                    required
-                    value={editPosition}
-                    onChange={e => setEditPosition(e.target.value)}
-                    className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Department</label>
-                  <select
-                    value={editDepartment}
-                    onChange={e => setEditDepartment(e.target.value)}
-                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer"
-                  >
-                    {DEPARTMENT_OPTIONS.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
-                <select
-                  value={editEntity}
-                  onChange={e => setEditEntity(e.target.value as any)}
-                  className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold"
-                >
-                  <option value="EHM">EHM</option>
-                  <option value="CAG">CLIMAGRO</option>
-                  <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
-                  type="button"
-                  disabled={isUpdating}
                   onClick={() => setEditingEmployee(null)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50 rounded-xl transition-colors cursor-pointer"
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUpdating}
-                  className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
-                >
-                  {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{isUpdating ? 'Saving...' : 'Save Changes'}</span>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={canEdit ? handleSaveEdit : (e) => { e.preventDefault(); setEditingEmployee(null); }} className="space-y-4 text-left">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={!canEdit}
+                      value={editFullName}
+                      onChange={e => setEditFullName(e.target.value)}
+                      className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Role</label>
+                    <select
+                      value={editRole}
+                      onChange={e => setEditRole(e.target.value as any)}
+                      disabled={!canEdit || user?.role !== 'ADMIN'}
+                      className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer disabled:bg-gray-100 disabled:text-gray-500"
+                    >
+                      <option value="EMPLOYEE">Team Member</option>
+                      <option value="MANAGER">Manager</option>
+                      {user?.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Registered Email</label>
+                    <input
+                      type="email"
+                      required
+                      disabled={!canEdit}
+                      value={editEmail}
+                      onChange={e => setEditEmail(e.target.value)}
+                      className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone Number</label>
+                    <input
+                      type="tel"
+                      disabled={!canEdit}
+                      value={editPhone}
+                      onChange={e => setEditPhone(e.target.value)}
+                      className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Designation / Position</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={!canEdit}
+                      value={editPosition}
+                      onChange={e => setEditPosition(e.target.value)}
+                      className="w-full text-xs bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Department</label>
+                    <select
+                      value={editDepartment}
+                      disabled={!canEdit}
+                      onChange={e => setEditDepartment(e.target.value)}
+                      className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer disabled:bg-gray-100 disabled:text-gray-500"
+                    >
+                      {DEPARTMENT_OPTIONS.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entity</label>
+                  <select
+                    value={editEntity}
+                    disabled={!canEdit}
+                    onChange={e => setEditEntity(e.target.value as any)}
+                    className="w-full text-xs font-medium bg-white border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 cursor-pointer font-bold disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                    <option value="EHM">EHM</option>
+                    <option value="CAG">CLIMAGRO</option>
+                    <option value="COMMON">EHM & CLIMAGRO (COMMON)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                  <button
+                    type="button"
+                    disabled={isUpdating}
+                    onClick={() => setEditingEmployee(null)}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {canEdit ? 'Cancel' : 'Close'}
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="submit"
+                      disabled={isUpdating}
+                      className="flex items-center gap-2 px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      <span>{isUpdating ? 'Saving...' : 'Save Changes'}</span>
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

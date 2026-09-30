@@ -27,7 +27,7 @@ export const tasks = pgTable(
     epicId: uuid('epic_id').references(() => epics.id),
     projectId: uuid('project_id').references(() => projects.id),
     storyPoints: integer('story_points'),
-    assigneeId: uuid('assignee_id').references(() => employees.id).notNull(),
+    assigneeId: uuid('assignee_id').references(() => employees.id),
     creatorId: uuid('creator_id').references(() => employees.id).notNull(),
     reviewingLeadId: uuid('reviewing_lead_id').references(() => employees.id),
     deliverableUrl: varchar('deliverable_url', { length: 500 }),

@@ -27,13 +27,15 @@ export async function runOverdueAndTokenChecks() {
       const daysOverdue = Math.max(1, Math.ceil((now.getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24)));
 
       // 1. Resolve Assignee details and Assignee User Account
-      let assigneeName = 'Employee';
+      let assigneeName = 'Unassigned';
       let assigneeUser: any = null;
-      const [assigneeEmp] = await db.select().from(employees).where(eq(employees.id, task.assigneeId));
-      if (assigneeEmp) {
-        assigneeName = `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim();
-        const [userRow] = await db.select().from(users).where(eq(users.employeeId, assigneeEmp.id));
-        if (userRow) assigneeUser = userRow;
+      if (task.assigneeId) {
+        const [assigneeEmp] = await db.select().from(employees).where(eq(employees.id, task.assigneeId));
+        if (assigneeEmp) {
+          assigneeName = `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim();
+          const [userRow] = await db.select().from(users).where(eq(users.employeeId, assigneeEmp.id));
+          if (userRow) assigneeUser = userRow;
+        }
       }
 
       // 2. Resolve Lead / Manager Recipient (Reviewing Lead -> Creator -> Fallback Admin)
