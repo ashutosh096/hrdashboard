@@ -32,6 +32,8 @@ import {
   Loader2,
   History,
   UserCheck,
+  Pencil,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -304,6 +306,8 @@ export const ApplicationsView: React.FC = () => {
   // Checkpoints Checklist Form State
   const [projectChecklists, setProjectChecklists] = useState<ProjectCheckpoint[]>([]);
   const [newCheckpointText, setNewCheckpointText] = useState('');
+  const [editingProjectChkId, setEditingProjectChkId] = useState<string | null>(null);
+  const [editingProjectChkText, setEditingProjectChkText] = useState('');
 
   // Multi-select Team Members State
   const [selectedTeamMemberNames, setSelectedTeamMemberNames] = useState<string[]>([]);
@@ -313,6 +317,8 @@ export const ApplicationsView: React.FC = () => {
   const [cloneSourceProjectId, setCloneSourceProjectId] = useState('');
   const [projectComments, setProjectComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
   const [newProjectCommentText, setNewProjectCommentText] = useState('');
+  const [editingProjectCmtId, setEditingProjectCmtId] = useState<string | null>(null);
+  const [editingProjectCmtText, setEditingProjectCmtText] = useState('');
 
   const handleAddProjectComment = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1650,37 +1656,101 @@ export const ApplicationsView: React.FC = () => {
                       </div>
                     ) : (
                       projectChecklists.map((item) => (
-                        <div
-                          key={item.id}
-                          className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${
-                            item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                          }`}
-                        >
-                          <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
+                        editingProjectChkId === item.id ? (
+                          <div key={item.id} className="flex items-center gap-1.5 p-1.5 rounded-xl border border-emerald-300 bg-white">
                             <input
-                              type="checkbox"
-                              checked={item.isCompleted}
-                              onChange={() => {
-                                setProjectChecklists(
-                                  projectChecklists.map((c) =>
-                                    c.id === item.id ? { ...c, isCompleted: !c.isCompleted } : c
-                                  )
-                                );
+                              type="text"
+                              value={editingProjectChkText}
+                              onChange={(e) => setEditingProjectChkText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (editingProjectChkText.trim()) {
+                                    setProjectChecklists(prev => prev.map(c => c.id === item.id ? { ...c, title: editingProjectChkText.trim() } : c));
+                                    setEditingProjectChkId(null);
+                                    setEditingProjectChkText('');
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setEditingProjectChkId(null);
+                                  setEditingProjectChkText('');
+                                }
                               }}
-                              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                              autoFocus
+                              className="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                             />
-                            <span className={item.isCompleted ? 'line-through text-gray-400' : ''}>
-                              {item.title}
-                            </span>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveProjectCheckpoint(item.id)}
-                            className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-gray-200 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editingProjectChkText.trim()) {
+                                  setProjectChecklists(prev => prev.map(c => c.id === item.id ? { ...c, title: editingProjectChkText.trim() } : c));
+                                  setEditingProjectChkId(null);
+                                  setEditingProjectChkText('');
+                                }
+                              }}
+                              title="Save checkpoint"
+                              className="p-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingProjectChkId(null);
+                                setEditingProjectChkText('');
+                              }}
+                              title="Cancel"
+                              className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            key={item.id}
+                            className={`group flex items-center justify-between p-2 rounded-xl border transition-colors ${
+                              item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                            }`}
                           >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                            <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0 pr-2">
+                              <input
+                                type="checkbox"
+                                checked={item.isCompleted}
+                                onChange={() => {
+                                  setProjectChecklists(
+                                    projectChecklists.map((c) =>
+                                      c.id === item.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                    )
+                                  );
+                                }}
+                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                              />
+                              <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                                {item.title}
+                              </span>
+                            </label>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingProjectChkId(item.id);
+                                  setEditingProjectChkText(item.title);
+                                }}
+                                title="Edit subtask"
+                                className="text-gray-400 hover:text-emerald-700 p-1 rounded hover:bg-emerald-50 transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveProjectCheckpoint(item.id)}
+                                title="Delete subtask"
+                                className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )
                       ))
                     )}
                   </div>
@@ -1813,7 +1883,7 @@ export const ApplicationsView: React.FC = () => {
                         projectComments.map((c) => (
                           <div
                             key={c.id}
-                            className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs ${
+                            className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs group ${
                               c.isSystemLog
                                 ? 'bg-purple-50/70 border-purple-200 text-purple-900'
                                 : 'bg-white border-gray-200 text-gray-800'
@@ -1823,9 +1893,71 @@ export const ApplicationsView: React.FC = () => {
                               <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
                                 {formatAuthorDisplayName(c.authorName)}
                               </span>
-                              <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                {!c.isSystemLog && (
+                                  <div className="flex items-center gap-0.5 ml-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingProjectCmtId(c.id);
+                                        setEditingProjectCmtText(c.content);
+                                      }}
+                                      title="Edit comment"
+                                      className="p-0.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors cursor-pointer"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setProjectComments(prev => prev.filter(item => item.id !== c.id))}
+                                      title="Delete comment"
+                                      className="p-0.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <p className="font-medium text-gray-800 leading-relaxed">{c.content}</p>
+                            {editingProjectCmtId === c.id ? (
+                              <div className="pt-1 space-y-1.5">
+                                <textarea
+                                  value={editingProjectCmtText}
+                                  onChange={(e) => setEditingProjectCmtText(e.target.value)}
+                                  className="w-full text-xs p-2 border border-emerald-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                                  rows={2}
+                                />
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingProjectCmtId(null);
+                                      setEditingProjectCmtText('');
+                                    }}
+                                    className="px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 rounded-md font-semibold cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (editingProjectCmtText.trim()) {
+                                        setProjectComments(prev => prev.map(item => item.id === c.id ? { ...item, content: editingProjectCmtText.trim() } : item));
+                                        setEditingProjectCmtId(null);
+                                        setEditingProjectCmtText('');
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    <span>Save</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                            )}
                           </div>
                         ))
                       )}

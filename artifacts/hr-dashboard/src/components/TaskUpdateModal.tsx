@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2, History, UserCheck } from 'lucide-react';
+import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2, History, UserCheck, Pencil, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
@@ -170,8 +170,14 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   // Checklist & Comments state
   const [checklists, setChecklists] = useState<ChecklistItem[]>([]);
   const [newChecklistText, setNewChecklistText] = useState('');
+  const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null);
+  const [editingChecklistText, setEditingChecklistText] = useState<string>('');
+
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>('');
+
   const [isSavingTask, setIsSavingTask] = useState(false);
 
   useEffect(() => {
@@ -334,6 +340,51 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
     }
   };
 
+  const handleStartEditChecklist = (item: ChecklistItem) => {
+    setEditingChecklistId(item.id);
+    setEditingChecklistText(item.itemText);
+  };
+
+  const handleCancelEditChecklist = () => {
+    setEditingChecklistId(null);
+    setEditingChecklistText('');
+  };
+
+  const handleSaveEditChecklist = async (id: string) => {
+    if (!editingChecklistText.trim()) return;
+    const newText = editingChecklistText.trim();
+    try {
+      const updated = await fetchApi<ChecklistItem>(`/api/tasks/checklists/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ itemText: newText }),
+      });
+      setChecklists((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, itemText: updated.itemText || newText } : c))
+      );
+      setEditingChecklistId(null);
+      setEditingChecklistText('');
+      toast.success('Checklist item updated!');
+    } catch (err) {
+      toast.error('Failed to update checklist item');
+    }
+  };
+
+  const handleDeleteChecklist = async (id: string) => {
+    try {
+      await fetchApi(`/api/tasks/checklists/${id}`, {
+        method: 'DELETE',
+      });
+      setChecklists((prev) => prev.filter((c) => c.id !== id));
+      if (editingChecklistId === id) {
+        setEditingChecklistId(null);
+        setEditingChecklistText('');
+      }
+      toast.success('Checklist item deleted!');
+    } catch (err) {
+      toast.error('Failed to delete checklist item');
+    }
+  };
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCommentText.trim()) return;
@@ -347,6 +398,51 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       toast.success('Comment posted!');
     } catch (err) {
       toast.error('Failed to post comment');
+    }
+  };
+
+  const handleStartEditComment = (c: CommentItem) => {
+    setEditingCommentId(c.id);
+    setEditingCommentText(c.content);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveEditComment = async (id: string) => {
+    if (!editingCommentText.trim()) return;
+    const newContent = editingCommentText.trim();
+    try {
+      const updated = await fetchApi<CommentItem>(`/api/tasks/comments/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ content: newContent }),
+      });
+      setComments((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, content: updated.content || newContent } : c))
+      );
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      toast.success('Comment updated!');
+    } catch (err) {
+      toast.error('Failed to update comment');
+    }
+  };
+
+  const handleDeleteComment = async (id: string) => {
+    try {
+      await fetchApi(`/api/tasks/comments/${id}`, {
+        method: 'DELETE',
+      });
+      setComments((prev) => prev.filter((c) => c.id !== id));
+      if (editingCommentId === id) {
+        setEditingCommentId(null);
+        setEditingCommentText('');
+      }
+      toast.success('Comment deleted!');
+    } catch (err) {
+      toast.error('Failed to delete comment');
     }
   };
 
@@ -1014,29 +1110,87 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   </div>
                 ) : (
                   checklists.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                        }`}
-                    >
-                      <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
+                    editingChecklistId === item.id ? (
+                      <div key={item.id} className="flex items-center gap-2 p-2 rounded-xl border border-emerald-300 bg-white">
                         <input
-                          type="checkbox"
-                          checked={item.isCompleted}
-                          onChange={() => handleToggleChecklist(item)}
-                          className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                          type="text"
+                          value={editingChecklistText}
+                          onChange={(e) => setEditingChecklistText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleSaveEditChecklist(item.id);
+                            } else if (e.key === 'Escape') {
+                              handleCancelEditChecklist();
+                            }
+                          }}
+                          autoFocus
+                          className="flex-1 text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                         />
-                        <span className={item.isCompleted ? 'line-through text-gray-400' : ''}>
-                          {item.itemText}
-                        </span>
-                      </label>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEditChecklist(item.id)}
+                          title="Save subtask"
+                          className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditChecklist}
+                          title="Cancel edit"
+                          className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        key={item.id}
+                        className={`group flex items-center justify-between p-2.5 rounded-xl border transition-colors ${item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                          }`}
+                      >
+                        <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={item.isCompleted}
+                            onChange={() => handleToggleChecklist(item)}
+                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                          />
+                          <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                            {item.itemText}
+                          </span>
+                        </label>
 
-                      {item.completedAt && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                          Done {new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                    </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {item.completedAt && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                              Done {new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                          {!readOnlyMode && (
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditChecklist(item)}
+                                title="Edit subtask"
+                                className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteChecklist(item.id)}
+                                title="Delete subtask"
+                                className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
                   ))
                 )}
               </div>
@@ -1083,7 +1237,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 comments.map((c) => (
                   <div
                     key={c.id}
-                    className={`p-3 rounded-xl border text-xs space-y-1 shadow-2xs ${c.isSystemLog
+                    className={`p-3 rounded-xl border text-xs space-y-1 shadow-2xs group ${c.isSystemLog
                         ? 'bg-purple-50/70 border-purple-200 text-purple-900'
                         : 'bg-white border-gray-200 text-gray-800'
                       }`}
@@ -1092,12 +1246,62 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
                         {formatAuthorDisplayName(c.authorName)}
                       </span>
-                      <span className="flex items-center gap-1 font-semibold text-gray-400">
-                        <Clock className="w-3 h-3 text-emerald-600" />
-                        {formatDateTime(c.createdAt)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-1 font-semibold text-gray-400">
+                          <Clock className="w-3 h-3 text-emerald-600" />
+                          {formatDateTime(c.createdAt)}
+                        </span>
+                        {!c.isSystemLog && !readOnlyMode && (
+                          <div className="flex items-center gap-0.5 ml-1">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditComment(c)}
+                              title="Edit comment"
+                              className="p-0.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComment(c.id)}
+                              title="Delete comment"
+                              className="p-0.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="font-medium text-gray-800 leading-relaxed">{c.content}</p>
+                    {editingCommentId === c.id ? (
+                      <div className="pt-1 space-y-1.5">
+                        <textarea
+                          value={editingCommentText}
+                          onChange={(e) => setEditingCommentText(e.target.value)}
+                          className="w-full text-xs p-2 border border-emerald-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                          rows={2}
+                        />
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={handleCancelEditComment}
+                            className="px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 rounded-md font-semibold cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditComment(c.id)}
+                            className="px-2.5 py-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Save</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                    )}
                   </div>
                 ))
               )}

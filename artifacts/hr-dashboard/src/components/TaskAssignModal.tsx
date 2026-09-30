@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Calendar, Layers, Clock, Copy, Plus, CheckCircle, ShieldCheck, Sparkles, ListChecks, MessageSquare, Send } from 'lucide-react';
+import { X, User, Calendar, Layers, Clock, Copy, Plus, CheckCircle, ShieldCheck, Sparkles, ListChecks, MessageSquare, Send, Pencil, Trash2, Check } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { RichTextEditor } from './RichTextEditor';
@@ -91,9 +91,13 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
   // Subtask Checklist & Comments state
   const [checklists, setChecklists] = useState<{ id: string; itemText: string; isCompleted: boolean }[]>([]);
   const [newChecklistText, setNewChecklistText] = useState('');
+  const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null);
+  const [editingChecklistText, setEditingChecklistText] = useState('');
 
   const [comments, setComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
 
   const epicOptions = React.useMemo(() => {
     const filtered = epics.filter((ep: any) => {
@@ -177,6 +181,33 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
     );
   };
 
+  const handleStartEditChecklist = (item: { id: string; itemText: string }) => {
+    setEditingChecklistId(item.id);
+    setEditingChecklistText(item.itemText);
+  };
+
+  const handleCancelEditChecklist = () => {
+    setEditingChecklistId(null);
+    setEditingChecklistText('');
+  };
+
+  const handleSaveEditChecklist = (id: string) => {
+    if (!editingChecklistText.trim()) return;
+    setChecklists((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, itemText: editingChecklistText.trim() } : c))
+    );
+    setEditingChecklistId(null);
+    setEditingChecklistText('');
+  };
+
+  const handleDeleteChecklist = (id: string) => {
+    setChecklists((prev) => prev.filter((c) => c.id !== id));
+    if (editingChecklistId === id) {
+      setEditingChecklistId(null);
+      setEditingChecklistText('');
+    }
+  };
+
   const handleAddComment = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newCommentText.trim()) return;
@@ -188,6 +219,33 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
     };
     setComments((prev) => [...prev, newComment]);
     setNewCommentText('');
+  };
+
+  const handleStartEditComment = (c: any) => {
+    setEditingCommentId(c.id);
+    setEditingCommentText(c.content);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveEditComment = (id: string) => {
+    if (!editingCommentText.trim()) return;
+    setComments((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, content: editingCommentText.trim() } : c))
+    );
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleDeleteComment = (id: string) => {
+    setComments((prev) => prev.filter((c) => c.id !== id));
+    if (editingCommentId === id) {
+      setEditingCommentId(null);
+      setEditingCommentText('');
+    }
   };
 
   const loadOptions = async () => {
@@ -591,24 +649,78 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
                   </div>
                 ) : (
                   checklists.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${
-                        item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1">
+                    editingChecklistId === item.id ? (
+                      <div key={item.id} className="flex items-center gap-1.5 p-1.5 rounded-xl border border-emerald-300 bg-white">
                         <input
-                          type="checkbox"
-                          checked={item.isCompleted}
-                          onChange={() => handleToggleChecklist(item.id)}
-                          className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                          type="text"
+                          value={editingChecklistText}
+                          onChange={(e) => setEditingChecklistText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleSaveEditChecklist(item.id);
+                            } else if (e.key === 'Escape') {
+                              handleCancelEditChecklist();
+                            }
+                          }}
+                          autoFocus
+                          className="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                         />
-                        <span className={item.isCompleted ? 'line-through text-gray-400' : ''}>
-                          {item.itemText}
-                        </span>
-                      </label>
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEditChecklist(item.id)}
+                          title="Save subtask"
+                          className="p-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditChecklist}
+                          title="Cancel edit"
+                          className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        key={item.id}
+                        className={`group flex items-center justify-between p-2 rounded-xl border transition-colors ${
+                          item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                        }`}
+                      >
+                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={item.isCompleted}
+                            onChange={() => handleToggleChecklist(item.id)}
+                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                          />
+                          <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                            {item.itemText}
+                          </span>
+                        </label>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditChecklist(item)}
+                            title="Edit subtask"
+                            className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteChecklist(item.id)}
+                            title="Delete subtask"
+                            className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )
                   ))
                 )}
               </div>
@@ -704,7 +816,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
                     comments.map((c) => (
                       <div
                         key={c.id}
-                        className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs ${
+                        className={`p-2.5 rounded-xl border text-xs space-y-1 shadow-2xs group ${
                           c.isSystemLog
                             ? 'bg-purple-50/70 border-purple-200 text-purple-900'
                             : 'bg-white border-gray-200 text-gray-800'
@@ -714,12 +826,62 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
                           <span className={c.isSystemLog ? 'text-purple-700 font-mono' : 'text-emerald-700'}>
                             {formatAuthorDisplayName(c.authorName)}
                           </span>
-                          <span className="flex items-center gap-1 font-semibold text-gray-400">
-                            <Clock className="w-3 h-3 text-emerald-600" />
-                            {formatDateTime(c.createdAt)}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1 font-semibold text-gray-400">
+                              <Clock className="w-3 h-3 text-emerald-600" />
+                              {formatDateTime(c.createdAt)}
+                            </span>
+                            {!c.isSystemLog && (
+                              <div className="flex items-center gap-0.5 ml-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditComment(c)}
+                                  title="Edit comment"
+                                  className="p-0.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors cursor-pointer"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteComment(c.id)}
+                                  title="Delete comment"
+                                  className="p-0.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="font-medium text-gray-800 leading-relaxed">{c.content}</p>
+                        {editingCommentId === c.id ? (
+                          <div className="pt-1 space-y-1.5">
+                            <textarea
+                              value={editingCommentText}
+                              onChange={(e) => setEditingCommentText(e.target.value)}
+                              className="w-full text-xs p-2 border border-emerald-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                              rows={2}
+                            />
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={handleCancelEditComment}
+                                className="px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 rounded-md font-semibold cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditComment(c.id)}
+                                className="px-2.5 py-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Save</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                        )}
                       </div>
                     ))
                   )}

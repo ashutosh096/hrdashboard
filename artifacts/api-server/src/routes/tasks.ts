@@ -875,33 +875,42 @@ const handleTaskUpdate = async (req: any, res: any) => {
       }
 
       // Persist Checklists if provided
-      if (Array.isArray(checklists) && checklists.length > 0) {
+      if (Array.isArray(checklists)) {
+        const existingChecklists = await tx.select().from(taskChecklists).where(eq(taskChecklists.taskId, taskId));
+        const keepIds = new Set(checklists.filter(c => c.id && c.id.length === 36).map(c => c.id));
+        for (const ec of existingChecklists) {
+          if (!keepIds.has(ec.id)) {
+            await tx.delete(taskChecklists).where(eq(taskChecklists.id, ec.id));
+          }
+        }
         for (let i = 0; i < checklists.length; i++) {
           const chk = checklists[i];
           if (chk.id && chk.id.length === 36) {
             const [existingChk] = await tx.select().from(taskChecklists).where(eq(taskChecklists.id, chk.id));
-            if (existingChk && existingChk.isCompleted !== Boolean(chk.isCompleted)) {
-              const verb = Boolean(chk.isCompleted) ? 'Completed' : 'Marked pending';
-              await recordHistory(tx, {
-                tableName: 'tasks',
-                recordId: taskId,
-                action: 'STATUS_CHANGED',
-                changes: [{
-                  field: 'checklist',
-                  old: existingChk.isCompleted ? 'Completed' : 'Pending',
-                  new: `${verb} subtask: "${chk.itemText || chk.title || existingChk.itemText}"`,
-                }],
-                changedById: caller.employeeId,
-                changedByName: caller.callerName,
-              });
+            if (existingChk) {
+              if (existingChk.isCompleted !== Boolean(chk.isCompleted)) {
+                const verb = Boolean(chk.isCompleted) ? 'Completed' : 'Marked pending';
+                await recordHistory(tx, {
+                  tableName: 'tasks',
+                  recordId: taskId,
+                  action: 'STATUS_CHANGED',
+                  changes: [{
+                    field: 'checklist',
+                    old: existingChk.isCompleted ? 'Completed' : 'Pending',
+                    new: `${verb} subtask: "${chk.itemText || chk.title || existingChk.itemText}"`,
+                  }],
+                  changedById: caller.employeeId,
+                  changedByName: caller.callerName,
+                });
+              }
+              await tx.update(taskChecklists)
+                .set({
+                  itemText: chk.itemText || chk.title || existingChk.itemText,
+                  isCompleted: Boolean(chk.isCompleted),
+                  sortOrder: i + 1,
+                })
+                .where(eq(taskChecklists.id, chk.id));
             }
-            await tx.update(taskChecklists)
-              .set({
-                itemText: chk.itemText || chk.title,
-                isCompleted: Boolean(chk.isCompleted),
-                sortOrder: i + 1,
-              })
-              .where(eq(taskChecklists.id, chk.id));
           } else if (chk.itemText || chk.title) {
             const text = (chk.itemText || chk.title).trim();
             await tx.insert(taskChecklists).values({
@@ -927,9 +936,23 @@ const handleTaskUpdate = async (req: any, res: any) => {
       }
 
       // Persist Comments if provided
-      if (Array.isArray(comments) && comments.length > 0) {
+      if (Array.isArray(comments)) {
+        const existingComments = await tx.select().from(taskComments).where(eq(taskComments.taskId, taskId));
+        const keepCommentIds = new Set(comments.filter(c => c.id && c.id.length === 36).map(c => c.id));
+        for (const ec of existingComments) {
+          if (!keepCommentIds.has(ec.id)) {
+            await tx.delete(taskComments).where(eq(taskComments.id, ec.id));
+          }
+        }
         for (const c of comments) {
-          if (!c.id || c.id.startsWith('cmt-') || c.id.startsWith('temp-')) {
+          if (c.id && c.id.length === 36) {
+            const content = typeof c === 'string' ? c : (c.content || '');
+            if (content && content.trim()) {
+              await tx.update(taskComments)
+                .set({ content: content.trim() })
+                .where(eq(taskComments.id, c.id));
+            }
+          } else if (!c.id || c.id.startsWith('cmt-') || c.id.startsWith('temp-') || c.id.startsWith('cm-')) {
             const content = typeof c === 'string' ? c : (c.content || '');
             if (content && content.trim()) {
               await tx.insert(taskComments).values({
@@ -1409,6 +1432,42 @@ router.patch('/checklists/:checklistId', async (req, res) => {
   }
 });
 
+// DELETE /api/tasks/checklists/:checklistId
+router.delete('/checklists/:checklistId', async (req, res) => {
+  const { checklistId } = req.params;
+  try {
+    const [checklist] = await db.select().from(taskChecklists).where(eq(taskChecklists.id, checklistId));
+    if (!checklist) return res.status(404).json({ message: 'Checklist item not found' });
+
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, checklist.taskId));
+    if (!targetTask) return res.status(404).json({ message: 'Task not found' });
+
+    if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
+      return res.status(403).json({ message: 'You can only update tasks assigned to you' });
+    }
+
+    await db.delete(taskChecklists).where(eq(taskChecklists.id, checklistId));
+
+    const caller = await getCallerInfo(req.user);
+    await recordHistory(db, {
+      tableName: 'tasks',
+      recordId: targetTask.id,
+      action: 'DELETED',
+      changes: [{
+        field: 'checklist',
+        old: `Deleted subtask: "${checklist.itemText}"`,
+        new: null,
+      }],
+      changedById: caller.employeeId,
+      changedByName: caller.callerName,
+    });
+
+    res.json({ message: 'Checklist item deleted', id: checklistId });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete checklist item' });
+  }
+});
+
 // Helper to extract clean username or full name
 function formatDisplayNameFromEmail(email: string): string {
   if (!email || !email.includes('@')) return email || 'User';
@@ -1535,6 +1594,55 @@ router.post('/:id/comments', async (req, res) => {
     res.status(201).json(newComment);
   } catch (err) {
     res.status(500).json({ message: 'Failed to post comment' });
+  }
+});
+
+// PATCH /api/tasks/comments/:commentId
+router.patch('/comments/:commentId', async (req, res) => {
+  const { commentId } = req.params;
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ message: 'content is required' });
+
+  try {
+    const [comment] = await db.select().from(taskComments).where(eq(taskComments.id, commentId));
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    const isAuthor = Boolean(comment.authorId && req.user?.employeeId && comment.authorId === req.user.employeeId);
+    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
+    if (!isAuthor && !isManagerOrAdmin && req.user?.role === 'EMPLOYEE') {
+      return res.status(403).json({ message: 'You can only edit your own comments' });
+    }
+
+    const [updated] = await db
+      .update(taskComments)
+      .set({ content: content.trim() })
+      .where(eq(taskComments.id, commentId))
+      .returning();
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update comment' });
+  }
+});
+
+// DELETE /api/tasks/comments/:commentId
+router.delete('/comments/:commentId', async (req, res) => {
+  const { commentId } = req.params;
+  try {
+    const [comment] = await db.select().from(taskComments).where(eq(taskComments.id, commentId));
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    const isAuthor = Boolean(comment.authorId && req.user?.employeeId && comment.authorId === req.user.employeeId);
+    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
+    if (!isAuthor && !isManagerOrAdmin && req.user?.role === 'EMPLOYEE') {
+      return res.status(403).json({ message: 'You can only delete your own comments' });
+    }
+
+    await db.delete(taskComments).where(eq(taskComments.id, commentId));
+
+    res.json({ message: 'Comment deleted', id: commentId });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete comment' });
   }
 });
 
