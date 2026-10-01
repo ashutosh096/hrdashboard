@@ -7,8 +7,14 @@ export const FEMALE_AVATAR = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.
 
 export function isFemaleEmployee(name?: string, email?: string): boolean {
   const lower = `${name || ''} ${email || ''}`.toLowerCase().trim();
-  // Specified by company roster: Prerna Shukla, Tarul Sharma, and Neha Shukla are female.
-  return lower.includes('prerna') || lower.includes('tarul') || lower.includes('neha');
+  // Specified female employees: Prerna Shukla, Tarul Sharma, Neha Shukla, and Priyanka Sharma.
+  return (
+    lower.includes('prerna') ||
+    lower.includes('tarul') ||
+    lower.includes('neha') ||
+    lower.includes('priyanka') ||
+    lower.includes('prianak')
+  );
 }
 
 export function getAvatarByName(name?: string, email?: string): string {
