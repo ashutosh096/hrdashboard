@@ -41,15 +41,22 @@ export function formatHistoryDate(dateStr: string | Date | null | undefined): st
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
-  const day = d.getDate();
-  const month = d.toLocaleDateString('en-GB', { month: 'short' });
-  const year = d.getFullYear();
-  const time = d.toLocaleTimeString('en-US', {
+
+  const datePart = d.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }); // e.g. "1 Oct 2026"
+
+  const timePart = d.toLocaleTimeString('en-US', {
+    timeZone: 'Asia/Kolkata',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  });
-  return `${day} ${month} ${year}, ${time}`;
+  }); // e.g. "1:45 PM"
+
+  return `${datePart}, ${timePart}`;
 }
 
 export function formatHistoryChange(item: HistoryItem): { title: string; subtitle?: string } {
@@ -395,7 +402,6 @@ export const RecordHistoryPanel: React.FC<RecordHistoryPanelProps> = ({
                     if (item.action === 'UPDATED' && (item.oldValue || '').trim().toLowerCase() === (item.newValue || '').trim().toLowerCase()) return false;
                     return true;
                   })
-                  .slice(0, 20)
                   .map((item) => {
                   const { title: changeTitle, subtitle } = formatHistoryChange(item);
                   return (
@@ -427,6 +433,27 @@ export const RecordHistoryPanel: React.FC<RecordHistoryPanelProps> = ({
                     </div>
                   );
                 })}
+
+                {/* Load More Button for Long Timelines */}
+                {hasMore && (
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      disabled={loadingMore}
+                      onClick={() => fetchHistory(nextBefore)}
+                      className="px-3.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 mx-auto disabled:opacity-50 shadow-2xs"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Loading more...</span>
+                        </>
+                      ) : (
+                        <span>Load older history</span>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

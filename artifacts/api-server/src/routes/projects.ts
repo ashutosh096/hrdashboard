@@ -459,8 +459,8 @@ router.patch('/:id', async (req, res) => {
       if (budget !== undefined && budget !== null && String(budget).trim() !== '') {
         updatePayload.budget = budget;
       }
-      if (startDate !== undefined) updatePayload.startDate = startDate;
-      if (targetDate !== undefined) updatePayload.targetDate = targetDate;
+      if (startDate !== undefined) updatePayload.startDate = startDate || null;
+      if (targetDate !== undefined) updatePayload.targetDate = targetDate || null;
       if (status !== undefined) updatePayload.status = status;
       if (priority !== undefined) updatePayload.priority = priority;
       if (techStack !== undefined) updatePayload.techStack = techStack;

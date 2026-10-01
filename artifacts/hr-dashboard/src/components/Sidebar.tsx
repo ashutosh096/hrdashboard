@@ -66,7 +66,7 @@ export const Sidebar: React.FC = () => {
     {
       title: 'People',
       items: [
-        { label: 'Attendance', path: '/attendance', icon: Clock, isLocked: true },
+        { label: 'Attendance', path: '/attendance', icon: Clock },
         { label: 'Team', path: '/team', icon: Users },
         { label: 'Notifications', path: '/notifications', icon: Bell },
       ],

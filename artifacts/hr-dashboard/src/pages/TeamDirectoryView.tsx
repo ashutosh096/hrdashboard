@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi } from '@workspace/api-client-react';
-import { getAvatarByName } from '../utils/avatars';
+import { getAvatarByName, isFemaleEmployee } from '../utils/avatars';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 const DEPARTMENT_OPTIONS = [
@@ -532,7 +532,6 @@ export const TeamDirectoryView: React.FC = () => {
                 </tr>
               ) : (
                 currentRows.map(member => {
-                  const initials = getInitials(member.name);
                   const entityDisplay = getEntityDisplayName(member);
                   const isMenuOpen = activeMenuId === member.id;
                   const isReinviting = reinvitingId === member.id;
@@ -545,9 +544,17 @@ export const TeamDirectoryView: React.FC = () => {
                       {/* Name & ID Column */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3.5">
-                          {/* Avatar Initials Box */}
-                          <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 text-white flex items-center justify-center font-bold text-xs shrink-0 tracking-wider shadow-2xs">
-                            {initials}
+                          {/* Avatar Vector Logo (Pink for Female, Blue for Male) */}
+                          <div className="relative w-9 h-9 rounded-full shrink-0 shadow-2xs">
+                            <img
+                              src={getAvatarByName(member.name, member.email)}
+                              alt={member.name}
+                              className={`w-9 h-9 rounded-full object-cover border-2 ${
+                                isFemaleEmployee(member.name, member.email)
+                                  ? 'border-pink-300 ring-2 ring-pink-100'
+                                  : 'border-sky-300 ring-2 ring-sky-100'
+                              }`}
+                            />
                           </div>
 
                           <div className="min-w-0">

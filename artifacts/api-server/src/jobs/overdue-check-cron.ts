@@ -1,5 +1,6 @@
 import { db, tasks, employees, users, notifications, googleTokens, eq, and, ne, lt, lte, gt, gte, sql, isNotNull } from '@workspace/db';
 import { sendOverdueTaskAlertEmail, sendCalendarReconnectEmail } from '../services/email.js';
+import { insertNotification } from '../services/notificationService.js';
 
 export function startOverdueCheckCron() {
   console.log('[OVERDUE & TOKEN CRON] Initializing daily task overdue and calendar token expiry check...');
@@ -85,7 +86,7 @@ export async function runOverdueAndTokenChecks() {
         const alreadySent = recentNotifs.some(n => (n.payload as any)?.taskId === task.id);
 
         if (!alreadySent) {
-          await db.insert(notifications).values({
+          await insertNotification({
             userId: recipientUser.id,
             type: 'TASK_OVERDUE',
             payload: {
@@ -140,7 +141,7 @@ export async function runOverdueAndTokenChecks() {
       if (recentNotifs.length === 0) {
         const [targetUser] = await db.select().from(users).where(eq(users.id, tokenRow.userId));
         if (targetUser) {
-          await db.insert(notifications).values({
+          await insertNotification({
             userId: targetUser.id,
             type: 'CALENDAR_RECONNECT',
             payload: {

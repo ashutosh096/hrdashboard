@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, epics, initiatives, projects, entityCounters, generateNextGlobalCode, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql, recordHistory } from '@workspace/db';
+import { db, epics, initiatives, projects, employees, entityCounters, generateNextGlobalCode, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
 
@@ -23,8 +23,11 @@ router.get('/', async (req, res) => {
     const allSprints = await db.select().from(sprints);
     const allTasks = await db.select().from(tasks);
     const allEntities = await db.select().from(entities);
+    const allEmployees = await db.select().from(employees);
 
     const enriched = allEpics.map(epic => {
+      const creatorEmp = allEmployees.find(e => e.id === epic.createdById || e.id === epic.ownerId);
+      const creatorName = epic.createdByName || (creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : null);
       const linkedSprints = allSprints.filter(s => s.epicId === epic.id);
       const linkedTasks = allTasks.filter(t => t.epicId === epic.id);
       const epicEntity = allEntities.find(ent => ent.id === epic.entityId);
@@ -37,6 +40,7 @@ router.get('/', async (req, res) => {
 
       return {
         ...epic,
+        createdByName: creatorName,
         entity: resolvedEntity,
         entityCode: resolvedEntityCode,
         entityName: epicEntity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
@@ -233,7 +237,7 @@ async function handleEpicUpdate(req: any, res: any) {
       if (initiativeId !== undefined) updatePayload.initiativeId = initiativeId || null;
       if (projectId !== undefined) updatePayload.projectId = projectId || null;
       if (department !== undefined) updatePayload.department = department;
-      if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek;
+      if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek || null;
       if (sprintsCountTarget !== undefined) updatePayload.sprintsCountTarget = Number(sprintsCountTarget);
       if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
       if (targetDate !== undefined) updatePayload.targetDate = targetDate ? new Date(targetDate) : null;

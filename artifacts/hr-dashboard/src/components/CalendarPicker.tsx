@@ -151,19 +151,34 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
           readOnly
           value={value}
           placeholder={placeholder}
-          className="w-full pl-3 pr-9 py-2 h-[38px] text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer group-hover:border-emerald-400 transition-colors shadow-2xs"
+          className="w-full pl-3 pr-16 py-2 h-[38px] text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer group-hover:border-emerald-400 transition-colors shadow-2xs"
         />
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsOpen(true);
-          }}
-          className="absolute right-2 p-1 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-          title="Open Calendar Picker"
-        >
-          <CalendarIcon className="w-4 h-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
-        </button>
+        <div className="absolute right-2 flex items-center gap-1">
+          {value && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('', undefined);
+              }}
+              className="p-1 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+              title="Clear / Empty Date"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(true);
+            }}
+            className="p-1 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            title="Open Calendar Picker"
+          >
+            <CalendarIcon className="w-4 h-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
+          </button>
+        </div>
       </div>
 
       {/* Floating Modal Popover (Never cut off by container overflow or screen bottom) */}
@@ -262,17 +277,32 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
 
             {/* Modal Footer */}
             <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  const now = new Date();
-                  setViewDate(now);
-                  handleSelectDay(now.getDate());
-                }}
-                className="font-bold text-blue-600 hover:underline cursor-pointer"
-              >
-                Today
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    setViewDate(now);
+                    handleSelectDay(now.getDate());
+                  }}
+                  className="font-bold text-blue-600 hover:underline cursor-pointer"
+                >
+                  Today
+                </button>
+
+                {value && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange('', undefined);
+                      setIsOpen(false);
+                    }}
+                    className="font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
 
               {formatMode === 'month' && (
                 <button

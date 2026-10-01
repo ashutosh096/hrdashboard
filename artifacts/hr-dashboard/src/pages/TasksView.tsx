@@ -69,7 +69,7 @@ export const TasksView: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [groupByEpic, setGroupByEpic] = useState(false);
   const [collapsedEpics, setCollapsedEpics] = useState<Record<string, boolean>>({});
-  const pageSize = 25;
+  const pageSize = 15;
 
   // Debounce search by ~300ms
   useEffect(() => {
@@ -328,6 +328,9 @@ export const TasksView: React.FC = () => {
       targetWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
       priority: pCode,
       createdAt: task.createdAt,
+      createdById: task.createdById || task.creatorId,
+      createdByName: task.createdByName || task.creatorName || (employees.find((e: any) => e.id === (task.createdById || task.creatorId)) ? `${employees.find((e: any) => e.id === (task.createdById || task.creatorId))?.firstName} ${employees.find((e: any) => e.id === (task.createdById || task.creatorId))?.lastName}`.trim() : task.createdBy || ''),
+      creatorName: task.createdByName || task.creatorName || (employees.find((e: any) => e.id === (task.createdById || task.creatorId)) ? `${employees.find((e: any) => e.id === (task.createdById || task.creatorId))?.firstName} ${employees.find((e: any) => e.id === (task.createdById || task.creatorId))?.lastName}`.trim() : task.createdBy || ''),
     });
   };
 
@@ -347,7 +350,7 @@ export const TasksView: React.FC = () => {
           status: updated.status,
           deliverableUrl: updated.outputUrl || '',
           description: updated.notes || '',
-          dueDate: updated.dueDate,
+          dueDate: updated.dueDate || null,
           sprintWeek: updated.targetWeek,
           priority: updated.priority,
           waitingOn: updated.waitingOn,

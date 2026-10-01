@@ -272,10 +272,16 @@ export const DashboardView: React.FC = () => {
                   ) : (
                     scopedEmployees.slice(0, 6).map((emp) => {
                       const attRecord = scopedAttendance.find((a) => a.employeeId === emp.id);
-                      const clockInTime = attRecord?.clockIn ? new Date(attRecord.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '9:00 am';
-                      const workMode = attRecord?.workMode || 'OFFICE';
+                      const isPresent = attRecord?.status === 'PRESENT' || attRecord?.status === 'HALF_DAY';
+                      const workMode = attRecord?.workMode || 'IN_OFFICE';
                       const isRemote = workMode === 'REMOTE';
                       const isHybrid = workMode === 'HYBRID';
+                      const todayFormattedIST = new Date().toLocaleDateString('en-IN', {
+                        timeZone: 'Asia/Kolkata',
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      });
 
                       return (
                         <div key={emp.id} className="p-3 flex items-center justify-between hover:bg-gray-50/70 transition-colors">
@@ -289,10 +295,11 @@ export const DashboardView: React.FC = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="text-xs font-semibold text-gray-900 block">{clockInTime}</span>
-                            <span className={`text-[10px] font-bold block ${isRemote ? 'text-gray-500' : isHybrid ? 'text-amber-600' : 'text-emerald-600'
-                              }`}>
-                              {isRemote ? 'Remote' : isHybrid ? 'Hybrid' : 'In office'}
+                            <span className={`text-[11px] font-bold block ${isPresent ? 'text-emerald-700' : 'text-gray-400'}`}>
+                              {isPresent ? (isRemote ? 'Work From Home' : isHybrid ? 'Hybrid' : 'In Office') : 'Not Marked'}
+                            </span>
+                            <span className="text-[10px] font-medium text-gray-400 block">
+                              {todayFormattedIST}
                             </span>
                           </div>
                         </div>

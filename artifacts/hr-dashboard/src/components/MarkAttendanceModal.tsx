@@ -1,52 +1,55 @@
-import React, { useState } from 'react';
-import { X, CheckCircle, Clock, AlertTriangle, Lock, Building2, Home } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Clock, AlertTriangle, Lock, Building2, Home } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MarkAttendanceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialStatus?: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
+  initialWorkMode?: 'IN_OFFICE' | 'REMOTE';
+  initialHalfDayType?: 'FIRST_HALF' | 'SECOND_HALF';
+  isEditMode?: boolean;
   onSubmitAttendance: (attendanceData: {
     status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
     halfDayType?: 'FIRST_HALF' | 'SECOND_HALF';
     workMode: 'IN_OFFICE' | 'REMOTE';
-    note: string;
+    isEdit?: boolean;
   }) => void;
 }
 
 export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   isOpen,
   onClose,
+  initialStatus = 'PRESENT',
+  initialWorkMode = 'IN_OFFICE',
+  initialHalfDayType = 'FIRST_HALF',
+  isEditMode = false,
   onSubmitAttendance,
 }) => {
-  const [status, setStatus] = useState<'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE'>('PRESENT');
-  const [halfDayType, setHalfDayType] = useState<'FIRST_HALF' | 'SECOND_HALF'>('FIRST_HALF');
-  const [workMode, setWorkMode] = useState<'IN_OFFICE' | 'REMOTE'>('IN_OFFICE');
-  const [note, setNote] = useState('');
+  const [status, setStatus] = useState<'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE'>(initialStatus);
+  const [halfDayType, setHalfDayType] = useState<'FIRST_HALF' | 'SECOND_HALF'>(initialHalfDayType);
+  const [workMode, setWorkMode] = useState<'IN_OFFICE' | 'REMOTE'>(initialWorkMode);
   const [showConfirmStep, setShowConfirmStep] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
-  // Automatically update the date live and advance to new day at 12:00 AM midnight
-  React.useEffect(() => {
-    setCurrentDate(new Date());
-    const interval = setInterval(() => {
+  useEffect(() => {
+    if (isOpen) {
+      setStatus(initialStatus);
+      setWorkMode(initialWorkMode);
+      setHalfDayType(initialHalfDayType);
+      setShowConfirmStep(false);
       setCurrentDate(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isOpen]);
+    }
+  }, [isOpen, initialStatus, initialWorkMode, initialHalfDayType]);
 
   if (!isOpen) return null;
 
-  const formattedDate = currentDate.toLocaleDateString('en-US', {
+  const formattedDate = currentDate.toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     weekday: 'long',
-    month: 'long',
     day: 'numeric',
+    month: 'short',
     year: 'numeric',
-  });
-
-  const formattedTime = currentDate.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
   });
 
   const handleInitialSubmit = (e: React.FormEvent) => {
@@ -59,9 +62,8 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
       status,
       halfDayType: status === 'HALF_DAY' ? halfDayType : undefined,
       workMode,
-      note,
+      isEdit: isEditMode,
     });
-    toast.success('Attendance submitted & locked for today! Live in Office Today & Manager View.');
     setShowConfirmStep(false);
     onClose();
   };
@@ -70,23 +72,24 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
       <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Header */}
+        {/* Header (Date only, time removed as requested) */}
         <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-base">Mark Attendance Today</h3>
-              <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1.5">
-                <span>{formattedDate}</span>
-                <span className="text-[10px] text-gray-400 font-mono">({formattedTime})</span>
+              <h3 className="font-bold text-gray-900 text-base">
+                {isEditMode ? "Edit Today's Attendance" : 'Mark Attendance Today'}
+              </h3>
+              <p className="text-[11px] text-emerald-600 font-semibold">
+                {formattedDate}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -101,7 +104,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStatus('PRESENT')}
-                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
                     status === 'PRESENT'
                       ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-500/20 text-emerald-900 font-bold'
                       : 'bg-white border-gray-200 text-gray-700 font-semibold hover:bg-gray-50'
@@ -117,7 +120,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStatus('HALF_DAY')}
-                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
                     status === 'HALF_DAY'
                       ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-500/20 text-blue-900 font-bold'
                       : 'bg-white border-gray-200 text-gray-700 font-semibold hover:bg-gray-50'
@@ -133,7 +136,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStatus('ABSENT')}
-                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
                     status === 'ABSENT'
                       ? 'bg-red-50 border-red-400 ring-2 ring-red-500/20 text-red-900 font-bold'
                       : 'bg-white border-gray-200 text-gray-700 font-semibold hover:bg-gray-50'
@@ -149,7 +152,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStatus('LEAVE')}
-                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
                     status === 'LEAVE'
                       ? 'bg-purple-50 border-purple-400 ring-2 ring-purple-500/20 text-purple-900 font-bold'
                       : 'bg-white border-gray-200 text-gray-700 font-semibold hover:bg-gray-50'
@@ -164,14 +167,14 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
               </div>
             </div>
 
-            {/* Half Day Sub-Selection Options */}
+            {/* Half Day Sub-options */}
             {status === 'HALF_DAY' && (
-              <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 space-y-2 animate-in fade-in duration-200">
-                <label className="block text-xs font-bold text-blue-900">Select Half Day Shift Slot *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer flex items-center gap-2 ${
+              <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-3 animate-in fade-in duration-150">
+                <span className="text-[11px] font-bold text-blue-900 block mb-2">Select Half-Day Shift:</span>
+                <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+                  <label className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer transition-all ${
                     halfDayType === 'FIRST_HALF'
-                      ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
+                      ? 'bg-blue-600 text-white border-blue-700'
                       : 'bg-white text-blue-900 border-blue-200'
                   }`}>
                     <input
@@ -184,9 +187,9 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                     <span>First Half (Morning)</span>
                   </label>
 
-                  <label className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer flex items-center gap-2 ${
+                  <label className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer transition-all ${
                     halfDayType === 'SECOND_HALF'
-                      ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
+                      ? 'bg-blue-600 text-white border-blue-700'
                       : 'bg-white text-blue-900 border-blue-200'
                   }`}>
                     <input
@@ -209,10 +212,10 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setWorkMode('IN_OFFICE')}
-                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 ${
+                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer ${
                     workMode === 'IN_OFFICE'
                       ? 'bg-emerald-600 text-white border-emerald-700 font-bold'
-                      : 'bg-gray-50 text-gray-700 border-gray-200'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
                   <Building2 className="w-3.5 h-3.5" />
@@ -222,10 +225,10 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setWorkMode('REMOTE')}
-                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 ${
+                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer ${
                     workMode === 'REMOTE'
                       ? 'bg-emerald-600 text-white border-emerald-700 font-bold'
-                      : 'bg-gray-50 text-gray-700 border-gray-200'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
                   <Home className="w-3.5 h-3.5" />
@@ -234,31 +237,19 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
               </div>
             </div>
 
-            {/* Daily Note */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Standup Note (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. In office for marketing sprint meeting"
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                className="w-full text-xs border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-              />
-            </div>
-
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors"
+                className="px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
               >
-                Submit Attendance →
+                {isEditMode ? 'Proceed to Update →' : 'Submit Attendance →'}
               </button>
             </div>
           </form>
@@ -270,9 +261,19 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
             </div>
 
             <div>
-              <h4 className="text-base font-bold text-gray-900">Are you sure you want to submit?</h4>
+              <h4 className="text-base font-bold text-gray-900">
+                {isEditMode ? 'Confirm 1-Time Attendance Update' : 'Are you sure you want to submit?'}
+              </h4>
               <p className="text-xs text-gray-500 font-medium mt-1">
-                You will <strong className="text-amber-800">NOT be able to edit or change</strong> your attendance once submitted for today.
+                {isEditMode ? (
+                  <span>
+                    This is your <strong className="text-amber-800">1-time edit</strong> for today. Once updated, your attendance will be permanently locked.
+                  </span>
+                ) : (
+                  <span>
+                    You will have an option to edit your attendance <strong className="text-emerald-800">only one time</strong> if needed.
+                  </span>
+                )}
               </p>
             </div>
 
@@ -285,7 +286,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowConfirmStep(false)}
-                className="py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors"
+                className="py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
               >
                 Back to Edit
               </button>
@@ -293,10 +294,10 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
               <button
                 type="button"
                 onClick={handleFinalConfirm}
-                className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span>Confirm & Lock</span>
+                <span>{isEditMode ? 'Confirm & Finalize' : 'Confirm Attendance'}</span>
               </button>
             </div>
           </div>
@@ -305,3 +306,5 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
     </div>
   );
 };
+
+export default MarkAttendanceModal;

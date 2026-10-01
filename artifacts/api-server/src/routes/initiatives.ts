@@ -32,12 +32,14 @@ router.get('/', async (req, res) => {
       .from(initiatives)
       .orderBy(sql`LOWER(${initiatives.title}) ASC`);
 
-    // Fetch linked epics, entities & departments for each initiative
     const allEpics = await db.select().from(epics);
     const allEntities = await db.select().from(entities);
     const allDepts = await db.select().from(departments);
+    const allEmployees = await db.select().from(employees);
 
     const enriched = allInitiatives.map(init => {
+      const creatorEmp = allEmployees.find(e => e.id === init.createdById || e.id === init.ownerId);
+      const creatorName = init.createdByName || (creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : null);
       const entity = allEntities.find(e => e.id === init.entityId);
       const dept = allDepts.find(d => d.id === init.departmentId);
       const linkedEpics = allEpics.filter(e => e.initiativeId === init.id);
@@ -50,6 +52,7 @@ router.get('/', async (req, res) => {
 
       return {
         ...init,
+        createdByName: creatorName,
         entity: resolvedEntity,
         entityName: entity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
         entityCode: resolvedCode,
@@ -157,7 +160,7 @@ async function handleInitiativeUpdate(req: any, res: any) {
       if (mappedStatus !== undefined) updatePayload.status = mappedStatus;
       if (title !== undefined) updatePayload.title = title;
       if (description !== undefined) updatePayload.description = description;
-      if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth;
+      if (targetMonth !== undefined) updatePayload.targetMonth = targetMonth || null;
       if (epicsCountTarget !== undefined) updatePayload.epicsCountTarget = Number(epicsCountTarget);
       if (targetDeliverableMetric !== undefined) updatePayload.targetDeliverableMetric = targetDeliverableMetric;
       if (subDepartment !== undefined) updatePayload.subDepartment = subDepartment;

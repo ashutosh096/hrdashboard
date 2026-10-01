@@ -207,11 +207,19 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       entity: resolvedEntity,
       entityCode: resolvedEntityCode,
       assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
+      assigneeId: taskItem.assigneeId,
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
+      reviewingLeadId: taskItem.reviewingLeadId,
       status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
       outputUrl: taskItem.deliverableUrl || taskItem.outputUrl || '',
       waitingOn: 'None (Self)',
       notes: taskItem.description || taskItem.notes || '',
+      dueDate: taskItem.dueDate ? taskItem.dueDate.split('T')[0] : '',
+      priority: taskItem.priority || 'P3',
+      createdAt: taskItem.createdAt,
+      createdById: taskItem.createdById || taskItem.creatorId,
+      createdByName: taskItem.createdByName || taskItem.creatorName || taskItem.createdBy || '',
+      creatorName: taskItem.createdByName || taskItem.creatorName || taskItem.createdBy || '',
     });
   };
 
@@ -523,7 +531,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           initiativeId: editInitiativeId || null,
           projectId: editProjectId || null,
           department: editDepartment,
-          targetWeek: editTargetWeek,
+          targetWeek: editTargetWeek || null,
           sprintsCountTarget: editSprintsCountTarget > 0 ? editSprintsCountTarget : 0,
           status: apiStatus,
           assignedTo: editAssignedTo,
@@ -818,7 +826,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       </div>
                       <p className="text-xs text-gray-400 font-medium truncate mt-0.5">
                         {parentInit?.title ? `Init: ${parentInit.title} • ` : ''}{parentProj?.name ? `Project: ${parentProj.name} • ` : ''}{epic.department || 'Product & Tech'} • {tasksSummary}
-                        {` • Created by: ${epic.createdByName || 'Dr. Harshit Mishra'}`}
+                        {` • Created by: ${epic.createdByName || 'Admin'}`}
                       </p>
                     </div>
                   </div>
@@ -1172,7 +1180,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingEpic.createdByName || 'Dr. Harshit Mishra'}
+                    {viewingEpic.createdByName || 'Admin'}
                   </span>
                 </div>
               </div>
@@ -1368,13 +1376,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 );
               })()}
 
-              {/* Created By & Audit History Header */}
-              <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Created by: <strong className="text-gray-900 font-semibold">{viewingEpic.createdByName || 'Dr. Harshit Mishra'}</strong></span>
-                </div>
-
+              {/* Audit History Action */}
+              <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3 text-xs">
                 <button
                   type="button"
                   onClick={() => setHistoryTarget({
@@ -2122,7 +2125,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingInitiativeInEpics.createdByName || 'Dr. Harshit Mishra'}
+                    {viewingInitiativeInEpics.createdByName || 'Admin'}
                   </span>
                 </div>
               </div>

@@ -1572,7 +1572,18 @@ export const ApplicationsView: React.FC = () => {
                 {/* Timeline Dates */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Start Date</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Start Date</label>
+                      {projectStartDate && (
+                        <button
+                          type="button"
+                          onClick={() => setProjectStartDate('')}
+                          className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="date"
                       value={projectStartDate}
@@ -1582,7 +1593,18 @@ export const ApplicationsView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Completion Date</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Target Completion Date</label>
+                      {projectTargetDate && (
+                        <button
+                          type="button"
+                          onClick={() => setProjectTargetDate('')}
+                          className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="date"
                       value={projectTargetDate}
@@ -1894,7 +1916,7 @@ export const ApplicationsView: React.FC = () => {
                                 {formatAuthorDisplayName(c.authorName)}
                               </span>
                               <div className="flex items-center gap-1.5">
-                                <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span>{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
                                 {!c.isSystemLog && (
                                   <div className="flex items-center gap-0.5 ml-1">
                                     <button
@@ -2281,7 +2303,7 @@ export const ApplicationsView: React.FC = () => {
                     <span>CREATED BY</span>
                   </div>
                   <div className="text-xs font-bold text-gray-800">
-                    {p.createdByName || p.lead || 'Dr. Harshit Mishra'}
+                    {p.createdByName || p.lead || 'Admin'}
                   </div>
                 </div>
               </div>
@@ -2395,13 +2417,8 @@ export const ApplicationsView: React.FC = () => {
                 )}
               </div>
 
-              {/* Created By & Audit History */}
-              <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Created by: <strong className="text-gray-900 font-semibold">{p.createdByName || p.lead || 'Dr. Harshit Mishra'}</strong></span>
-                </div>
-
+              {/* Audit History Action */}
+              <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3 text-xs">
                 <button
                   type="button"
                   onClick={() => setHistoryTarget({

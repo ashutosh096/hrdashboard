@@ -3,10 +3,13 @@ import { Megaphone, Pin, Plus, X, Clock, Eye, Edit2, Trash2 } from 'lucide-react
 import { toast } from 'sonner';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntity } from '../contexts/EntityContext';
+import { matchesEntityFilter } from '../utils/entityUtils';
 import { fetchApi } from '@workspace/api-client-react';
 
 export const AnnouncementsView: React.FC = () => {
   const { user } = useAuth();
+  const { selectedEntity } = useEntity();
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
   const [viewingAnnouncement, setViewingAnnouncement] = useState<any | null>(null);
@@ -54,7 +57,9 @@ export const AnnouncementsView: React.FC = () => {
     setContent(item.content || '');
     const p = (item.priority || 'IMPORTANT').toUpperCase();
     setPriority(p === 'URGENT' ? 'URGENT' : p === 'NORMAL' ? 'NORMAL' : 'IMPORTANT');
-    setEntityScope('BOTH');
+    const code = (item.entityCode || item.entity || '').toUpperCase();
+    const scope = (code === 'CAG' || code === 'CLIMAGRO') ? 'CAG' : (code === 'EHM') ? 'EHM' : 'BOTH';
+    setEntityScope(scope);
     setIsPinned(!!item.isPinned);
     setViewingAnnouncement(null);
     setShowModal(true);
@@ -86,13 +91,15 @@ export const AnnouncementsView: React.FC = () => {
             title,
             content,
             priority,
+            entityScope,
+            entity: entityScope === 'CAG' ? 'CLIMAGRO' : entityScope === 'EHM' ? 'EHM' : 'BOTH',
             isPinned,
           }),
         });
 
         toast.success('Announcement updated successfully!');
         setAnnouncements((prev) =>
-          prev.map((a) => (a.id === editingAnnouncementId ? (updated || { ...a, title, content, priority, isPinned }) : a))
+          prev.map((a) => (a.id === editingAnnouncementId ? (updated || { ...a, title, content, priority, entity: entityScope === 'CAG' ? 'CLIMAGRO' : entityScope === 'EHM' ? 'EHM' : 'BOTH', isPinned }) : a))
         );
       } else {
         const newAnn = await fetchApi<any>('/api/announcements', {
@@ -101,12 +108,14 @@ export const AnnouncementsView: React.FC = () => {
             title,
             content,
             priority,
+            entityScope,
+            entity: entityScope === 'CAG' ? 'CLIMAGRO' : entityScope === 'EHM' ? 'EHM' : 'BOTH',
             isPinned,
           }),
         });
 
         toast.success('Announcement published successfully to company feed!');
-        setAnnouncements((prev) => [newAnn || { id: `ann-${Date.now()}`, title, content, priority, isPinned, createdAt: new Date().toISOString() }, ...prev]);
+        setAnnouncements((prev) => [newAnn || { id: `ann-${Date.now()}`, title, content, priority, entity: entityScope === 'CAG' ? 'CLIMAGRO' : entityScope === 'EHM' ? 'EHM' : 'BOTH', isPinned, createdAt: new Date().toISOString() }, ...prev]);
       }
 
       setShowModal(false);
@@ -119,6 +128,11 @@ export const AnnouncementsView: React.FC = () => {
       toast.error(err.message || 'Failed to save announcement');
     }
   };
+
+  // Filter announcements based on selected global entity
+  const filteredAnnouncements = announcements.filter((item) =>
+    matchesEntityFilter(item, selectedEntity)
+  );
 
   return (
     <div className="p-6 space-y-6 select-none">
@@ -146,12 +160,12 @@ export const AnnouncementsView: React.FC = () => {
         <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading company announcements...</div>
       ) : (
         <div className="space-y-4 max-w-3xl">
-          {announcements.length === 0 ? (
+          {filteredAnnouncements.length === 0 ? (
             <div className="py-12 text-center text-xs font-semibold text-gray-400 bg-white border border-gray-200/80 rounded-2xl p-8">
-              No announcements posted yet. Click "New Announcement" to publish one!
+              No announcements posted yet for this entity view. Click "New Announcement" to publish one!
             </div>
           ) : (
-            announcements.map((item, idx) => {
+            filteredAnnouncements.map((item, idx) => {
               const p = (item.priority || '').toUpperCase();
               const isUrgent = p === 'URGENT' || p === 'P1' || p === '1';
               const isImportant = p === 'IMPORTANT' || p === 'HIGH' || p === 'P2' || p === '2';
@@ -197,7 +211,15 @@ export const AnnouncementsView: React.FC = () => {
                     <div className="flex items-center gap-2 text-gray-400 font-medium">
                       <span>{formatDateTime(item.createdAt)}</span>
                       <span>·</span>
-                      <span className="text-gray-500 font-semibold">All companies</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        item.entity === 'CLIMAGRO' || item.entityCode === 'CAG'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : item.entity === 'EHM' || item.entityCode === 'EHM'
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                      }`}>
+                        {item.entity === 'CLIMAGRO' || item.entityCode === 'CAG' ? 'CLIMAGRO' : item.entity === 'EHM' || item.entityCode === 'EHM' ? 'EHM' : 'Both (EHM & CLIMAGRO)'}
+                      </span>
                     </div>
 
                     {/* Actions */}
@@ -265,8 +287,14 @@ export const AnnouncementsView: React.FC = () => {
                   );
                 })()}
 
-                <span className="text-xs font-semibold text-gray-500">
-                  All companies
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                  viewingAnnouncement.entity === 'CLIMAGRO' || viewingAnnouncement.entityCode === 'CAG'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : viewingAnnouncement.entity === 'EHM' || viewingAnnouncement.entityCode === 'EHM'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-purple-50 text-purple-700 border-purple-200'
+                }`}>
+                  {viewingAnnouncement.entity === 'CLIMAGRO' || viewingAnnouncement.entityCode === 'CAG' ? 'CLIMAGRO' : viewingAnnouncement.entity === 'EHM' || viewingAnnouncement.entityCode === 'EHM' ? 'EHM' : 'Both (EHM & CLIMAGRO)'}
                 </span>
 
                 {viewingAnnouncement.isPinned && (
@@ -390,15 +418,15 @@ export const AnnouncementsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Scope</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Company / Entity Scope <span className="text-red-500">*</span></label>
                   <select
                     value={entityScope}
                     onChange={(e) => setEntityScope(e.target.value as any)}
                     className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
-                    <option value="BOTH">All Companies</option>
-                    <option value="EHM">EHM</option>
+                    <option value="BOTH">Both / All Entities (EHM & CLIMAGRO)</option>
                     <option value="CAG">CLIMAGRO</option>
+                    <option value="EHM">EHM</option>
                   </select>
                 </div>
               </div>

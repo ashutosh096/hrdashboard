@@ -720,16 +720,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   <input
                     type="text"
                     disabled
-                    value={task.createdByName || task.creatorName || 'Dr. Harshit Mishra'}
+                    value={task.createdByName || task.creatorName || (task as any).createdBy || (employeesList.find(e => e.id === ((task as any).createdById || (task as any).creatorId))?.name) || 'Admin'}
                     className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                   />
                 </div>
-              </div>
-
-              {/* Created By Info */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/90 rounded-xl border border-gray-200 text-xs text-gray-700">
-                <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Created by: <strong className="text-gray-900 font-semibold">{task.createdByName || task.creatorName || 'Dr. Harshit Mishra'}</strong></span>
               </div>
 
               {/* Deliverable / Task Name */}
@@ -876,27 +870,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 </div>
               </div>
 
-              {/* Target Week, Priority & Due Date Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Target Week</label>
-                  {readOnlyMode ? (
-                    <input
-                      type="text"
-                      disabled
-                      value={targetWeek}
-                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                    />
-                  ) : (
-                    <CalendarPicker
-                      value={targetWeek}
-                      onChange={(formatted) => setTargetWeek(formatted)}
-                      placeholder="e.g. Week 1 (Days 1–7)"
-                      formatMode="date"
-                    />
-                  )}
-                </div>
-
+              {/* Priority & Due Date Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Priority</label>
                   {readOnlyMode ? (
@@ -921,19 +896,32 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Due Date</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Due Date</label>
+                    {!readOnlyMode && dueDate && (
+                      <button
+                        type="button"
+                        onClick={() => setDueDate('')}
+                        className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                      >
+                        Clear Due Date
+                      </button>
+                    )}
+                  </div>
                   {readOnlyMode ? (
                     <input
                       type="text"
                       disabled
-                      value={formatDueDateDisplay(dueDate)}
+                      value={dueDate ? formatDueDateDisplay(dueDate) : 'No due date set'}
                       className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
                     />
                   ) : (
                     <CalendarPicker
                       value={dueDate}
                       onChange={(formatted, rawDate) => {
-                        if (rawDate) {
+                        if (!formatted) {
+                          setDueDate('');
+                        } else if (rawDate) {
                           const yyyy = rawDate.getFullYear();
                           const mm = String(rawDate.getMonth() + 1).padStart(2, '0');
                           const dd = String(rawDate.getDate()).padStart(2, '0');
@@ -1165,7 +1153,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                         <div className="flex items-center gap-1.5 shrink-0">
                           {item.completedAt && (
                             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                              Done {new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              Done {new Date(item.completedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}
                             </span>
                           )}
                           {!readOnlyMode && (

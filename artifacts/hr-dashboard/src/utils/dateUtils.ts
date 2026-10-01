@@ -1,24 +1,20 @@
+// Indian Standard Time (IST: Asia/Kolkata) Date Utilities
+// Strictly outputs Date and Day — NEVER clock hour, minute, second.
+
 export const formatDateTime = (dateInput?: string | Date | null): string => {
   if (!dateInput) return 'N/A';
   try {
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return String(dateInput);
 
-    const dateStr = d.toLocaleDateString('en-IN', {
+    // Format in Indian Standard Time (Asia/Kolkata): Day, D Mon YYYY (e.g. "Thu, 1 Oct 2026")
+    return d.toLocaleDateString('en-IN', {
       timeZone: 'Asia/Kolkata',
-      month: 'short',
+      weekday: 'short',
       day: 'numeric',
+      month: 'short',
       year: 'numeric',
     });
-
-    const timeStr = d.toLocaleTimeString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-
-    return `${dateStr} at ${timeStr}`;
   } catch {
     return String(dateInput);
   }
@@ -30,55 +26,56 @@ export const formatDateShortWithTime = (dateInput?: string | Date | null): strin
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return String(dateInput);
 
-    const dateStr = d.toLocaleDateString('en-IN', {
+    return d.toLocaleDateString('en-IN', {
       timeZone: 'Asia/Kolkata',
-      month: 'short',
+      weekday: 'short',
       day: 'numeric',
+      month: 'short',
+      year: 'numeric',
     });
+  } catch {
+    return String(dateInput);
+  }
+};
 
-    const timeStr = d.toLocaleTimeString('en-IN', {
+export const formatISTDateAndDay = (dateInput?: string | Date | null): string => {
+  if (!dateInput) return '';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput);
+
+    return d.toLocaleDateString('en-IN', {
       timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-
-    return `${dateStr}, ${timeStr}`;
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }); // e.g. "Thursday, 1 Oct 2026"
   } catch {
     return String(dateInput);
   }
 };
 
 export const formatTimeIST = (dateInput?: string | Date | null): string => {
-  if (!dateInput) return '';
-  try {
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return String(dateInput);
-
-    return d.toLocaleTimeString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch {
-    return String(dateInput);
-  }
+  // Returns Day and Date in IST, no clock time
+  return formatDateTime(dateInput);
 };
 
 export const getKolkataDateString = (d: Date = new Date()): string => {
   try {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    return new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    });
-    return formatter.format(d); // Returns YYYY-MM-DD
+    }).format(d); // Returns YYYY-MM-DD in IST
   } catch {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const ist = new Date(utc + (3600000 * 5.5));
+    const year = ist.getFullYear();
+    const month = String(ist.getMonth() + 1).padStart(2, '0');
+    const day = String(ist.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 };
+

@@ -102,6 +102,14 @@ export const EmployeeDashboardView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
   const [showPendingOnly, setShowPendingOnly] = useState<boolean>(false);
+  const [dismissedOverdueTaskIds, setDismissedOverdueTaskIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('dismissed_overdue_tasks');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // DB Employees & Active Employee Profile Resolution
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
@@ -312,10 +320,52 @@ export const EmployeeDashboardView: React.FC = () => {
   const scopedTodaysMeetings = todaysMeetings.filter((m) => matchesEntityFilter(m, selectedEntity));
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const delayedTask = scopedMyTasks.find((t) => t.status === 'Delayed');
+  const delayedTask = scopedMyTasks.find(
+    (t) =>
+      t.status === 'Delayed' &&
+      !dismissedOverdueTaskIds.includes(t.id) &&
+      !dismissedOverdueTaskIds.includes(t.taskId)
+  );
   const lateRunningTask = isDataLoaded
-    ? (scopedMyTasks.find((t) => t.status !== 'Done' && (t.status === 'Delayed' || (t.dueDate && t.dueDate.split('T')[0] < todayStr))) || delayedTask)
+    ? (scopedMyTasks.find(
+        (t) =>
+          t.status !== 'Done' &&
+          t.status !== 'Completed' &&
+          !dismissedOverdueTaskIds.includes(t.id) &&
+          !dismissedOverdueTaskIds.includes(t.taskId) &&
+          (t.status === 'Delayed' || (t.dueDate && t.dueDate.split('T')[0] < todayStr))
+      ) || delayedTask)
     : null;
+
+  const handleDismissOverdueBanner = (taskId: string, taskCode?: string) => {
+    setDismissedOverdueTaskIds((prev) => {
+      const next = Array.from(new Set([...prev, taskId, taskCode].filter(Boolean) as string[]));
+      try {
+        localStorage.setItem('dismissed_overdue_tasks', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    toast.success('Overdue alert closed.');
+  };
+
+  const handleMarkOverdueTaskDone = async (task: EmployeeDeliverableTask) => {
+    try {
+      await fetchApi(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'Done',
+        }),
+      });
+      setMyTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: 'Done' } : t))
+      );
+      handleDismissOverdueBanner(task.id, task.taskId);
+      toast.success(`Task ${task.taskId} marked as Done! It won't appear on the dashboard again.`);
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update task status');
+    }
+  };
 
   // Specific employee task metrics calculation for Pie Chart
   const doneCount = scopedMyTasks.filter((t) => t.status === 'Done').length;
@@ -344,6 +394,12 @@ export const EmployeeDashboardView: React.FC = () => {
       waitingOn: t.waitingOn,
       notes: t.notes,
       epicId: (t as any).epicId || null,
+      dueDate: t.dueDate ? t.dueDate.split('T')[0] : '',
+      priority: t.priority || 'P3',
+      createdAt: (t as any).createdAt,
+      createdById: (t as any).createdById || (t as any).creatorId,
+      createdByName: (t as any).createdByName || (t as any).creatorName || (t as any).createdBy || '',
+      creatorName: (t as any).createdByName || (t as any).creatorName || (t as any).createdBy || '',
     });
   };
 
@@ -565,8 +621,18 @@ export const EmployeeDashboardView: React.FC = () => {
 
       {/* TASK RUNNING LATE POP CAPSULE BANNER */}
       {lateRunningTask && (
-        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 border-2 border-red-500/50 rounded-2xl p-4 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md animate-in fade-in zoom-in-95 duration-200 select-none">
-          <div className="flex items-center gap-3">
+        <div className="relative bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 border-2 border-red-500/50 rounded-2xl p-4 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md animate-in fade-in zoom-in-95 duration-200 select-none">
+          {/* Top-Right Cross / Close Button */}
+          <button
+            type="button"
+            onClick={() => handleDismissOverdueBanner(lateRunningTask.id, lateRunningTask.taskId)}
+            className="absolute top-3 right-3 p-1 rounded-lg bg-black/20 hover:bg-black/40 text-white/80 hover:text-white transition-colors cursor-pointer"
+            title="Dismiss / Close alert"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-3 pr-8">
             <div className="p-2.5 bg-white/20 backdrop-blur-xs rounded-xl border border-white/30 shrink-0">
               <AlertTriangle className="w-5 h-5 text-white animate-bounce" />
             </div>
@@ -587,13 +653,35 @@ export const EmployeeDashboardView: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => handleSendDelayRequest(lateRunningTask.id, lateRunningTask.taskId)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-red-50 text-red-700 font-extrabold text-xs rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
-          >
-            <Send className="w-3.5 h-3.5 text-red-600" />
-            <span>Request Extension / Update</span>
-          </button>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => handleMarkOverdueTaskDone(lateRunningTask)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors cursor-pointer border border-emerald-400"
+              title="Mark as Done so it won't show again"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+              <span>Mark Done</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSendDelayRequest(lateRunningTask.id, lateRunningTask.taskId)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-red-50 text-red-700 font-extrabold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5 text-red-600" />
+              <span>Request Extension</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDismissOverdueBanner(lateRunningTask.id, lateRunningTask.taskId)}
+              className="flex items-center gap-1 px-2.5 py-2 bg-black/20 hover:bg-black/30 text-white font-extrabold text-xs rounded-xl transition-colors cursor-pointer border border-white/20"
+              title="Close this notification"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Close</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -748,6 +836,13 @@ export const EmployeeDashboardView: React.FC = () => {
                               outputUrl: t.outputUrl,
                               waitingOn: t.waitingOn,
                               notes: t.notes,
+                              epicId: (t as any).epicId || null,
+                              dueDate: t.dueDate ? t.dueDate.split('T')[0] : '',
+                              priority: t.priority || 'P3',
+                              createdAt: (t as any).createdAt,
+                              createdById: (t as any).createdById || (t as any).creatorId,
+                              createdByName: (t as any).createdByName || (t as any).creatorName || (t as any).createdBy || '',
+                              creatorName: (t as any).createdByName || (t as any).creatorName || (t as any).createdBy || '',
                             });
                           }}
                           className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 cursor-pointer hover:bg-emerald-100 hover:underline transition-all"
@@ -844,7 +939,7 @@ export const EmployeeDashboardView: React.FC = () => {
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-gray-800">
-                              {m.startTime ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'}
+                              {m.startTime ? new Date(m.startTime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' }) : 'Today'}
                             </span>
                             {isPast ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 text-slate-700 text-[9px] font-extrabold rounded-full border border-slate-300">
@@ -1047,7 +1142,7 @@ export const EmployeeDashboardView: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                            {new Date(meet.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(meet.startTime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}
                           </span>
                           <a
                             href={meet.googleMeetUrl}

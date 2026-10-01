@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, announcements, eq, desc, sql } from '@workspace/db';
+import { db, announcements, entities, eq, desc, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -13,6 +13,7 @@ router.get('/', async (req, res) => {
       .from(announcements)
       .orderBy(desc(announcements.createdAt));
 
+    const allEntities = await db.select().from(entities);
     const rawCallerIds = [req.user?.id, req.user?.email, req.user?.employeeId].filter(Boolean) as string[];
     const callerIdsLower = rawCallerIds.map((x) => x.toLowerCase().trim());
 
@@ -36,8 +37,15 @@ router.get('/', async (req, res) => {
         typeof x === 'string' ? x.trim() : String(x)
       );
       const isDismissed = callerIdsLower.some((uid: string) => seenList.some((s: string) => s.toLowerCase() === uid));
+      const ent = allEntities.find((e: any) => e.id === a.targetEntityId);
+      const resolvedEntity = ent?.code === 'CAG' ? 'CLIMAGRO' : ent?.code === 'EHM' ? 'EHM' : 'BOTH';
+      const entityName = ent?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'EHM' ? 'EHM Consultancy' : 'Both (EHM & CLIMAGRO)');
+
       return {
         ...a,
+        entity: resolvedEntity,
+        entityCode: ent?.code || 'BOTH',
+        entityName,
         seenBy: seenList,
         seen_by: seenList,
         isDismissed,
@@ -70,6 +78,22 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       validPriority = 'NORMAL';
     }
 
+    let resolvedEntityId = targetEntityId || null;
+    if (req.body.entity || req.body.entityScope) {
+      const scope = (req.body.entity || req.body.entityScope).toString().toUpperCase();
+      if (scope === 'CAG' || scope === 'CLIMAGRO') {
+        const allEnts = await db.select().from(entities);
+        const cag = allEnts.find((e: any) => e.code === 'CAG' || e.name.toLowerCase().includes('climagro'));
+        resolvedEntityId = cag?.id || null;
+      } else if (scope === 'EHM') {
+        const allEnts = await db.select().from(entities);
+        const ehm = allEnts.find((e: any) => e.code === 'EHM' || e.name.toLowerCase().includes('ehm'));
+        resolvedEntityId = ehm?.id || null;
+      } else {
+        resolvedEntityId = null;
+      }
+    }
+
     const [newAnnouncement] = await db
       .insert(announcements)
       .values({
@@ -77,7 +101,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         content,
         priority: validPriority,
         isPinned: !!isPinned,
-        targetEntityId: targetEntityId || null,
+        targetEntityId: resolvedEntityId,
         createdBy: req.user?.id || null,
         seenBy: [],
       })
@@ -118,7 +142,23 @@ router.patch('/:id', async (req, res) => {
     if (title !== undefined) updateData.title = title.trim();
     if (content !== undefined) updateData.content = content;
     if (isPinned !== undefined) updateData.isPinned = !!isPinned;
-    if (targetEntityId !== undefined) updateData.targetEntityId = targetEntityId || null;
+
+    if (req.body.entity !== undefined || req.body.entityScope !== undefined) {
+      const scope = (req.body.entity || req.body.entityScope || '').toString().toUpperCase();
+      if (scope === 'CAG' || scope === 'CLIMAGRO') {
+        const allEnts = await db.select().from(entities);
+        const cag = allEnts.find((e: any) => e.code === 'CAG' || e.name.toLowerCase().includes('climagro'));
+        updateData.targetEntityId = cag?.id || null;
+      } else if (scope === 'EHM') {
+        const allEnts = await db.select().from(entities);
+        const ehm = allEnts.find((e: any) => e.code === 'EHM' || e.name.toLowerCase().includes('ehm'));
+        updateData.targetEntityId = ehm?.id || null;
+      } else {
+        updateData.targetEntityId = null;
+      }
+    } else if (targetEntityId !== undefined) {
+      updateData.targetEntityId = targetEntityId || null;
+    }
 
     if (priority !== undefined) {
       const normalized = (priority || '').toString().toUpperCase();

@@ -823,6 +823,9 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       targetWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
       priority: task.priority || 'P3',
       createdAt: task.createdAt,
+      createdById: task.createdById || task.creatorId,
+      createdByName: task.createdByName || task.creatorName || (employees.find(e => e.id === (task.createdById || task.creatorId)) ? `${employees.find(e => e.id === (task.createdById || task.creatorId))?.firstName} ${employees.find(e => e.id === (task.createdById || task.creatorId))?.lastName}`.trim() : task.createdBy || ''),
+      creatorName: task.createdByName || task.creatorName || (employees.find(e => e.id === (task.createdById || task.creatorId)) ? `${employees.find(e => e.id === (task.createdById || task.creatorId))?.firstName} ${employees.find(e => e.id === (task.createdById || task.creatorId))?.lastName}`.trim() : task.createdBy || ''),
     });
   };
 
@@ -846,7 +849,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           status: updated.status,
           deliverableUrl: updated.outputUrl,
           description: updated.notes,
-          dueDate: updated.dueDate,
+          dueDate: updated.dueDate || null,
           sprintWeek: updated.targetWeek,
           priority: updated.priority,
           waitingOn: updated.waitingOn,
@@ -919,6 +922,9 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       waitingOn: 'None (Self)',
       notes: clonedTaskObj.description,
       createdAt: clonedTaskObj.createdAt,
+      createdById: user?.id,
+      createdByName: user?.name,
+      creatorName: user?.name,
     });
 
     toast.success(`Task duplicated! Opening cloned task ${newCode}...`);
@@ -1463,7 +1469,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                   </p>
                                 </div>
 
-                                {/* 4. Metadata Spec Sheet (Assignee, Reviewer, Created By) */}
+                                {/* 4. Metadata Spec Sheet (Assignee, Reviewer) */}
                                 <div className="space-y-1 pt-1 text-[11px]">
                                   <div className="flex items-center justify-between text-gray-500 font-medium">
                                     <span className="text-gray-400 text-[10px]">Assignee</span>
@@ -1475,12 +1481,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                     <span className="text-gray-400 text-[10px]">Reviewer</span>
                                     <span className="text-[11px] font-semibold text-gray-800 truncate max-w-[140px] text-right">
                                       {reviewerLead}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between text-gray-500 font-medium">
-                                    <span className="text-gray-400 text-[10px]">Created By</span>
-                                    <span className="text-[11px] font-semibold text-emerald-700 truncate max-w-[140px] text-right">
-                                      {t.createdByName || t.creatorName || 'Dr. Harshit Mishra'}
                                     </span>
                                   </div>
                                 </div>
@@ -1640,8 +1640,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                   />
                 </div>
 
-                {/* Entity & Department & Target Sprint Week */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                {/* Entity & Department */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between min-h-[18px]">
                       <span>Entity / Brand *</span>
@@ -1930,7 +1930,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                 {formatAuthorDisplayName(c.authorName)}
                               </span>
                               <div className="flex items-center gap-1.5">
-                                <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span>{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
                                 {!c.isSystemLog && (
                                   <div className="flex items-center gap-0.5 ml-1">
                                     <button
@@ -2164,20 +2164,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-gray-700 mb-1">Target Sprint Week *</label>
-                    <select
-                      value={assignTaskModal.sprintWeek}
-                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, sprintWeek: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    >
-                      <option value="Week 1 (Days 1–7)">Week 1 (Days 1–7)</option>
-                      <option value="Week 2 (Days 8–14)">Week 2 (Days 8–14)</option>
-                      <option value="Week 3 (Days 15–21)">Week 3 (Days 15–21)</option>
-                      <option value="Week 4 (Days 22–28)">Week 4 (Days 22–28)</option>
-                    </select>
-                  </div>
-
-                  <div>
                     <label className="block font-bold text-gray-700 mb-1">Priority</label>
                     <select
                       value={assignTaskModal.priority}
@@ -2190,16 +2176,27 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       <option value="LOW">P4 (Low Priority) ⚪</option>
                     </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Review / Due Date *</label>
-                  <input
-                    type="date"
-                    value={assignTaskModal.dueDate}
-                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, dueDate: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                  />
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-gray-700">Due Date</label>
+                      {assignTaskModal.dueDate && (
+                        <button
+                          type="button"
+                          onClick={() => setAssignTaskModal({ ...assignTaskModal, dueDate: '' })}
+                          className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      value={assignTaskModal.dueDate}
+                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, dueDate: e.target.value })}
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -2403,7 +2400,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
                             <span>{formatAuthorDisplayName(c.authorName)}</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-gray-400">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
                               <div className="flex items-center gap-0.5 ml-1">
                                 <button
                                   type="button"
@@ -2810,7 +2807,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
                             <span>{formatAuthorDisplayName(c.authorName)}</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-gray-400">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
                               <div className="flex items-center gap-0.5 ml-1">
                                 <button
                                   type="button"

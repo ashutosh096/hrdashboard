@@ -6,17 +6,7 @@ import { fetchApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
-const formatISTTime = (d: Date | string): string => {
-  if (!d) return '';
-  const dateObj = typeof d === 'string' ? new Date(d) : d;
-  if (isNaN(dateObj.getTime())) return '';
-  return dateObj.toLocaleTimeString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-};
+
 
 const getKolkataDateString = (d: Date): string => {
   try {
@@ -129,7 +119,7 @@ export const OfficeTodayView: React.FC = () => {
         return {
           title: displayTitle,
           isPrivate: !isSelf && slot.isPrivate,
-          time: `${formatISTTime(start)} - ${formatISTTime(end)}`,
+          dateDay: start.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' }),
           active,
           rawStart: start,
         };
@@ -349,8 +339,8 @@ export const OfficeTodayView: React.FC = () => {
                             )}
                           </div>
                           <div className="flex items-center gap-1 text-[10px] text-gray-400 font-semibold">
-                            <Clock className="w-3 h-3 text-gray-400" />
-                            <span>{m.time}</span>
+                            <Calendar className="w-3 h-3 text-emerald-600" />
+                            <span>{m.dateDay}</span>
                           </div>
                         </div>
                       ))}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Clock, CheckSquare, Calendar, Bell, AtSign, User, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, CheckCheck, FileText, ArrowRight, ArrowUpRight, Trash2 } from 'lucide-react';
 import { formatDateTime } from '../utils/dateUtils';
 import { fetchApi, clearApiCache } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,7 +17,8 @@ export const NotificationsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskItem | null>(null);
-  const pageSize = 10;
+  const pageSize = 20;
+  const MAX_NOTIFICATIONS = 100;
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -62,10 +63,31 @@ export const NotificationsView: React.FC = () => {
     return matchesEntity && (isDirectUser || isTaggedUser || isAssignee);
   });
 
-  // Pagination Logic (10 notifications per page)
-  const totalPages = Math.ceil(filteredNotifications.length / pageSize) || 1;
+  // Pagination Logic (Max 100 notifications, 20 notifications per page)
+  const cappedNotifications = filteredNotifications.slice(0, MAX_NOTIFICATIONS);
+  const totalPages = Math.ceil(cappedNotifications.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedNotifications = filteredNotifications.slice(startIndex, startIndex + pageSize);
+  const paginatedNotifications = cappedNotifications.slice(startIndex, startIndex + pageSize);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await fetchApi('/api/notifications/read-all', { method: 'POST' });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      toast.success('All notifications marked as read');
+    } catch {
+      toast.error('Failed to mark notifications read');
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await fetchApi('/api/notifications/clear-all', { method: 'POST' });
+      setNotifications([]);
+      toast.success('All notifications cleared and emptied');
+    } catch {
+      toast.error('Failed to clear notifications');
+    }
+  };
 
   const getNotificationTarget = (n: any) => {
     const payload = n.payload || {};
@@ -265,22 +287,44 @@ export const NotificationsView: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl select-none">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Notifications & Activity Feed</h2>
           <p className="text-xs text-gray-500 font-medium">
             {isEmployee
-              ? `Realtime alerts & tagged mentions for ${user?.name || 'Ashutosh Mishra'}.`
-              : 'Realtime manager alerts, task overdue warnings & system status updates.'}
+              ? `Realtime alerts & tagged mentions for ${user?.name || 'Ashutosh Mishra'}. Capped at 100 latest, 20 per page.`
+              : 'Realtime manager alerts & task updates. Capped at 100 latest, 20 per page.'}
           </p>
         </div>
 
-        {isEmployee && (
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200 flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Tagged Team Member Alerts</span>
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {cappedNotifications.some((n) => !n.isRead) && (
+            <button
+              onClick={handleMarkAllRead}
+              className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              <span>Mark All Read</span>
+            </button>
+          )}
+
+          {cappedNotifications.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear All</span>
+            </button>
+          )}
+
+          {isEmployee && (
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Tagged Alerts</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -347,11 +391,11 @@ export const NotificationsView: React.FC = () => {
             )}
           </div>
 
-          {/* 📄 Pagination Bar (10 notifications per page) */}
+          {/* 📄 Pagination Bar (20 notifications per page, max 100) */}
           {totalPages > 1 && (
             <div className="p-3 bg-white border border-gray-200/80 rounded-2xl flex items-center justify-between text-xs font-bold text-gray-600 shadow-2xs">
               <div>
-                Showing {startIndex + 1}–{Math.min(startIndex + pageSize, filteredNotifications.length)} of {filteredNotifications.length} notifications
+                Showing {cappedNotifications.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + pageSize, cappedNotifications.length)} of {cappedNotifications.length} notifications (Page {currentPage} of {totalPages})
               </div>
               <div className="flex items-center gap-2">
                 <button

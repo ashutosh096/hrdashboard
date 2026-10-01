@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles, ArrowRight, ArrowUpRight, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles, ArrowRight, ArrowUpRight, Loader2, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi, clearApiCache } from '@workspace/api-client-react';
@@ -31,7 +31,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { selectedEntity } = useEntity();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(3);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
@@ -43,12 +42,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       const data = await fetchApi<any[]>('/api/notifications');
       const notifList = Array.isArray(data) ? data : [];
       setNotifications(notifList);
-      const unread = notifList.filter((n: any) => !n.isRead).length;
-      setUnreadNotificationsCount(unread);
     } catch (err) {
       console.error('[NOTIFICATIONS FETCH ERROR]:', err);
       setNotifications([]);
-      setUnreadNotificationsCount(0);
     }
   };
 
@@ -111,6 +107,39 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
   };
 
+  const displayNotifications = useMemo(() => {
+    return notifications.filter((n: any) => {
+      const payload = n.payload || {};
+      const matchesEntity = matchesEntityFilter(n, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
+      if (!isEmployee) return matchesEntity;
+
+      const userId = user?.id;
+      const empId = user?.employeeId;
+      const userName = (user?.name || '').toLowerCase();
+      const userEmail = (user?.email || '').toLowerCase();
+
+      const isDirect = n.userId === userId || (empId && n.userId === empId);
+      const isTagged = Array.isArray(payload.taggedUserIds) && (
+        (userId && payload.taggedUserIds.includes(userId)) ||
+        (empId && payload.taggedUserIds.includes(empId))
+      );
+      const isAssignee =
+        (userId && payload.assigneeId === userId) ||
+        (empId && payload.assigneeId === empId) ||
+        (userEmail && payload.assigneeEmail?.toLowerCase() === userEmail) ||
+        (userName && payload.assigneeName && payload.assigneeName.toLowerCase().trim() === userName);
+
+      const msgLower = (n.message || '').toLowerCase();
+      const titleLower = (n.title || '').toLowerCase();
+      const isUserMatch = isDirect || isTagged || isAssignee || n.tagged || (userName && (msgLower.includes(userName) || titleLower.includes(userName)));
+      return matchesEntity && isUserMatch;
+    });
+  }, [notifications, selectedEntity, isEmployee, user]);
+
+  const unreadNotificationsCount = useMemo(() => {
+    return displayNotifications.filter((n: any) => !n.isRead).length;
+  }, [displayNotifications]);
+
   const handleNotificationAction = async (n: any) => {
     const target = getNotificationTarget(n);
 
@@ -118,7 +147,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (!n.isRead) {
       fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => { });
       setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
-      setUnreadNotificationsCount((prev) => Math.max(0, prev - 1));
     }
 
     // 2. Close notifications dropdown
@@ -185,10 +213,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleMarkAllRead = async () => {
     try {
       await fetchApi('/api/notifications/read-all', { method: 'POST' });
-      setUnreadNotificationsCount(0);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      toast.success('All notifications marked as read');
     } catch (err) {
       console.error('[MARK ALL READ ERROR]:', err);
+      toast.error('Failed to mark notifications read');
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await fetchApi('/api/notifications/clear-all', { method: 'POST' });
+      setNotifications([]);
+      toast.success('All notifications cleared & emptied');
+    } catch (err) {
+      console.error('[CLEAR ALL NOTIFICATIONS ERROR]:', err);
+      toast.error('Failed to clear notifications');
     }
   };
 
@@ -275,50 +315,33 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 space-y-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                   <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Notifications</h3>
-                  {unreadNotificationsCount > 0 && (
-                    <button
-                      onClick={handleMarkAllRead}
-                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Check className="w-3 h-3" /> Mark all read
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {unreadNotificationsCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
+                        title="Mark all as read"
+                      >
+                        <Check className="w-3 h-3" /> Mark read
+                      </button>
+                    )}
+                    {displayNotifications.length > 0 && (
+                      <button
+                        onClick={handleClearAll}
+                        className="text-[10px] text-red-500 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
+                        title="Clear and empty all notifications"
+                      >
+                        <Trash2 className="w-3 h-3" /> Clear all
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {(() => {
-                    const displayNotifications = notifications.filter((n: any) => {
-                      const payload = n.payload || {};
-                      const matchesEntity = matchesEntityFilter(n, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
-                      if (!isEmployee) return matchesEntity;
-
-                      const userId = user?.id;
-                      const empId = user?.employeeId;
-                      const userName = (user?.name || '').toLowerCase();
-                      const userEmail = (user?.email || '').toLowerCase();
-
-                      const isDirect = n.userId === userId || (empId && n.userId === empId);
-                      const isTagged = Array.isArray(payload.taggedUserIds) && (
-                        (userId && payload.taggedUserIds.includes(userId)) ||
-                        (empId && payload.taggedUserIds.includes(empId))
-                      );
-                      const isAssignee =
-                        (userId && payload.assigneeId === userId) ||
-                        (empId && payload.assigneeId === empId) ||
-                        (userEmail && payload.assigneeEmail?.toLowerCase() === userEmail) ||
-                        (userName && payload.assigneeName && payload.assigneeName.toLowerCase().trim() === userName);
-
-                      const msgLower = (n.message || '').toLowerCase();
-                      const titleLower = (n.title || '').toLowerCase();
-                      const isUserMatch = isDirect || isTagged || isAssignee || n.tagged || (userName && (msgLower.includes(userName) || titleLower.includes(userName)));
-                      return matchesEntity && isUserMatch;
-                    });
-
-                    if (displayNotifications.length === 0) {
-                      return <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>;
-                    }
-
-                    return displayNotifications.map((n) => {
+                  {displayNotifications.length === 0 ? (
+                    <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>
+                  ) : (
+                    displayNotifications.map((n) => {
                       const target = getNotificationTarget(n);
 
                       return (
@@ -365,8 +388,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </div>
                         </div>
                       );
-                    });
-                  })()}
+                    })
+                  )}
                 </div>
               </div>
             )}

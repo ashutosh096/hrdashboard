@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db, sprints, employees, entities, epics, tasks, users, notifications, taskChecklists, taskComments, taskNotes, entityCounters, generateNextGlobalCode, eq, inArray, sql, and, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
+import { insertNotification } from '../services/notificationService.js';
 
 const router = Router();
 
@@ -31,6 +32,8 @@ router.get('/', async (req, res) => {
     const allEntities = await db.select().from(entities);
 
     const enriched = allSprints.map(sprint => {
+      const creatorEmp = allEmployees.find(e => e.id === sprint.createdById);
+      const creatorName = sprint.createdByName || (creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : null);
       const sprintTasks = allTasks.filter(t => t.sprintId === sprint.id);
       const sprintEmp = allEmployees.find(e => e.id === sprint.employeeId);
       const sprintEpic = allEpics.find(e => e.id === sprint.epicId);
@@ -44,6 +47,7 @@ router.get('/', async (req, res) => {
 
       return {
         ...sprint,
+        createdByName: creatorName,
         entity: resolvedEntity,
         entityCode: resolvedCode,
         entityName: sprintEntity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
@@ -138,21 +142,24 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         .where(eq(users.employeeId, emp.id));
 
       if (empUser) {
-        await tx.insert(notifications).values({
-          userId: empUser.id,
-          type: 'TASK_ASSIGNED',
-          payload: {
-            sprintId: newSprint.id,
-            sprintCode: newSprint.sprintCode,
-            taskCode: newSprint.sprintCode,
-            title: `New Sprint Assigned: [${newSprint.sprintCode}] "${newSprint.name}"`,
-            message: `You have been assigned to a new personal sprint: [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
-            taskTitle: newSprint.name,
-            assigneeId: emp.id,
-            assigneeName: `${emp.firstName} ${emp.lastName}`.trim(),
-            tagged: true,
+        await insertNotification(
+          {
+            userId: empUser.id,
+            type: 'TASK_ASSIGNED',
+            payload: {
+              sprintId: newSprint.id,
+              sprintCode: newSprint.sprintCode,
+              taskCode: newSprint.sprintCode,
+              title: `New Sprint Assigned: [${newSprint.sprintCode}] "${newSprint.name}"`,
+              message: `You have been assigned to a new personal sprint: [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
+              taskTitle: newSprint.name,
+              assigneeId: emp.id,
+              assigneeName: `${emp.firstName} ${emp.lastName}`.trim(),
+              tagged: true,
+            },
           },
-        });
+          tx
+        );
       }
 
       return newSprint;
@@ -178,10 +185,10 @@ async function handleSprintUpdate(req: any, res: any) {
       const updatePayload: any = {};
       if (name !== undefined) updatePayload.name = name;
       if (goal !== undefined) updatePayload.goal = goal;
-      if (startDate !== undefined) updatePayload.startDate = new Date(startDate);
-      if (endDate !== undefined) updatePayload.endDate = new Date(endDate);
+      if (startDate !== undefined) updatePayload.startDate = startDate ? new Date(startDate) : null;
+      if (endDate !== undefined) updatePayload.endDate = endDate ? new Date(endDate) : null;
       if (status !== undefined) updatePayload.status = status;
-      if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek;
+      if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek || null;
       if (department !== undefined) updatePayload.department = department;
       if (epicId !== undefined) updatePayload.epicId = epicId || null;
       if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;

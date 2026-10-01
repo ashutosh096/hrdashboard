@@ -157,13 +157,15 @@ router.get('/notifications', async (req, res) => {
       list = await db
         .select()
         .from(notifications)
-        .orderBy(desc(notifications.createdAt));
+        .orderBy(desc(notifications.createdAt))
+        .limit(100);
     } else {
       list = await db
         .select()
         .from(notifications)
         .where(eq(notifications.userId, req.user!.id))
-        .orderBy(desc(notifications.createdAt));
+        .orderBy(desc(notifications.createdAt))
+        .limit(100);
     }
 
     const formatted = list.map(n => {

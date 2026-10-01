@@ -71,9 +71,14 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
       }
 
       const now = new Date();
-      const dateFormatted = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}.${String(now.getFullYear()).slice(-2)}`;
-      const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setLastUpdateStr(`${dateFormatted} at ${timeFormatted}`);
+      const dateFormatted = now.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+      setLastUpdateStr(dateFormatted);
     } catch (err) {
       console.error('[TASK COMPLETION FETCH ERROR]:', err);
     } finally {

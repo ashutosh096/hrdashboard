@@ -209,11 +209,19 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
       entity: resolvedEntity,
       entityCode: resolvedEntityCode,
       assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
+      assigneeId: taskItem.assigneeId,
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
+      reviewingLeadId: taskItem.reviewingLeadId,
       status: taskItem.status === 'DONE' ? 'Done' : 'In Progress',
       outputUrl: taskItem.deliverableUrl || taskItem.outputUrl || '',
       waitingOn: 'None (Self)',
       notes: taskItem.description || taskItem.notes || '',
+      dueDate: taskItem.dueDate ? taskItem.dueDate.split('T')[0] : '',
+      priority: taskItem.priority || 'P3',
+      createdAt: taskItem.createdAt,
+      createdById: taskItem.createdById || taskItem.creatorId,
+      createdByName: taskItem.createdByName || taskItem.creatorName || taskItem.createdBy || '',
+      creatorName: taskItem.createdByName || taskItem.creatorName || taskItem.createdBy || '',
     });
   };
 
@@ -380,7 +388,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
           description: editDescription,
           entityId: editEntityId,
           subDepartment: editSubDepartment,
-          targetMonth: editTargetMonth,
+          targetMonth: editTargetMonth || null,
           epicsCountTarget: editEpicsCountTarget,
           targetDeliverableMetric: editTargetDeliverableMetric,
         }),
@@ -777,9 +785,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                           <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently'}</span>
                         </div>
 
-                        <div className="flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200/60" title={`Created by ${item.createdByName || 'Dr. Harshit Mishra'}`}>
-                          <UserCheck className="w-3 h-3 text-emerald-600" />
-                          <span>Created by: <strong className="text-gray-800 font-semibold">{item.createdByName || 'Dr. Harshit Mishra'}</strong></span>
+                        <div className="flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200/60" title={`Created by ${item.createdByName || 'Admin'}`}>
+                          <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <span>Created by: <strong className="text-gray-800 font-semibold">{item.createdByName || 'Admin'}</strong></span>
                         </div>
                       </div>
 
@@ -1015,7 +1023,18 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               {/* 4-Column Metadata Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                 <div>
-                  <span className="text-xs text-gray-400 font-medium block mb-1">Timeline / Month</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-400 font-medium">Timeline / Month</span>
+                    {isEditMode && editTargetMonth && (
+                      <button
+                        type="button"
+                        onClick={() => setEditTargetMonth('')}
+                        className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                   {isEditMode ? (
                     <CalendarPicker
                       value={editTargetMonth}
@@ -1025,7 +1044,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                     />
                   ) : (
                     <span className="text-xs font-bold text-gray-900 block">
-                      {viewingInitiative.targetMonth || 'Month 1 • weeks 1–4'}
+                      {viewingInitiative.targetMonth || 'No target month set'}
                     </span>
                   )}
                 </div>
@@ -1066,7 +1085,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {viewingInitiative.createdByName || 'Dr. Harshit Mishra'}
+                    {viewingInitiative.createdByName || 'Admin'}
                   </span>
                 </div>
               </div>
@@ -1222,13 +1241,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 );
               })()}
 
-              {/* Created By & Audit History Header */}
-              <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-1.5 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Created by: <strong className="text-gray-900 font-semibold">{viewingInitiative.createdByName || 'Dr. Harshit Mishra'}</strong></span>
-                </div>
-
+              {/* Audit History Action */}
+              <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3 text-xs">
                 <button
                   type="button"
                   onClick={() => setHistoryTarget({
@@ -1821,7 +1835,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
                   <span className="text-xs font-bold text-gray-900 block">
-                    {(viewingEpicDetails as any).createdByName || 'Dr. Harshit Mishra'}
+                    {(viewingEpicDetails as any).createdByName || 'Admin'}
                   </span>
                 </div>
               </div>

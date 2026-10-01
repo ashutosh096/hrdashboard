@@ -3,6 +3,7 @@ import { db, tasks, employees, departments, entities, users, notifications, spri
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
+import { insertNotification, pruneNotificationsToLimit } from '../services/notificationService.js';
 
 const router = Router();
 
@@ -300,7 +301,7 @@ export async function createTaskNotification({
     }
 
     if (resolvedUserId) {
-      await db.insert(notifications).values({
+      await insertNotification({
         userId: resolvedUserId,
         type,
         payload: {
@@ -602,21 +603,24 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
         if (assigneeUser) {
           const notifTitle = `New Sprint Task Assigned: [${newTask.taskCode}] "${newTask.title}"`;
           const notifMsg = `You have been assigned to sprint task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`;
-          await tx.insert(notifications).values({
-            userId: assigneeUser.id,
-            type: 'TASK_ASSIGNED',
-            payload: {
-              taskId: newTask.id,
-              taskCode: newTask.taskCode,
-              taskTitle: newTask.title,
-              title: notifTitle,
-              message: notifMsg,
-              assigneeId: assignee.id,
-              assigneeName: `${assignee.firstName} ${assignee.lastName}`.trim(),
-              dueDate: dueDateVal ? dueDateVal.toISOString().split('T')[0] : null,
-              tagged: true,
+          await insertNotification(
+            {
+              userId: assigneeUser.id,
+              type: 'TASK_ASSIGNED',
+              payload: {
+                taskId: newTask.id,
+                taskCode: newTask.taskCode,
+                taskTitle: newTask.title,
+                title: notifTitle,
+                message: notifMsg,
+                assigneeId: assignee.id,
+                assigneeName: `${assignee.firstName} ${assignee.lastName}`.trim(),
+                dueDate: dueDateVal ? dueDateVal.toISOString().split('T')[0] : null,
+                tagged: true,
+              },
             },
-          });
+            tx
+          );
         }
 
         return {
@@ -773,10 +777,16 @@ const handleTaskUpdate = async (req: any, res: any) => {
       }
 
       // Handle Due Date
-      if (dueDate !== undefined && dueDate !== null && dueDate !== '') {
-        const parsedDate = new Date(dueDate);
-        if (!isNaN(parsedDate.getTime())) {
-          updateData.dueDate = parsedDate;
+      if (dueDate !== undefined) {
+        if (!dueDate || dueDate === '' || dueDate === null) {
+          updateData.dueDate = null;
+        } else {
+          const parsedDate = new Date(dueDate);
+          if (!isNaN(parsedDate.getTime())) {
+            updateData.dueDate = parsedDate;
+          } else {
+            updateData.dueDate = null;
+          }
         }
       }
 
@@ -1156,7 +1166,7 @@ router.post('/:id/delay-request', async (req, res) => {
     }
 
     if (targetUser) {
-      await db.insert(notifications).values({
+      await insertNotification({
         userId: targetUser.id,
         type: 'DELAY_REQUEST',
         payload: {

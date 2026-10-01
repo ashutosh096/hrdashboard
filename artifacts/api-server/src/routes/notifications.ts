@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { db, notifications, eq } from '@workspace/db';
+import { db, notifications, eq, and, isNull, sql } from '@workspace/db';
 import { desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
+import { pruneNotificationsToLimit, MAX_NOTIFICATIONS_LIMIT } from '../services/notificationService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -15,13 +16,15 @@ router.get('/', async (req, res) => {
       rawNotifs = await db
         .select()
         .from(notifications)
-        .orderBy(desc(notifications.createdAt));
+        .orderBy(desc(notifications.createdAt))
+        .limit(MAX_NOTIFICATIONS_LIMIT);
     } else {
       rawNotifs = await db
         .select()
         .from(notifications)
         .where(eq(notifications.userId, req.user!.id))
-        .orderBy(desc(notifications.createdAt));
+        .orderBy(desc(notifications.createdAt))
+        .limit(MAX_NOTIFICATIONS_LIMIT);
     }
 
     const formatted = rawNotifs.map(n => {
@@ -56,15 +59,54 @@ router.get('/', async (req, res) => {
 
 router.post('/read-all', async (req, res) => {
   try {
-    await db
-      .update(notifications)
-      .set({ readAt: new Date() })
-      .where(eq(notifications.userId, req.user!.id));
+    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
+
+    if (isManagerOrAdmin) {
+      await db
+        .update(notifications)
+        .set({ readAt: new Date() })
+        .where(isNull(notifications.readAt));
+    } else {
+      await db
+        .update(notifications)
+        .set({ readAt: new Date() })
+        .where(and(eq(notifications.userId, req.user!.id), isNull(notifications.readAt)));
+    }
 
     res.json({ message: 'All notifications marked as read' });
   } catch (err) {
     console.error('[NOTIFICATIONS READ ALL ERROR]:', err);
     res.status(500).json({ message: 'Failed to mark notifications read' });
+  }
+});
+
+router.post('/clear-all', async (req, res) => {
+  try {
+    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
+    if (isManagerOrAdmin) {
+      await db.delete(notifications);
+    } else {
+      await db.delete(notifications).where(eq(notifications.userId, req.user!.id));
+    }
+    res.json({ success: true, message: 'All notifications cleared successfully' });
+  } catch (err) {
+    console.error('[NOTIFICATIONS CLEAR ALL ERROR]:', err);
+    res.status(500).json({ message: 'Failed to clear notifications' });
+  }
+});
+
+router.delete('/', async (req, res) => {
+  try {
+    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
+    if (isManagerOrAdmin) {
+      await db.delete(notifications);
+    } else {
+      await db.delete(notifications).where(eq(notifications.userId, req.user!.id));
+    }
+    res.json({ success: true, message: 'All notifications deleted successfully' });
+  } catch (err) {
+    console.error('[NOTIFICATIONS DELETE ALL ERROR]:', err);
+    res.status(500).json({ message: 'Failed to delete notifications' });
   }
 });
 

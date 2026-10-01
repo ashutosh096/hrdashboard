@@ -62,22 +62,6 @@ interface FlowStep {
 const FLOW_STEPS: FlowStep[] = [
   {
     step: 1,
-    level: 'Context',
-    name: 'PROJECT',
-    question: 'Where is this work delivered?',
-    role: 'Lead / Manager',
-    roleIcon: '👔',
-    colorName: 'purple',
-    borderClass: 'border-purple-200 hover:border-purple-400',
-    bgLightClass: 'bg-purple-50/50',
-    accentBarClass: 'bg-purple-500',
-    badgeClass: 'bg-purple-100 text-purple-700 border-purple-200',
-    textClass: 'text-purple-700',
-    exampleName: 'Laxmi Taal DPR',
-    exampleDesc: 'Specific delivery context & client project executed by team',
-  },
-  {
-    step: 2,
     level: 'Objective',
     name: 'INITIATIVE',
     question: 'Why are we doing this?',
@@ -90,10 +74,10 @@ const FLOW_STEPS: FlowStep[] = [
     badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     textClass: 'text-emerald-700',
     exampleName: 'EHM Agra City – Proposal Dev & Govt Engagement',
-    exampleDesc: 'Large company strategic objective (Leadership / Admin)',
+    exampleDesc: 'Highest strategic company objective (Leadership / Admin)',
   },
   {
-    step: 3,
+    step: 2,
     level: 'Workstream',
     name: 'EPIC',
     question: 'What major workstream?',
@@ -106,10 +90,10 @@ const FLOW_STEPS: FlowStep[] = [
     badgeClass: 'bg-blue-100 text-blue-700 border-blue-200',
     textClass: 'text-blue-700',
     exampleName: 'Proposal Development',
-    exampleDesc: 'Major workstream under the objective (Manager / Lead)',
+    exampleDesc: 'Major workstream under the initiative (Manager / Lead)',
   },
   {
-    step: 4,
+    step: 3,
     level: 'Action',
     name: 'TASK',
     question: 'What exactly to deliver?',
@@ -125,7 +109,7 @@ const FLOW_STEPS: FlowStep[] = [
     exampleDesc: 'Specific actionable deliverable with clear owner (Team / Assignee)',
   },
   {
-    step: 5,
+    step: 4,
     level: 'Steps',
     name: 'SUBTASK',
     question: 'What smaller actions?',
@@ -141,7 +125,7 @@ const FLOW_STEPS: FlowStep[] = [
     exampleDesc: 'Checklist action needed to complete the task (Assignee Checklist)',
   },
   {
-    step: 6,
+    step: 5,
     level: 'Cycle',
     name: 'SPRINT',
     question: 'When is it executed?',
@@ -157,7 +141,7 @@ const FLOW_STEPS: FlowStep[] = [
     exampleDesc: 'Time-boxed execution cycle for focused delivery (4-Week Timebox)',
   },
   {
-    step: 7,
+    step: 6,
     level: 'State',
     name: 'STATUS',
     question: 'Where does it stand?',
@@ -176,7 +160,7 @@ const FLOW_STEPS: FlowStep[] = [
 
 const CATEGORIES: { id: MainCategory; label: string; icon: string; shortDesc: string }[] = [
   { id: 'all', label: 'All Categories', icon: '🌟', shortDesc: 'Complete HIVE System Overview' },
-  { id: 'hierarchy', label: 'Work Hierarchy & Epics', icon: '🎯', shortDesc: 'Projects, Initiatives & Epics' },
+  { id: 'hierarchy', label: 'Work Hierarchy & Epics', icon: '🎯', shortDesc: 'Initiatives, Epics & Tasks' },
   { id: 'sprints', label: 'Sprints & Reviews', icon: '🚀', shortDesc: '4-Week Cycles & Quality Approvals' },
   { id: 'tasks', label: 'Tasks & Subtask Checklists', icon: '✅', shortDesc: 'Deliverables & Micro Checklists' },
   { id: 'governance', label: 'Governance & Auditing', icon: '🛡️', shortDesc: '3 Roles & Responsibilities' },
@@ -490,7 +474,7 @@ export const ReportsView: React.FC = () => {
               The Core Work Hierarchy & Execution Flow
             </h2>
             <p className="text-xs text-gray-500 mt-1">
-              Leadership sets Direction ➔ Managers Plan Workstreams ➔ Team Executes Deliverables
+              Leadership sets Direction (Initiatives) ➔ Managers Plan Workstreams (Epics) ➔ Team Executes Deliverables (Tasks)
             </p>
           </div>
 
@@ -528,7 +512,7 @@ export const ReportsView: React.FC = () => {
         {flowViewMode === 'pipeline' ? (
           <div className="space-y-4">
             {/* Step-by-Step Flow Chart Nodes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
               {FLOW_STEPS.map((s, idx) => {
                 const isSelected = selectedFlowStep === s.step;
                 return (
@@ -584,11 +568,11 @@ export const ReportsView: React.FC = () => {
             <div className="flex flex-col items-center">
               <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-800 bg-emerald-100/90 px-3 py-1 rounded-full mb-2 border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
                 <Crown className="w-3.5 h-3.5 text-emerald-700" />
-                <span>LEVEL 1 • LEADERSHIP DIRECTION</span>
+                <span>LEVEL 1 • LEADERSHIP STRATEGIC GOAL</span>
               </div>
               <div className="w-full max-w-md bg-white border border-emerald-200 rounded-xl p-4 shadow-xs text-center space-y-1 relative hover:shadow-md transition-shadow">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500 rounded-t-xl" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">2. Objective</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">1. Objective</span>
                 <h4 className="text-base font-black text-gray-900">INITIATIVE</h4>
                 <p className="text-xs text-gray-600 font-medium">
                   <strong>Why are we doing this?</strong> Sets high-level organizational goals & strategic outcomes.
@@ -608,37 +592,17 @@ export const ReportsView: React.FC = () => {
             <div className="flex flex-col items-center">
               <div className="text-[10px] font-extrabold uppercase tracking-widest text-blue-800 bg-blue-100/90 px-3 py-1 rounded-full mb-2 border border-blue-200 flex items-center gap-1.5 shadow-2xs">
                 <Briefcase className="w-3.5 h-3.5 text-blue-700" />
-                <span>LEVEL 2 • MANAGER PLANNING & WORKSTREAMS</span>
+                <span>LEVEL 2 • MANAGER WORKSTREAM PLANNING</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-                {/* Project */}
-                <div className="bg-white border border-purple-200 rounded-xl p-4 shadow-xs space-y-1 relative hover:shadow-md transition-shadow">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-purple-500 rounded-t-xl" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase text-purple-600">1. Context</span>
-                    <span className="text-xs">👔</span>
-                  </div>
-                  <h4 className="text-base font-black text-gray-900">PROJECT</h4>
-                  <p className="text-xs text-gray-600 font-medium">
-                    <strong>Where is it delivered?</strong> Client space, team roster, tech stack, and deliverable repository.
-                  </p>
-                  <div className="text-[11px] font-bold text-purple-700 pt-1">👔 Lead / Manager</div>
-                </div>
-
-                {/* Epic */}
-                <div className="bg-white border border-blue-200 rounded-xl p-4 shadow-xs space-y-1 relative hover:shadow-md transition-shadow">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-blue-500 rounded-t-xl" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase text-blue-600">3. Workstream</span>
-                    <span className="text-xs">👔</span>
-                  </div>
-                  <h4 className="text-base font-black text-gray-900">EPIC</h4>
-                  <p className="text-xs text-gray-600 font-medium">
-                    <strong>What major workstream?</strong> Major work package holding multiple related tasks.
-                  </p>
-                  <div className="text-[11px] font-bold text-blue-700 pt-1">👔 Manager / Lead</div>
-                </div>
+              <div className="w-full max-w-md bg-white border border-blue-200 rounded-xl p-4 shadow-xs text-center space-y-1 relative hover:shadow-md transition-shadow">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-blue-500 rounded-t-xl" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">2. Workstream</span>
+                <h4 className="text-base font-black text-gray-900">EPIC</h4>
+                <p className="text-xs text-gray-600 font-medium">
+                  <strong>What major workstream?</strong> Major work package under an Initiative holding multiple related tasks.
+                </p>
+                <div className="text-[11px] font-bold text-blue-700 pt-1">👔 Managed by: Manager / Lead</div>
               </div>
 
               {/* Vertical Branch Down */}
@@ -661,7 +625,7 @@ export const ReportsView: React.FC = () => {
                 <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-xs space-y-1 relative hover:shadow-md transition-shadow">
                   <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-500 rounded-t-xl" />
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase text-amber-600">4. Action</span>
+                    <span className="text-[10px] font-bold uppercase text-amber-600">3. Action</span>
                     <span className="text-xs">👥</span>
                   </div>
                   <h4 className="text-base font-black text-gray-900">TASK</h4>
@@ -675,7 +639,7 @@ export const ReportsView: React.FC = () => {
                 <div className="bg-white border border-teal-200 rounded-xl p-4 shadow-xs space-y-1 relative hover:shadow-md transition-shadow">
                   <div className="absolute top-0 left-0 right-0 h-1.5 bg-teal-500 rounded-t-xl" />
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase text-teal-600">5. Steps</span>
+                    <span className="text-[10px] font-bold uppercase text-teal-600">4. Steps</span>
                     <span className="text-xs">👥</span>
                   </div>
                   <h4 className="text-base font-black text-gray-900">SUBTASK</h4>
@@ -706,7 +670,7 @@ export const ReportsView: React.FC = () => {
                 <div className="bg-white border border-rose-200 rounded-xl p-4 shadow-xs space-y-1 relative hover:shadow-md transition-shadow">
                   <div className="absolute top-0 left-0 right-0 h-1.5 bg-rose-500 rounded-t-xl" />
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase text-rose-600">6. Cycle</span>
+                    <span className="text-[10px] font-bold uppercase text-rose-600">5. Cycle</span>
                     <span className="text-xs">👔</span>
                   </div>
                   <h4 className="text-base font-black text-gray-900">SPRINT</h4>
@@ -720,7 +684,7 @@ export const ReportsView: React.FC = () => {
                 <div className="bg-white border border-cyan-200 rounded-xl p-4 shadow-xs space-y-1 relative hover:shadow-md transition-shadow">
                   <div className="absolute top-0 left-0 right-0 h-1.5 bg-cyan-500 rounded-t-xl" />
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase text-cyan-600">7. State</span>
+                    <span className="text-[10px] font-bold uppercase text-cyan-600">6. State</span>
                     <span className="text-xs">👥</span>
                   </div>
                   <h4 className="text-base font-black text-gray-900">STATUS</h4>
@@ -729,6 +693,19 @@ export const ReportsView: React.FC = () => {
                   </p>
                   <div className="text-[11px] font-bold text-cyan-700 pt-1">👥 Everyone Updates</div>
                 </div>
+              </div>
+            </div>
+
+            {/* Note on Independent Projects */}
+            <div className="max-w-2xl mx-auto p-3.5 bg-purple-50/70 border border-purple-200 rounded-xl flex items-start gap-3 text-xs text-purple-900 shadow-2xs">
+              <div className="p-1.5 bg-purple-100 rounded-lg text-purple-700 shrink-0">
+                <FolderKanban className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="font-extrabold text-purple-950">Projects (Independent Delivery Workspaces): </span>
+                <span className="text-purple-800">
+                  Projects (such as <em>Laxmi Taal DPR</em>) are distinct delivery workspaces for client contracts. They operate in parallel to, but are separate from, the core <strong>Initiative → Epic → Task</strong> work hierarchy.
+                </span>
               </div>
             </div>
           </div>
@@ -798,24 +775,13 @@ export const ReportsView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-4 space-y-2">
-              <div className="font-extrabold text-purple-900 flex items-center gap-1.5">
-                <FolderKanban className="w-4 h-4 text-purple-700" />
-                <span>What is a Project?</span>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                A <strong>Project</strong> is where work is delivered for a specific client or contract (like <em>Laxmi Taal DPR</em>). It holds team members, budgets, deadlines, and client deliverables in one space.
-              </p>
-              <div className="text-[11px] font-bold text-purple-800">Who manages it: Project Lead & Manager</div>
-            </div>
-
             <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 space-y-2">
               <div className="font-extrabold text-emerald-900 flex items-center gap-1.5">
                 <Target className="w-4 h-4 text-emerald-700" />
                 <span>What is an Initiative?</span>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                An <strong>Initiative</strong> is a big company goal (like <em>EHM Agra City – Proposal Development</em>). It explains <strong>WHY</strong> we are spending effort and what target metric we must achieve.
+                An <strong>Initiative</strong> is the highest-level company goal (like <em>EHM Agra City – Proposal Development</em>). It explains <strong>WHY</strong> we are spending effort and sets the strategic direction.
               </p>
               <div className="text-[11px] font-bold text-emerald-800">Who manages it: Admin / Leadership</div>
             </div>
@@ -829,6 +795,17 @@ export const ReportsView: React.FC = () => {
                 An <strong>Epic</strong> is a major workstream under an Initiative (like <em>Proposal Development</em>). It is large enough to contain multiple tasks, giving team members a clear folder for related work.
               </p>
               <div className="text-[11px] font-bold text-blue-800">Who manages it: Manager / Lead</div>
+            </div>
+
+            <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-4 space-y-2">
+              <div className="font-extrabold text-purple-900 flex items-center gap-1.5">
+                <FolderKanban className="w-4 h-4 text-purple-700" />
+                <span>What is a Project? (Separate Delivery Context)</span>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
+                A <strong>Project</strong> is a dedicated delivery workspace for client contracts & technical execution (like <em>Laxmi Taal DPR</em>). It operates independently from the strategic Initiative hierarchy.
+              </p>
+              <div className="text-[11px] font-bold text-purple-800">Who manages it: Project Lead & Manager</div>
             </div>
           </div>
         </div>
