@@ -594,33 +594,35 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
           }
         }
 
-        // 6. Insert notification for assignee
-        const [assigneeUser] = await tx
-          .select()
-          .from(users)
-          .where(eq(users.employeeId, assignee.id));
+        // 6. Insert notification for assignee (if assigned)
+        if (assignee && assignee.id) {
+          const [assigneeUser] = await tx
+            .select()
+            .from(users)
+            .where(eq(users.employeeId, assignee.id));
 
-        if (assigneeUser) {
-          const notifTitle = `New Sprint Task Assigned: [${newTask.taskCode}] "${newTask.title}"`;
-          const notifMsg = `You have been assigned to sprint task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`;
-          await insertNotification(
-            {
-              userId: assigneeUser.id,
-              type: 'TASK_ASSIGNED',
-              payload: {
-                taskId: newTask.id,
-                taskCode: newTask.taskCode,
-                taskTitle: newTask.title,
-                title: notifTitle,
-                message: notifMsg,
-                assigneeId: assignee.id,
-                assigneeName: `${assignee.firstName} ${assignee.lastName}`.trim(),
-                dueDate: dueDateVal ? dueDateVal.toISOString().split('T')[0] : null,
-                tagged: true,
+          if (assigneeUser) {
+            const notifTitle = `New Sprint Task Assigned: [${newTask.taskCode}] "${newTask.title}"`;
+            const notifMsg = `You have been assigned to sprint task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`;
+            await insertNotification(
+              {
+                userId: assigneeUser.id,
+                type: 'TASK_ASSIGNED',
+                payload: {
+                  taskId: newTask.id,
+                  taskCode: newTask.taskCode,
+                  taskTitle: newTask.title,
+                  title: notifTitle,
+                  message: notifMsg,
+                  assigneeId: assignee.id,
+                  assigneeName: `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim(),
+                  dueDate: dueDateVal ? dueDateVal.toISOString().split('T')[0] : null,
+                  tagged: true,
+                },
               },
-            },
-            tx
-          );
+              tx
+            );
+          }
         }
 
         return {
