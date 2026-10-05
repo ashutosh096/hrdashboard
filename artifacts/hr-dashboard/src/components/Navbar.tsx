@@ -344,6 +344,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                     displayNotifications.map((n) => {
                       const target = getNotificationTarget(n);
 
+                      const displayTitle = (n.title && n.title !== 'Notification Alert') 
+                        ? n.title 
+                        : (target.taskCode 
+                            ? `Task Assigned: [${target.taskCode}]`
+                            : (target.label ? `${target.label} Notification` : 'System Notification'));
+
+                      const displayMessage = (n.message && n.message !== 'System Notification' && n.message !== 'Notification alert received')
+                        ? n.message
+                        : (target.taskCode 
+                            ? `You have an active assignment on [${target.taskCode}]. Click below to open.`
+                            : 'You have a new update regarding your responsibilities.');
+
                       return (
                         <div
                           key={n.id}
@@ -355,14 +367,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-bold text-gray-900 group-hover/card:text-emerald-700 transition-colors line-clamp-1">
-                              {n.title}
+                              {displayTitle}
                             </span>
                             <span className="text-[10px] text-gray-400 font-bold shrink-0">
                               {formatDateTime(n.createdAt)}
                             </span>
                           </div>
 
-                          <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{n.message}</p>
+                          <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{displayMessage}</p>
 
                           {/* Arrow at bottom to redirect and open in popup mode */}
                           <div

@@ -4,7 +4,7 @@ import { employees } from './employees.js';
 
 export const taskChecklists = pgTable('task_checklists', {
   id: uuid('id').primaryKey().defaultRandom(),
-  taskId: uuid('task_id').references(() => tasks.id).notNull(),
+  taskId: uuid('task_id').references(() => tasks.id, { onDelete: 'cascade' }).notNull(),
   itemText: varchar('item_text', { length: 255 }).notNull(),
   isCompleted: boolean('is_completed').default(false).notNull(),
   completedBy: uuid('completed_by').references(() => employees.id),

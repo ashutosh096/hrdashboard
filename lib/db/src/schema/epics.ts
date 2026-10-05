@@ -24,6 +24,7 @@ export const epics = pgTable('epics', {
   createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
   createdByName: text('created_by_name'),
   targetDate: timestamp('target_date'),
+  deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

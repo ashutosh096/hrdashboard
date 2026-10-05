@@ -9,7 +9,7 @@ build/
 
 # Environment variables & secrets (exclude .env.example which is safe)
 .env
-.env.local
+.env.local  
 .env.production
 .env.development
 */.env
@@ -18,12 +18,11 @@ build/
 */.env.development
 
 # Generated database backups & large exports (contain credentials / PII)
-**/DATABASE_BACKUP.*
-DATABASE_BACKUP.json
-DATABASE_BACKUP.md
-DATABASE_BACKUP.sql
-DATABASE_BACKUP_AFTER.json
-DATABASE_BACKUP_BEFORE.json
+backups/
+backups/**
+**/DATABASE_BACKUP*
+DATABASE_BACKUP*
+DELETED_DATA_BACKUP*
 FULL_CODEBASE_UNABRIDGED.md
 migration_mapping_step2.*
 

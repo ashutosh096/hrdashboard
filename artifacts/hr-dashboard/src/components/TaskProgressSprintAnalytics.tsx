@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { RefreshCw, Users, CheckCircle2, TrendingUp, Sparkles, Filter } from 'lucide-react';
+import { RefreshCw, Users, CheckCircle2, TrendingUp, Sparkles, Filter, Calendar } from 'lucide-react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -28,6 +28,29 @@ interface EmployeeOption {
   employeeCode?: string;
 }
 
+// Generate dynamic rolling month options
+const DYNAMIC_MONTH_OPTIONS = (() => {
+  const options = [];
+  const currentDate = new Date();
+  for (let i = -2; i <= 9; i++) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const monthName = d.toLocaleString('en-US', { month: 'long' });
+    const year = d.getFullYear();
+    const value = `${monthName.toUpperCase()}_${year}`;
+    const label = `${monthName} ${year}`;
+    options.push({ value, label, month: d.getMonth(), year });
+  }
+  options.push({ value: 'ALL_MONTHS', label: 'All Months', month: -1, year: 0 });
+  return options;
+})();
+
+const getCurrentMonthKey = (): string => {
+  const now = new Date();
+  const monthName = now.toLocaleString('en-US', { month: 'long' }).toUpperCase();
+  const year = now.getFullYear();
+  return `${monthName}_${year}`;
+};
+
 export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsProps> = ({
   className,
   viewType = 'ADMIN',
@@ -38,6 +61,7 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
   const [tasks, setTasks] = useState<any[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(defaultEmployeeId || 'ALL');
+  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthKey);
   const [lastUpdateStr, setLastUpdateStr] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -45,8 +69,8 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
   const resolvedTitle = title || (viewType === 'EMPLOYEE' ? 'Task Analysis' : 'Task Completion');
   const resolvedSubtitle =
     viewType === 'EMPLOYEE'
-      ? 'Personal deliverable throughput, completion milestones, and weekly execution trends.'
-      : 'Weekly tracking of completed deliverables and overall task completion rate.';
+      ? 'Personal deliverable throughput, completion milestones, and 4-week execution trends.'
+      : 'Weekly tracking of completed deliverables (4 Weeks) and overall task completion rate.';
 
   const loadData = async () => {
     setLoading(true);
@@ -96,20 +120,46 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
     }
   }, [defaultEmployeeId]);
 
-  // Filter tasks by Entity and Selected Employee
+  // Helper to extract relevant date for month/week assignment
+  const getTaskDate = (t: any): Date | null => {
+    if (t.dueDate) {
+      const d = new Date(t.dueDate);
+      if (!isNaN(d.getTime())) return d;
+    }
+    if (t.createdAt) {
+      const d = new Date(t.createdAt);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return null;
+  };
+
+  // Filter tasks by Entity, Selected Employee, and Selected Month
   const filteredTasks = useMemo(() => {
+    const monthOpt = DYNAMIC_MONTH_OPTIONS.find((o) => o.value === selectedMonth);
+
     return tasks.filter((t) => {
       const matchesEntity = matchesEntityFilter(t, selectedEntity);
       if (!matchesEntity) return false;
+
       if (selectedEmployeeId !== 'ALL') {
         const isAssigned =
           t.assigneeId === selectedEmployeeId ||
           (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(selectedEmployeeId));
         if (!isAssigned) return false;
       }
+
+      // Month filter: Match task due date or creation date to selected month
+      if (selectedMonth !== 'ALL_MONTHS' && monthOpt && monthOpt.month !== -1) {
+        const d = getTaskDate(t);
+        if (d) {
+          const matchMonth = d.getMonth() === monthOpt.month && d.getFullYear() === monthOpt.year;
+          if (!matchMonth) return false;
+        }
+      }
+
       return true;
     });
-  }, [tasks, selectedEntity, selectedEmployeeId]);
+  }, [tasks, selectedEntity, selectedEmployeeId, selectedMonth]);
 
   // Aggregate Total & Completed
   const completedCount = useMemo(() => {
@@ -119,15 +169,11 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
   const totalCount = filteredTasks.length;
   const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  // Real Weekly Task Completion Progression across 8 weeks
+  // Real Weekly Task Completion Progression across 4 weeks (1 month)
   const chartData = useMemo(() => {
-    const WEEKS = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8'];
+    const WEEKS = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
 
-    const completedTasksList = filteredTasks.filter(
-      (t) => t.status === 'DONE' || t.status === 'COMPLETED'
-    );
-
-    if (completedTasksList.length === 0) {
+    if (filteredTasks.length === 0) {
       return WEEKS.map((w) => ({
         week: w,
         completed: 0,
@@ -139,13 +185,17 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
     return WEEKS.map((weekName, idx) => {
       const weekNum = idx + 1;
 
+      // Filter tasks assigned to this week
       const tasksInThisWeek = filteredTasks.filter((t) => {
         const sw = (t.sprintWeek || '').toLowerCase();
         if (sw.includes(`week ${weekNum}`) || sw.includes(`w${weekNum}`)) return true;
-        if (t.createdAt) {
-          const d = new Date(t.createdAt);
-          const weekOffset = Math.floor((Date.now() - d.getTime()) / (7 * 24 * 60 * 60 * 1000));
-          if (8 - weekOffset === weekNum) return true;
+        const d = getTaskDate(t);
+        if (d) {
+          const day = d.getDate();
+          if (weekNum === 1 && day <= 7) return true;
+          if (weekNum === 2 && day > 7 && day <= 14) return true;
+          if (weekNum === 3 && day > 14 && day <= 21) return true;
+          if (weekNum === 4 && day > 21) return true;
         }
         return false;
       });
@@ -154,7 +204,8 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
         (t) => t.status === 'DONE' || t.status === 'COMPLETED'
       ).length;
 
-      const progressFraction = Math.min(1, (idx + 1) / Math.max(1, Math.min(WEEKS.length, completedCount || 1)));
+      // Cumulative completed tasks up to current week
+      const progressFraction = Math.min(1, (idx + 1) / WEEKS.length);
       const cumulativeCompleted = Math.min(completedCount, Math.round(completedCount * progressFraction));
 
       return {
@@ -199,8 +250,25 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
           )}
         </div>
 
-        {/* User Selection Dropdown & Completion Stat Pill */}
+        {/* Filters & Completion Stat Pill */}
         <div className="flex flex-wrap items-center gap-2.5 self-end sm:self-auto">
+          {/* Month Filter Dropdown */}
+          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1 shadow-2xs hover:bg-white transition-all">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="text-xs font-bold text-gray-800 bg-transparent outline-none cursor-pointer"
+              title="Filter task completion by month"
+            >
+              {DYNAMIC_MONTH_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* User Filter Dropdown */}
           <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1 shadow-2xs hover:bg-white transition-all">
             <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />

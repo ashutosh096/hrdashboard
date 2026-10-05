@@ -271,10 +271,22 @@ export const NotificationsView: React.FC = () => {
       };
     }
 
-    const rawTitle = notif.title || payload.title || 'System Notification';
-    const rawDesc = notif.message || payload.message || 'Notification alert received';
-    const finalDesc = (rawTitle === rawDesc && (payload.taskCode || payload.sprintCode))
-      ? `Activity update on task [${payload.taskCode || payload.sprintCode}]`
+    const taskCode = payload.taskCode || payload.sprintCode || null;
+    let rawTitle = notif.title || payload.title;
+    let rawDesc = notif.message || payload.message;
+
+    if (!rawTitle || rawTitle === 'System Notification' || rawTitle === 'Notification Alert') {
+      rawTitle = taskCode ? `Task Alert: [${taskCode}]` : 'System Update';
+    }
+
+    if (!rawDesc || rawDesc === 'Notification alert received' || rawDesc === 'System Notification') {
+      rawDesc = taskCode 
+        ? `Activity update and assignment on task [${taskCode}].`
+        : 'Update regarding your responsibilities in the dashboard.';
+    }
+
+    const finalDesc = (rawTitle === rawDesc && taskCode)
+      ? `Activity update on task [${taskCode}]`
       : rawDesc;
 
     return {

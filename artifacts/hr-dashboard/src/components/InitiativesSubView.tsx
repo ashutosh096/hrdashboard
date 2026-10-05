@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye, Trash2, History, UserCheck } from 'lucide-react';
+import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye, Trash2, History, UserCheck, MoreVertical } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
@@ -90,14 +90,27 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
   // Modal Edit Mode State
   const [isEditMode, setIsEditMode] = useState(false);
+  const [editingInitiative, setEditingInitiative] = useState<InitiativeItem | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editEntityId, setEditEntityId] = useState('ehmconsultancy');
+  const [editDepartmentName, setEditDepartmentName] = useState('Product & Tech');
   const [editSubDepartment, setEditSubDepartment] = useState('');
   const [editTargetMonth, setEditTargetMonth] = useState('');
-  const [editEpicsCountTarget, setEditEpicsCountTarget] = useState(3);
+  const [editEpicsCountTarget, setEditEpicsCountTarget] = useState<number>(0);
   const [editTargetDeliverableMetric, setEditTargetDeliverableMetric] = useState('');
-  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Close 3-dots dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (activeMenuId && !(e.target as HTMLElement).closest('.initiative-action-menu')) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeMenuId]);
 
   // Status Change Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -321,27 +334,57 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     }
   }, [selectedInitiativeIdToView, initiatives]);
 
-  const startEditMode = () => {
-    if (!viewingInitiative) return;
-    setEditTitle(viewingInitiative.title);
-    setEditDescription(viewingInitiative.description || '');
-    const entLower = (viewingInitiative.entityName || viewingInitiative.entity || '').toLowerCase();
+  const startEditMode = (initToEdit?: InitiativeItem) => {
+    const target = initToEdit || viewingInitiative;
+    if (!target) return;
+    setEditingInitiative(target);
+    setEditTitle(target.title || '');
+    setEditDescription(target.description || '');
+
+    const entLower = (target.entityName || target.entity || '').toLowerCase();
     const resolvedEnt = entLower.includes('cag') || entLower.includes('climagro')
       ? 'climagroanalytics'
       : entLower.includes('common')
       ? 'common'
-      : viewingInitiative.entityId || 'ehmconsultancy';
+      : target.entityId || 'ehmconsultancy';
     setEditEntityId(resolvedEnt);
-    const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId || 'Product & Tech';
-    setEditSubDepartment(dept);
-    setEditTargetMonth(viewingInitiative.targetMonth || '');
-    setEditEpicsCountTarget(viewingInitiative.epicsCountTarget || 0);
-    setEditTargetDeliverableMetric(viewingInitiative.targetDeliverableMetric || '');
+
+    // Parse department & subDepartment
+    const rawDept = (target as any).departmentName || target.subDepartment || target.departmentId || '';
+    let parsedDept = 'Product & Tech';
+    let parsedSubTrack = '';
+
+    if (rawDept.includes(' - ')) {
+      const parts = rawDept.split(' - ');
+      const candidateDept = parts[0].trim();
+      const matched = DEPARTMENT_OPTIONS.find(d => d.toLowerCase() === candidateDept.toLowerCase());
+      if (matched) {
+        parsedDept = matched;
+        parsedSubTrack = parts.slice(1).join(' - ').trim();
+      } else {
+        parsedSubTrack = rawDept;
+      }
+    } else {
+      const matched = DEPARTMENT_OPTIONS.find(d => d.toLowerCase() === rawDept.trim().toLowerCase());
+      if (matched) {
+        parsedDept = matched;
+        parsedSubTrack = '';
+      } else if (rawDept.trim()) {
+        parsedSubTrack = rawDept.trim();
+      }
+    }
+
+    setEditDepartmentName(parsedDept);
+    setEditSubDepartment(parsedSubTrack);
+    setEditTargetMonth(target.targetMonth || '');
+    setEditEpicsCountTarget(target.epicsCountTarget || 0);
+    setEditTargetDeliverableMetric(target.targetDeliverableMetric || '');
     setIsEditMode(true);
   };
 
   const cancelEditMode = () => {
     setIsEditMode(false);
+    setEditingInitiative(null);
   };
 
   const handleAdjustEpicsCount = async (newTarget: number) => {
@@ -377,42 +420,53 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
     }
   };
 
-  const handleSaveInitiativeEdits = async () => {
-    if (!viewingInitiative) return;
+  const handleSaveInitiativeEdits = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const target = editingInitiative || viewingInitiative;
+    if (!target) return;
+
+    if (!editTitle.trim()) {
+      return toast.error('Please enter an initiative title');
+    }
+
     setIsSubmitting(true);
     try {
-      await fetchApi(`/api/initiatives/${viewingInitiative.id}`, {
+      const combinedSubDept = `${editDepartmentName}${editSubDepartment.trim() ? ' - ' + editSubDepartment.trim() : ''}`;
+      await fetchApi(`/api/initiatives/${target.id}`, {
         method: 'PUT',
         body: JSON.stringify({
-          title: editTitle,
-          description: editDescription,
+          title: editTitle.trim(),
+          description: editDescription.trim(),
           entityId: editEntityId,
-          subDepartment: editSubDepartment,
+          subDepartment: combinedSubDept,
           targetMonth: editTargetMonth || null,
-          epicsCountTarget: editEpicsCountTarget,
-          targetDeliverableMetric: editTargetDeliverableMetric,
+          epicsCountTarget: editEpicsCountTarget > 0 ? editEpicsCountTarget : undefined,
+          targetDeliverableMetric: editTargetDeliverableMetric.trim(),
         }),
       });
 
-      toast.success(`Initiative ${viewingInitiative.initiativeCode} updated successfully!`);
-      setShowSaveConfirmModal(false);
+      toast.success(`Initiative ${target.initiativeCode} updated successfully!`);
       setIsEditMode(false);
-      await loadData();
+      setEditingInitiative(null);
 
+      // Update viewingInitiative if currently viewing
       setViewingInitiative((prev) =>
-        prev
+        prev && prev.id === target.id
           ? {
               ...prev,
-              title: editTitle,
-              description: editDescription,
+              title: editTitle.trim(),
+              description: editDescription.trim(),
               entityId: editEntityId,
-              subDepartment: editSubDepartment,
+              subDepartment: combinedSubDept,
               targetMonth: editTargetMonth,
               epicsCountTarget: editEpicsCountTarget,
-              targetDeliverableMetric: editTargetDeliverableMetric,
+              targetDeliverableMetric: editTargetDeliverableMetric.trim(),
             }
-          : null
+          : prev
       );
+
+      window.dispatchEvent(new CustomEvent('initiatives-updated'));
+      await loadData(true);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update initiative details');
     } finally {
@@ -633,14 +687,18 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               <div
                 key={item.id}
                 id={`initiative-card-${item.id}`}
-                className={`bg-white border rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all ${
+                className={`bg-white border rounded-2xl shadow-xs hover:shadow-md transition-all ${
+                  activeMenuId === item.id ? 'relative z-40' : 'relative z-0'
+                } ${
                   isSelected
                     ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
                     : 'border-gray-200/80 hover:border-emerald-200'
                 }`}
               >
                 {/* Collapsible Initiative Header Bar */}
-                <div className="p-4 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between gap-3 select-none">
+                <div className={`p-4 bg-gray-50/70 flex items-center justify-between gap-3 select-none transition-colors ${
+                  isCollapsed ? 'rounded-2xl' : 'rounded-t-2xl border-b border-gray-100'
+                }`}>
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <button
                       type="button"
@@ -726,39 +784,99 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                       </span>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setHistoryTarget({
-                          recordId: item.id,
-                          title: item.title,
-                          code: item.initiativeCode,
-                        });
-                      }}
-                      className="p-1 text-gray-400 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 cursor-pointer transition-colors"
-                      title="View Initiative Audit History"
-                    >
-                      <History className="w-4 h-4" />
-                    </button>
-
+                    {/* Single Eye View Button */}
                     <button
                       type="button"
                       onClick={() => {
                         setViewingInitiative(item);
                         setIsEditMode(false);
                       }}
-                      className="p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 cursor-pointer"
+                      className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                       title="View Initiative Details"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
+
+                    {/* Three Dots Menu Button (View, Edit, History) */}
+                    <div className="relative initiative-action-menu">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === item.id ? null : item.id);
+                        }}
+                        className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                          activeMenuId === item.id
+                            ? 'text-emerald-700 bg-emerald-50'
+                            : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
+                        title="Actions"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {activeMenuId === item.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-200/90 rounded-xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-gray-50"
+                        >
+                          <div className="py-0.5">
+                            {/* View Option */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setViewingInitiative(item);
+                                setIsEditMode(false);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-emerald-800 hover:bg-emerald-50/80 transition-colors cursor-pointer text-left"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                              <span>View</span>
+                            </button>
+
+                            {/* Edit Option */}
+                            {(isManager || isAdmin) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  startEditMode(item);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-blue-800 hover:bg-blue-50/80 transition-colors cursor-pointer text-left"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span>Edit</span>
+                              </button>
+                            )}
+
+                            {/* History Option */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setHistoryTarget({
+                                  recordId: item.id,
+                                  title: item.title,
+                                  code: item.initiativeCode,
+                                });
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-purple-800 hover:bg-purple-50/80 transition-colors cursor-pointer text-left"
+                            >
+                              <History className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                              <span>History</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Collapsed Body View */}
                 {!isCollapsed && (
-                  <div className="p-4 space-y-3 bg-white">
+                  <div className="p-4 space-y-3 bg-white rounded-b-2xl">
                     {item.description && (
                       <div className="text-xs text-gray-600 font-medium line-clamp-2 leading-relaxed">
                         <MarkdownViewer content={item.description} />
@@ -841,7 +959,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
       )}
 
       {/* 🚀 BIG VIEW MODE MODAL FOR STRATEGIC INITIATIVE */}
-      {viewingInitiative && (
+      {viewingInitiative && !isEditMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Top Header */}
@@ -861,10 +979,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   </button>
                 )}
 
-                {isManager && !isEditMode && (
+                {isManager && (
                   <button
                     type="button"
-                    onClick={startEditMode}
+                    onClick={() => startEditMode(viewingInitiative)}
                     className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -955,60 +1073,18 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
               {/* Title & Description */}
               <div className="space-y-1.5">
-                {isEditMode ? (
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-3.5 py-2 text-base font-bold text-gray-900 border border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                  />
-                ) : (
-                  <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-snug">
-                    {viewingInitiative.title}
-                  </h2>
-                )}
-
-                {isEditMode ? (
-                  <RichTextEditor
-                    value={editDescription}
-                    onChange={setEditDescription}
-                    placeholder="Goal summary, deliverables, and outcome objectives..."
-                    rows={3}
-                  />
-                ) : viewingInitiative.description && (
+                <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-snug">
+                  {viewingInitiative.title}
+                </h2>
+                {viewingInitiative.description && (
                   <p className="text-sm text-gray-500 font-medium leading-relaxed">
                     {viewingInitiative.description}
                   </p>
                 )}
-                {isEditMode && (
-                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-1">
-                    <label className="block text-xs font-bold text-gray-700">Brand / Entity *</label>
-                    <select
-                      value={editEntityId}
-                      onChange={(e) => setEditEntityId(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg bg-white"
-                    >
-                      {ENTITY_OPTIONS.map((ent) => (
-                        <option key={ent.id} value={ent.id}>{ent.name} ({ent.code})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </div>
 
-              {/* Success Metric Box (Only shown if filled or in Edit Mode) */}
-              {isEditMode ? (
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                  <span className="text-xs text-gray-400 font-medium block">Success metric (Optional)</span>
-                  <input
-                    type="text"
-                    value={editTargetDeliverableMetric}
-                    onChange={(e) => setEditTargetDeliverableMetric(e.target.value)}
-                    placeholder="e.g. 99.9% Uptime, 50k MAU Growth (leave blank to hide)"
-                    className="w-full px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg bg-white"
-                  />
-                </div>
-              ) : viewingInitiative.targetDeliverableMetric ? (
+              {/* Success Metric Box (Only shown if filled) */}
+              {viewingInitiative.targetDeliverableMetric ? (
                 <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
                   <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
                     <Target className="w-4 h-4 text-emerald-400" />
@@ -1023,56 +1099,24 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               {/* 4-Column Metadata Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-400 font-medium">Timeline / Month</span>
-                    {isEditMode && editTargetMonth && (
-                      <button
-                        type="button"
-                        onClick={() => setEditTargetMonth('')}
-                        className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  {isEditMode ? (
-                    <CalendarPicker
-                      value={editTargetMonth}
-                      onChange={(formatted) => setEditTargetMonth(formatted)}
-                      placeholder="e.g. October 2026"
-                      formatMode="month"
-                    />
-                  ) : (
-                    <span className="text-xs font-bold text-gray-900 block">
-                      {viewingInitiative.targetMonth || 'No target month set'}
-                    </span>
-                  )}
+                  <span className="text-xs text-gray-400 font-medium block mb-1">Timeline / Month</span>
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {viewingInitiative.targetMonth || 'No target month set'}
+                  </span>
                 </div>
 
                 <div>
                   <span className="text-xs text-gray-400 font-medium block mb-1">Department</span>
-                  {isEditMode ? (
-                    <select
-                      value={editSubDepartment}
-                      onChange={(e) => setEditSubDepartment(e.target.value)}
-                      className="w-full px-2 py-1 text-xs font-bold border border-gray-300 rounded-lg bg-white"
-                    >
-                      {DEPARTMENT_OPTIONS.map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-xs font-bold text-gray-900 block">
-                      {(() => {
-                        const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
-                        if (!dept) return 'Product & Tech';
-                        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
-                          return 'Product & Tech';
-                        }
-                        return dept;
-                      })()}
-                    </span>
-                  )}
+                  <span className="text-xs font-bold text-gray-900 block">
+                    {(() => {
+                      const dept = (viewingInitiative as any).departmentName || viewingInitiative.subDepartment || viewingInitiative.departmentId;
+                      if (!dept) return 'Product & Tech';
+                      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dept)) {
+                        return 'Product & Tech';
+                      }
+                      return dept;
+                    })()}
+                  </span>
                 </div>
 
                 <div>
@@ -1093,9 +1137,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
               {/* Linked Epics Section */}
               {(() => {
                 const childEpics = viewingInitiative.epics || [];
-                const targetEpicsCount = isEditMode
-                  ? (editEpicsCountTarget || 0)
-                  : (viewingInitiative.epicsCountTarget || 0);
+                const targetEpicsCount = viewingInitiative.epicsCountTarget || 0;
                 const createdCount = childEpics.length;
 
                 return (
@@ -1110,14 +1152,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                             <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5 border border-gray-200">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (isEditMode) {
-                                    setEditEpicsCountTarget(prev => Math.max(0, (prev || 0) - 1));
-                                  } else {
-                                    handleAdjustEpicsCount(Math.max(0, (viewingInitiative.epicsCountTarget || createdCount) - 1));
-                                  }
-                                }}
-                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-colors"
+                                onClick={() => handleAdjustEpicsCount(Math.max(0, (viewingInitiative.epicsCountTarget || createdCount) - 1))}
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-colors cursor-pointer"
                                 title="Decrease Target Epics Count"
                               >
                                 -
@@ -1127,14 +1163,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                               </span>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (isEditMode) {
-                                    setEditEpicsCountTarget(prev => (prev || 0) + 1);
-                                  } else {
-                                    handleAdjustEpicsCount((viewingInitiative.epicsCountTarget || createdCount) + 1);
-                                  }
-                                }}
-                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-emerald-700 hover:bg-emerald-100/70 rounded transition-colors"
+                                onClick={() => handleAdjustEpicsCount((viewingInitiative.epicsCountTarget || createdCount) + 1)}
+                                className="w-5 h-5 flex items-center justify-center text-xs font-bold text-emerald-700 hover:bg-emerald-100/70 rounded transition-colors cursor-pointer"
                                 title="Increase Target Epics Count"
                               >
                                 +
@@ -1268,27 +1298,6 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                 })}
               />
             </div>
-
-            {/* Save Button Footer if in Edit Mode */}
-            {isEditMode && (
-              <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={cancelEditMode}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSaveConfirmModal(true)}
-                  className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Changes</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1356,44 +1365,186 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         </div>
       )}
 
-      {/* ⚠️ CONFIRMATION POPUP MODAL FOR SAVE EDIT CHANGES */}
-      {showSaveConfirmModal && viewingInitiative && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
-              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
-                <AlertCircle className="w-5 h-5" />
+      {/* ✏️ MODAL FOR EDITING INITIATIVE (IDENTICAL FORM LAYOUT TO CREATE INITIATIVE) */}
+      {isEditMode && editingInitiative && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-900">Edit Strategic Initiative</h3>
+                {editingInitiative.initiativeCode && (
+                  <span className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    {editingInitiative.initiativeCode}
+                  </span>
+                )}
               </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  Agile Setup
+                </span>
+                <button
+                  type="button"
+                  onClick={cancelEditMode}
+                  className="p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                  title="Close edit form"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveInitiativeEdits} className="space-y-4">
+              {/* Title */}
               <div>
-                <h3 className="text-base font-bold text-gray-900">Confirm Save Changes</h3>
-                <p className="text-xs text-gray-400 font-medium">Please review before saving updates.</p>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Initiative Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Q3 Cloud Infrastructure & Security Hardening"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
               </div>
-            </div>
 
-            <p className="text-xs text-gray-700 leading-relaxed font-medium mb-6">
-              Are you sure you want to save the edited changes for Initiative{' '}
-              <span className="font-bold font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                {viewingInitiative.initiativeCode}
-              </span>?
-            </p>
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
+                <RichTextEditor
+                  value={editDescription}
+                  onChange={setEditDescription}
+                  placeholder="Comprehensive goal summary, deliverables, and outcome objectives..."
+                  rows={3}
+                />
+              </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setShowSaveConfirmModal(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleSaveInitiativeEdits}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
-              >
-                {isSubmitting ? 'Saving...' : 'Yes, Save Changes'}
-              </button>
-            </div>
+              {/* Brand / Entity & Department */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Brand / Entity *</label>
+                  <select
+                    required
+                    value={editEntityId}
+                    onChange={(e) => setEditEntityId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                  >
+                    {ENTITY_OPTIONS.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Department *</label>
+                  <select
+                    required
+                    value={editDepartmentName}
+                    onChange={(e) => setEditDepartmentName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                  >
+                    {DEPARTMENT_OPTIONS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Sub-Department / Track */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Sub-Department / Track</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Backend Architecture, Frontend UI, Mobile App, Data Pipeline"
+                  value={editSubDepartment}
+                  onChange={(e) => setEditSubDepartment(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+
+              {/* Target Deliverable Metric */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Target Deliverable Metric</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 99.9% Uptime, 50k MAU Growth, 100% OAuth Security Pass"
+                  value={editTargetDeliverableMetric}
+                  onChange={(e) => setEditTargetDeliverableMetric(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+
+              {/* Target Month & Planned Epics Count */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Month / Date</label>
+                  <CalendarPicker
+                    value={editTargetMonth}
+                    onChange={(formatted) => setEditTargetMonth(formatted)}
+                    placeholder="e.g. September 2026"
+                    formatMode="month"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Planned Epics Target</label>
+                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditEpicsCountTarget(prev => Math.max(0, (prev || 0) - 1))}
+                      className="px-2.5 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl border border-gray-200 cursor-pointer transition-colors"
+                      title="Decrease Epics Count"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      placeholder="Flexible / No limit"
+                      value={editEpicsCountTarget > 0 ? editEpicsCountTarget : ''}
+                      onChange={(e) => setEditEpicsCountTarget(e.target.value ? Number(e.target.value) : 0)}
+                      className="w-full text-center px-2 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditEpicsCountTarget(prev => (prev || 0) + 1)}
+                      className="px-2.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 cursor-pointer transition-colors"
+                      title="Increase Epics Count"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-medium mt-1">
+                    {editEpicsCountTarget > 0 ? `Target set to ${editEpicsCountTarget} epics.` : 'Leave blank/0 for dynamic flexible count.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={cancelEditMode}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1878,8 +2029,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
 
                         const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
+                        const isTaskToReview = taskItem.status === 'TO_REVIEW';
                         const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
-                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (taskItem.priority === 'URGENT' || taskItem.priority === 'HIGH' || taskItem.priority === 'P1') ? 'P1' : 'Planned';
+                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskToReview ? 'To Review' : isTaskInProgress ? 'In progress' : 'Backlog';
 
                         return (
                           <div
@@ -1899,9 +2051,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                             <div className="flex items-center gap-3 shrink-0">
                               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
                                 isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                'bg-gray-100 text-gray-700 border-gray-200'
+                                isTaskToReview ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                isTaskInProgress ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-blue-50 text-blue-700 border-blue-200'
                               }`}>
                                 {taskStatusLabel}
                               </span>

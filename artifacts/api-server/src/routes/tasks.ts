@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { db, tasks, employees, departments, entities, users, notifications, sprints, epics, initiatives, projects, entityCounters, generateNextGlobalCode, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, sql, asc, desc, recordHistory } from '@workspace/db';
+import { db, tasks, employees, departments, entities, users, notifications, sprints, epics, initiatives, projects, entityCounters, generateNextGlobalCode, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, isNull, sql, asc, desc, recordHistory } from '@workspace/db';
 import { sendTaskAssignedEmail, sendDelayRequestEmail } from '../services/email.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
 import { insertNotification, pruneNotificationsToLimit } from '../services/notificationService.js';
+import { dispatchNotification } from '../services/notificationDispatcher.js';
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.get('/', async (req, res) => {
     projectId,
     entityCode,
     paginate,
+    includeDeleted,
   } = req.query;
 
   try {
@@ -38,6 +40,11 @@ router.get('/', async (req, res) => {
       search !== undefined;
 
     const conditions: any[] = [];
+
+    // 0. Soft Delete Filter (Exclude deleted tasks by default)
+    if (includeDeleted !== 'true') {
+      conditions.push(isNull(tasks.deletedAt));
+    }
 
     // 1. Employee Filter
     if (employeeId && employeeId !== 'ALL') {
@@ -67,6 +74,8 @@ router.get('/', async (req, res) => {
         conditions.push(sql`UPPER(${tasks.status}::text) IN ('DONE', 'COMPLETED', 'APPROVED')`);
       } else if (s === 'IN_PROGRESS') {
         conditions.push(sql`UPPER(${tasks.status}::text) IN ('IN_PROGRESS', 'IN PROGRESS', 'ACTIVE')`);
+      } else if (s === 'TO_REVIEW' || s === 'IN_REVIEW' || s === 'TO REVIEW') {
+        conditions.push(sql`UPPER(${tasks.status}::text) IN ('TO_REVIEW', 'TO REVIEW', 'IN_REVIEW', 'REVIEW')`);
       } else if (s === 'PLANNED') {
         conditions.push(sql`UPPER(${tasks.status}::text) IN ('PLANNED', 'TODO', 'TO DO')`);
       } else if (s === 'BACKLOG') {
@@ -192,6 +201,24 @@ export async function enrichTasks(tasksList: any[]) {
   const allProjects = await db.select().from(projects);
   const allEntities = await db.select().from(entities);
 
+  const taskIds = tasksList.map(t => t.id).filter(Boolean);
+  let allChecklists: any[] = [];
+  let allComments: any[] = [];
+
+  if (taskIds.length > 0) {
+    allChecklists = await db
+      .select()
+      .from(taskChecklists)
+      .where(inArray(taskChecklists.taskId, taskIds))
+      .orderBy(asc(taskChecklists.sortOrder), asc(taskChecklists.createdAt));
+
+    allComments = await db
+      .select()
+      .from(taskComments)
+      .where(inArray(taskComments.taskId, taskIds))
+      .orderBy(asc(taskComments.createdAt));
+  }
+
   return tasksList.map(t => {
     const assigneeEmp = allEmployees.find(e => e.id === t.assigneeId);
     const leadEmp = allEmployees.find(e => e.id === t.reviewingLeadId);
@@ -201,6 +228,9 @@ export async function enrichTasks(tasksList: any[]) {
     const parentProj = allProjects.find(p => p.id === (t.projectId || parentEpic?.projectId));
     const entity = allEntities.find(ent => ent.id === t.entityId);
 
+    const taskChecklistItems = allChecklists.filter(c => c.taskId === t.id);
+    const taskCommentItems = allComments.filter(c => c.taskId === t.id);
+
     const assigneeName = assigneeEmp 
       ? `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim() || assigneeEmp.employeeCode 
       : 'Unassigned';
@@ -209,8 +239,15 @@ export async function enrichTasks(tasksList: any[]) {
       ? `${leadEmp.firstName || ''} ${leadEmp.lastName || ''}`.trim() || leadEmp.employeeCode 
       : 'Manager Lead';
 
+    const deliverableUrls = t.deliverableUrl
+      ? t.deliverableUrl.split(/[,\n]/).map((l: string) => l.trim()).filter((l: string) => Boolean(l))
+      : [];
+
     return {
       ...t,
+      deliverableUrls,
+      assigneeIds: t.assigneeId ? [t.assigneeId] : [],
+      reviewingLeadIds: t.reviewingLeadId ? [t.reviewingLeadId] : [],
       assignee: assigneeName,
       assigneeName,
       assigneeEmail: assigneeEmp?.email || '',
@@ -231,6 +268,8 @@ export async function enrichTasks(tasksList: any[]) {
       projectId: t.projectId || parentEpic?.projectId || null,
       taskId: t.taskCode || t.id,
       taskCode: t.taskCode,
+      checklists: taskChecklistItems,
+      comments: taskCommentItems,
       entity: entity?.code === 'CAG'
         ? 'CLIMAGRO'
         : entity?.code === 'COMMON'
@@ -594,35 +633,23 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
           }
         }
 
-        // 6. Insert notification for assignee (if assigned)
+        // 6. Targeted notification for assignee and lead (Strictly targeted, no admin spam)
         if (assignee && assignee.id) {
-          const [assigneeUser] = await tx
-            .select()
-            .from(users)
-            .where(eq(users.employeeId, assignee.id));
-
-          if (assigneeUser) {
-            const notifTitle = `New Sprint Task Assigned: [${newTask.taskCode}] "${newTask.title}"`;
-            const notifMsg = `You have been assigned to sprint task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`;
-            await insertNotification(
-              {
-                userId: assigneeUser.id,
-                type: 'TASK_ASSIGNED',
-                payload: {
-                  taskId: newTask.id,
-                  taskCode: newTask.taskCode,
-                  taskTitle: newTask.title,
-                  title: notifTitle,
-                  message: notifMsg,
-                  assigneeId: assignee.id,
-                  assigneeName: `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim(),
-                  dueDate: dueDateVal ? dueDateVal.toISOString().split('T')[0] : null,
-                  tagged: true,
-                },
-              },
-              tx
-            );
-          }
+          dispatchNotification({
+            entity: {
+              entityType: 'TASK',
+              entityId: newTask.id,
+              entityCode: newTask.taskCode,
+              title: newTask.title,
+              assigneeEmployeeIds: [assignee.id],
+              reviewingLeadEmployeeId: newTask.reviewingLeadId,
+              creatorEmployeeId: newTask.creatorId,
+            },
+            actorUserId: req.user!.id,
+            eventType: 'ASSIGNED',
+            title: `New Task Assigned: [${newTask.taskCode}] "${newTask.title}"`,
+            message: `You have been assigned to task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`,
+          });
         }
 
         return {
@@ -671,8 +698,10 @@ const handleTaskUpdate = async (req: any, res: any) => {
     projectId,
     title,
     assigneeId,
+    assigneeIds,
     assigneeName,
     reviewingLeadId,
+    reviewingLeadIds,
     reviewingLead,
     dueDate,
     entityId,
@@ -681,6 +710,7 @@ const handleTaskUpdate = async (req: any, res: any) => {
     waitingOn,
     checklists,
     comments,
+    deliverableUrls,
   } = req.body;
 
   try {
@@ -708,7 +738,9 @@ const handleTaskUpdate = async (req: any, res: any) => {
           updateData.status = nextStatus;
         }
       }
-      if (deliverableUrl !== undefined || outputUrl !== undefined) {
+      if (Array.isArray(deliverableUrls)) {
+        updateData.deliverableUrl = deliverableUrls.filter(Boolean).join(', ');
+      } else if (deliverableUrl !== undefined || outputUrl !== undefined) {
         updateData.deliverableUrl = deliverableUrl !== undefined ? deliverableUrl : outputUrl;
       }
       if (description !== undefined || notes !== undefined) {
@@ -731,7 +763,9 @@ const handleTaskUpdate = async (req: any, res: any) => {
       }
 
       // Handle Assignee ID / Name (Support removing assignee and keeping unassigned)
-      if (assigneeId === null || assigneeId === '' || assigneeName === '' || assigneeName === 'Unassigned' || assigneeName === 'None') {
+      if (Array.isArray(assigneeIds)) {
+        updateData.assigneeId = assigneeIds.length > 0 ? assigneeIds[0] : null;
+      } else if (assigneeId === null || assigneeId === '' || assigneeName === '' || assigneeName === 'Unassigned' || assigneeName === 'None') {
         updateData.assigneeId = null;
       } else if (assigneeId && typeof assigneeId === 'string' && assigneeId.length === 36) {
         updateData.assigneeId = assigneeId;
@@ -755,7 +789,9 @@ const handleTaskUpdate = async (req: any, res: any) => {
       }
 
       // Handle Reviewing Lead ID / Name (Support removing lead and keeping unassigned/none)
-      if (reviewingLeadId === null || reviewingLeadId === '' || reviewingLead === '' || reviewingLead === 'Unassigned' || reviewingLead === 'None') {
+      if (Array.isArray(reviewingLeadIds)) {
+        updateData.reviewingLeadId = reviewingLeadIds.length > 0 ? reviewingLeadIds[0] : null;
+      } else if (reviewingLeadId === null || reviewingLeadId === '' || reviewingLead === '' || reviewingLead === 'Unassigned' || reviewingLead === 'None') {
         updateData.reviewingLeadId = null;
       } else if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.length === 36) {
         updateData.reviewingLeadId = reviewingLeadId;
@@ -856,6 +892,30 @@ const handleTaskUpdate = async (req: any, res: any) => {
         .where(eq(tasks.id, taskId))
         .returning();
 
+      // Bidirectional sync: keep linked sprint in sync if task belongs to a sprint
+      const targetSprintId = resTask?.sprintId || existingTaskCheck.sprintId;
+      if (typeof targetSprintId === 'string' && targetSprintId) {
+        const sprintUpdate: any = {};
+        if (updateData.title) sprintUpdate.name = updateData.title;
+        if (updateData.status) {
+          const s = String(updateData.status).toUpperCase();
+          sprintUpdate.status = s === 'DONE' ? 'COMPLETED' : (s === 'IN_PROGRESS' || s === 'TO_REVIEW' || s === 'TODO') ? 'ACTIVE' : 'PLANNED';
+        }
+        if (updateData.assigneeId !== undefined) sprintUpdate.employeeId = updateData.assigneeId;
+        if (updateData.reviewingLeadId !== undefined) sprintUpdate.reviewingLeadId = updateData.reviewingLeadId;
+        if (updateData.epicId !== undefined) sprintUpdate.epicId = updateData.epicId;
+        if (updateData.dueDate !== undefined) sprintUpdate.endDate = updateData.dueDate;
+        if (updateData.description !== undefined) sprintUpdate.goal = updateData.description;
+        if (updateData.sprintWeek !== undefined) sprintUpdate.targetWeek = updateData.sprintWeek;
+        if (Object.keys(sprintUpdate).length > 0) {
+          try {
+            await tx.update(sprints).set(sprintUpdate).where(eq(sprints.id, targetSprintId));
+          } catch (sprintErr) {
+            console.error('[TASK-SPRINT SYNC ERROR]:', sprintErr);
+          }
+        }
+      }
+
       // Record changed fields in history
       const caller = await getCallerInfo(req.user, tx);
       const changes: { field: string; old: any; new: any }[] = [];
@@ -886,15 +946,8 @@ const handleTaskUpdate = async (req: any, res: any) => {
         });
       }
 
-      // Persist Checklists if provided
-      if (Array.isArray(checklists)) {
-        const existingChecklists = await tx.select().from(taskChecklists).where(eq(taskChecklists.taskId, taskId));
-        const keepIds = new Set(checklists.filter(c => c.id && c.id.length === 36).map(c => c.id));
-        for (const ec of existingChecklists) {
-          if (!keepIds.has(ec.id)) {
-            await tx.delete(taskChecklists).where(eq(taskChecklists.id, ec.id));
-          }
-        }
+      // Persist Checklists if provided (Update existing or insert new - NEVER delete existing items implicitly)
+      if (Array.isArray(checklists) && checklists.length > 0) {
         for (let i = 0; i < checklists.length; i++) {
           const chk = checklists[i];
           if (chk.id && chk.id.length === 36) {
@@ -947,15 +1000,17 @@ const handleTaskUpdate = async (req: any, res: any) => {
         }
       }
 
-      // Persist Comments if provided
-      if (Array.isArray(comments)) {
-        const existingComments = await tx.select().from(taskComments).where(eq(taskComments.taskId, taskId));
-        const keepCommentIds = new Set(comments.filter(c => c.id && c.id.length === 36).map(c => c.id));
-        for (const ec of existingComments) {
-          if (!keepCommentIds.has(ec.id)) {
-            await tx.delete(taskComments).where(eq(taskComments.id, ec.id));
+      // Explicitly requested checklist deletions only
+      if (Array.isArray((req.body as any).deletedChecklistIds) && (req.body as any).deletedChecklistIds.length > 0) {
+        for (const delId of (req.body as any).deletedChecklistIds) {
+          if (delId && delId.length === 36) {
+            await tx.delete(taskChecklists).where(and(eq(taskChecklists.id, delId), eq(taskChecklists.taskId, taskId)));
           }
         }
+      }
+
+      // Persist Comments if provided (Append or update only - NEVER delete in bulk via task PATCH)
+      if (Array.isArray(comments) && comments.length > 0) {
         for (const c of comments) {
           if (c.id && c.id.length === 36) {
             const content = typeof c === 'string' ? c : (c.content || '');
@@ -985,52 +1040,103 @@ const handleTaskUpdate = async (req: any, res: any) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Trigger lifecycle notifications based on changes:
+    // Trigger strictly targeted lifecycle notifications based on changes:
     const oldStatus = existingTaskCheck.status;
     const newStatus = updatedTask.status;
 
     // 1. If assigned to a new assignee:
     if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTaskCheck.assigneeId) {
-      createTaskNotification({
-        targetEmployeeId: updatedTask.assigneeId,
-        type: 'TASK_ASSIGNED',
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: [updatedTask.assigneeId],
+          previousAssigneeEmployeeIds: existingTaskCheck.assigneeId ? [existingTaskCheck.assigneeId] : [],
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'REASSIGNED',
         title: `Task Reassigned: [${updatedTask.taskCode}]`,
-        message: `You have been assigned to task [${updatedTask.taskCode}] "${updatedTask.title}".`,
-        taskId: updatedTask.id,
-        taskCode: updatedTask.taskCode,
-        taskTitle: updatedTask.title,
-      }).catch(console.error);
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been assigned to you.`,
+      });
     }
 
-    // 2. If status moved to TO_REVIEW / IN_REVIEW or deliverable URL submitted:
-    if (
-      (req.body.status === 'TO_REVIEW' || req.body.status === 'IN_REVIEW' || req.body.status === 'To Review') ||
-      (updatedTask.deliverableUrl && updatedTask.deliverableUrl !== existingTaskCheck.deliverableUrl)
-    ) {
-      const targetLeadId = updatedTask.reviewingLeadId || updatedTask.creatorId;
-      createTaskNotification({
-        targetEmployeeId: targetLeadId,
-        type: 'TASK_REVIEW_SUBMITTED',
-        title: `Review Pending: [${updatedTask.taskCode}]`,
-        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has deliverables ready for your manager review & sign-off.`,
-        taskId: updatedTask.id,
-        taskCode: updatedTask.taskCode,
-        taskTitle: updatedTask.title,
-        extraPayload: { deliverableUrl: updatedTask.deliverableUrl },
-      }).catch(console.error);
-    }
-
-    // 3. If status marked as DONE:
+    // 2. If status marked as DONE (Signed off):
     if (newStatus === 'DONE' && oldStatus !== 'DONE') {
-      createTaskNotification({
-        targetEmployeeId: updatedTask.assigneeId,
-        type: 'TASK_COMPLETED',
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: [updatedTask.assigneeId],
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'SIGNED_OFF',
         title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
-        message: `Your deliverable for task [${updatedTask.taskCode}] "${updatedTask.title}" has been signed off and marked Done!`,
-        taskId: updatedTask.id,
-        taskCode: updatedTask.taskCode,
-        taskTitle: updatedTask.title,
-      }).catch(console.error);
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been signed off and marked Done.`,
+      });
+    } else if (oldStatus === 'DONE' && newStatus !== 'DONE') {
+      // Reopened
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: [updatedTask.assigneeId],
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'REOPENED',
+        title: `Task Reopened: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" was moved out of Done back to ${newStatus}.`,
+      });
+    } else if (newStatus !== oldStatus) {
+      // General status transition
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: [updatedTask.assigneeId],
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'STATUS_CHANGED',
+        title: `Task Status: [${updatedTask.taskCode}] -> ${newStatus}`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" status changed to ${newStatus}.`,
+        extraPayload: { oldStatus, newStatus },
+      });
+    }
+
+    // 3. Due Date Changed:
+    const oldDueDate = existingTaskCheck.dueDate ? new Date(existingTaskCheck.dueDate).toISOString().split('T')[0] : '';
+    const newDueDate = updatedTask.dueDate ? new Date(updatedTask.dueDate).toISOString().split('T')[0] : '';
+    if (newDueDate && oldDueDate && newDueDate !== oldDueDate) {
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: [updatedTask.assigneeId],
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'DUE_DATE_CHANGED',
+        title: `Due Date Changed: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" due date changed to ${newDueDate}.`,
+      });
     }
 
     const [enriched] = await enrichTasks([updatedTask]);
@@ -1094,6 +1200,17 @@ router.patch('/:id/status', async (req, res) => {
           changedById: caller.employeeId,
           changedByName: caller.callerName,
         });
+      }
+
+      const targetSprintId = resTask?.sprintId || targetTask.sprintId;
+      if (typeof targetSprintId === 'string' && targetSprintId) {
+        const s = String(normalizedStatus).toUpperCase();
+        const sprintStatus = s === 'DONE' ? 'COMPLETED' : (s === 'IN_PROGRESS' || s === 'TO_REVIEW' || s === 'TODO') ? 'ACTIVE' : 'PLANNED';
+        try {
+          await tx.update(sprints).set({ status: sprintStatus }).where(eq(sprints.id, targetSprintId));
+        } catch (sprintErr) {
+          console.error('[TASK-SPRINT STATUS SYNC ERROR]:', sprintErr);
+        }
       }
 
       return resTask;
@@ -1426,15 +1543,21 @@ router.patch('/checklists/:checklistId', async (req, res) => {
       const allItems = await db.select().from(taskChecklists).where(eq(taskChecklists.taskId, targetTask.id));
       const allDone = allItems.every(c => c.id === checklistId || c.isCompleted);
       if (allDone && allItems.length > 0) {
-        createTaskNotification({
-          targetEmployeeId: targetTask.reviewingLeadId || targetTask.creatorId,
-          type: 'TASK_CHECKLIST_COMPLETE',
+        dispatchNotification({
+          entity: {
+            entityType: 'TASK',
+            entityId: targetTask.id,
+            entityCode: targetTask.taskCode,
+            title: targetTask.title,
+            assigneeEmployeeIds: [targetTask.assigneeId],
+            reviewingLeadEmployeeId: targetTask.reviewingLeadId,
+            creatorEmployeeId: targetTask.creatorId,
+          },
+          actorUserId: req.user!.id,
+          eventType: 'SUBTASK_COMPLETED',
           title: `Checklist Completed: [${targetTask.taskCode}]`,
-          message: `All checklist items have been checked off for task [${targetTask.taskCode}] "${targetTask.title}".`,
-          taskId: targetTask.id,
-          taskCode: targetTask.taskCode,
-          taskTitle: targetTask.title,
-        }).catch(console.error);
+          message: `All checklist items have been checked off for [${targetTask.taskCode}] "${targetTask.title}".`,
+        });
       }
     }
 
@@ -1583,24 +1706,23 @@ router.post('/:id/comments', async (req, res) => {
       })
       .returning();
 
-    // Notify the other party about the comment:
+    // Notify the other party about the comment (Strict Ping-Pong rule):
     if (!isSystemLog) {
-      const isAuthorAssignee = req.user?.employeeId === targetTask.assigneeId;
-      const targetRecipientEmpId = isAuthorAssignee
-        ? (targetTask.reviewingLeadId || targetTask.creatorId)
-        : targetTask.assigneeId;
-
-      if (targetRecipientEmpId) {
-        createTaskNotification({
-          targetEmployeeId: targetRecipientEmpId,
-          type: 'TASK_COMMENT',
-          title: `Task Comment: [${targetTask.taskCode}]`,
-          message: `${authorName} commented on task [${targetTask.taskCode}]: "${content.slice(0, 80)}"`,
-          taskId: targetTask.id,
-          taskCode: targetTask.taskCode,
-          taskTitle: targetTask.title,
-        }).catch(console.error);
-      }
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: targetTask.id,
+          entityCode: targetTask.taskCode,
+          title: targetTask.title,
+          assigneeEmployeeIds: [targetTask.assigneeId],
+          reviewingLeadEmployeeId: targetTask.reviewingLeadId,
+          creatorEmployeeId: targetTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'COMMENT_ADDED',
+        title: `Task Comment: [${targetTask.taskCode}]`,
+        message: `${authorName || 'Team member'} commented on [${targetTask.taskCode}]: "${content.slice(0, 80)}"`,
+      });
     }
 
     res.status(201).json(newComment);
@@ -1658,7 +1780,7 @@ router.delete('/comments/:commentId', async (req, res) => {
   }
 });
 
-// DELETE /api/tasks/:id - Admin & Manager protected task deletion
+// DELETE /api/tasks/:id - Admin & Manager protected soft-delete
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const taskId = String(req.params.id);
   try {
@@ -1677,16 +1799,49 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         changedByName: caller.callerName,
       });
 
-      await tx.delete(taskChecklists).where(eq(taskChecklists.taskId, taskId));
-      await tx.delete(taskComments).where(eq(taskComments.taskId, taskId));
-      await tx.delete(taskNotes).where(eq(taskNotes.taskId, taskId));
-      await tx.delete(tasks).where(eq(tasks.id, taskId));
+      // Soft delete: sets deletedAt timestamp, NEVER drops checklists, comments or task
+      await tx
+        .update(tasks)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(eq(tasks.id, taskId));
     });
 
-    res.json({ message: `Task ${task.taskCode || task.title} deleted successfully`, id: taskId });
+    res.json({ message: `Task ${task.taskCode || task.title} soft-deleted successfully`, id: taskId });
   } catch (err: any) {
     console.error('[DELETE TASK ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to delete task' });
+  }
+});
+
+// POST /api/tasks/:id/restore - Admin & Manager protected restore
+router.post('/:id/restore', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const taskId = String(req.params.id);
+  try {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await tx
+        .update(tasks)
+        .set({ deletedAt: null, updatedAt: new Date() })
+        .where(eq(tasks.id, taskId));
+
+      await recordHistory(tx, {
+        tableName: 'tasks',
+        recordId: taskId,
+        action: 'RESTORED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+    });
+
+    res.json({ message: `Task ${task.taskCode || task.title} restored successfully`, id: taskId });
+  } catch (err: any) {
+    console.error('[RESTORE TASK ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to restore task' });
   }
 });
 

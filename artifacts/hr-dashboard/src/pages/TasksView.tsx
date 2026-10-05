@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown, History, UserCheck } from 'lucide-react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown, History, UserCheck, MoreVertical, Pencil } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
@@ -9,7 +9,7 @@ import { MarkdownViewer } from '../components/MarkdownViewer';
 import { RecordHistoryPanel } from '../components/RecordHistoryPanel';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi, getCachedApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi, clearApiCache } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { formatDateTime } from '../utils/dateUtils';
@@ -70,6 +70,18 @@ export const TasksView: React.FC = () => {
   const [groupByEpic, setGroupByEpic] = useState(false);
   const [collapsedEpics, setCollapsedEpics] = useState<Record<string, boolean>>({});
   const pageSize = 15;
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Close 3-dots dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (activeMenuId && !(e.target as HTMLElement).closest('.task-action-menu')) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeMenuId]);
 
   // Debounce search by ~300ms
   useEffect(() => {
@@ -192,11 +204,16 @@ export const TasksView: React.FC = () => {
           assigneeName: realAssigneeName,
           reviewingLead: realLeadName,
           reviewingLeadId: t.reviewingLeadId || matchedLead?.id || '',
-          status: t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : t.status === 'PLANNED' ? 'PLANNED' : 'BACKLOG',
+          status: (t.status === 'DONE' || t.status === 'Done') ? 'DONE' : (t.status === 'TO_REVIEW' || t.status === 'IN_REVIEW' || t.status === 'To Review') ? 'TO_REVIEW' : (t.status === 'IN_PROGRESS' || t.status === 'In Progress') ? 'IN_PROGRESS' : 'BACKLOG',
           priority: pNormalized,
           dueDate: t.dueDate ? String(t.dueDate).split('T')[0] : '',
           notesCount: 1,
           outputUrl: t.deliverableUrl || '',
+          deliverableUrl: t.deliverableUrl || '',
+          deliverableUrls: t.deliverableUrls || [],
+          reviewingLeadIds: t.reviewingLeadIds || (t.reviewingLeadId ? [t.reviewingLeadId] : []),
+          checklists: t.checklists || [],
+          comments: t.comments || [],
           notes: t.description || '',
           waitingOn: t.waitingOn || 'None (Self)',
           createdAt: t.createdAt,
@@ -279,6 +296,9 @@ export const TasksView: React.FC = () => {
         method: 'PUT',
         body: JSON.stringify({ status: newStatus }),
       });
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/sprints');
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
       toast.success(`Task status updated to ${newStatus}`);
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
     } catch (err) {
@@ -322,6 +342,12 @@ export const TasksView: React.FC = () => {
           task.status === 'PLANNED' || task.status === 'Planned' ? 'Planned' :
             task.status === 'BACKLOG' || task.status === 'Backlog' ? 'Backlog' : 'In Progress',
       outputUrl: task.outputUrl || task.deliverableUrl || '',
+      deliverableUrl: task.outputUrl || task.deliverableUrl || '',
+      deliverableUrls: task.deliverableUrls || [],
+      assigneeIds: task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []),
+      reviewingLeadIds: task.reviewingLeadIds || (task.reviewingLeadId ? [task.reviewingLeadId] : []),
+      checklists: task.checklists || [],
+      comments: task.comments || [],
       waitingOn: task.waitingOn || 'None (Self)',
       notes: task.notes || task.description || '',
       dueDate: task.dueDate ? (String(task.dueDate).includes('T') ? String(task.dueDate).split('T')[0] : String(task.dueDate)) : '',
@@ -336,27 +362,32 @@ export const TasksView: React.FC = () => {
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
     try {
+      const patchBody: any = {
+        title: updated.title,
+        entity: updated.entity,
+        entityCode: updated.entityCode || (updated.entity === 'CLIMAGRO' ? 'CAG' : updated.entity === 'COMMON' ? 'COMMON' : 'EHM'),
+        epicId: updated.epicId !== undefined ? updated.epicId : null,
+        assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
+        assigneeId: updated.assigneeId || null,
+        reviewingLead: updated.reviewingLead === 'Unassigned' ? '' : updated.reviewingLead,
+        reviewingLeadId: updated.reviewingLeadId || null,
+        status: updated.status,
+        deliverableUrl: updated.outputUrl || '',
+        description: updated.notes || '',
+        dueDate: updated.dueDate || null,
+        sprintWeek: updated.targetWeek,
+        priority: updated.priority,
+        waitingOn: updated.waitingOn,
+      };
+      if (Array.isArray((updated as any).checklists) && (updated as any).checklists.length > 0) {
+        patchBody.checklists = (updated as any).checklists;
+      }
+      if (Array.isArray((updated as any).comments) && (updated as any).comments.length > 0) {
+        patchBody.comments = (updated as any).comments;
+      }
       await fetchApi(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          title: updated.title,
-          entity: updated.entity,
-          entityCode: updated.entityCode || (updated.entity === 'CLIMAGRO' ? 'CAG' : updated.entity === 'COMMON' ? 'COMMON' : 'EHM'),
-          epicId: updated.epicId !== undefined ? updated.epicId : null,
-          assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
-          assigneeId: updated.assigneeId || null,
-          reviewingLead: updated.reviewingLead === 'Unassigned' ? '' : updated.reviewingLead,
-          reviewingLeadId: updated.reviewingLeadId || null,
-          status: updated.status,
-          deliverableUrl: updated.outputUrl || '',
-          description: updated.notes || '',
-          dueDate: updated.dueDate || null,
-          sprintWeek: updated.targetWeek,
-          priority: updated.priority,
-          waitingOn: updated.waitingOn,
-          checklists: (updated as any).checklists,
-          comments: (updated as any).comments,
-        }),
+        body: JSON.stringify(patchBody),
       });
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
       await loadTasks();
@@ -454,15 +485,19 @@ export const TasksView: React.FC = () => {
           status: 'BACKLOG', // Task is created as Backlog, ready for Sprint Assignment!
         }),
       });
-      toast.success(`Backlog Task ${created.taskCode || ''} created! View it in Sprint Backlog to assign.`);
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/sprints');
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+      toast.success(`Backlog Task ${created.taskCode || ''} created! Redirecting to Sprint task view...`);
       loadTasks();
       setIsAssignModalOpen(false);
+      setLocation('/sprints');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create task');
     }
   };
 
-  const renderTaskRow = (t: any) => {
+  const renderTaskRow = (t: any, rowIdx?: number) => {
     const isCAG = t.entityCode === 'CAG';
     const entityLabel = t.entityCode === 'COMMON' ? 'EHM & CLIMAGRO' : isCAG ? 'CLIMAGRO' : 'EHM';
     const postedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
@@ -472,7 +507,7 @@ export const TasksView: React.FC = () => {
       : (p === 'HIGH' || p === 'P2' || p === '2') ? 'P2'
         : (p === 'LOW' || p === 'P4' || p === '4') ? 'P4' : 'P3';
 
-    const statusVal = t.status === 'DONE' ? 'DONE' : t.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'BACKLOG';
+    const statusVal = (t.status === 'DONE' || t.status === 'Done') ? 'DONE' : (t.status === 'TO_REVIEW' || t.status === 'IN_REVIEW' || t.status === 'To Review') ? 'TO_REVIEW' : (t.status === 'IN_PROGRESS' || t.status === 'In Progress') ? 'IN_PROGRESS' : 'BACKLOG';
 
     return (
       <tr
@@ -542,17 +577,14 @@ export const TasksView: React.FC = () => {
           {postedDate}
         </td>
 
-        {/* Priority Badge */}
+        {/* Priority Badge: P1 is red, rest (P2, P3, P4) are blue */}
         <td className="py-3 px-3 text-center whitespace-nowrap">
           <span
-            className={`inline-flex items-center justify-center font-extrabold text-[11px] px-2 py-0.5 rounded ${priorityCode === 'P1'
+            className={`inline-flex items-center justify-center font-extrabold text-[11px] px-2 py-0.5 rounded ${
+              priorityCode === 'P1'
                 ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                : priorityCode === 'P2'
-                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                  : priorityCode === 'P3'
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'bg-gray-100 text-gray-700 border border-gray-200'
-              }`}
+                : 'bg-blue-50 text-blue-700 border border-blue-200'
+            }`}
           >
             {priorityCode}
           </span>
@@ -563,50 +595,109 @@ export const TasksView: React.FC = () => {
           <select
             value={statusVal}
             onChange={(e) => handleTaskStatusChange(t.id, e.target.value)}
-            className={`text-xs font-bold px-2.5 py-1 rounded-lg border outline-none cursor-pointer transition-all ${statusVal === 'DONE'
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg border outline-none cursor-pointer transition-all ${
+              statusVal === 'DONE'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : statusVal === 'IN_PROGRESS'
                   ? 'bg-amber-50 text-amber-800 border-amber-200'
-                  : 'bg-blue-50 text-blue-700 border-blue-200'
-              }`}
+                  : statusVal === 'TO_REVIEW'
+                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                    : 'bg-blue-50 text-blue-700 border-blue-200'
+            }`}
           >
             <option value="BACKLOG">Backlog</option>
             <option value="IN_PROGRESS">In progress</option>
+            <option value="TO_REVIEW">To Review</option>
             <option value="DONE">Done</option>
           </select>
         </td>
 
-        {/* Action Icons: Eye (View) & Edit3 (Edit) */}
-        <td className="py-3 px-4 text-right whitespace-nowrap">
+        {/* Action Icons: Eye (View) & 3-dots Menu (View, Edit, History) */}
+        <td className={`py-3 px-4 text-right whitespace-nowrap ${activeMenuId === t.id ? 'relative z-30' : 'relative z-0'}`}>
           <div className="inline-flex items-center gap-1.5 justify-end">
+            {/* Single Eye View Button */}
             <button
               type="button"
               onClick={() => handleTaskClick(t, true)}
-              className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-emerald-200"
               title="View Task Details"
             >
               <Eye className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => handleTaskClick(t, false)}
-              className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-              title="Edit Task"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setHistoryTarget({
-                recordId: t.id,
-                title: t.title,
-                code: t.taskCode || t.taskId,
-              })}
-              className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-              title="View Task Audit History"
-            >
-              <History className="w-4 h-4" />
-            </button>
+
+            {/* Three Dots Menu Button (View, Edit, History) */}
+            <div className="relative inline-block text-left task-action-menu">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMenuId(activeMenuId === t.id ? null : t.id);
+                }}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer border ${
+                  activeMenuId === t.id
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100 border-transparent hover:border-gray-200'
+                }`}
+                title="Actions"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {activeMenuId === t.id && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className={`absolute right-0 ${
+                    rowIdx !== undefined && rowIdx >= 10 ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+                  } w-36 bg-white border border-gray-200/90 rounded-xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-gray-50 text-left`}
+                >
+                  <div className="py-0.5">
+                    {/* View Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuId(null);
+                        handleTaskClick(t, true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-emerald-800 hover:bg-emerald-50/80 transition-colors cursor-pointer text-left"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                      <span>View</span>
+                    </button>
+
+                    {/* Edit Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuId(null);
+                        handleTaskClick(t, false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-blue-800 hover:bg-blue-50/80 transition-colors cursor-pointer text-left"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span>Edit</span>
+                    </button>
+
+                    {/* History Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuId(null);
+                        setHistoryTarget({
+                          recordId: t.id,
+                          title: t.title,
+                          code: t.taskCode || t.taskId,
+                        });
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-purple-800 hover:bg-purple-50/80 transition-colors cursor-pointer text-left"
+                    >
+                      <History className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                      <span>History</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </td>
       </tr>
@@ -798,10 +889,10 @@ export const TasksView: React.FC = () => {
                   className="w-full bg-transparent text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
                   <option value="ALL">All priorities</option>
-                  <option value="P1">P1 - Critical / Urgent 🔥</option>
-                  <option value="P2">P2 - High Priority ⚡</option>
-                  <option value="P3">P3 - Medium Priority 📌</option>
-                  <option value="P4">P4 - Low Priority 📝</option>
+                  <option value="P1">P1</option>
+                  <option value="P2">P2</option>
+                  <option value="P3">P3</option>
+                  <option value="P4">P4</option>
                 </select>
               </div>
 
@@ -818,9 +909,8 @@ export const TasksView: React.FC = () => {
                 >
                   <option value="ALL">All statuses</option>
                   <option value="BACKLOG">Backlog</option>
-                  <option value="PLANNED">Planned</option>
-                  <option value="TODO">To Do</option>
                   <option value="IN_PROGRESS">In Progress</option>
+                  <option value="TO_REVIEW">To Review</option>
                   <option value="DONE">Done</option>
                 </select>
               </div>
@@ -889,13 +979,13 @@ export const TasksView: React.FC = () => {
 
                             {/* Epic Grouped Task Rows */}
                             {!isCollapsed &&
-                              group.items.map((t) => renderTaskRow(t))}
+                              group.items.map((t, idx) => renderTaskRow(t, idx))}
                           </React.Fragment>
                         );
                       })
                     ) : (
                       /* Flat View Task Rows */
-                      tasks.map((t) => renderTaskRow(t))
+                      tasks.map((t, idx) => renderTaskRow(t, idx))
                     )}
                   </tbody>
                 </table>
@@ -958,6 +1048,9 @@ export const TasksView: React.FC = () => {
         onDelete={(deletedId) => {
           setTasks(prev => prev.filter(t => t.id !== deletedId));
           setSelectedTaskToUpdate(null);
+          clearApiCache('/api/tasks');
+          clearApiCache('/api/sprints');
+          window.dispatchEvent(new CustomEvent('tasks-updated'));
         }}
         isReadOnly={isModalReadOnly}
       />
@@ -1156,9 +1249,9 @@ export const TasksView: React.FC = () => {
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '21 Sept';
 
                         const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'Done' || taskItem.status === 'COMPLETED';
+                        const isTaskToReview = taskItem.status === 'TO_REVIEW' || taskItem.status === 'To Review';
                         const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'In Progress' || taskItem.status === 'ACTIVE';
-                        const p = (taskItem.priority || '').toUpperCase();
-                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (p === 'URGENT' || p === 'HIGH' || p === 'P1' || p === '1') ? 'P1' : 'Planned';
+                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskToReview ? 'To Review' : isTaskInProgress ? 'In progress' : 'Backlog';
 
                         return (
                           <div
@@ -1177,11 +1270,15 @@ export const TasksView: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-3 shrink-0">
-                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                  isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                    taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                      'bg-gray-100 text-gray-700 border-gray-200'
-                                }`}>
+                              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
+                                isTaskDone
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : isTaskToReview
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    : isTaskInProgress
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
                                 {taskStatusLabel}
                               </span>
                               <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />

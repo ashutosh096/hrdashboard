@@ -114,36 +114,38 @@ export const PinnedAnnouncementBanner: React.FC = () => {
         console.warn('[DISMISS LOCAL STORAGE SAVE]:', err);
       }
 
-      // 4. Persist to PostgreSQL database so it stays dismissed permanently across logins and browsers
+      // 4. Persist to PostgreSQL database with automatic retry on failure
       clearApiCache('/api/announcements');
-      fetchApi(`/api/announcements/${id}/dismiss`, {
-        method: 'POST',
-      }).catch((err) => console.warn('[BACKEND DISMISS POST]:', err));
+      const sendDismissWithRetry = async (retriesLeft = 3) => {
+        try {
+          await fetchApi(`/api/announcements/${id}/dismiss`, { method: 'POST' });
+        } catch (err) {
+          if (retriesLeft > 0) {
+            setTimeout(() => sendDismissWithRetry(retriesLeft - 1), 1500);
+          } else {
+            console.warn('[BACKEND DISMISS FAILED AFTER RETRIES]:', err);
+          }
+        }
+      };
+      sendDismissWithRetry();
     },
-    [userId, user?.email, user?.id, user?.employeeId, userIdentifiers]
+    [userId, userIdentifiers]
   );
 
-  // Filter out any announcements that have been dismissed
+  // Filter out any announcements that have been dismissed (Database is single source of truth)
   const activePinned = useMemo(() => {
     return pinnedList.filter((a) => {
       if (!a || !a.id) return false;
 
-      // Check backend-computed isDismissed
+      // Primary check: database verified read status
       if (a.isDismissed === true) return false;
 
-      // Check local dismissed state
+      // Secondary check: optimistic local cache
       if (dismissedIds.includes(a.id)) return false;
-
-      // Check seenBy / seen_by array from database
-      const seenList = (Array.isArray(a.seenBy) ? a.seenBy : Array.isArray(a.seen_by) ? a.seen_by : []).map((x: any) =>
-        String(x).toLowerCase().trim()
-      );
-      const isSeen = userIdentifiers.some((uid) => seenList.includes(uid));
-      if (isSeen) return false;
 
       return true;
     });
-  }, [pinnedList, dismissedIds, userIdentifiers]);
+  }, [pinnedList, dismissedIds]);
 
   // Adjust currentIndex if items were dismissed
   useEffect(() => {

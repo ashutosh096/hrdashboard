@@ -22,6 +22,7 @@ export const sprints = pgTable('sprints', {
   endDate: timestamp('end_date'),
   status: sprintStatusEnum('status').default('PLANNED').notNull(),
   goal: text('goal'),
+  deletedAt: timestamp('deleted_at'),
   createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
   createdByName: text('created_by_name'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

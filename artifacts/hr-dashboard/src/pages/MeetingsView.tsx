@@ -96,6 +96,7 @@ export const MeetingsView: React.FC = () => {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
+  const calendarConnectedNotifiedRef = useRef(false);
 
   const searchParams = new URLSearchParams(window.location.search);
   const isJustConnected = searchParams.get('calendarConnected') === 'true';
@@ -164,8 +165,11 @@ export const MeetingsView: React.FC = () => {
 
       if (isJustConnected) {
         setIsConnected(true);
-        toast.success('Google Calendar connected successfully!');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (!calendarConnectedNotifiedRef.current) {
+          calendarConnectedNotifiedRef.current = true;
+          toast.success('Google Calendar connected successfully!', { id: 'gcal-connected-toast' });
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       } else {
         try {
           const res = await fetchApi<any>('/api/meetings/sync');

@@ -23,6 +23,7 @@ export const projects = pgTable(
     description: text('description').default(''),
     checkpoints: jsonb('checkpoints').$type<{ id: string; title: string; isCompleted: boolean }[]>().default([]),
     comments: jsonb('comments').$type<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>().default([]),
+    deletedAt: timestamp('deleted_at'),
     createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
     createdByName: text('created_by_name'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -32,6 +33,7 @@ export const projects = pgTable(
     index('idx_projects_created_at').on(table.createdAt),
     index('idx_projects_entity').on(table.entity),
     index('idx_projects_status').on(table.status),
+    index('idx_projects_deleted_at').on(table.deletedAt),
   ]
 );
 

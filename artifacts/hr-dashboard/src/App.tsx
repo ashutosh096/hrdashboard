@@ -68,9 +68,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         method: 'POST',
         body: JSON.stringify(taskData),
       });
-      toast.success(`Task ${created?.taskCode || 'created'} saved to live database!`);
+      toast.success(`Task ${created?.taskCode || 'created'} saved! Redirecting to Sprint task view...`);
       queryClient.invalidateQueries();
       window.dispatchEvent(new CustomEvent('tasks-updated'));
+      setLocation('/sprints');
     } catch (err: any) {
       console.error('[TASK ASSIGN MODAL SUBMIT ERROR]:', err);
       toast.error(err?.message || 'Failed to save task to database');

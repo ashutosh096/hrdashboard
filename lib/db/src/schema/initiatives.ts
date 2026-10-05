@@ -18,6 +18,7 @@ export const initiatives = pgTable('initiatives', {
   targetDeliverableMetric: text('target_deliverable_metric'),
   status: initiativeStatusEnum('status').default('PLANNED').notNull(),
   ownerId: uuid('owner_id').references(() => employees.id),
+  deletedAt: timestamp('deleted_at'),
   createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
   createdByName: text('created_by_name'),
   targetDate: timestamp('target_date'),

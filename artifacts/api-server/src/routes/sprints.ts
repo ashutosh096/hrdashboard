@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { db, sprints, employees, entities, epics, tasks, users, notifications, taskChecklists, taskComments, taskNotes, entityCounters, generateNextGlobalCode, eq, inArray, sql, and, recordHistory } from '@workspace/db';
+import { db, sprints, employees, entities, epics, tasks, users, notifications, taskChecklists, taskComments, taskNotes, entityCounters, generateNextGlobalCode, eq, inArray, isNull, sql, and, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
 import { insertNotification } from '../services/notificationService.js';
+import { dispatchNotification } from '../services/notificationDispatcher.js';
 
 const router = Router();
 
@@ -11,22 +12,25 @@ router.use(requireAuth);
 // GET /api/sprints - View all sprints for all authenticated roles
 router.get('/', async (req, res) => {
   try {
-    const { employeeId } = req.query;
-    let allSprints;
+    const { employeeId, includeDeleted } = req.query;
+    const conditions: any[] = [];
+    if (includeDeleted !== 'true') {
+      conditions.push(isNull(sprints.deletedAt));
+    }
     if (employeeId && typeof employeeId === 'string') {
-      allSprints = await db
-        .select()
-        .from(sprints)
-        .where(eq(sprints.employeeId, employeeId))
-        .orderBy(sql`LOWER(${sprints.name}) ASC`);
-    } else {
-      allSprints = await db
-        .select()
-        .from(sprints)
-        .orderBy(sql`LOWER(${sprints.name}) ASC`);
+      conditions.push(eq(sprints.employeeId, employeeId));
     }
 
-    const allTasks = await db.select().from(tasks);
+    const allSprints = await db
+      .select()
+      .from(sprints)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(sql`LOWER(${sprints.name}) ASC`);
+
+    const allTasks = await db
+      .select()
+      .from(tasks)
+      .where(includeDeleted !== 'true' ? isNull(tasks.deletedAt) : undefined);
     const allEmployees = await db.select().from(employees);
     const allEpics = await db.select().from(epics);
     const allEntities = await db.select().from(entities);
@@ -106,7 +110,12 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           name: name || `Sprint ${sprintCode}`,
           startDate: startDate ? new Date(startDate) : new Date(),
           endDate: endDate ? new Date(endDate) : new Date(Date.now() + 14 * 86400000), // Default 2 weeks
-          status: status || 'PLANNED',
+          status: (() => {
+            const raw = (status || 'PLANNED').toString().toUpperCase();
+            if (raw === 'DONE' || raw === 'COMPLETED') return 'COMPLETED';
+            if (raw === 'IN_PROGRESS' || raw === 'ACTIVE' || raw === 'TODO' || raw === 'TO_REVIEW') return 'ACTIVE';
+            return 'PLANNED';
+          })(),
           goal: goal || '',
           createdById: caller.employeeId,
           createdByName: caller.callerName,
@@ -135,32 +144,22 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         });
       }
 
-      // 6. Dispatch notification to Sprint Owner Employee
-      const [empUser] = await tx
-        .select()
-        .from(users)
-        .where(eq(users.employeeId, emp.id));
-
-      if (empUser) {
-        await insertNotification(
-          {
-            userId: empUser.id,
-            type: 'TASK_ASSIGNED',
-            payload: {
-              sprintId: newSprint.id,
-              sprintCode: newSprint.sprintCode,
-              taskCode: newSprint.sprintCode,
-              title: `New Sprint Assigned: [${newSprint.sprintCode}] "${newSprint.name}"`,
-              message: `You have been assigned to a new personal sprint: [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
-              taskTitle: newSprint.name,
-              assigneeId: emp.id,
-              assigneeName: `${emp.firstName} ${emp.lastName}`.trim(),
-              tagged: true,
-            },
-          },
-          tx
-        );
-      }
+      // 6. Targeted notification to Sprint Owner & Lead (Strictly targeted)
+      dispatchNotification({
+        entity: {
+          entityType: 'SPRINT',
+          entityId: newSprint.id,
+          entityCode: newSprint.sprintCode,
+          title: newSprint.name,
+          assigneeEmployeeIds: [emp.id],
+          reviewingLeadEmployeeId: newSprint.reviewingLeadId,
+          creatorEmployeeId: caller.employeeId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'ASSIGNED',
+        title: `New Sprint Assigned: [${newSprint.sprintCode}] "${newSprint.name}"`,
+        message: `You have been assigned to sprint [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
+      });
 
       return newSprint;
     });
@@ -248,6 +247,20 @@ async function handleSprintUpdate(req: any, res: any) {
         });
       }
 
+      // Bidirectional sync: keep linked tasks updated when sprint is updated
+      if (updatePayload.status !== undefined || updatePayload.name !== undefined) {
+        const taskUpdate: any = { updatedAt: new Date() };
+        if (updatePayload.status !== undefined) {
+          const s = String(updatePayload.status).toUpperCase().trim();
+          taskUpdate.status = s === 'DONE' ? 'DONE' : (s === 'IN_REVIEW' || s === 'TO_REVIEW' || s === 'TO REVIEW') ? 'TO_REVIEW' : (s === 'IN_PROGRESS' || s === 'IN PROGRESS') ? 'IN_PROGRESS' : s === 'PLANNED' ? 'PLANNED' : 'BACKLOG';
+        }
+        try {
+          await tx.update(tasks).set(taskUpdate).where(eq(tasks.sprintId, sprintId));
+        } catch (taskErr) {
+          console.error('[SPRINT-TASK STATUS SYNC ERROR]:', taskErr);
+        }
+      }
+
       return resSprint;
     });
 
@@ -268,7 +281,7 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), handleSprintUpdate);
 // PATCH /api/sprints/:id
 router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), handleSprintUpdate);
 
-// DELETE /api/sprints/:id - Admin & Manager protected sprint deletion
+// DELETE /api/sprints/:id - Admin & Manager protected sprint soft-deletion
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const sprintId = req.params.id as string;
   try {
@@ -287,24 +300,55 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         changedByName: caller.callerName,
       });
 
-      // Find linked tasks
+      const now = new Date();
+
+      // Soft delete sprint: sets deletedAt timestamp, NEVER drops rows
+      await tx.update(sprints).set({ deletedAt: now }).where(eq(sprints.id, sprintId));
+
+      // Also soft-delete linked tasks (preserves checklists, comments and history!)
       const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(eq(tasks.sprintId, sprintId));
       const taskIds = linkedTasks.map(t => t.id);
-
       if (taskIds.length > 0) {
-        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
-        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
-        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
-        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+        await tx.update(tasks).set({ deletedAt: now, updatedAt: now }).where(inArray(tasks.id, taskIds));
       }
-
-      await tx.delete(sprints).where(eq(sprints.id, sprintId));
     });
 
-    res.json({ message: `Sprint ${sprint.sprintCode || sprint.name} deleted successfully`, id: sprintId });
+    res.json({ message: `Sprint ${sprint.sprintCode || sprint.name} soft-deleted successfully`, id: sprintId });
   } catch (err: any) {
     console.error('[DELETE SPRINT ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to delete sprint' });
+  }
+});
+
+// POST /api/sprints/:id/restore - Admin & Manager protected sprint restore
+router.post('/:id/restore', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const sprintId = req.params.id as string;
+  try {
+    const [sprint] = await db.select().from(sprints).where(eq(sprints.id, sprintId));
+    if (!sprint) {
+      return res.status(404).json({ message: 'Sprint not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await tx.update(sprints).set({ deletedAt: null }).where(eq(sprints.id, sprintId));
+
+      // Restore linked tasks
+      await tx.update(tasks).set({ deletedAt: null, updatedAt: new Date() }).where(eq(tasks.sprintId, sprintId));
+
+      await recordHistory(tx, {
+        tableName: 'sprints',
+        recordId: sprintId,
+        action: 'RESTORED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+    });
+
+    res.json({ message: `Sprint ${sprint.sprintCode || sprint.name} restored successfully`, id: sprintId });
+  } catch (err: any) {
+    console.error('[RESTORE SPRINT ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to restore sprint' });
   }
 });
 

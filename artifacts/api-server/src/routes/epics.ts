@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, epics, initiatives, projects, employees, entityCounters, generateNextGlobalCode, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, or, inArray, sql, recordHistory } from '@workspace/db';
+import { db, epics, initiatives, projects, employees, entityCounters, generateNextGlobalCode, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, isNull, sql, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
 
@@ -9,19 +9,34 @@ router.use(requireAuth);
 
 // GET /api/epics - List epics with linked sprints and tasks summary
 router.get('/', async (req, res) => {
-  const { initiativeId, projectId } = req.query;
+  const { initiativeId, projectId, includeDeleted } = req.query;
 
   try {
-    let query = db.select().from(epics).orderBy(sql`LOWER(${epics.title}) ASC`);
+    const conditions: any[] = [];
+    if (includeDeleted !== 'true') {
+      conditions.push(isNull(epics.deletedAt));
+    }
     if (initiativeId && typeof initiativeId === 'string') {
-      query = db.select().from(epics).where(eq(epics.initiativeId, initiativeId)).orderBy(sql`LOWER(${epics.title}) ASC`) as any;
+      conditions.push(eq(epics.initiativeId, initiativeId));
     } else if (projectId && typeof projectId === 'string') {
-      query = db.select().from(epics).where(eq(epics.projectId, projectId)).orderBy(sql`LOWER(${epics.title}) ASC`) as any;
+      conditions.push(eq(epics.projectId, projectId));
     }
 
-    const allEpics = await query;
-    const allSprints = await db.select().from(sprints);
-    const allTasks = await db.select().from(tasks);
+    const allEpics = await db
+      .select()
+      .from(epics)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(sql`LOWER(${epics.title}) ASC`);
+
+    const allSprints = await db
+      .select()
+      .from(sprints)
+      .where(includeDeleted !== 'true' ? isNull(sprints.deletedAt) : undefined);
+
+    const allTasks = await db
+      .select()
+      .from(tasks)
+      .where(includeDeleted !== 'true' ? isNull(tasks.deletedAt) : undefined);
     const allEntities = await db.select().from(entities);
     const allEmployees = await db.select().from(employees);
 
@@ -336,7 +351,7 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), handleEpicUpdate);
 // PATCH /api/epics/:id - Update Epic details
 router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), handleEpicUpdate);
 
-// DELETE /api/epics/:id - Admin protected epic deletion
+// DELETE /api/epics/:id - Admin protected epic soft-deletion
 router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
   const epicId = req.params.id as string;
   if (!epicId || epicId === 'undefined' || epicId === 'null') {
@@ -358,39 +373,78 @@ router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
         changedByName: caller.callerName,
       });
 
-      // 1. Find linked sprints
+      // Record child epic removal on parent Initiative if linked
+      if (epic.initiativeId) {
+        await recordHistory(tx, {
+          tableName: 'initiatives',
+          recordId: epic.initiativeId,
+          action: 'UPDATED',
+          changes: [{ field: 'epic', old: `Epic deleted: ${epic.epicCode} - ${epic.title}`, new: null }],
+          changedById: caller.employeeId,
+          changedByName: caller.callerName,
+        });
+      }
+
+      const now = new Date();
+
+      // Soft delete: flags epic as deletedAt, NEVER drops rows from database
+      await tx.update(epics).set({ deletedAt: now }).where(eq(epics.id, epicId));
+
+      // Also soft-delete linked sprints and tasks (preserves checklists, comments and history!)
       const linkedSprints = await tx.select({ id: sprints.id }).from(sprints).where(eq(sprints.epicId, epicId));
       const sprintIds = linkedSprints.map(s => s.id);
+      if (sprintIds.length > 0) {
+        await tx.update(sprints).set({ deletedAt: now }).where(inArray(sprints.id, sprintIds));
+      }
 
-      // 2. Find linked tasks
       const linkedTasks = await tx.select({ id: tasks.id }).from(tasks).where(
         sprintIds.length > 0
           ? or(eq(tasks.epicId, epicId), inArray(tasks.sprintId, sprintIds))
           : eq(tasks.epicId, epicId)
       );
       const taskIds = linkedTasks.map(t => t.id);
-
-      // 3. Delete task child items
       if (taskIds.length > 0) {
-        await tx.delete(taskChecklists).where(inArray(taskChecklists.taskId, taskIds));
-        await tx.delete(taskComments).where(inArray(taskComments.taskId, taskIds));
-        await tx.delete(taskNotes).where(inArray(taskNotes.taskId, taskIds));
-        await tx.delete(tasks).where(inArray(tasks.id, taskIds));
+        await tx.update(tasks).set({ deletedAt: now, updatedAt: now }).where(inArray(tasks.id, taskIds));
       }
-
-      // 4. Delete sprints
-      if (sprintIds.length > 0) {
-        await tx.delete(sprints).where(inArray(sprints.id, sprintIds));
-      }
-
-      // 5. Delete epic
-      await tx.delete(epics).where(eq(epics.id, epicId));
     });
 
-    res.json({ message: `Epic ${epic.epicCode} deleted successfully`, id: epicId });
+    res.json({ message: `Epic ${epic.epicCode} soft-deleted successfully`, id: epicId });
   } catch (err: any) {
     console.error('[DELETE EPIC ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to delete epic' });
+  }
+});
+
+// POST /api/epics/:id/restore - Admin protected epic restore
+router.post('/:id/restore', requireRole(['ADMIN']), async (req, res) => {
+  const epicId = req.params.id as string;
+  try {
+    const [epic] = await db.select().from(epics).where(eq(epics.id, epicId));
+    if (!epic) {
+      return res.status(404).json({ message: 'Epic not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await tx.update(epics).set({ deletedAt: null }).where(eq(epics.id, epicId));
+
+      // Restore linked sprints and tasks that were deleted at the same time
+      await tx.update(sprints).set({ deletedAt: null }).where(eq(sprints.epicId, epicId));
+      await tx.update(tasks).set({ deletedAt: null, updatedAt: new Date() }).where(eq(tasks.epicId, epicId));
+
+      await recordHistory(tx, {
+        tableName: 'epics',
+        recordId: epicId,
+        action: 'RESTORED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+    });
+
+    res.json({ message: `Epic ${epic.epicCode} restored successfully`, id: epicId });
+  } catch (err: any) {
+    console.error('[RESTORE EPIC ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to restore epic' });
   }
 });
 

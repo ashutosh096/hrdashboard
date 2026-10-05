@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, announcements, entities, eq, desc, sql } from '@workspace/db';
+import { db, announcements, announcementReads, entities, eq, desc, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -14,29 +14,17 @@ router.get('/', async (req, res) => {
       .orderBy(desc(announcements.createdAt));
 
     const allEntities = await db.select().from(entities);
-    const rawCallerIds = [req.user?.id, req.user?.email, req.user?.employeeId].filter(Boolean) as string[];
-    const callerIdsLower = rawCallerIds.map((x) => x.toLowerCase().trim());
+    const userId = req.user!.id;
+
+    // Relational read status from announcement_reads table
+    const userReads = await db
+      .select({ announcementId: announcementReads.announcementId })
+      .from(announcementReads)
+      .where(eq(announcementReads.userId, userId));
+    const readAnnouncementIds = new Set(userReads.map(r => r.announcementId));
 
     const enriched = list.map((a: any) => {
-      let rawSeenList: any[] = [];
-      if (Array.isArray(a.seenBy)) {
-        rawSeenList = a.seenBy;
-      } else if (Array.isArray(a.seen_by)) {
-        rawSeenList = a.seen_by;
-      } else if (typeof a.seenBy === 'string') {
-        try {
-          rawSeenList = JSON.parse(a.seenBy);
-        } catch {}
-      } else if (typeof a.seen_by === 'string') {
-        try {
-          rawSeenList = JSON.parse(a.seen_by);
-        } catch {}
-      }
-
-      const seenList: string[] = (Array.isArray(rawSeenList) ? rawSeenList : []).map((x: any) =>
-        typeof x === 'string' ? x.trim() : String(x)
-      );
-      const isDismissed = callerIdsLower.some((uid: string) => seenList.some((s: string) => s.toLowerCase() === uid));
+      const isDismissed = readAnnouncementIds.has(a.id);
       const ent = allEntities.find((e: any) => e.id === a.targetEntityId);
       const resolvedEntity = ent?.code === 'CAG' ? 'CLIMAGRO' : ent?.code === 'EHM' ? 'EHM' : 'BOTH';
       const entityName = ent?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'EHM' ? 'EHM Consultancy' : 'Both (EHM & CLIMAGRO)');
@@ -46,8 +34,6 @@ router.get('/', async (req, res) => {
         entity: resolvedEntity,
         entityCode: ent?.code || 'BOTH',
         entityName,
-        seenBy: seenList,
-        seen_by: seenList,
         isDismissed,
       };
     });
@@ -228,29 +214,14 @@ router.post('/dismiss-all', async (req, res) => {
   }
 
   try {
-    const list = await db.select().from(announcements).where(eq(announcements.isPinned, true));
+    const userId = req.user!.id;
+    const list = await db.select({ id: announcements.id }).from(announcements).where(eq(announcements.isPinned, true));
     for (const ann of list) {
-      let rawSeenList: any[] = [];
-      if (Array.isArray(ann.seenBy)) {
-        rawSeenList = ann.seenBy;
-      } else if (typeof ann.seenBy === 'string') {
-        try {
-          rawSeenList = JSON.parse(ann.seenBy);
-        } catch {}
-      }
-      const currentSeenBy: string[] = (Array.isArray(rawSeenList) ? rawSeenList : []).map((x) => String(x));
-      let mod = false;
-      for (const rawUid of callerIds) {
-        const uid = rawUid.trim();
-        const uidLower = uid.toLowerCase();
-        if (!currentSeenBy.some((x) => String(x).toLowerCase() === uidLower)) {
-          currentSeenBy.push(uid);
-          mod = true;
-        }
-      }
-      if (mod) {
-        await db.update(announcements).set({ seenBy: sql`${JSON.stringify(currentSeenBy)}::jsonb` as any }).where(eq(announcements.id, ann.id));
-      }
+      await db.execute(sql`
+        INSERT INTO announcement_reads (announcement_id, user_id, read_at)
+        VALUES (${ann.id}, ${userId}, now())
+        ON CONFLICT (announcement_id, user_id) DO NOTHING;
+      `);
     }
     res.json({ success: true, message: 'All pinned announcements dismissed for user' });
   } catch (err: any) {
@@ -259,14 +230,14 @@ router.post('/dismiss-all', async (req, res) => {
   }
 });
 
-// POST /:id/dismiss - Record user dismissal permanently in database
+// POST /:id/dismiss - Record user dismissal permanently in database (Idempotent)
 router.post('/:id/dismiss', async (req, res) => {
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = (rawId || '').trim();
-  const callerIds = [req.user?.id, req.user?.email, req.user?.employeeId].filter(Boolean) as string[];
+  const userId = req.user?.id;
 
-  if (callerIds.length === 0) {
-    return res.status(401).json({ message: 'User identifier required' });
+  if (!userId) {
+    return res.status(401).json({ message: 'User authentication required' });
   }
 
   try {
@@ -275,42 +246,13 @@ router.post('/:id/dismiss', async (req, res) => {
       return res.json({ success: true, message: 'Dismissed' });
     }
 
-    const [existing] = await db
-      .select()
-      .from(announcements)
-      .where(eq(announcements.id, id));
+    await db.execute(sql`
+      INSERT INTO announcement_reads (announcement_id, user_id, read_at)
+      VALUES (${id}, ${userId}, now())
+      ON CONFLICT (announcement_id, user_id) DO NOTHING;
+    `);
 
-    if (!existing) {
-      return res.status(404).json({ message: 'Announcement not found' });
-    }
-
-    let rawExistingSeen: any[] = [];
-    if (Array.isArray(existing.seenBy)) {
-      rawExistingSeen = existing.seenBy;
-    } else if (typeof existing.seenBy === 'string') {
-      try {
-        rawExistingSeen = JSON.parse(existing.seenBy);
-      } catch {}
-    }
-    const currentSeenBy: string[] = (Array.isArray(rawExistingSeen) ? rawExistingSeen : []).map((x) => String(x));
-    let modified = false;
-    for (const rawUid of callerIds) {
-      const uid = rawUid.trim();
-      const uidLower = uid.toLowerCase();
-      if (!currentSeenBy.some((x) => String(x).toLowerCase() === uidLower)) {
-        currentSeenBy.push(uid);
-        modified = true;
-      }
-    }
-
-    if (modified) {
-      await db
-        .update(announcements)
-        .set({ seenBy: sql`${JSON.stringify(currentSeenBy)}::jsonb` as any })
-        .where(eq(announcements.id, id));
-    }
-
-    res.json({ success: true, message: 'Announcement dismissed for user', seenBy: currentSeenBy });
+    res.json({ success: true, message: 'Announcement permanently dismissed for user' });
   } catch (err: any) {
     console.error('[DISMISS ANNOUNCEMENT ERROR]:', err);
     res.status(500).json({ message: err?.message || 'Failed to dismiss announcement' });

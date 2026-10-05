@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown, Trash2, History, UserCheck } from 'lucide-react';
+import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown, Trash2, History, UserCheck, MoreVertical } from 'lucide-react';
 import { fetchApi } from '@workspace/api-client-react';
+import { useLocation } from 'wouter';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
@@ -101,6 +102,18 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PLANNED' | 'IN_PROGRESS' | 'DONE'>('ALL');
   const [collapsedEpicIds, setCollapsedEpicIds] = useState<Record<string, boolean>>({});
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Close 3-dots dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (activeMenuId && !(e.target as HTMLElement).closest('.epic-action-menu')) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeMenuId]);
 
   // New Epic Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -112,6 +125,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const [department, setDepartment] = useState('Product & Tech');
   const [targetWeek, setTargetWeek] = useState('');
   const [sprintsCountTarget, setSprintsCountTarget] = useState<number>(0);
+  const [createStatus, setCreateStatus] = useState<'PLANNED' | 'IN_PROGRESS' | 'DONE'>('PLANNED');
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -157,6 +171,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+  const [, setLocation] = useLocation();
   const [isTaskAssignModalOpen, setIsTaskAssignModalOpen] = useState(false);
   const [taskAssignEpic, setTaskAssignEpic] = useState<EpicItem | null>(null);
   const [quickSlotIdx, setQuickSlotIdx] = useState<number | null>(null);
@@ -260,7 +275,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           status: 'BACKLOG',
         }),
       });
-      toast.success(`Task ${created.taskCode || ''} created and linked to ${targetEpic.epicCode}!`);
+      toast.success(`Task ${created.taskCode || ''} created and linked to ${targetEpic.epicCode}! Redirecting to Sprint task view...`);
       setIsTaskAssignModalOpen(false);
       setTaskAssignEpic(null);
 
@@ -274,6 +289,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       }
       loadData(true);
       window.dispatchEvent(new CustomEvent('tasks-updated'));
+      setLocation('/sprints');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create task');
     }
@@ -460,6 +476,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     e.preventDefault();
     if (!title.trim()) return toast.error('Please enter an epic title');
 
+    const apiStatus = createStatus === 'DONE' ? 'COMPLETED' : createStatus;
+
     setIsSubmitting(true);
     try {
       const created = await fetchApi<any>('/api/epics', {
@@ -474,6 +492,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
           department,
           targetWeek,
           sprintsCountTarget: sprintsCountTarget > 0 ? sprintsCountTarget : undefined,
+          status: apiStatus,
           assignedTo: createAssignedTo.length > 0 ? createAssignedTo : undefined,
         }),
       });
@@ -484,6 +503,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
       setSelectedProjectId('');
       setTargetWeek('');
       setSprintsCountTarget(0);
+      setCreateStatus('PLANNED');
       setCreateAssignedTo([]);
       setIsModalOpen(false);
       window.dispatchEvent(new CustomEvent('epics-updated'));
@@ -797,10 +817,19 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
             const isCollapsed = collapsedEpicIds[epic.id] !== false;
 
             return (
-              <div key={epic.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xs transition-all hover:border-emerald-300">
+              <div
+                key={epic.id}
+                className={`bg-white rounded-2xl border shadow-2xs transition-all hover:border-emerald-300 ${
+                  activeMenuId === epic.id ? 'relative z-40' : 'relative z-0'
+                } ${
+                  isCollapsed ? 'border-gray-200' : 'border-emerald-200'
+                }`}
+              >
                 {/* Epic Header Bar */}
                 <div 
-                  className="bg-gray-50/90 border-b border-gray-200 px-5 py-3.5 flex items-center justify-between gap-4 transition-colors select-none"
+                  className={`bg-gray-50/90 px-5 py-3.5 flex items-center justify-between gap-4 transition-colors select-none ${
+                    isCollapsed ? 'rounded-2xl' : 'rounded-t-2xl border-b border-gray-200'
+                  }`}
                 >
                   <div 
                     onClick={() => setViewingEpic(epic)}
@@ -831,11 +860,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs font-bold text-gray-700">
-                      {epic.targetWeek ? epic.targetWeek.split(' ')[0] + ' ' + (epic.targetWeek.split(' ')[1] || '') : 'Week 1'}
-                    </span>
-
+                  <div className="flex items-center gap-2.5 shrink-0">
                     {(isManager || isAdmin) ? (
                       <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
                         <select
@@ -868,52 +893,112 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       </span>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setHistoryTarget({
-                          recordId: epic.id,
-                          title: epic.title,
-                          code: epic.epicCode,
-                        });
-                      }}
-                      className="p-1.5 text-gray-400 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer border border-transparent hover:border-emerald-200"
-                      title="View Epic History"
-                    >
-                      <History className="w-4 h-4" />
-                    </button>
-
+                    {/* Single Eye View Button */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setViewingEpic(epic);
                       }}
-                      className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-gray-200"
+                      className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-emerald-200"
                       title="View Epic Details"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
 
+                    {/* Three Dots Menu Button (View, Edit, History) */}
+                    <div className="relative epic-action-menu">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === epic.id ? null : epic.id);
+                        }}
+                        className={`p-1.5 rounded-lg transition-colors cursor-pointer border ${
+                          activeMenuId === epic.id
+                            ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                            : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100 border-transparent hover:border-gray-200'
+                        }`}
+                        title="Actions"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {activeMenuId === epic.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-2 w-40 bg-white border border-gray-200/90 rounded-xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-gray-50"
+                        >
+                          <div className="py-0.5">
+                            {/* View Option */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setViewingEpic(epic);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-emerald-800 hover:bg-emerald-50/80 transition-colors cursor-pointer text-left"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                              <span>View</span>
+                            </button>
+
+                            {/* Edit Option */}
+                            {(isManager || isAdmin) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  handleStartEdit(epic);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-blue-800 hover:bg-blue-50/80 transition-colors cursor-pointer text-left"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span>Edit</span>
+                              </button>
+                            )}
+
+                            {/* History Option */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                setHistoryTarget({
+                                  recordId: epic.id,
+                                  title: epic.title,
+                                  code: epic.epicCode,
+                                });
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:text-purple-800 hover:bg-purple-50/80 transition-colors cursor-pointer text-left"
+                            >
+                              <History className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                              <span>History</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Expand / Collapse Button: Arrow facing down, on hover shows Expand */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setCollapsedEpicIds(prev => ({ ...prev, [epic.id]: !isCollapsed }));
                       }}
-                      className="p-1.5 px-2.5 rounded-lg hover:bg-gray-200/80 text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer border border-gray-200 bg-white"
-                      title={isCollapsed ? "Expand Tasks Section" : "Collapse Tasks Section"}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors flex items-center justify-center cursor-pointer border border-gray-200 bg-white hover:border-gray-300"
+                      title={isCollapsed ? 'Expand' : 'Collapse'}
+                      aria-label={isCollapsed ? 'Expand' : 'Collapse'}
                     >
-                      <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
-                      {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      <ChevronDown className={`w-4 h-4 text-emerald-600 transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
                 </div>
 
                 {/* Expanded Child Tasks List */}
                 {!isCollapsed && (
-                  <div className="bg-slate-50/50">
+                  <div className="bg-slate-50/50 rounded-b-2xl overflow-hidden">
                     {epicTasks.length === 0 ? (
                       <div className="px-6 py-4 text-xs font-medium text-gray-400 italic flex items-center justify-between">
                         <span>No tasks linked to this epic yet.</span>
@@ -1263,8 +1348,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                         const dateStr = taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Unknown';
 
                         const isTaskDone = taskItem.status === 'DONE' || taskItem.status === 'COMPLETED';
+                        const isTaskToReview = taskItem.status === 'TO_REVIEW';
                         const isTaskInProgress = taskItem.status === 'IN_PROGRESS' || taskItem.status === 'ACTIVE';
-                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskInProgress ? 'In progress' : (taskItem.priority === 'URGENT' || taskItem.priority === 'HIGH' || taskItem.priority === 'P1') ? 'P1' : 'Planned';
+                        const taskStatusLabel = isTaskDone ? 'Done' : isTaskToReview ? 'To Review' : isTaskInProgress ? 'In progress' : 'Backlog';
 
                         return (
                           <div
@@ -1284,9 +1370,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                             <div className="flex items-center gap-3 shrink-0">
                               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
                                 isTaskDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                isTaskInProgress ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                taskStatusLabel === 'P1' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                'bg-gray-100 text-gray-700 border-gray-200'
+                                isTaskToReview ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                isTaskInProgress ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-blue-50 text-blue-700 border-blue-200'
                               }`}>
                                 {taskStatusLabel}
                               </span>
@@ -1465,28 +1551,35 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         </div>
       )}
 
-      {/* MANAGER EDIT EPIC MODAL */}
+      {/* MANAGER EDIT EPIC MODAL (IDENTICAL STRUCTURE TO CREATE EPIC) */}
       {editingEpic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                <h3 className="text-lg font-bold text-gray-900">Edit Feature Epic</h3>
+                <span className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                   {editingEpic.epicCode}
                 </span>
-                <h3 className="text-lg font-bold text-gray-900">Edit Feature Epic</h3>
               </div>
-              <button
-                onClick={() => setEditingEpic(null)}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  Level 2 Breakdown
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEditingEpic(null)}
+                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  title="Close edit form"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4">
-              {/* Parent Initiative & Parent Project (Optional - Stacked on dedicated lines for maximum visibility) */}
-              <div className="space-y-3">
+              {/* Parent Initiative & Parent Project (Side-by-side) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-bold text-gray-700">Parent Initiative</label>
@@ -1496,7 +1589,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     options={initiativeOptions}
                     value={editInitiativeId}
                     onChange={setEditInitiativeId}
-                    placeholder="Select Parent Initiative (Optional)..."
+                    placeholder="Select Parent Initiative..."
                     noneLabel="-- No Initiative (Standalone) --"
                     searchPlaceholder="Search initiatives..."
                   />
@@ -1511,7 +1604,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     options={projectOptions}
                     value={editProjectId}
                     onChange={setEditProjectId}
-                    placeholder="Select Parent Project (Optional)..."
+                    placeholder="Select Parent Project..."
                     noneLabel="-- No Project (Standalone) --"
                     searchPlaceholder="Search projects..."
                   />
@@ -1524,6 +1617,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Auth & Multi-tenant RBAC Security Module"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
@@ -1572,19 +1666,18 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               </div>
 
-              {/* Target Week / Date */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
-                <CalendarPicker
-                  value={editTargetWeek}
-                  onChange={(formatted) => setEditTargetWeek(formatted)}
-                  placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
-                  formatMode="date"
-                />
-              </div>
-
-              {/* Target Tasks Count & Status */}
+              {/* Target Week / Date & Planned Tasks Target */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                  <CalendarPicker
+                    value={editTargetWeek}
+                    onChange={(formatted) => setEditTargetWeek(formatted)}
+                    placeholder="e.g. 28 Sep 2026 or Week 1"
+                    formatMode="date"
+                  />
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-bold text-gray-700">Planned Tasks Target</label>
@@ -1617,6 +1710,53 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       +
                     </button>
                   </div>
+                  <p className="text-[10px] text-gray-400 font-medium mt-1">
+                    {editSprintsCountTarget > 0 ? `Target set to ${editSprintsCountTarget} tasks.` : 'Flexible task count.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Assigned To & Status (Side-by-side) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="relative" ref={editAssignedRef}>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditAssignedDropOpen(prev => !prev)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer font-medium text-gray-700"
+                  >
+                    <span className="truncate">
+                      {editAssignedTo.length === 0
+                        ? 'Select assignees...'
+                        : editAssignedTo.join(', ')}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${editAssignedDropOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {editAssignedDropOpen && (
+                    <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
+                      {adminManagerList.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-400 font-medium">No admins/managers found</div>
+                      ) : adminManagerList.map((emp) => (
+                        <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={editAssignedTo.includes(emp.name)}
+                            onChange={(e) => {
+                              if (e.target.checked) setEditAssignedTo(prev => [...prev, emp.name]);
+                              else setEditAssignedTo(prev => prev.filter(n => n !== emp.name));
+                            }}
+                            className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                          />
+                          <span className="text-xs font-medium text-gray-800">{emp.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {editAssignedTo.length > 0 && (
+                    <p className="text-[10px] text-emerald-600 font-semibold mt-1 truncate">
+                      {editAssignedTo.length} assigned: {editAssignedTo.join(', ')}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1624,7 +1764,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900"
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
                   >
                     <option value="PLANNED">PLANNED</option>
                     <option value="IN_PROGRESS">IN PROGRESS</option>
@@ -1633,61 +1773,19 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               </div>
 
-              {/* Assigned To (ADMIN/MANAGER only) — click to open dropdown */}
-              <div className="relative" ref={editAssignedRef}>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
-                <button
-                  type="button"
-                  onClick={() => setEditAssignedDropOpen(prev => !prev)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer font-medium text-gray-700"
-                >
-                  <span>
-                    {editAssignedTo.length === 0
-                      ? 'Select assignees...'
-                      : editAssignedTo.join(', ')}
-                  </span>
-                  <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${editAssignedDropOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                {editAssignedDropOpen && (
-                  <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
-                    {adminManagerList.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-gray-400 font-medium">No admins/managers found</div>
-                    ) : adminManagerList.map((emp) => (
-                      <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={editAssignedTo.includes(emp.name)}
-                          onChange={(e) => {
-                            if (e.target.checked) setEditAssignedTo(prev => [...prev, emp.name]);
-                            else setEditAssignedTo(prev => prev.filter(n => n !== emp.name));
-                          }}
-                          className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
-                        />
-                        <span className="text-xs font-medium text-gray-800">{emp.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {editAssignedTo.length > 0 && (
-                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-                    {editAssignedTo.length} assigned: {editAssignedTo.join(', ')}
-                  </p>
-                )}
-              </div>
-
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setEditingEpic(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -1697,20 +1795,30 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         </div>
       )}
 
-      {/* NEW EPIC CREATION MODAL */}
+      {/* NEW EPIC CREATION MODAL (IDENTICAL STRUCTURE TO EDIT EPIC) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
               <h3 className="text-lg font-bold text-gray-900">Create Feature Epic</h3>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Level 2 Breakdown
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  Level 2 Breakdown
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  title="Close create form"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleCreateEpic} className="space-y-4">
-              {/* Parent Initiative & Parent Project (Optional - Stacked on dedicated lines for maximum visibility) */}
-              <div className="space-y-3">
+              {/* Parent Initiative & Parent Project (Side-by-side) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-bold text-gray-700">Parent Initiative</label>
@@ -1720,7 +1828,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     options={initiativeOptions}
                     value={selectedInitiativeId}
                     onChange={setSelectedInitiativeId}
-                    placeholder="Select Parent Initiative (Optional)..."
+                    placeholder="Select Parent Initiative..."
                     noneLabel="-- No Initiative (Standalone) --"
                     searchPlaceholder="Search initiatives..."
                   />
@@ -1735,7 +1843,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     options={projectOptions}
                     value={selectedProjectId}
                     onChange={setSelectedProjectId}
-                    placeholder="Select Parent Project (Optional)..."
+                    placeholder="Select Parent Project..."
                     noneLabel="-- No Project (Standalone) --"
                     searchPlaceholder="Search projects..."
                   />
@@ -1797,95 +1905,111 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               </div>
 
-              {/* Target Week / Date */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
-                <CalendarPicker
-                  value={targetWeek}
-                  onChange={(formatted) => setTargetWeek(formatted)}
-                  placeholder="e.g. 28 Sep 2026 or Week 1 (Days 1–7)"
-                  formatMode="date"
-                />
-              </div>
-
-              {/* Planned Tasks Target */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-gray-700">Planned Tasks Target</label>
-                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Optional</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSprintsCountTarget(prev => Math.max(0, (prev || 0) - 1))}
-                    className="px-2.5 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl border border-gray-200 cursor-pointer transition-colors"
-                    title="Decrease Tasks Count"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="Flexible / No limit"
-                    value={sprintsCountTarget > 0 ? sprintsCountTarget : ''}
-                    onChange={(e) => setSprintsCountTarget(e.target.value ? Number(e.target.value) : 0)}
-                    className="w-full text-center px-2 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900"
+              {/* Target Week / Date & Planned Tasks Target */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Target Week / Date</label>
+                  <CalendarPicker
+                    value={targetWeek}
+                    onChange={(formatted) => setTargetWeek(formatted)}
+                    placeholder="e.g. 28 Sep 2026 or Week 1"
+                    formatMode="date"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setSprintsCountTarget(prev => (prev || 0) + 1)}
-                    className="px-2.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 cursor-pointer transition-colors"
-                    title="Increase Tasks Count"
-                  >
-                    +
-                  </button>
                 </div>
-                <p className="text-[10px] text-gray-400 font-medium mt-1">
-                  {sprintsCountTarget > 0 ? `Target set to ${sprintsCountTarget} tasks.` : 'Leave blank/0 for dynamic flexible task count.'}
-                </p>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700">Planned Tasks Target</label>
+                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Optional</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSprintsCountTarget(prev => Math.max(0, (prev || 0) - 1))}
+                      className="px-2.5 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl border border-gray-200 cursor-pointer transition-colors"
+                      title="Decrease Tasks Count"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      placeholder="Flexible / No limit"
+                      value={sprintsCountTarget > 0 ? sprintsCountTarget : ''}
+                      onChange={(e) => setSprintsCountTarget(e.target.value ? Number(e.target.value) : 0)}
+                      className="w-full text-center px-2 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSprintsCountTarget(prev => (prev || 0) + 1)}
+                      className="px-2.5 py-2 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 cursor-pointer transition-colors"
+                      title="Increase Tasks Count"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-medium mt-1">
+                    {sprintsCountTarget > 0 ? `Target set to ${sprintsCountTarget} tasks.` : 'Leave blank/0 for dynamic flexible task count.'}
+                  </p>
+                </div>
               </div>
 
-              {/* Assigned To (ADMIN/MANAGER only) — click to open dropdown */}
-              <div className="relative" ref={createAssignedRef}>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
-                <button
-                  type="button"
-                  onClick={() => setCreateAssignedDropOpen(prev => !prev)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer font-medium text-gray-700"
-                >
-                  <span>
-                    {createAssignedTo.length === 0
-                      ? 'Select assignees...'
-                      : createAssignedTo.join(', ')}
-                  </span>
-                  <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${createAssignedDropOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                {createAssignedDropOpen && (
-                  <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
-                    {adminManagerList.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-gray-400 font-medium">No admins/managers found</div>
-                    ) : adminManagerList.map((emp) => (
-                      <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={createAssignedTo.includes(emp.name)}
-                          onChange={(e) => {
-                            if (e.target.checked) setCreateAssignedTo(prev => [...prev, emp.name]);
-                            else setCreateAssignedTo(prev => prev.filter(n => n !== emp.name));
-                          }}
-                          className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
-                        />
-                        <span className="text-xs font-medium text-gray-800">{emp.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {createAssignedTo.length > 0 && (
-                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-                    {createAssignedTo.length} assigned: {createAssignedTo.join(', ')}
-                  </p>
-                )}
+              {/* Assigned To & Status (Side-by-side) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="relative" ref={createAssignedRef}>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Assigned To</label>
+                  <button
+                    type="button"
+                    onClick={() => setCreateAssignedDropOpen(prev => !prev)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer font-medium text-gray-700"
+                  >
+                    <span className="truncate">
+                      {createAssignedTo.length === 0
+                        ? 'Select assignees...'
+                        : createAssignedTo.join(', ')}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${createAssignedDropOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {createAssignedDropOpen && (
+                    <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
+                      {adminManagerList.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-400 font-medium">No admins/managers found</div>
+                      ) : adminManagerList.map((emp) => (
+                        <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={createAssignedTo.includes(emp.name)}
+                            onChange={(e) => {
+                              if (e.target.checked) setCreateAssignedTo(prev => [...prev, emp.name]);
+                              else setCreateAssignedTo(prev => prev.filter(n => n !== emp.name));
+                            }}
+                            className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                          />
+                          <span className="text-xs font-medium text-gray-800">{emp.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {createAssignedTo.length > 0 && (
+                    <p className="text-[10px] text-emerald-600 font-semibold mt-1 truncate">
+                      {createAssignedTo.length} assigned: {createAssignedTo.join(', ')}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Status *</label>
+                  <select
+                    value={createStatus}
+                    onChange={(e) => setCreateStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-gray-900 cursor-pointer"
+                  >
+                    <option value="PLANNED">PLANNED</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="DONE">DONE</option>
+                  </select>
+                </div>
               </div>
 
               {/* Clone / Duplicate Option Checkbox */}
@@ -1945,14 +2069,14 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? 'Creating...' : 'Create Epic'}
                 </button>

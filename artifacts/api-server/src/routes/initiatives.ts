@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, initiatives, entityCounters, generateNextGlobalCode, entities, departments, employees, epics, tasks, eq, sql, recordHistory } from '@workspace/db';
+import { db, initiatives, entityCounters, generateNextGlobalCode, entities, departments, employees, epics, tasks, eq, isNull, sql, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
 
@@ -10,7 +10,8 @@ router.use(requireAuth);
 // GET /api/initiatives - Fetch list of initiatives with linked epics count
 router.get('/', async (req, res) => {
   try {
-    const allInitiatives = await db
+    const { includeDeleted } = req.query;
+    let query = db
       .select({
         id: initiatives.id,
         initiativeCode: initiatives.initiativeCode,
@@ -29,10 +30,18 @@ router.get('/', async (req, res) => {
         createdById: initiatives.createdById,
         createdByName: initiatives.createdByName,
       })
-      .from(initiatives)
-      .orderBy(sql`LOWER(${initiatives.title}) ASC`);
+      .from(initiatives);
 
-    const allEpics = await db.select().from(epics);
+    if (includeDeleted !== 'true') {
+      query = query.where(isNull(initiatives.deletedAt)) as any;
+    }
+
+    const allInitiatives = await query.orderBy(sql`LOWER(${initiatives.title}) ASC`);
+
+    const allEpics = await db
+      .select()
+      .from(epics)
+      .where(includeDeleted !== 'true' ? isNull(epics.deletedAt) : undefined);
     const allEntities = await db.select().from(entities);
     const allDepts = await db.select().from(departments);
     const allEmployees = await db.select().from(employees);
@@ -246,7 +255,7 @@ router.put('/:id', requireRole(['ADMIN', 'MANAGER']), handleInitiativeUpdate);
 // PATCH /api/initiatives/:id - Update initiative status & details
 router.patch('/:id', requireRole(['ADMIN', 'MANAGER']), handleInitiativeUpdate);
 
-// DELETE /api/initiatives/:id - Admin/Manager protected initiative deletion
+// DELETE /api/initiatives/:id - Admin/Manager protected initiative soft-deletion
 router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   const initId = req.params.id as string;
   try {
@@ -265,26 +274,49 @@ router.delete('/:id', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         changedByName: caller.callerName,
       });
 
-      // 1. Detach all linked epics (set initiativeId = null)
+      // Soft delete initiative: sets deletedAt timestamp, NEVER drops rows
       await tx
-        .update(epics)
-        .set({ initiativeId: null })
-        .where(eq(epics.initiativeId, initId));
-
-      // 2. Detach any tasks referencing this initiative directly (set initiativeId = null)
-      await tx
-        .update(tasks)
-        .set({ initiativeId: null })
-        .where(eq(tasks.initiativeId, initId));
-
-      // 3. Delete the initiative row itself
-      await tx.delete(initiatives).where(eq(initiatives.id, initId));
+        .update(initiatives)
+        .set({ deletedAt: new Date() })
+        .where(eq(initiatives.id, initId));
     });
 
-    res.json({ message: `Initiative ${init.initiativeCode} deleted successfully`, id: initId });
+    res.json({ message: `Initiative ${init.initiativeCode} soft-deleted successfully`, id: initId });
   } catch (err: any) {
     console.error('[DELETE INITIATIVE ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to delete initiative' });
+  }
+});
+
+// POST /api/initiatives/:id/restore - Admin/Manager protected initiative restore
+router.post('/:id/restore', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
+  const initId = req.params.id as string;
+  try {
+    const [init] = await db.select().from(initiatives).where(eq(initiatives.id, initId));
+    if (!init) {
+      return res.status(404).json({ message: 'Initiative not found' });
+    }
+
+    await db.transaction(async (tx) => {
+      const caller = await getCallerInfo(req.user, tx);
+      await tx
+        .update(initiatives)
+        .set({ deletedAt: null })
+        .where(eq(initiatives.id, initId));
+
+      await recordHistory(tx, {
+        tableName: 'initiatives',
+        recordId: initId,
+        action: 'RESTORED',
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
+    });
+
+    res.json({ message: `Initiative ${init.initiativeCode} restored successfully`, id: initId });
+  } catch (err: any) {
+    console.error('[RESTORE INITIATIVE ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to restore initiative' });
   }
 });
 

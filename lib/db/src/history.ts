@@ -8,7 +8,8 @@ export type HistoryAction =
   | 'DUE_DATE_CHANGED'
   | 'CLONED'
   | 'CHILD_ADDED'
-  | 'DELETED';
+  | 'DELETED'
+  | 'RESTORED';
 
 export interface FieldChange {
   field?: string;

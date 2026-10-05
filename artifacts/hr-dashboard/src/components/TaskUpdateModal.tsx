@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2, History, UserCheck, Pencil, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, clearApiCache } from '@workspace/api-client-react';
 import { RichTextEditor } from './RichTextEditor';
 import { MarkdownViewer } from './MarkdownViewer';
 import { CalendarPicker } from './CalendarPicker';
+import { SearchableSelect } from './SearchableSelect';
 import { RecordHistoryPanel } from './RecordHistoryPanel';
 import { RecentActivitySection } from './RecentActivitySection';
 import { formatDateTime } from '../utils/dateUtils';
@@ -79,12 +80,7 @@ const normalizePriorityCode = (p: string | undefined): 'P1' | 'P2' | 'P3' | 'P4'
 };
 
 const formatPriorityLabel = (p: string | undefined): string => {
-  const code = normalizePriorityCode(p);
-  if (code === 'P1') return 'P1 - Critical / Urgent 🔥';
-  if (code === 'P2') return 'P2 - High Priority ⚡';
-  if (code === 'P3') return 'P3 - Medium Priority 📌';
-  if (code === 'P4') return 'P4 - Low Priority 📝';
-  return 'P3 - Medium Priority 📌';
+  return normalizePriorityCode(p);
 };
 
 const parseDateForInput = (d: string | undefined | null): string => {
@@ -157,9 +153,13 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [taskName, setTaskName] = useState('');
   const [assignee, setAssignee] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [reviewingLead, setReviewingLead] = useState('');
   const [reviewingLeadId, setReviewingLeadId] = useState('');
+  const [reviewingLeadIds, setReviewingLeadIds] = useState<string[]>([]);
   const [outputUrl, setOutputUrl] = useState('');
+  const [deliverableLinks, setDeliverableLinks] = useState<string[]>([]);
+  const [newDeliverableLink, setNewDeliverableLink] = useState('');
   const [status, setStatus] = useState<string>('In Progress');
   const [waitingOn, setWaitingOn] = useState('None (Self)');
   const [notes, setNotes] = useState('');
@@ -278,6 +278,15 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
         setAssigneeId(task.assigneeId || matchedAssignee?.id || '');
       }
 
+      // Multi-assignees initialization
+      const initAssigneeIds: string[] = [];
+      if (Array.isArray((task as any).assigneeIds) && (task as any).assigneeIds.length > 0) {
+        initAssigneeIds.push(...(task as any).assigneeIds);
+      } else if (task.assigneeId) {
+        initAssigneeIds.push(task.assigneeId);
+      }
+      setAssigneeIds(initAssigneeIds);
+
       const rawLead = (task.reviewingLead || '').replace(/\(.*?\)/g, '').trim();
       const isLeadUnassigned = !task.reviewingLeadId || !rawLead || rawLead.toLowerCase() === 'unassigned' || rawLead.toLowerCase() === 'manager lead';
       if (isLeadUnassigned) {
@@ -289,7 +298,29 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
         setReviewingLeadId(task.reviewingLeadId || matchedLead?.id || '');
       }
 
-      setOutputUrl(task.outputUrl || '');
+      // Multi-reviewing leads initialization
+      const initLeadIds: string[] = [];
+      if (Array.isArray((task as any).reviewingLeadIds) && (task as any).reviewingLeadIds.length > 0) {
+        initLeadIds.push(...(task as any).reviewingLeadIds);
+      } else if (task.reviewingLeadId) {
+        initLeadIds.push(task.reviewingLeadId);
+      }
+      setReviewingLeadIds(initLeadIds);
+
+      // Multi-deliverable links initialization
+      const rawLinks = task.outputUrl || (task as any).deliverableUrl || '';
+      const parsedLinks: string[] = rawLinks
+        ? rawLinks.split(/[,\n]/).map((l: string) => l.trim()).filter((l: string) => Boolean(l))
+        : [];
+      if (Array.isArray((task as any).deliverableUrls) && (task as any).deliverableUrls.length > 0) {
+        (task as any).deliverableUrls.forEach((u: string) => {
+          if (u && !parsedLinks.includes(u.trim())) parsedLinks.push(u.trim());
+        });
+      }
+      setDeliverableLinks(parsedLinks);
+      setNewDeliverableLink('');
+      setOutputUrl(rawLinks);
+
       setStatus(task.status || 'In Progress');
       setWaitingOn(task.waitingOn || 'None (Self)');
       setNotes(task.notes || '');
@@ -300,6 +331,34 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       loadTaskData();
     }
   }, [task?.id, isOpen]);
+
+  const employeeOptions = React.useMemo(() => {
+    return employeesList.map(e => ({
+      id: e.id,
+      label: e.name,
+      subtitle: e.designation,
+    }));
+  }, [employeesList]);
+
+  const handleAddDeliverableLink = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newDeliverableLink.trim()) return;
+    let formattedUrl = newDeliverableLink.trim();
+    if (!/^https?:\/\//i.test(formattedUrl) && (formattedUrl.includes('.') || formattedUrl.startsWith('localhost'))) {
+      formattedUrl = `https://${formattedUrl}`;
+    }
+    if (deliverableLinks.includes(formattedUrl)) {
+      toast.error('This link has already been added');
+      return;
+    }
+    setDeliverableLinks((prev) => [...prev, formattedUrl]);
+    setNewDeliverableLink('');
+    toast.success('Deliverable link added!');
+  };
+
+  const handleRemoveDeliverableLink = (indexToRemove: number) => {
+    setDeliverableLinks((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   if (!isOpen || !task) return null;
 
@@ -457,6 +516,30 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
         setIsSavingTask(true);
         const resolvedCode = entity === 'CLIMAGRO' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM';
         const matchedEpic = epicsList.find((e) => e.id === selectedEpicId);
+
+        // Include any unsaved link typed into the input
+        let finalLinks = [...deliverableLinks];
+        if (newDeliverableLink.trim()) {
+          let extra = newDeliverableLink.trim();
+          if (!/^https?:\/\//i.test(extra) && (extra.includes('.') || extra.startsWith('localhost'))) {
+            extra = `https://${extra}`;
+          }
+          if (!finalLinks.includes(extra)) {
+            finalLinks.push(extra);
+          }
+        }
+        const deliverableUrlValue = finalLinks.join(', ');
+
+        const primaryAssigneeId = assigneeIds.length > 0 ? assigneeIds[0] : '';
+        const primaryAssigneeNames = assigneeIds.length > 0
+          ? assigneeIds.map(id => employeesList.find(e => e.id === id)?.name || id).join(', ')
+          : 'Unassigned';
+
+        const primaryLeadId = reviewingLeadIds.length > 0 ? reviewingLeadIds[0] : '';
+        const primaryLeadNames = reviewingLeadIds.length > 0
+          ? reviewingLeadIds.map(id => employeesList.find(e => e.id === id)?.name || id).join(', ')
+          : 'Unassigned';
+
         await onSave({
           ...task,
           taskId: parentTaskId,
@@ -468,15 +551,19 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           epicId: selectedEpicId || null,
           parentEpicCode: matchedEpic ? matchedEpic.epicCode : selectedEpicId ? task.parentEpicCode : null,
           parentEpicTitle: matchedEpic ? matchedEpic.title : selectedEpicId ? task.parentEpicTitle : null,
-          assignee: assigneeId ? assignee : 'Unassigned',
-          assigneeId: assigneeId || '',
-          reviewingLead: reviewingLeadId ? reviewingLead : 'Unassigned',
-          reviewingLeadId: reviewingLeadId || '',
+          assignee: primaryAssigneeNames,
+          assigneeId: primaryAssigneeId,
+          assigneeIds,
+          reviewingLead: primaryLeadNames,
+          reviewingLeadId: primaryLeadId,
+          reviewingLeadIds,
           targetWeek,
           priority,
           dueDate,
           status,
-          outputUrl,
+          outputUrl: deliverableUrlValue,
+          deliverableUrl: deliverableUrlValue,
+          deliverableUrls: finalLinks,
           waitingOn,
           notes,
           checklists,
@@ -584,6 +671,9 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     try {
                       setIsDeletingTask(true);
                       await fetchApi(`/api/tasks/${task.id}`, { method: 'DELETE' });
+                      clearApiCache('/api/tasks');
+                      clearApiCache('/api/sprints');
+                      window.dispatchEvent(new CustomEvent('tasks-updated'));
                       toast.success(`Task ${parentTaskId} deleted successfully!`);
                       setShowDeleteConfirmModal(false);
                       if (onDelete) {
@@ -794,78 +884,84 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
               </div>
 
               {/* Assignee & Reviewing Lead */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Assignee</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Assignee(s)
+                    </label>
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {assigneeIds.length > 0 ? `${assigneeIds.length} selected` : 'Optional (Unassigned)'}
+                    </span>
+                  </div>
                   {readOnlyMode ? (
-                    <input
-                      type="text"
-                      disabled
-                      value={assignee}
-                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                    />
+                    <div className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 min-h-[38px] flex items-center">
+                      {assigneeIds.length > 0
+                        ? assigneeIds.map(id => employeesList.find(e => e.id === id)?.name || id).join(', ')
+                        : assignee || 'Unassigned'}
+                    </div>
                   ) : (
-                    <select
-                      value={assigneeId}
-                      onChange={(e) => {
-                        const targetId = e.target.value;
-                        setAssigneeId(targetId);
-                        if (!targetId) {
-                          setAssignee('Unassigned');
+                    <SearchableSelect
+                      options={employeeOptions}
+                      value=""
+                      onChange={() => {}}
+                      isMulti={true}
+                      multiValues={assigneeIds}
+                      onMultiChange={(vals) => {
+                        setAssigneeIds(vals);
+                        if (vals.length > 0) {
+                          const names = vals.map(id => employeesList.find(e => e.id === id)?.name || id).join(', ');
+                          setAssignee(names);
+                          setAssigneeId(vals[0]);
                         } else {
-                          const match = employeesList.find((emp) => emp.id === targetId);
-                          setAssignee(match ? match.name : 'Unassigned');
+                          setAssignee('Unassigned');
+                          setAssigneeId('');
                         }
                       }}
-                      className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    >
-                      <option value="">Select Assignee (Unassigned)</option>
-                      {employeesList.map((emp) => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.name}
-                        </option>
-                      ))}
-                      {assignee && assignee !== 'Unassigned' && !employeesList.some((e) => e.name.toLowerCase() === assignee.toLowerCase() || e.id === assigneeId) && (
-                        <option value={assigneeId || assignee}>{assignee}</option>
-                      )}
-                    </select>
+                      placeholder="Select team member(s) or leave unassigned..."
+                      noneLabel="-- Unassigned (None) --"
+                      searchPlaceholder="Search team members..."
+                    />
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Reviewing Lead</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Reviewing Lead(s)
+                    </label>
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {reviewingLeadIds.length > 0 ? `${reviewingLeadIds.length} selected` : 'Optional (None)'}
+                    </span>
+                  </div>
                   {readOnlyMode ? (
-                    <input
-                      type="text"
-                      disabled
-                      value={reviewingLead}
-                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                    />
+                    <div className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 min-h-[38px] flex items-center">
+                      {reviewingLeadIds.length > 0
+                        ? reviewingLeadIds.map(id => employeesList.find(e => e.id === id)?.name || id).join(', ')
+                        : reviewingLead || 'Unassigned'}
+                    </div>
                   ) : (
-                    <select
-                      value={reviewingLeadId}
-                      onChange={(e) => {
-                        const targetId = e.target.value;
-                        setReviewingLeadId(targetId);
-                        if (!targetId) {
-                          setReviewingLead('Unassigned');
+                    <SearchableSelect
+                      options={employeeOptions}
+                      value=""
+                      onChange={() => {}}
+                      isMulti={true}
+                      multiValues={reviewingLeadIds}
+                      onMultiChange={(vals) => {
+                        setReviewingLeadIds(vals);
+                        if (vals.length > 0) {
+                          const names = vals.map(id => employeesList.find(e => e.id === id)?.name || id).join(', ');
+                          setReviewingLead(names);
+                          setReviewingLeadId(vals[0]);
                         } else {
-                          const match = employeesList.find((emp) => emp.id === targetId);
-                          setReviewingLead(match ? match.name : 'Unassigned');
+                          setReviewingLead('Unassigned');
+                          setReviewingLeadId('');
                         }
                       }}
-                      className="w-full text-xs font-semibold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    >
-                      <option value="">Select Reviewing Lead (Unassigned / None)</option>
-                      {employeesList.map((emp) => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.name}
-                        </option>
-                      ))}
-                      {reviewingLead && reviewingLead !== 'Unassigned' && !employeesList.some((e) => e.name.toLowerCase() === reviewingLead.toLowerCase() || e.id === reviewingLeadId) && (
-                        <option value={reviewingLeadId || reviewingLead}>{reviewingLead}</option>
-                      )}
-                    </select>
+                      placeholder="Select lead(s) or leave unassigned..."
+                      noneLabel="-- Unassigned Lead --"
+                      searchPlaceholder="Search leads & managers..."
+                    />
                   )}
                 </div>
               </div>
@@ -887,10 +983,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       onChange={(e) => setPriority(e.target.value)}
                       className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value="P1">P1 - Critical / Urgent 🔥</option>
-                      <option value="P2">P2 - High Priority ⚡</option>
-                      <option value="P3">P3 - Medium Priority 📌</option>
-                      <option value="P4">P4 - Low Priority 📝</option>
+                      <option value="P1">P1</option>
+                      <option value="P2">P2</option>
+                      <option value="P3">P3</option>
+                      <option value="P4">P4</option>
                     </select>
                   )}
                 </div>
@@ -937,39 +1033,91 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 </div>
               </div>
 
-              {/* Deliverable URL / File Attachment */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+              {/* Deliverable URL / File Attachment (Multiple Links Supported) */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Deliverable Attachment Link</span>
+                    <span>Task Deliverable & Links</span>
                   </label>
-                  {outputUrl && (
-                    <a
-                      href={outputUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline"
+                  <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                    {deliverableLinks.length} {deliverableLinks.length === 1 ? 'Link' : 'Links'} Attached
+                  </span>
+                </div>
+
+                {!readOnlyMode && (
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Link2 className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={newDeliverableLink}
+                        onChange={(e) => setNewDeliverableLink(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddDeliverableLink(e);
+                          }
+                        }}
+                        placeholder="Paste deliverable link (GitHub PR, Figma, Drive, Notion, Docs)..."
+                        className="w-full text-xs border border-gray-300 rounded-xl pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddDeliverableLink()}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
                     >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Open Link ↗</span>
-                    </a>
-                  )}
-                </div>
-                <div className="relative">
-                  <Link2 className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    readOnly={readOnlyMode}
-                    placeholder={readOnlyMode ? "No deliverable link attached by team member" : "https://canva.link/... or https://github.com/..."}
-                    value={outputUrl}
-                    onChange={e => setOutputUrl(e.target.value)}
-                    className={`w-full text-xs border rounded-xl py-2.5 pl-9 pr-3 outline-none font-medium ${readOnlyMode
-                        ? 'bg-gray-50 border-gray-200 text-gray-800 font-mono select-all cursor-default'
-                        : 'border-gray-300 focus:ring-2 focus:ring-emerald-500'
-                      }`}
-                  />
-                </div>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Link</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Multiple Links List */}
+                {deliverableLinks.length > 0 ? (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {deliverableLinks.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 p-2 rounded-xl bg-emerald-50/50 border border-emerald-200/80 text-xs font-semibold text-gray-800 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Link2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate font-mono text-[11px] text-emerald-950" title={url}>
+                            {url}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <a
+                            href={url.startsWith('http') ? url : `https://${url}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Open link in new tab"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Open ↗</span>
+                          </a>
+                          {!readOnlyMode && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDeliverableLink(idx)}
+                              className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Remove link"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-400 font-medium pl-1">
+                    {readOnlyMode ? 'No deliverable link attached by team member.' : 'Optional: Add one or more output URLs or deliverable references for this task.'}
+                  </p>
+                )}
               </div>
 
               {/* Status Dropdown & Dependency */}
@@ -988,13 +1136,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       onChange={e => setStatus(e.target.value as any)}
                       className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value="Backlog">Backlog 📂</option>
-                      <option value="Planned">Planned 📋</option>
-                      <option value="In Progress">In Progress ⏳</option>
-                      <option value="To Review">To Review 🔍</option>
-                      <option value="Done">Done / Approved ✅</option>
-                      <option value="Delayed">Delayed ⚠️</option>
-                      <option value="Blocked">Blocked 🛑</option>
+                      <option value="Backlog">Backlog</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="To Review">To Review</option>
+                      <option value="Done">Done</option>
                     </select>
                   )}
                 </div>

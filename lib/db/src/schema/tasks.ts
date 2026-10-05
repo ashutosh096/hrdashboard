@@ -40,6 +40,7 @@ export const tasks = pgTable(
     waitingOn: varchar('waiting_on', { length: 255 }).default('None (Self)'),
     createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
     createdByName: text('created_by_name'),
+    deletedAt: timestamp('deleted_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -49,6 +50,7 @@ export const tasks = pgTable(
     index('idx_tasks_status').on(table.status),
     index('idx_tasks_priority').on(table.priority),
     index('idx_tasks_epic_id').on(table.epicId),
+    index('idx_tasks_deleted_at').on(table.deletedAt),
   ]
 );
 

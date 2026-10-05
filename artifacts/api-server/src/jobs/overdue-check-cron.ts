@@ -51,11 +51,7 @@ export async function runOverdueAndTokenChecks() {
         if (creator) leadUser = creator;
       }
 
-      if (!leadUser) {
-        console.warn(`[OVERDUE CRON WARNING] Fallback to default ADMIN user for task ${task.taskCode}`);
-        const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
-        leadUser = fallbackAdmin;
-      }
+      // DO NOT fallback to Admin: If lead is unassigned, alert is only sent to assignee (no company-wide admin spam!)
 
       // 3. Build deduplicated list of target notification recipients (Lead + Assignee)
       const recipientUsers: any[] = [];
@@ -70,43 +66,52 @@ export async function runOverdueAndTokenChecks() {
         addedUserIds.add(assigneeUser.id);
       }
 
-      // 4. Send Notifications & Emails to both recipients with per-recipient dedupe check
+      const taskDueDateStr = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
+
+      // 4. Send exactly ONE alert when task first becomes overdue; alert again ONLY if dueDate changes
       for (const recipientUser of recipientUsers) {
-        const recentNotifs = await db
+        const existingOverdues = await db
           .select()
           .from(notifications)
           .where(
             and(
               eq(notifications.userId, recipientUser.id),
               eq(notifications.type, 'TASK_OVERDUE'),
-              gte(notifications.createdAt, last24h)
+              sql`payload->>'taskId' = ${task.id}`
             )
           );
 
-        const alreadySent = recentNotifs.some(n => (n.payload as any)?.taskId === task.id);
+        const alreadyAlertedForThisDueDate = existingOverdues.some(n => {
+          const p = (n.payload as any) || {};
+          return p.dueDate === taskDueDateStr;
+        });
 
-        if (!alreadySent) {
-          await insertNotification({
-            userId: recipientUser.id,
-            type: 'TASK_OVERDUE',
-            payload: {
-              taskId: task.id,
-              taskCode: task.taskCode,
-              taskTitle: task.title,
-              assigneeName,
-              daysOverdue,
-            },
-          });
-
-          await sendOverdueTaskAlertEmail(
-            recipientUser.email,
-            recipientUser.id === assigneeUser?.id ? assigneeName : 'Manager',
-            task.taskCode,
-            task.title,
-            assigneeName,
-            daysOverdue
-          );
+        if (alreadyAlertedForThisDueDate) {
+          // Already alerted for this due date; do NOT repeat daily spam
+          continue;
         }
+
+        await insertNotification({
+          userId: recipientUser.id,
+          type: 'TASK_OVERDUE',
+          payload: {
+            taskId: task.id,
+            taskCode: task.taskCode,
+            taskTitle: task.title,
+            assigneeName,
+            daysOverdue,
+            dueDate: taskDueDateStr,
+          },
+        });
+
+        await sendOverdueTaskAlertEmail(
+          recipientUser.email,
+          recipientUser.id === assigneeUser?.id ? assigneeName : 'Manager',
+          task.taskCode,
+          task.title,
+          assigneeName,
+          daysOverdue
+        );
       }
     }
   } catch (err) {
