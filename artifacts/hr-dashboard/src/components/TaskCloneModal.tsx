@@ -70,13 +70,27 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
 
     onSubmit({
       title: newTitle,
-      department,
+      department: department || source?.department || 'Product & Tech',
       priority,
       dueDate: newDueDate,
       description,
-      assigneeName: source?.assigneeName || 'Ashutosh Mishra',
-      reviewingLead: source?.lead || source?.reviewingLead || 'Dr. Harshit Mishra',
+      entity: source?.entity || source?.entityCode || 'EHM',
+      entityCode: source?.entityCode || 'EHM',
+      entityId: source?.entityId,
+      epicId: source?.epicId,
+      projectId: source?.projectId,
+      initiativeId: source?.initiativeId,
+      assigneeId: source?.assigneeId,
+      assigneeIds: source?.assigneeIds || (source?.assigneeId ? [source?.assigneeId] : []),
+      reviewingLeadId: source?.reviewingLeadId,
+      reviewingLeadIds: source?.reviewingLeadIds || (source?.reviewingLeadId ? [source?.reviewingLeadId] : []),
+      deliverableUrl: source?.deliverableUrl || '',
+      deliverableUrls: source?.deliverableUrls || [],
+      deliverableLinks: source?.deliverableLinks || [],
+      checklists: source?.checklists || [],
+      comments: source?.comments || [],
       isCloned: true,
+      sourceTaskId: source?.id,
     });
 
     toast.success(`Task "${newTitle}" cloned successfully!`);
@@ -88,8 +102,8 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
       <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-purple-100 text-purple-700">
-              <Copy className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-gray-100 text-gray-900 border border-gray-200">
+              <Copy className="w-5 h-5 text-gray-900" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">Quick Clone Task</h2>
@@ -111,17 +125,17 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Copy className="w-3.5 h-3.5 text-purple-600" />
+                <Copy className="w-3.5 h-3.5 text-gray-900" />
                 <span>Select Previous Task to Clone *</span>
               </span>
-              <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+              <span className="text-[10px] text-gray-900 font-bold bg-gray-100 px-2 py-0.5 rounded border border-gray-300">
                 1-Click Pre-Fill
               </span>
             </label>
             <select
               value={selectedSourceId}
               onChange={(e) => handleSelectSource(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs border border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50/30 font-bold text-gray-900"
+              className="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 bg-gray-50/50 font-bold text-gray-900"
             >
               {cloneOptions.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -200,9 +214,9 @@ export const TaskCloneModal: React.FC<TaskCloneModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-5 py-2 bg-black hover:bg-gray-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <Copy className="w-3.5 h-3.5" />
+              <Copy className="w-3.5 h-3.5 text-white" />
               <span>Clone & Create Task</span>
             </button>
           </div>

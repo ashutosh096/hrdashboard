@@ -2012,8 +2012,8 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                 </div>
               </div>
 
-              {/* Clone / Duplicate Option Checkbox */}
-              <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5">
+              {/* Clone / Duplicate Option Checkbox (Clean Black & White Monochrome) */}
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-300 space-y-2.5 shadow-2xs">
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -2022,19 +2022,19 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       setIsClone(e.target.checked);
                       if (!e.target.checked) setCloneSourceId('');
                     }}
-                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                    className="mt-0.5 rounded text-gray-900 focus:ring-gray-900 w-4 h-4 cursor-pointer"
                   />
                   <div>
-                    <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
-                    <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                    <span className="text-xs font-extrabold text-gray-900 block">Make Clone / Duplicate Copy</span>
+                    <p className="text-[10px] text-gray-600 font-semibold leading-snug">
                       Check this box to duplicate an existing Feature Epic configuration into a new sequence code.
                     </p>
                   </div>
                 </label>
 
                 {isClone && (
-                  <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
-                    <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                  <div className="pt-2 border-t border-gray-200 animate-in fade-in duration-150">
+                    <label className="block text-[11px] font-bold text-gray-900 mb-1">
                       Select Existing Feature Epic to Clone From (Optional):
                     </label>
                     <SearchableSelect
@@ -2051,6 +2051,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                           if (source.department) setDepartment(source.department);
                           if (source.targetWeek) setTargetWeek(source.targetWeek);
                           if (source.sprintsCountTarget) setSprintsCountTarget(source.sprintsCountTarget);
+                          if (Array.isArray(source.assignedTo)) setCreateAssignedTo(source.assignedTo);
                           const sourceBadge = getEntityBadge(source);
                           setCreateEntity(sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM');
                           toast.success(`Form pre-filled with data from "${source.title}"!`);

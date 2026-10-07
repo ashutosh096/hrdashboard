@@ -408,72 +408,72 @@ export const TasksView: React.FC = () => {
 
     let createdFromApi: any = null;
     try {
-      createdFromApi = await fetchApi<any>('/api/tasks', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
-          description: sourceTask.description || sourceTaskItem.notes || `Cloned from ${sourceCode}`,
-          status: 'BACKLOG',
-          priority: sourceTask.priority || 'P3',
-          entityCode: resolvedEntityCode,
-          epicId: sourceTask.epicId || null,
-          deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
-        }),
-      });
+      if (sourceTask.id && sourceTask.id.length === 36) {
+        createdFromApi = await fetchApi<any>(`/api/tasks/${sourceTask.id}/clone`, {
+          method: 'POST',
+        });
+      }
     } catch (err) {
-      console.log('[CLONE TASK API NOTE]: Using local state fallback for cloned task');
+      console.warn('[CLONE TASK API ROUTE WARNING]:', err);
     }
 
-    const newId = createdFromApi?.id || `task-clone-${Date.now()}`;
-    const newCode = createdFromApi?.taskCode || '-';
+    if (!createdFromApi) {
+      try {
+        createdFromApi = await fetchApi<any>('/api/tasks', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
+            description: sourceTask.description ? `[Cloned from ${sourceCode}]\n\n${sourceTask.description}` : `Cloned from ${sourceCode}`,
+            status: 'BACKLOG',
+            priority: sourceTask.priority || 'P3',
+            entityCode: resolvedEntityCode,
+            entityId: sourceTask.entityId,
+            epicId: sourceTask.epicId || null,
+            projectId: sourceTask.projectId || null,
+            initiativeId: sourceTask.initiativeId || null,
+            departmentId: sourceTask.departmentId || null,
+            assigneeId: sourceTask.assigneeId || null,
+            assigneeIds: sourceTask.assigneeIds || (sourceTask.assigneeId ? [sourceTask.assigneeId] : []),
+            reviewingLeadId: sourceTask.reviewingLeadId || null,
+            reviewingLeadIds: sourceTask.reviewingLeadIds || (sourceTask.reviewingLeadId ? [sourceTask.reviewingLeadId] : []),
+            deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
+            deliverableUrls: importChecklistAndLinks ? (sourceTask.deliverableUrls || []) : [],
+            deliverableLinks: importChecklistAndLinks ? (sourceTask.deliverableLinks || []) : [],
+            checklists: importChecklistAndLinks ? (sourceTask.checklists || []) : [],
+          }),
+        });
+      } catch (err: any) {
+        toast.error(`Failed to clone task: ${err?.message || 'Server error'}`);
+        return;
+      }
+    }
 
-    const firstComment = {
-      id: `cmt-${Date.now()}`,
-      authorName: 'System Log',
-      content: `This task was created from the source task ${sourceCode}`,
-      isSystemLog: true,
-      createdAt: new Date().toISOString(),
-    };
+    const realTask = Array.isArray(createdFromApi) ? createdFromApi[0] : createdFromApi;
+    const finalCode = realTask?.taskCode || 'Cloned Task';
 
-    const clonedTaskObj = {
-      id: newId,
-      taskCode: newCode,
-      title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
-      entity: resolvedEntityLabel,
-      entityCode: resolvedEntityCode,
-      entityId: sourceTask.entityId,
-      status: 'BACKLOG',
-      parentEpicCode: sourceTask.parentEpicCode || '',
-      parentEpicTitle: sourceTask.parentEpicTitle || 'Parent Epic Details',
-      priority: sourceTask.priority || 'P3',
-      description: sourceTask.description || sourceTaskItem.notes || '',
-      deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
-      checklists: importChecklistAndLinks ? (sourceTask.checklists || []) : [],
-      comments: [firstComment, ...(sourceTask.comments || [])],
-      createdAt: new Date().toISOString(),
-      assigneeName: sourceTask.assigneeName || sourceTaskItem.assignee || 'Unassigned',
-      reviewingLead: sourceTask.reviewingLead || sourceTaskItem.reviewingLead || 'Dr. Harshit Mishra',
-    };
+    toast.success(`Task cloned successfully as ${finalCode}!`);
+    clearApiCache('/api/tasks');
+    clearApiCache('/api/sprints');
+    window.dispatchEvent(new CustomEvent('tasks-updated'));
+    await loadTasks();
 
-    setTasks(prev => [clonedTaskObj, ...prev]);
-
-    setSelectedTaskToUpdate({
-      id: clonedTaskObj.id,
-      taskId: clonedTaskObj.taskCode,
-      taskCode: clonedTaskObj.taskCode,
-      title: clonedTaskObj.title,
-      entity: resolvedEntityLabel,
-      entityCode: resolvedEntityCode,
-      assignee: clonedTaskObj.assigneeName,
-      reviewingLead: clonedTaskObj.reviewingLead,
-      status: 'In Progress',
-      outputUrl: clonedTaskObj.deliverableUrl,
-      waitingOn: 'None (Self)',
-      notes: clonedTaskObj.description,
-      createdAt: clonedTaskObj.createdAt,
-    });
-
-    toast.success(`Task duplicated! Total tasks count increased. Opening cloned task ${newCode}...`);
+    if (realTask) {
+      setSelectedTaskToUpdate({
+        id: realTask.id,
+        taskId: realTask.taskCode,
+        taskCode: realTask.taskCode,
+        title: realTask.title,
+        entity: realTask.entity || resolvedEntityLabel,
+        entityCode: realTask.entityCode || resolvedEntityCode,
+        assignee: realTask.assigneeName || 'Unassigned',
+        reviewingLead: realTask.reviewingLeadName || 'Manager Lead',
+        status: realTask.status || 'BACKLOG',
+        outputUrl: realTask.deliverableUrl || '',
+        waitingOn: realTask.waitingOn || 'None (Self)',
+        notes: realTask.description || '',
+        createdAt: realTask.createdAt || new Date().toISOString(),
+      });
+    }
   };
 
   const handleCreateTask = async (newTaskData: any) => {
@@ -482,16 +482,23 @@ export const TasksView: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           ...newTaskData,
-          status: 'BACKLOG', // Task is created as Backlog, ready for Sprint Assignment!
+          status: 'BACKLOG',
         }),
       });
       clearApiCache('/api/tasks');
       clearApiCache('/api/sprints');
       window.dispatchEvent(new CustomEvent('tasks-updated'));
-      toast.success(`Backlog Task ${created.taskCode || ''} created! Redirecting to Sprint task view...`);
-      loadTasks();
+      const code = created?.taskCode || 'Task';
       setIsAssignModalOpen(false);
-      setLocation('/sprints');
+      setIsCloneModalOpen(false);
+      await loadTasks();
+
+      if (newTaskData.isCloned) {
+        toast.success(`Cloned task "${newTaskData.title}" (${code}) created successfully!`);
+      } else {
+        toast.success(`Backlog Task ${code} created! Redirecting to Sprint task view...`);
+        setLocation('/sprints');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to create task');
     }

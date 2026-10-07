@@ -1342,12 +1342,12 @@ export const ApplicationsView: React.FC = () => {
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as any)}
-                    className="w-full text-xs font-semibold border border-gray-200 rounded-xl p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full text-xs font-bold border border-gray-200 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
+                    <option value="Urgent">P1</option>
+                    <option value="High">P2</option>
+                    <option value="Medium">P3</option>
+                    <option value="Low">P4</option>
                   </select>
                 </div>
 
@@ -1569,8 +1569,8 @@ export const ApplicationsView: React.FC = () => {
                   )}
                 </div>
 
-                {/* Timeline Dates */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Timeline Dates & Priority */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Start Date</label>
@@ -1594,7 +1594,7 @@ export const ApplicationsView: React.FC = () => {
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Target Completion Date</label>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Target Date</label>
                       {projectTargetDate && (
                         <button
                           type="button"
@@ -1611,6 +1611,22 @@ export const ApplicationsView: React.FC = () => {
                       onChange={(e) => setProjectTargetDate(e.target.value)}
                       className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
+                      Priority
+                    </label>
+                    <select
+                      value={projectPriority}
+                      onChange={(e) => setProjectPriority(e.target.value as any)}
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900 cursor-pointer"
+                    >
+                      <option value="Urgent">P1</option>
+                      <option value="High">P2</option>
+                      <option value="Medium">P3</option>
+                      <option value="Low">P4</option>
+                    </select>
                   </div>
                 </div>
 
@@ -1809,8 +1825,8 @@ export const ApplicationsView: React.FC = () => {
               <div className="lg:col-span-5 flex flex-col justify-between bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-left space-y-4">
                 <div className="space-y-4 flex-1 flex flex-col min-h-0">
                   
-                  {/* Template Cloning Box */}
-                  <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5 shrink-0">
+                  {/* Template Cloning Box (Clean Black & White Monochrome) */}
+                  <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-300 space-y-2.5 shrink-0 shadow-2xs">
                     <label className="flex items-start gap-2.5 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1819,19 +1835,19 @@ export const ApplicationsView: React.FC = () => {
                           setIsProjectClone(e.target.checked);
                           if (!e.target.checked) setCloneSourceProjectId('');
                         }}
-                        className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                        className="mt-0.5 rounded text-gray-900 focus:ring-gray-900 w-4 h-4 cursor-pointer"
                       />
                       <div>
-                        <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
-                        <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                        <span className="text-xs font-extrabold text-gray-900 block">Make Clone / Duplicate Copy</span>
+                        <p className="text-[10px] text-gray-600 font-semibold leading-snug">
                           Check this box to duplicate an existing project or pre-fill parameters directly inside this form.
                         </p>
                       </div>
                     </label>
 
                     {isProjectClone && (
-                      <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
-                        <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                      <div className="pt-2 border-t border-gray-200 animate-in fade-in duration-150">
+                        <label className="block text-[11px] font-bold text-gray-900 mb-1">
                           Select Existing Project to Clone From:
                         </label>
                         <select
@@ -2219,7 +2235,7 @@ export const ApplicationsView: React.FC = () => {
                     );
                   })()}
                   <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${priorityColor}`}>
-                    {p.priority || 'Medium'} priority
+                    {p.priority === 'Urgent' ? 'P1' : p.priority === 'High' ? 'P2' : p.priority === 'Low' ? 'P4' : 'P3'}
                   </span>
                 </div>
 

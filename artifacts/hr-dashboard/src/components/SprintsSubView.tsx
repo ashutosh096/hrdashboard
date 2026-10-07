@@ -209,8 +209,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
-  const [sprintDeliverableLinks, setSprintDeliverableLinks] = useState<string[]>([]);
-  const [sprintNewDeliverableLink, setSprintNewDeliverableLink] = useState('');
+  const [sprintPriority, setSprintPriority] = useState<'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');
+  const [sprintDeliverableLinks, setSprintDeliverableLinks] = useState<{ name: string; url: string; note?: string }[]>([]);
+  const [sprintNewDeliverableLinkName, setSprintNewDeliverableLinkName] = useState('');
+  const [sprintNewDeliverableLinkUrl, setSprintNewDeliverableLinkUrl] = useState('');
+  const [sprintNewDeliverableLinkNote, setSprintNewDeliverableLinkNote] = useState('');
   const [selectedEpicId, setSelectedEpicId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
@@ -249,18 +252,27 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
   const handleAddSprintDeliverableLink = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!sprintNewDeliverableLink.trim()) return;
-    let formattedUrl = sprintNewDeliverableLink.trim();
+    const trimmed = sprintNewDeliverableLinkUrl.trim();
+    if (!trimmed) return;
+
+    let formattedUrl = trimmed;
     if (!/^https?:\/\//i.test(formattedUrl) && (formattedUrl.includes('.') || formattedUrl.startsWith('localhost'))) {
       formattedUrl = `https://${formattedUrl}`;
     }
-    if (sprintDeliverableLinks.includes(formattedUrl)) {
-      toast.error('This link has already been added');
+
+    const linkName = sprintNewDeliverableLinkName.trim() || 'Deliverable Link';
+    const linkNote = sprintNewDeliverableLinkNote.trim();
+
+    if (sprintDeliverableLinks.some(l => l.url.toLowerCase() === formattedUrl.toLowerCase())) {
+      toast.error('This deliverable link has already been added');
       return;
     }
-    setSprintDeliverableLinks((prev) => [...prev, formattedUrl]);
-    setSprintNewDeliverableLink('');
-    toast.success('Deliverable link added!');
+
+    setSprintDeliverableLinks((prev) => [...prev, { name: linkName, url: formattedUrl, note: linkNote }]);
+    setSprintNewDeliverableLinkName('');
+    setSprintNewDeliverableLinkUrl('');
+    setSprintNewDeliverableLinkNote('');
+    toast.success(`Deliverable link "${linkName}" added`);
   };
 
   const handleRemoveSprintDeliverableLink = (indexToRemove: number) => {
@@ -783,16 +795,20 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     setIsSubmitting(true);
     let finalSprintLinks = [...sprintDeliverableLinks];
-    if (sprintNewDeliverableLink.trim()) {
-      let extra = sprintNewDeliverableLink.trim();
+    if (sprintNewDeliverableLinkUrl.trim()) {
+      let extra = sprintNewDeliverableLinkUrl.trim();
       if (!/^https?:\/\//i.test(extra) && (extra.includes('.') || extra.startsWith('localhost'))) {
         extra = `https://${extra}`;
       }
-      if (!finalSprintLinks.includes(extra)) {
-        finalSprintLinks.push(extra);
+      if (!finalSprintLinks.some(l => l.url === extra)) {
+        finalSprintLinks.push({
+          name: sprintNewDeliverableLinkName.trim() || 'Deliverable Link',
+          url: extra,
+          note: sprintNewDeliverableLinkNote.trim() || '',
+        });
       }
     }
-    const sprintDeliverableUrl = finalSprintLinks.join(', ');
+    const sprintDeliverableUrl = finalSprintLinks.map(l => l.url).join(', ');
 
     const targetEmpId = selectedEmpIds.length > 0 ? selectedEmpIds[0] : null;
     const assignedEmp = targetEmpId ? employees.find(e => e.id === targetEmpId) : null;
@@ -844,12 +860,13 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           epicId: selectedEpicId || null,
           projectId: selectedProjectId || null,
           status: 'BACKLOG',
-          priority: 'P3',
+          priority: sprintPriority,
           dueDate: endDate,
           sprintWeek: targetWeek || 'Week 1 (Days 1–7)',
           sprintId: sprintId,
           deliverableUrl: sprintDeliverableUrl,
-          deliverableUrls: finalSprintLinks,
+          deliverableUrls: finalSprintLinks.map(l => typeof l === 'string' ? l : l.url),
+          deliverableLinks: finalSprintLinks,
           checklists: modalChecklists,
           comments: modalComments,
         }),
@@ -936,7 +953,9 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     setSelectedLeadIds([]);
     setSelectedEmpIds([]);
     setSprintDeliverableLinks([]);
-    setSprintNewDeliverableLink('');
+    setSprintNewDeliverableLinkName('');
+    setSprintNewDeliverableLinkUrl('');
+    setSprintNewDeliverableLinkNote('');
     setModalChecklists([]);
     setModalComments([]);
     setIsSubmitting(false);
@@ -1063,68 +1082,116 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   };
 
   const handleCloneTask = async (sourceTaskItem: TaskItem, importChecklistAndLinks: boolean) => {
-    const sourceTask = allTasks.find(t => t.id === sourceTaskItem.id || t.taskCode === sourceTaskItem.taskId) || sourceTaskItem;
-    const sourceCode = sourceTask.taskCode || sourceTaskItem.taskId || sourceTask.id;
-    const newId = `task-clone-${Date.now()}`;
-    const newCode = `TSK-${Math.floor(1000 + Math.random() * 9000)}`;
+    try {
+      const sourceTask = allTasks.find(t => t.id === sourceTaskItem.id || t.taskCode === sourceTaskItem.taskId) || sourceTaskItem;
+      const sourceCode = sourceTask.taskCode || sourceTaskItem.taskId || sourceTask.id;
 
-    const firstComment = {
-      id: `cmt-${Date.now()}`,
-      authorName: 'System Log',
-      content: `This task was created from the source task ${sourceCode}`,
-      isSystemLog: true,
-      createdAt: new Date().toISOString(),
-    };
+      const sourceBadge = getEntityBadge(sourceTask);
+      const resolvedEntityCode = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM';
+      const resolvedEntityLabel = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CLIMAGRO' : 'EHM';
 
-    const sourceBadge = getEntityBadge(sourceTask);
-    const resolvedEntityCode = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CAG' : 'EHM';
-    const resolvedEntityLabel = sourceBadge.isCommon ? 'COMMON' : sourceBadge.isCAG ? 'CLIMAGRO' : 'EHM';
+      const targetAssigneeId = sourceTask.assigneeId || sourceTaskItem.assigneeId || (Array.isArray(sourceTask.assigneeIds) && sourceTask.assigneeIds.length > 0 ? sourceTask.assigneeIds[0] : null);
+      const targetAssigneeIds = (Array.isArray(sourceTask.assigneeIds) && sourceTask.assigneeIds.length > 0)
+        ? sourceTask.assigneeIds
+        : (Array.isArray(sourceTaskItem.assigneeIds) && sourceTaskItem.assigneeIds.length > 0)
+        ? sourceTaskItem.assigneeIds
+        : targetAssigneeId ? [targetAssigneeId] : [];
 
-    const clonedTaskObj = {
-      id: newId,
-      taskCode: newCode,
-      title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
-      status: 'PLANNED',
-      entityId: sourceTask.entityId,
-      entity: resolvedEntityLabel,
-      entityCode: resolvedEntityCode,
-      assigneeId: sourceTask.assigneeId || null,
-      assigneeName: sourceTask.assigneeName || sourceTaskItem.assignee || 'Unassigned',
-      assigneeEmail: sourceTask.assigneeEmail || '',
-      reviewingLeadId: sourceTask.reviewingLeadId || null,
-      reviewingLead: sourceTask.reviewingLead || sourceTaskItem.reviewingLead || 'Unassigned',
-      sprintWeek: sourceTask.sprintWeek || 'Week 1 (Days 1–7)',
-      priority: sourceTask.priority || 'P3',
-      dueDate: sourceTask.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-      description: sourceTask.description || sourceTaskItem.notes || '',
-      deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
-      checklists: importChecklistAndLinks ? (sourceTask.checklists || []) : [],
-      comments: [firstComment, ...(sourceTask.comments || [])],
-      createdAt: new Date().toISOString(),
-    };
+      const targetLeadId = sourceTask.reviewingLeadId || sourceTaskItem.reviewingLeadId || (Array.isArray(sourceTask.reviewingLeadIds) && sourceTask.reviewingLeadIds.length > 0 ? sourceTask.reviewingLeadIds[0] : null);
+      const targetLeadIds = (Array.isArray(sourceTask.reviewingLeadIds) && sourceTask.reviewingLeadIds.length > 0)
+        ? sourceTask.reviewingLeadIds
+        : (Array.isArray(sourceTaskItem.reviewingLeadIds) && sourceTaskItem.reviewingLeadIds.length > 0)
+        ? sourceTaskItem.reviewingLeadIds
+        : targetLeadId ? [targetLeadId] : [];
 
-    setAllTasks(prev => [clonedTaskObj, ...prev]);
+      let createdFromApi: any = null;
+      if (sourceTask.id && sourceTask.id.length === 36) {
+        try {
+          createdFromApi = await fetchApi<any>(`/api/tasks/${sourceTask.id}/clone`, {
+            method: 'POST',
+          });
+        } catch (cloneErr) {
+          console.warn('[SPRINT TASK CLONE API WARNING]:', cloneErr);
+        }
+      }
 
-    setSelectedTaskToUpdate({
-      id: clonedTaskObj.id,
-      taskId: clonedTaskObj.taskCode,
-      taskCode: clonedTaskObj.taskCode,
-      title: clonedTaskObj.title,
-      entity: resolvedEntityLabel,
-      entityCode: resolvedEntityCode,
-      assignee: clonedTaskObj.assigneeName,
-      reviewingLead: clonedTaskObj.reviewingLead,
-      status: 'In Progress',
-      outputUrl: clonedTaskObj.deliverableUrl,
-      waitingOn: 'None (Self)',
-      notes: clonedTaskObj.description,
-      createdAt: clonedTaskObj.createdAt,
-      createdById: user?.id,
-      createdByName: user?.name,
-      creatorName: user?.name,
-    });
+      if (!createdFromApi) {
+        createdFromApi = await fetchApi<any>('/api/tasks', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: `[CLONE] ${sourceTask.title || sourceTaskItem.title}`,
+            description: sourceTask.description ? `[Cloned from ${sourceCode}]\n\n${sourceTask.description}` : `Cloned from ${sourceCode}`,
+            status: 'BACKLOG',
+            priority: sourceTask.priority || sourceTaskItem.priority || 'P3',
+            entityCode: resolvedEntityCode,
+            entityId: sourceTask.entityId,
+            sprintId: sourceTask.sprintId || null,
+            sprintWeek: sourceTask.sprintWeek || sourceTask.targetWeek || sourceTaskItem.targetWeek || null,
+            epicId: sourceTask.epicId || null,
+            projectId: sourceTask.projectId || null,
+            initiativeId: sourceTask.initiativeId || null,
+            departmentId: sourceTask.departmentId || null,
+            assigneeId: targetAssigneeId,
+            assigneeIds: targetAssigneeIds,
+            reviewingLeadId: targetLeadId,
+            reviewingLeadIds: targetLeadIds,
+            deliverableUrl: importChecklistAndLinks ? (sourceTask.deliverableUrl || sourceTaskItem.outputUrl || '') : '',
+            deliverableUrls: importChecklistAndLinks ? (sourceTask.deliverableUrls || []) : [],
+            deliverableLinks: importChecklistAndLinks ? (sourceTask.deliverableLinks || []) : [],
+            checklists: importChecklistAndLinks ? (sourceTask.checklists || []) : [],
+          }),
+        });
+      }
 
-    toast.success(`Task duplicated! Opening cloned task ${newCode}...`);
+      const realTask = Array.isArray(createdFromApi) ? createdFromApi[0] : createdFromApi;
+      const finalCode = realTask?.taskCode || 'Cloned Task';
+
+      // Clear caches and dispatch system update events
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/sprints');
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+
+      // Reload live DB tasks
+      await loadTasks();
+
+      // Open update modal with complete live cloned task
+      if (realTask) {
+        setSelectedTaskToUpdate({
+          id: realTask.id,
+          taskId: realTask.taskCode,
+          taskCode: realTask.taskCode,
+          title: realTask.title,
+          entity: resolvedEntityLabel,
+          entityCode: resolvedEntityCode,
+          entityId: realTask.entityId,
+          assignee: realTask.assigneeName || realTask.assignee || sourceTask.assigneeName || 'Unassigned',
+          assigneeId: realTask.assigneeId || targetAssigneeId,
+          assigneeIds: realTask.assigneeIds || targetAssigneeIds,
+          reviewingLead: realTask.reviewingLead || sourceTask.reviewingLead || 'Unassigned',
+          reviewingLeadId: realTask.reviewingLeadId || targetLeadId,
+          reviewingLeadIds: realTask.reviewingLeadIds || targetLeadIds,
+          status: realTask.status === 'DONE' ? 'Done' : 'In Progress',
+          targetWeek: realTask.sprintWeek || realTask.targetWeek || sourceTask.sprintWeek,
+          priority: realTask.priority || 'P3',
+          dueDate: realTask.dueDate ? (String(realTask.dueDate).includes('T') ? String(realTask.dueDate).split('T')[0] : String(realTask.dueDate)) : '',
+          outputUrl: realTask.deliverableUrl || '',
+          deliverableLinks: realTask.deliverableLinks || [],
+          deliverableUrls: realTask.deliverableUrls || [],
+          checklists: realTask.checklists || [],
+          waitingOn: 'None (Self)',
+          notes: realTask.description || '',
+          createdAt: realTask.createdAt,
+          createdById: user?.id,
+          createdByName: user?.name,
+          creatorName: user?.name,
+        });
+      }
+
+      toast.success(`Task duplicated! Opening cloned task ${finalCode}...`);
+    } catch (err: any) {
+      console.error('[SPRINT TASK CLONE ERROR]:', err);
+      toast.error(`Failed to clone task: ${err?.message || 'Server error'}`);
+    }
   };
 
   const getCurrentSprintWeekIndex = (): number => {
@@ -1887,12 +1954,15 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                   />
                 </div>
 
-                {/* Target Week & Assign Team Member (Grid Pair 3) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider" title="Target Week / Date">
-                      Target Week / Date
-                    </label>
+                {/* Target Week & Priority & Assign Team Member (Grid Pair 3 - Issue 2 Parity) */}
+                {/* Target Week & Priority & Assign Team Member (Grid Pair 3 - Issue 2 Parity) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                  <div className="flex flex-col">
+                    <div className="min-h-[28px] flex items-end mb-1.5">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider leading-tight" title="Target Week / Date">
+                        Target Week / Date
+                      </label>
+                    </div>
                     <CalendarPicker
                       value={targetWeek}
                       onChange={(formatted) => setTargetWeek(formatted)}
@@ -1901,12 +1971,30 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                     />
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <div className="flex flex-col">
+                    <div className="min-h-[28px] flex items-end mb-1.5">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider leading-tight">
+                        Priority
+                      </label>
+                    </div>
+                    <select
+                      value={sprintPriority}
+                      onChange={(e) => setSprintPriority(e.target.value as any)}
+                      className="w-full px-3 h-[38px] text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900 cursor-pointer shadow-2xs"
+                    >
+                      <option value="URGENT">P1</option>
+                      <option value="HIGH">P2</option>
+                      <option value="MEDIUM">P3</option>
+                      <option value="LOW">P4</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <div className="min-h-[28px] flex items-end justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider leading-tight">
                         Assign Team Member(s)
                       </label>
-                      <span className="text-[10px] text-gray-400 font-medium">
+                      <span className="text-[10px] text-gray-400 font-medium shrink-0 leading-tight ml-1">
                         {selectedEmpIds.length > 0 ? `${selectedEmpIds.length} selected` : 'Optional (Unassigned)'}
                       </span>
                     </div>
@@ -1917,7 +2005,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       isMulti={true}
                       multiValues={selectedEmpIds}
                       onMultiChange={setSelectedEmpIds}
-                      placeholder="Select team member(s) (Optional)..."
+                      placeholder="Select team member(s)..."
                       noneLabel="-- Unassigned Team Member --"
                       searchPlaceholder="Search team members..."
                     />
@@ -1970,54 +2058,74 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                     </span>
                   </div>
 
-                  {/* Add Link Input Group */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Link2 className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        value={sprintNewDeliverableLink}
-                        onChange={(e) => setSprintNewDeliverableLink(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddSprintDeliverableLink(e);
-                          }
-                        }}
-                        placeholder="Paste deliverable link (GitHub PR, Figma, Drive, Notion, Docs)..."
-                        className="w-full text-xs border border-gray-300 rounded-xl pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
-                      />
+                  {/* Add Link Input Group with Custom Name, URL, and Note */}
+                  <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-200/80 space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                      <div className="md:col-span-4">
+                        <input
+                          type="text"
+                          value={sprintNewDeliverableLinkName}
+                          onChange={(e) => setSprintNewDeliverableLinkName(e.target.value)}
+                          placeholder="Link Name (e.g. HTML Link, Test Link, PR)"
+                          className="w-full text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white"
+                        />
+                      </div>
+                      <div className="md:col-span-5 relative">
+                        <Link2 className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={sprintNewDeliverableLinkUrl}
+                          onChange={(e) => setSprintNewDeliverableLinkUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddSprintDeliverableLink(e);
+                            }
+                          }}
+                          placeholder="https://... (GitHub, Figma, Live URL)"
+                          className="w-full text-xs border border-gray-300 rounded-xl pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                        />
+                      </div>
+                      <div className="md:col-span-3">
+                        <button
+                          type="button"
+                          onClick={() => handleAddSprintDeliverableLink()}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Link</span>
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleAddSprintDeliverableLink()}
-                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Link</span>
-                    </button>
                   </div>
 
                   {/* Multiple Links List */}
                   {sprintDeliverableLinks.length > 0 ? (
-                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                      {sprintDeliverableLinks.map((url, idx) => (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {sprintDeliverableLinks.map((link, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between gap-2 p-2 rounded-xl bg-emerald-50/50 border border-emerald-200/80 text-xs font-semibold text-gray-800 transition-colors"
+                          className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-xs text-gray-800 transition-colors"
                         >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <Link2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span className="truncate font-mono text-[11px] text-emerald-950" title={url}>
-                              {url}
-                            </span>
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            <Link2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-xs text-emerald-950">
+                                  {link.name || 'Deliverable Link'}
+                                </span>
+                              </div>
+                              <p className="truncate font-mono text-[11px] text-emerald-800 hover:underline cursor-pointer" title={link.url}>
+                                {link.url}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <a
-                              href={url.startsWith('http') ? url : `https://${url}`}
+                              href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-2 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                               title="Open link in new tab"
                             >
                               <ExternalLink className="w-3 h-3" />
@@ -2037,7 +2145,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                     </div>
                   ) : (
                     <p className="text-[11px] text-gray-400 font-medium pl-1">
-                      Optional: Add one or more deliverable links or URLs for this sprint task.
+                      Optional: Add one or more named deliverable links (HTML Prototype, Test Link, Docs).
                     </p>
                   )}
                 </div>
@@ -2186,8 +2294,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
               <div className="lg:col-span-5 flex flex-col justify-between bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-left space-y-4">
                 <div className="space-y-4 flex-1 flex flex-col min-h-0">
 
-                  {/* Template Cloning Box */}
-                  <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200/80 space-y-2.5 shrink-0">
+                  {/* Template Cloning Box (Clean Black & White Monochrome) */}
+                  <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-300 space-y-2.5 shrink-0 shadow-2xs">
                     <label className="flex items-start gap-2.5 cursor-pointer">
                       <input
                         type="checkbox"
@@ -2196,19 +2304,19 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           setIsClone(e.target.checked);
                           if (!e.target.checked) setCloneSourceId('');
                         }}
-                        className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                        className="mt-0.5 rounded text-gray-900 focus:ring-gray-900 w-4 h-4 cursor-pointer"
                       />
                       <div>
-                        <span className="text-xs font-extrabold text-purple-950 block">Make Clone / Duplicate Copy</span>
-                        <p className="text-[10px] text-purple-700 font-semibold leading-snug">
+                        <span className="text-xs font-extrabold text-gray-900 block">Make Clone / Duplicate Copy</span>
+                        <p className="text-[10px] text-gray-600 font-semibold leading-snug">
                           Check this box to duplicate an existing sprint task or pre-fill parameters directly inside this form.
                         </p>
                       </div>
                     </label>
 
                     {isClone && (
-                      <div className="pt-2 border-t border-purple-200/60 animate-in fade-in duration-150">
-                        <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                      <div className="pt-2 border-t border-gray-200 animate-in fade-in duration-150">
+                        <label className="block text-[11px] font-bold text-gray-900 mb-1">
                           Select Existing Task to Clone From (Optional):
                         </label>
                         <SearchableSelect
@@ -2516,10 +2624,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       onChange={(e) => setAssignTaskModal({ ...assignTaskModal, priority: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-xl font-semibold bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
-                      <option value="URGENT">P1 (Top Priority) 🔴</option>
-                      <option value="HIGH">P2 (High Priority) 🟠</option>
-                      <option value="MEDIUM">P3 (Medium Priority) 🟡</option>
-                      <option value="LOW">P4 (Low Priority) ⚪</option>
+                      <option value="URGENT">P1</option>
+                      <option value="HIGH">P2</option>
+                      <option value="MEDIUM">P3</option>
+                      <option value="LOW">P4</option>
                     </select>
                   </div>
 

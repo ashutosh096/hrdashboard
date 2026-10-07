@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum, jsonb, index } from 'drizzle-orm/pg-core';
 import { entities } from './entities.js';
 import { departments } from './departments.js';
 import { employees } from './employees.js';
@@ -28,9 +28,12 @@ export const tasks = pgTable(
     projectId: uuid('project_id').references(() => projects.id),
     storyPoints: integer('story_points'),
     assigneeId: uuid('assignee_id').references(() => employees.id),
+    assigneeIds: jsonb('assignee_ids').$type<string[]>().default([]),
     creatorId: uuid('creator_id').references(() => employees.id).notNull(),
     reviewingLeadId: uuid('reviewing_lead_id').references(() => employees.id),
+    reviewingLeadIds: jsonb('reviewing_lead_ids').$type<string[]>().default([]),
     deliverableUrl: varchar('deliverable_url', { length: 500 }),
+    deliverableLinks: jsonb('deliverable_links').$type<{ name: string; url: string; note?: string }[]>().default([]),
     parentTaskId: uuid('parent_task_id'),
     groupTaskId: uuid('group_task_id'), // UUID linking cloned group tasks
     status: taskStatusEnum('status').default('TODO').notNull(),

@@ -48,7 +48,10 @@ router.get('/', async (req, res) => {
 
     // 1. Employee Filter
     if (employeeId && employeeId !== 'ALL') {
-      conditions.push(eq(tasks.assigneeId, String(employeeId)));
+      const empIdStr = String(employeeId);
+      conditions.push(
+        sql`(${tasks.assigneeId} = ${empIdStr} OR (COALESCE(${tasks.assigneeIds}, '[]'::jsonb) @> ${JSON.stringify([empIdStr])}::jsonb))`
+      );
     }
 
     // 2. Priority Filter
@@ -231,30 +234,77 @@ export async function enrichTasks(tasksList: any[]) {
     const taskChecklistItems = allChecklists.filter(c => c.taskId === t.id);
     const taskCommentItems = allComments.filter(c => c.taskId === t.id);
 
-    const assigneeName = assigneeEmp 
-      ? `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim() || assigneeEmp.employeeCode 
-      : 'Unassigned';
+    // Resolve Multiple Assignees
+    const resolvedAssigneeIds: string[] = Array.isArray(t.assigneeIds) && t.assigneeIds.length > 0
+      ? t.assigneeIds.filter(Boolean)
+      : (t.assigneeId ? [t.assigneeId] : []);
 
-    const reviewingLead = leadEmp 
-      ? `${leadEmp.firstName || ''} ${leadEmp.lastName || ''}`.trim() || leadEmp.employeeCode 
-      : 'Manager Lead';
+    const assignedEmps = allEmployees.filter(e => resolvedAssigneeIds.includes(e.id));
+    const primaryAssignee = assignedEmps[0] || assigneeEmp;
+    const resolvedAssigneeName = assignedEmps.length > 0
+      ? assignedEmps.map(e => `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode).join(', ')
+      : (assigneeEmp ? `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim() || assigneeEmp.employeeCode : 'Unassigned');
 
-    const deliverableUrls = t.deliverableUrl
-      ? t.deliverableUrl.split(/[,\n]/).map((l: string) => l.trim()).filter((l: string) => Boolean(l))
-      : [];
+    // Resolve Multiple Reviewing Leads
+    const resolvedReviewingLeadIds: string[] = Array.isArray(t.reviewingLeadIds) && t.reviewingLeadIds.length > 0
+      ? t.reviewingLeadIds.filter(Boolean)
+      : (t.reviewingLeadId ? [t.reviewingLeadId] : []);
+
+    const reviewingLeadEmps = allEmployees.filter(e => resolvedReviewingLeadIds.includes(e.id));
+    const resolvedReviewingLeadName = reviewingLeadEmps.length > 0
+      ? reviewingLeadEmps.map(e => `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode).join(', ')
+      : (leadEmp ? `${leadEmp.firstName || ''} ${leadEmp.lastName || ''}`.trim() || leadEmp.employeeCode : 'Manager Lead');
+
+    // Resolve Structured Deliverable Links
+    let resolvedDeliverableLinks: { name: string; url: string; note?: string }[] = [];
+    if (Array.isArray(t.deliverableLinks) && t.deliverableLinks.length > 0) {
+      resolvedDeliverableLinks = t.deliverableLinks.map((item: any) => {
+        if (typeof item === 'string') return { name: 'Deliverable Link', url: item, note: '' };
+        return { name: item.name || 'Deliverable Link', url: item.url || '', note: item.note || '' };
+      }).filter((item: any) => Boolean(item.url));
+    } else if (t.deliverableUrl) {
+      try {
+        const parsed = JSON.parse(t.deliverableUrl);
+        if (Array.isArray(parsed)) {
+          resolvedDeliverableLinks = parsed.map((item: any) => {
+            if (typeof item === 'string') return { name: 'Deliverable Link', url: item, note: '' };
+            return { name: item.name || 'Deliverable Link', url: item.url || '', note: item.note || '' };
+          }).filter((item: any) => Boolean(item.url));
+        }
+      } catch {
+        const rawUrls = t.deliverableUrl.split(/[,\n]/).map((l: string) => l.trim()).filter(Boolean);
+        resolvedDeliverableLinks = rawUrls.map((u: string) => ({ name: 'Deliverable Link', url: u, note: '' }));
+      }
+    }
+
+    const resolvedDeliverableUrls = resolvedDeliverableLinks.map(l => l.url);
 
     return {
       ...t,
-      deliverableUrls,
-      assigneeIds: t.assigneeId ? [t.assigneeId] : [],
-      reviewingLeadIds: t.reviewingLeadId ? [t.reviewingLeadId] : [],
-      assignee: assigneeName,
-      assigneeName,
-      assigneeEmail: assigneeEmp?.email || '',
-      assigneeCode: assigneeEmp?.employeeCode || '',
-      reviewingLead,
-      reviewingLeadName: reviewingLead,
-      reviewingLeadEmail: leadEmp?.email || '',
+      deliverableUrl: resolvedDeliverableUrls.join(', ') || t.deliverableUrl || '',
+      deliverableUrls: resolvedDeliverableUrls,
+      deliverableLinks: resolvedDeliverableLinks,
+      assigneeIds: resolvedAssigneeIds,
+      assignees: assignedEmps.map(e => ({
+        id: e.id,
+        name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode,
+        email: e.email || '',
+        employeeCode: e.employeeCode || '',
+      })),
+      reviewingLeadIds: resolvedReviewingLeadIds,
+      reviewingLeads: reviewingLeadEmps.map(e => ({
+        id: e.id,
+        name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode,
+        email: e.email || '',
+        employeeCode: e.employeeCode || '',
+      })),
+      assignee: resolvedAssigneeName,
+      assigneeName: resolvedAssigneeName,
+      assigneeEmail: primaryAssignee?.email || '',
+      assigneeCode: primaryAssignee?.employeeCode || '',
+      reviewingLead: resolvedReviewingLeadName,
+      reviewingLeadName: resolvedReviewingLeadName,
+      reviewingLeadEmail: reviewingLeadEmps[0]?.email || leadEmp?.email || '',
       creatorName: creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin',
       createdByName: t.createdByName || (creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin'),
       epicCode: parentEpic?.epicCode || null,
@@ -359,15 +409,16 @@ export async function createTaskNotification({
   }
 }
 
-// Allow ADMIN, MANAGER, and EMPLOYEE to create tasks
+// Allow ADMIN, MANAGER, and EMPLOYEE to create tasks (Single Task with Collaborative Multi-Assignees & Reviewers)
 router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res) => {
   const {
     title,
     description,
     assigneeId,
-    assigneeIds, // Array of employee IDs for multi-employee cloning
+    assigneeIds, // Array of employee IDs
     creatorId,
     reviewingLeadId,
+    reviewingLeadIds, // Array of reviewing lead IDs
     departmentId,
     sprintId,
     initiativeId,
@@ -378,303 +429,262 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
     status,
     dueDate,
     deliverableUrl,
+    deliverableUrls,
+    deliverableLinks: rawDeliverableLinks,
     checklists,
     comments,
   } = req.body;
 
-  // Resolve array of target assignees (allows unassigned tasks when assignee is null or unassigned)
+  // Resolve target assignees array
   const isExplicitlyUnassigned = assigneeId === null || assigneeId === '' || assigneeId === 'unassigned' || req.body.unassigned === true;
-  let targetAssigneeIds: (string | null)[] = [];
-  if (isExplicitlyUnassigned) {
-    targetAssigneeIds = [null];
-  } else if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
-    targetAssigneeIds = assigneeIds;
-  } else if (assigneeId) {
-    targetAssigneeIds = [assigneeId];
-  } else if (req.user?.employeeId) {
-    targetAssigneeIds = [req.user.employeeId];
-  } else {
-    targetAssigneeIds = [null];
+  let targetAssigneeIds: string[] = [];
+  if (!isExplicitlyUnassigned) {
+    if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+      targetAssigneeIds = assigneeIds.filter(Boolean);
+    } else if (assigneeId) {
+      targetAssigneeIds = [assigneeId];
+    } else if (req.user?.employeeId) {
+      targetAssigneeIds = [req.user.employeeId];
+    }
   }
+  const primaryAssigneeId = targetAssigneeIds[0] || null;
 
-  const isGroupTask = targetAssigneeIds.length > 1;
-  const groupTaskId = isGroupTask ? crypto.randomUUID() : null;
+  // Resolve target reviewing leads array
+  let targetReviewingLeadIds: string[] = [];
+  if (Array.isArray(reviewingLeadIds) && reviewingLeadIds.length > 0) {
+    targetReviewingLeadIds = reviewingLeadIds.filter(Boolean);
+  } else if (reviewingLeadId) {
+    targetReviewingLeadIds = [reviewingLeadId];
+  }
+  const primaryReviewingLeadId = targetReviewingLeadIds[0] || null;
+
+  // Resolve Deliverable Links
+  let finalDeliverableLinks: { name: string; url: string; note?: string }[] = [];
+  if (Array.isArray(rawDeliverableLinks) && rawDeliverableLinks.length > 0) {
+    finalDeliverableLinks = rawDeliverableLinks.map((item: any) => {
+      if (typeof item === 'string') return { name: 'Deliverable Link', url: item, note: '' };
+      return { name: item.name || 'Deliverable Link', url: item.url || '', note: item.note || '' };
+    }).filter((item: any) => Boolean(item.url));
+  } else if (Array.isArray(deliverableUrls) && deliverableUrls.length > 0) {
+    finalDeliverableLinks = deliverableUrls.filter(Boolean).map((u: string) => ({ name: 'Deliverable Link', url: u, note: '' }));
+  } else if (deliverableUrl && typeof deliverableUrl === 'string') {
+    finalDeliverableLinks = deliverableUrl.split(/[,\n]/).map(u => u.trim()).filter(Boolean).map(u => ({ name: 'Deliverable Link', url: u, note: '' }));
+  }
+  const deliverableUrlString = finalDeliverableLinks.map(l => l.url).join(', ');
 
   try {
-    const createdTasks: any[] = [];
+    const taskResult = await db.transaction(async (tx) => {
+      // 1. Fetch Primary Assignee details if assigned
+      let assignee: any = null;
+      if (primaryAssigneeId) {
+        const [foundEmp] = await tx
+          .select()
+          .from(employees)
+          .where(eq(employees.id, primaryAssigneeId));
+        assignee = foundEmp || null;
+      }
 
-    for (const empId of targetAssigneeIds) {
-      const taskResult = await db.transaction(async (tx) => {
-        // 1. Fetch Assignee details if assigned
-        let assignee: any = null;
-        if (empId) {
-          const [foundEmp] = await tx
-            .select()
-            .from(employees)
-            .where(eq(employees.id, empId));
-          assignee = foundEmp || null;
+      let targetEntityId = assignee?.entityId;
+      if (req.body.entityId) {
+        targetEntityId = req.body.entityId;
+      } else if (req.body.entityCode) {
+        const entCodeUpper = String(req.body.entityCode).toUpperCase().trim();
+        const mappedCode = entCodeUpper === 'CLIMAGRO' ? 'CAG' : entCodeUpper;
+        const [foundEnt] = await tx.select().from(entities).where(eq(entities.code, mappedCode));
+        if (foundEnt) targetEntityId = foundEnt.id;
+      }
+
+      if (!targetEntityId) {
+        const [defaultEnt] = await tx.select().from(entities).limit(1);
+        targetEntityId = defaultEnt?.id;
+      }
+
+      const [entity] = await tx
+        .select({ code: entities.code, id: entities.id })
+        .from(entities)
+        .where(eq(entities.id, targetEntityId));
+
+      if (!entity) {
+        throw new Error(`Entity not found for ID: ${targetEntityId}`);
+      }
+
+      // 2. Lineage Derivation & Task Code Generation (Single code for the single collaborative task)
+      let taskType: 'EPIC_TASK' | 'SPRINT_TASK' | 'BACKLOG' = 'BACKLOG';
+      let finalEpicId: string | null = null;
+      let finalSprintId: string | null = null;
+      let finalInitiativeId: string | null = initiativeId || null;
+      let finalProjectId: string | null = projectId || null;
+      let generatedTaskCode = '';
+
+      if (epicId) {
+        taskType = 'EPIC_TASK';
+        finalEpicId = epicId;
+        finalSprintId = null;
+
+        const [parentEpic] = await tx
+          .select()
+          .from(epics)
+          .where(eq(epics.id, epicId))
+          .for('update');
+
+        if (!parentEpic) throw new Error(`Parent Epic not found for ID: ${epicId}`);
+
+        finalInitiativeId = parentEpic.initiativeId;
+        if (!finalProjectId && parentEpic.projectId) {
+          finalProjectId = parentEpic.projectId;
         }
 
-        let targetEntityId = assignee?.entityId;
-        if (req.body.entityId) {
-          targetEntityId = req.body.entityId;
-        } else if (req.body.entityCode) {
-          const entCodeUpper = String(req.body.entityCode).toUpperCase().trim();
-          const mappedCode = entCodeUpper === 'CLIMAGRO' ? 'CAG' : entCodeUpper;
-          const [foundEnt] = await tx.select().from(entities).where(eq(entities.code, mappedCode));
-          if (foundEnt) targetEntityId = foundEnt.id;
-        }
+        generatedTaskCode = await generateNextGlobalCode('TASK', tx);
+      } else if (sprintId) {
+        taskType = 'SPRINT_TASK';
+        finalSprintId = sprintId;
+        finalEpicId = null;
 
-        if (!targetEntityId) {
-          const [defaultEnt] = await tx.select().from(entities).limit(1);
-          targetEntityId = defaultEnt?.id;
-        }
+        const [parentSprint] = await tx
+          .select()
+          .from(sprints)
+          .where(eq(sprints.id, sprintId))
+          .for('update');
 
-        const [entity] = await tx
-          .select({ code: entities.code, id: entities.id })
-          .from(entities)
-          .where(eq(entities.id, targetEntityId));
+        if (!parentSprint) throw new Error(`Parent Sprint not found for ID: ${sprintId}`);
 
-        if (!entity) {
-          throw new Error(`Entity not found for ID: ${targetEntityId}`);
-        }
+        generatedTaskCode = await generateNextGlobalCode('STSK', tx);
+      } else {
+        taskType = 'BACKLOG';
+        finalEpicId = null;
+        finalSprintId = null;
 
-        const entityCode = entity.code; // "EHM" or "CAG" or "COMMON"
+        generatedTaskCode = await generateNextGlobalCode('BLOG', tx);
+      }
 
-        // 2. Lineage Derivation & Task Code Generation
-        let taskType: 'EPIC_TASK' | 'SPRINT_TASK' | 'BACKLOG' = 'BACKLOG';
-        let finalEpicId: string | null = null;
-        let finalSprintId: string | null = null;
-        let finalInitiativeId: string | null = initiativeId || null;
-        let finalProjectId: string | null = projectId || null;
-        let generatedTaskCode = '';
+      // 3. Resolve sprintWeek string
+      let sprintWeekStr = req.body.sprintWeek || null;
+      if (!sprintWeekStr && finalSprintId) {
+        const [sprint] = await tx.select({ targetWeek: sprints.targetWeek, name: sprints.name }).from(sprints).where(eq(sprints.id, finalSprintId));
+        if (sprint) sprintWeekStr = sprint.targetWeek || sprint.name;
+      }
 
-        if (epicId) {
-          // EPIC_TASK Lineage
-          taskType = 'EPIC_TASK';
-          finalEpicId = epicId;
-          finalSprintId = null;
+      // 4. Resolve Creator & Reviewing Lead
+      const caller = await getCallerInfo(req.user, tx);
+      const targetCreatorId = creatorId || req.user?.employeeId || primaryAssigneeId || caller.employeeId;
+      const targetReviewingLeadId = primaryReviewingLeadId || (req.user?.employeeId && (!assignee || req.user.employeeId !== assignee.id) ? req.user.employeeId : null);
 
-          // Lock Epic row & auto-derive Initiative ID & Project ID
-          const [parentEpic] = await tx
-            .select()
-            .from(epics)
-            .where(eq(epics.id, epicId))
-            .for('update');
+      // Resolve Department ID safely
+      let finalDeptId = departmentId || assignee?.departmentId;
+      if (!finalDeptId) {
+        const [firstDept] = await tx.select().from(departments).limit(1);
+        finalDeptId = firstDept?.id;
+      }
 
-          if (!parentEpic) throw new Error(`Parent Epic not found for ID: ${epicId}`);
+      // 5. Insert EXACTLY ONE Single Task
+      const dueDateVal = dueDate ? new Date(dueDate) : null;
+      const [newTask] = await tx
+        .insert(tasks)
+        .values({
+          taskCode: generatedTaskCode,
+          title: title || 'Untitled Task',
+          description: description || '',
+          entityId: entity.id,
+          departmentId: finalDeptId,
+          taskType,
+          sprintWeek: sprintWeekStr,
+          sprintId: finalSprintId,
+          initiativeId: finalInitiativeId,
+          epicId: finalEpicId,
+          projectId: finalProjectId,
+          storyPoints: storyPoints ? Number(storyPoints) : null,
+          assigneeId: primaryAssigneeId,
+          assigneeIds: targetAssigneeIds,
+          creatorId: targetCreatorId,
+          reviewingLeadId: targetReviewingLeadId,
+          reviewingLeadIds: targetReviewingLeadIds,
+          status: normalizeTaskStatus(status),
+          priority: normalizeTaskPriority(priority),
+          dueDate: dueDateVal,
+          deliverableUrl: deliverableUrlString || null,
+          deliverableLinks: finalDeliverableLinks,
+          createdById: caller.employeeId,
+          createdByName: caller.callerName,
+        })
+        .returning();
 
-          finalInitiativeId = parentEpic.initiativeId;
-          if (!finalProjectId && parentEpic.projectId) {
-            finalProjectId = parentEpic.projectId;
-          }
+      // 5a. Record history for Task creation
+      await recordHistory(tx, {
+        tableName: 'tasks',
+        recordId: newTask.id,
+        action: 'CREATED',
+        changes: [{ field: 'title', old: null, new: newTask.title }],
+        changedById: caller.employeeId,
+        changedByName: caller.callerName,
+      });
 
-          generatedTaskCode = await generateNextGlobalCode('TASK', tx);
-        } else if (sprintId) {
-          // SPRINT_TASK Lineage
-          taskType = 'SPRINT_TASK';
-          finalSprintId = sprintId;
-          finalEpicId = null;
-
-          // Lock Sprint row
-          const [parentSprint] = await tx
-            .select()
-            .from(sprints)
-            .where(eq(sprints.id, sprintId))
-            .for('update');
-
-          if (!parentSprint) throw new Error(`Parent Sprint not found for ID: ${sprintId}`);
-
-          generatedTaskCode = await generateNextGlobalCode('STSK', tx);
-        } else {
-          // BACKLOG Lineage
-          taskType = 'BACKLOG';
-          finalEpicId = null;
-          finalSprintId = null;
-
-          generatedTaskCode = await generateNextGlobalCode('BLOG', tx);
-        }
-
-        // 3. Resolve sprintWeek string
-        let sprintWeekStr = req.body.sprintWeek || null;
-        if (!sprintWeekStr && finalSprintId) {
-          const [sprint] = await tx.select({ targetWeek: sprints.targetWeek, name: sprints.name }).from(sprints).where(eq(sprints.id, finalSprintId));
-          if (sprint) sprintWeekStr = sprint.targetWeek || sprint.name;
-        }
-
-        // 4. Resolve Creator & Reviewing Lead
-        const caller = await getCallerInfo(req.user, tx);
-        const targetCreatorId = creatorId || req.user?.employeeId || assignee?.id || caller.employeeId;
-        const targetReviewingLeadId = reviewingLeadId || (req.user?.employeeId && (!assignee || req.user.employeeId !== assignee.id) ? req.user.employeeId : null);
-
-        // Resolve Department ID safely
-        let finalDeptId = departmentId || assignee?.departmentId;
-        if (!finalDeptId) {
-          const [firstDept] = await tx.select().from(departments).limit(1);
-          finalDeptId = firstDept?.id;
-        }
-
-        // 5. Insert Task
-        const dueDateVal = dueDate ? new Date(dueDate) : null;
-        const [newTask] = await tx
-          .insert(tasks)
-          .values({
-            taskCode: generatedTaskCode,
-            title: title || 'Untitled Task',
-            description: description || '',
-            entityId: entity.id,
-            departmentId: finalDeptId,
-            taskType,
-            sprintWeek: sprintWeekStr,
-            sprintId: finalSprintId,
-            initiativeId: finalInitiativeId,
-            epicId: finalEpicId,
-            projectId: finalProjectId,
-            groupTaskId,
-            storyPoints: storyPoints ? Number(storyPoints) : null,
-            assigneeId: assignee?.id || null,
-            creatorId: targetCreatorId,
-            reviewingLeadId: targetReviewingLeadId,
-            status: normalizeTaskStatus(status),
-            priority: normalizeTaskPriority(priority),
-            dueDate: dueDateVal,
-            deliverableUrl: deliverableUrl || null,
-            createdById: caller.employeeId,
-            createdByName: caller.callerName,
-          })
-          .returning();
-
-        // 5a. Record history for Task creation
+      // 5b. Record CHILD_ADDED on parent Epic if present
+      if (finalEpicId) {
         await recordHistory(tx, {
-          tableName: 'tasks',
-          recordId: newTask.id,
-          action: 'CREATED',
-          changes: [{ field: 'title', old: null, new: newTask.title }],
+          tableName: 'epics',
+          recordId: finalEpicId,
+          action: 'CHILD_ADDED',
+          changes: [{ field: 'tasks', old: null, new: newTask.taskCode }],
           changedById: caller.employeeId,
           changedByName: caller.callerName,
         });
-
-        // 5b. Record CHILD_ADDED on parent Epic if present
-        if (finalEpicId) {
-          await recordHistory(tx, {
-            tableName: 'epics',
-            recordId: finalEpicId,
-            action: 'CHILD_ADDED',
-            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
-            changedById: caller.employeeId,
-            changedByName: caller.callerName,
-          });
-        }
-
-        // 5c. Record CHILD_ADDED on parent Sprint if present
-        if (finalSprintId) {
-          await recordHistory(tx, {
-            tableName: 'sprints',
-            recordId: finalSprintId,
-            action: 'CHILD_ADDED',
-            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
-            changedById: caller.employeeId,
-            changedByName: caller.callerName,
-          });
-        }
-
-        // 5d. Record CHILD_ADDED on parent Initiative if present
-        if (finalInitiativeId) {
-          await recordHistory(tx, {
-            tableName: 'initiatives',
-            recordId: finalInitiativeId,
-            action: 'CHILD_ADDED',
-            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
-            changedById: caller.employeeId,
-            changedByName: caller.callerName,
-          });
-        }
-
-        // 5e. Record CHILD_ADDED on parent Project if present
-        if (finalProjectId) {
-          await recordHistory(tx, {
-            tableName: 'projects',
-            recordId: finalProjectId,
-            action: 'CHILD_ADDED',
-            changes: [{ field: 'task', old: null, new: `Task added: ${newTask.title}` }],
-            changedById: caller.employeeId,
-            changedByName: caller.callerName,
-          });
-        }
-
-        // 5a. Persist Initial Checklists (Subtasks) if provided
-        if (Array.isArray(checklists) && checklists.length > 0) {
-          for (let i = 0; i < checklists.length; i++) {
-            const chk = checklists[i];
-            const text = typeof chk === 'string' ? chk : (chk.itemText || chk.title || '');
-            if (text && text.trim()) {
-              await tx.insert(taskChecklists).values({
-                taskId: newTask.id,
-                itemText: text.trim(),
-                isCompleted: typeof chk === 'object' ? Boolean(chk.isCompleted) : false,
-                sortOrder: i + 1,
-              });
-            }
-          }
-        }
-
-        // 5b. Persist Initial Comments if provided
-        if (Array.isArray(comments) && comments.length > 0) {
-          for (const c of comments) {
-            const content = typeof c === 'string' ? c : (c.content || '');
-            if (content && content.trim()) {
-              await tx.insert(taskComments).values({
-                taskId: newTask.id,
-                authorName: typeof c === 'object' ? (c.authorName || 'User') : 'User',
-                content: content.trim(),
-                isSystemLog: typeof c === 'object' ? Boolean(c.isSystemLog) : false,
-              });
-            }
-          }
-        }
-
-        // 6. Targeted notification for assignee and lead (Strictly targeted, no admin spam)
-        if (assignee && assignee.id) {
-          dispatchNotification({
-            entity: {
-              entityType: 'TASK',
-              entityId: newTask.id,
-              entityCode: newTask.taskCode,
-              title: newTask.title,
-              assigneeEmployeeIds: [assignee.id],
-              reviewingLeadEmployeeId: newTask.reviewingLeadId,
-              creatorEmployeeId: newTask.creatorId,
-            },
-            actorUserId: req.user!.id,
-            eventType: 'ASSIGNED',
-            title: `New Task Assigned: [${newTask.taskCode}] "${newTask.title}"`,
-            message: `You have been assigned to task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`,
-          });
-        }
-
-        return {
-          newTask,
-          assigneeEmail: assignee?.email || null,
-          assigneeName: assignee ? `${assignee.firstName} ${assignee.lastName}`.trim() : 'Unassigned',
-        };
-      });
-
-      // Send Notification Email asynchronously if assignee exists
-      if (taskResult.assigneeEmail) {
-        sendTaskAssignedEmail(
-          taskResult.assigneeEmail,
-          taskResult.assigneeName,
-          taskResult.newTask.taskCode,
-          taskResult.newTask.title,
-          taskResult.newTask.dueDate ? new Date(taskResult.newTask.dueDate).toISOString().split('T')[0] : ''
-        ).catch(console.error);
       }
 
-      createdTasks.push(taskResult.newTask);
-    }
+      // 5c. Persist Initial Checklists (Subtasks) if provided
+      if (Array.isArray(checklists) && checklists.length > 0) {
+        for (let i = 0; i < checklists.length; i++) {
+          const chk = checklists[i];
+          const text = typeof chk === 'string' ? chk : (chk.itemText || chk.title || '');
+          if (text && text.trim()) {
+            await tx.insert(taskChecklists).values({
+              taskId: newTask.id,
+              itemText: text.trim(),
+              isCompleted: typeof chk === 'object' ? Boolean(chk.isCompleted) : false,
+              sortOrder: i + 1,
+            });
+          }
+        }
+      }
 
-    const enrichedList = await enrichTasks(createdTasks);
-    res.status(201).json(isGroupTask ? enrichedList : enrichedList[0]);
+      // 5d. Persist Initial Comments if provided
+      if (Array.isArray(comments) && comments.length > 0) {
+        for (const c of comments) {
+          const content = typeof c === 'string' ? c : (c.content || '');
+          if (content && content.trim()) {
+            await tx.insert(taskComments).values({
+              taskId: newTask.id,
+              authorName: typeof c === 'object' ? (c.authorName || 'User') : 'User',
+              content: content.trim(),
+              isSystemLog: typeof c === 'object' ? Boolean(c.isSystemLog) : false,
+            });
+          }
+        }
+      }
+
+      // 6. Targeted notifications for all assignees and reviewing leads
+      if (targetAssigneeIds.length > 0) {
+        dispatchNotification({
+          entity: {
+            entityType: 'TASK',
+            entityId: newTask.id,
+            entityCode: newTask.taskCode,
+            title: newTask.title,
+            assigneeEmployeeIds: targetAssigneeIds,
+            reviewingLeadEmployeeId: newTask.reviewingLeadId,
+            creatorEmployeeId: newTask.creatorId,
+          },
+          actorUserId: req.user!.id,
+          eventType: 'ASSIGNED',
+          title: `New Task Assigned: [${newTask.taskCode}] "${newTask.title}"`,
+          message: `You have been assigned to task [${newTask.taskCode}] "${newTask.title}".${dueDateVal ? ` Target Due Date: ${dueDateVal.toISOString().split('T')[0]}.` : ''}`,
+        });
+      }
+
+      return newTask;
+    });
+
+    const [enriched] = await enrichTasks([taskResult]);
+    res.status(201).json(enriched || taskResult);
   } catch (err: any) {
     console.error('[TASK CREATION ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to create task' });
@@ -738,8 +748,12 @@ const handleTaskUpdate = async (req: any, res: any) => {
           updateData.status = nextStatus;
         }
       }
-      if (Array.isArray(deliverableUrls)) {
+      if (Array.isArray(req.body.deliverableLinks)) {
+        updateData.deliverableLinks = req.body.deliverableLinks;
+        updateData.deliverableUrl = req.body.deliverableLinks.map((l: any) => l.url || l).filter(Boolean).join(', ');
+      } else if (Array.isArray(deliverableUrls)) {
         updateData.deliverableUrl = deliverableUrls.filter(Boolean).join(', ');
+        updateData.deliverableLinks = deliverableUrls.filter(Boolean).map((u: string) => ({ name: 'Deliverable Link', url: u, note: '' }));
       } else if (deliverableUrl !== undefined || outputUrl !== undefined) {
         updateData.deliverableUrl = deliverableUrl !== undefined ? deliverableUrl : outputUrl;
       }
@@ -764,7 +778,9 @@ const handleTaskUpdate = async (req: any, res: any) => {
 
       // Handle Assignee ID / Name (Support removing assignee and keeping unassigned)
       if (Array.isArray(assigneeIds)) {
-        updateData.assigneeId = assigneeIds.length > 0 ? assigneeIds[0] : null;
+        const cleanIds = assigneeIds.filter(Boolean);
+        updateData.assigneeIds = cleanIds;
+        updateData.assigneeId = cleanIds.length > 0 ? cleanIds[0] : null;
       } else if (assigneeId === null || assigneeId === '' || assigneeName === '' || assigneeName === 'Unassigned' || assigneeName === 'None') {
         updateData.assigneeId = null;
       } else if (assigneeId && typeof assigneeId === 'string' && assigneeId.length === 36) {
@@ -790,7 +806,9 @@ const handleTaskUpdate = async (req: any, res: any) => {
 
       // Handle Reviewing Lead ID / Name (Support removing lead and keeping unassigned/none)
       if (Array.isArray(reviewingLeadIds)) {
-        updateData.reviewingLeadId = reviewingLeadIds.length > 0 ? reviewingLeadIds[0] : null;
+        const cleanLeadIds = reviewingLeadIds.filter(Boolean);
+        updateData.reviewingLeadIds = cleanLeadIds;
+        updateData.reviewingLeadId = cleanLeadIds.length > 0 ? cleanLeadIds[0] : null;
       } else if (reviewingLeadId === null || reviewingLeadId === '' || reviewingLead === '' || reviewingLead === 'Unassigned' || reviewingLead === 'None') {
         updateData.reviewingLeadId = null;
       } else if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.length === 36) {
@@ -1357,12 +1375,15 @@ router.post('/:id/clone', requireRole(['ADMIN', 'MANAGER']), async (req, res) =>
           projectId: sourceTask.projectId,
           storyPoints: sourceTask.storyPoints,
           assigneeId: sourceTask.assigneeId,
+          assigneeIds: sourceTask.assigneeIds || (sourceTask.assigneeId ? [sourceTask.assigneeId] : []),
           creatorId: req.user?.employeeId || sourceTask.creatorId,
           reviewingLeadId: sourceTask.reviewingLeadId,
+          reviewingLeadIds: sourceTask.reviewingLeadIds || (sourceTask.reviewingLeadId ? [sourceTask.reviewingLeadId] : []),
           status: 'BACKLOG',
           priority: sourceTask.priority,
           dueDate: sourceTask.dueDate,
           deliverableUrl: sourceTask.deliverableUrl,
+          deliverableLinks: sourceTask.deliverableLinks || [],
           createdById: caller.employeeId,
           createdByName: caller.callerName,
         })
@@ -1414,7 +1435,8 @@ router.post('/:id/clone', requireRole(['ADMIN', 'MANAGER']), async (req, res) =>
       };
     });
 
-    res.status(201).json(cloneResult);
+    const [enrichedClone] = await enrichTasks([cloneResult]);
+    res.status(201).json(enrichedClone || cloneResult);
   } catch (err: any) {
     console.error('[TASK CLONE ERROR]:', err);
     res.status(500).json({ message: 'Failed to clone task', error: err.message });

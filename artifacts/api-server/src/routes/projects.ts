@@ -340,6 +340,17 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     const finalTeam = Array.isArray(team) ? team : [];
     const finalComments = Array.isArray(comments) ? comments : [];
 
+    const rawProjLinks = req.body.deliverableLinks;
+    let finalProjDeliverableLinks: { name: string; url: string; note?: string }[] = [];
+    if (Array.isArray(rawProjLinks) && rawProjLinks.length > 0) {
+      finalProjDeliverableLinks = rawProjLinks.map((item: any) => {
+        if (typeof item === 'string') return { name: 'Deliverable Link', url: item, note: '' };
+        return { name: item.name || 'Deliverable Link', url: item.url || '', note: item.note || '' };
+      }).filter((item: any) => Boolean(item.url));
+    } else if (deliverableUrl && typeof deliverableUrl === 'string') {
+      finalProjDeliverableLinks = deliverableUrl.split(/[,;\n]/).map(u => u.trim()).filter(Boolean).map(u => ({ name: 'Deliverable Link', url: u, note: '' }));
+    }
+
     const created = await db.transaction(async (tx) => {
       const caller = await getCallerInfo(req.user, tx);
 
@@ -362,7 +373,8 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           status: status || 'Planning',
           priority: priority || 'Medium',
           techStack: techStack || '',
-          deliverableUrl: deliverableUrl || techStack || '',
+          deliverableUrl: finalProjDeliverableLinks.map(l => l.url).join(', ') || deliverableUrl || techStack || '',
+          deliverableLinks: finalProjDeliverableLinks,
           milestonesCount: finalCheckpoints.length,
           description: description || '',
           checkpoints: finalCheckpoints,
@@ -464,7 +476,14 @@ router.patch('/:id', async (req, res) => {
       if (status !== undefined) updatePayload.status = status;
       if (priority !== undefined) updatePayload.priority = priority;
       if (techStack !== undefined) updatePayload.techStack = techStack;
-      if (deliverableUrl !== undefined) updatePayload.deliverableUrl = deliverableUrl;
+      if (req.body.deliverableLinks !== undefined) {
+        updatePayload.deliverableLinks = req.body.deliverableLinks;
+        updatePayload.deliverableUrl = Array.isArray(req.body.deliverableLinks)
+          ? req.body.deliverableLinks.map((l: any) => l.url || l).filter(Boolean).join(', ')
+          : deliverableUrl;
+      } else if (deliverableUrl !== undefined) {
+        updatePayload.deliverableUrl = deliverableUrl;
+      }
       if (description !== undefined) updatePayload.description = description;
       if (checkpoints !== undefined) {
         updatePayload.checkpoints = checkpoints;

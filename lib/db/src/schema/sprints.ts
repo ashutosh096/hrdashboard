@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum, jsonb } from 'drizzle-orm/pg-core';
 import { entities } from './entities.js';
 import { departments } from './departments.js';
 import { employees } from './employees.js';
@@ -22,6 +22,7 @@ export const sprints = pgTable('sprints', {
   endDate: timestamp('end_date'),
   status: sprintStatusEnum('status').default('PLANNED').notNull(),
   goal: text('goal'),
+  deliverableLinks: jsonb('deliverable_links').$type<{ name: string; url: string; note?: string }[]>().default([]),
   deletedAt: timestamp('deleted_at'),
   createdById: uuid('created_by_id').references(() => employees.id, { onDelete: 'set null' }),
   createdByName: text('created_by_name'),

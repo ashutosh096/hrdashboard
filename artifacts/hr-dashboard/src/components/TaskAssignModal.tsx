@@ -86,9 +86,11 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
 
-  // Task Deliverable Links state (Supports multiple links)
-  const [deliverableLinks, setDeliverableLinks] = useState<string[]>([]);
-  const [newDeliverableLink, setNewDeliverableLink] = useState('');
+  // Task Deliverable Links state (Supports multiple structured links: name, url, note)
+  const [deliverableLinks, setDeliverableLinks] = useState<{ name: string; url: string; note?: string }[]>([]);
+  const [newDeliverableLinkName, setNewDeliverableLinkName] = useState('');
+  const [newDeliverableLinkUrl, setNewDeliverableLinkUrl] = useState('');
+  const [newDeliverableLinkNote, setNewDeliverableLinkNote] = useState('');
 
   // Subtask Checklist & Comments state
   const [checklists, setChecklists] = useState<{ id: string; itemText: string; isCompleted: boolean }[]>([]);
@@ -252,22 +254,30 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
 
   const handleAddDeliverableLink = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const trimmed = newDeliverableLink.trim();
-    if (!trimmed) return;
+    const trimmedUrl = newDeliverableLinkUrl.trim();
+    if (!trimmedUrl) {
+      toast.error('Please enter a deliverable URL');
+      return;
+    }
 
-    let formattedUrl = trimmed;
+    let formattedUrl = trimmedUrl;
     if (!/^https?:\/\//i.test(formattedUrl) && (formattedUrl.includes('.') || formattedUrl.startsWith('localhost'))) {
       formattedUrl = `https://${formattedUrl}`;
     }
 
-    if (deliverableLinks.includes(formattedUrl)) {
-      toast.error('This deliverable link has already been added');
+    const linkName = newDeliverableLinkName.trim() || 'Deliverable Link';
+    const linkNote = newDeliverableLinkNote.trim();
+
+    if (deliverableLinks.some(l => l.url.toLowerCase() === formattedUrl.toLowerCase())) {
+      toast.error('This deliverable URL has already been added');
       return;
     }
 
-    setDeliverableLinks((prev) => [...prev, formattedUrl]);
-    setNewDeliverableLink('');
-    toast.success('Deliverable link added');
+    setDeliverableLinks((prev) => [...prev, { name: linkName, url: formattedUrl, note: linkNote }]);
+    setNewDeliverableLinkName('');
+    setNewDeliverableLinkUrl('');
+    setNewDeliverableLinkNote('');
+    toast.success(`Deliverable link "${linkName}" added`);
   };
 
   const handleRemoveDeliverableLink = (indexToRemove: number) => {
@@ -348,7 +358,9 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
     setAssigneeIds([]);
     setReviewingLeadIds([]);
     setDeliverableLinks([]);
-    setNewDeliverableLink('');
+    setNewDeliverableLinkName('');
+    setNewDeliverableLinkUrl('');
+    setNewDeliverableLinkNote('');
     setChecklists([]);
     setComments([]);
     setIsClone(false);
@@ -381,17 +393,21 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
 
     // Auto-include any link typed into the input field even if "+ Add Link" was not clicked
     let finalLinks = [...deliverableLinks];
-    if (newDeliverableLink.trim()) {
-      let extra = newDeliverableLink.trim();
+    if (newDeliverableLinkUrl.trim()) {
+      let extra = newDeliverableLinkUrl.trim();
       if (!/^https?:\/\//i.test(extra) && (extra.includes('.') || extra.startsWith('localhost'))) {
         extra = `https://${extra}`;
       }
-      if (!finalLinks.includes(extra)) {
-        finalLinks.push(extra);
+      if (!finalLinks.some(l => l.url === extra)) {
+        finalLinks.push({
+          name: newDeliverableLinkName.trim() || 'Deliverable Link',
+          url: extra,
+          note: newDeliverableLinkNote.trim() || '',
+        });
       }
     }
 
-    const deliverableUrlValue = finalLinks.join(', ');
+    const deliverableUrlValue = finalLinks.map(l => l.url).join(', ');
 
     onSubmit({
       title,
@@ -410,7 +426,8 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
       dueDate,
       description,
       deliverableUrl: deliverableUrlValue,
-      deliverableUrls: finalLinks,
+      deliverableUrls: finalLinks.map(l => l.url),
+      deliverableLinks: finalLinks,
       priority,
       checklists,
       comments,
@@ -633,54 +650,79 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
                 </span>
               </div>
 
-              {/* Add Link Input Group */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Link2 className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    value={newDeliverableLink}
-                    onChange={(e) => setNewDeliverableLink(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddDeliverableLink(e);
-                      }
-                    }}
-                    placeholder="Paste deliverable link (GitHub PR, Figma, Drive, Notion, Docs)..."
-                    className="w-full text-xs border border-gray-300 rounded-xl pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
-                  />
+              {/* Add Link Input Group with Custom Name, URL, and Note */}
+              <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-200/80 space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                  <div className="md:col-span-4">
+                    <input
+                      type="text"
+                      value={newDeliverableLinkName}
+                      onChange={(e) => setNewDeliverableLinkName(e.target.value)}
+                      placeholder="Link Name (e.g. HTML Link, Test Link, Figma, PR)"
+                      className="w-full text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white"
+                    />
+                  </div>
+                  <div className="md:col-span-5 relative">
+                    <Link2 className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={newDeliverableLinkUrl}
+                      onChange={(e) => setNewDeliverableLinkUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddDeliverableLink(e);
+                        }
+                      }}
+                      placeholder="https://... (GitHub, Figma, Live URL)"
+                      className="w-full text-xs border border-gray-300 rounded-xl pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium bg-white"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <button
+                      type="button"
+                      onClick={() => handleAddDeliverableLink()}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Link</span>
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleAddDeliverableLink()}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Link</span>
-                </button>
               </div>
 
               {/* Multiple Links List */}
               {deliverableLinks.length > 0 ? (
-                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                  {deliverableLinks.map((url, idx) => (
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {deliverableLinks.map((link, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between gap-2 p-2 rounded-xl bg-emerald-50/50 border border-emerald-200/80 text-xs font-semibold text-gray-800 transition-colors"
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-xs text-gray-800 transition-colors"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <Link2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="truncate font-mono text-[11px] text-emerald-950" title={url}>
-                          {url}
-                        </span>
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <Link2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-emerald-950">
+                              {link.name || 'Deliverable Link'}
+                            </span>
+                            {link.note && (
+                              <span className="text-[10px] text-gray-500 bg-white/80 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                                {link.note}
+                              </span>
+                            )}
+                          </div>
+                          <p className="truncate font-mono text-[11px] text-emerald-800 hover:underline cursor-pointer" title={link.url}>
+                            {link.url}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <a
-                          href={url.startsWith('http') ? url : `https://${url}`}
+                          href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                           title="Open link in new tab"
                         >
                           <ExternalLink className="w-3 h-3" />
@@ -700,7 +742,7 @@ export const TaskAssignModal: React.FC<TaskAssignModalProps> = ({
                 </div>
               ) : (
                 <p className="text-[11px] text-gray-400 font-medium pl-1">
-                  Optional: Add one or more output URLs or deliverable references for this task.
+                  Optional: Add one or more named deliverable links (HTML Prototype, Test Link, Docs).
                 </p>
               )}
             </div>

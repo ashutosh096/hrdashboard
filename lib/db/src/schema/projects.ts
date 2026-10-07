@@ -19,6 +19,7 @@ export const projects = pgTable(
     priority: text('priority').notNull().default('High'), // 'Low' | 'Medium' | 'High' | 'Urgent'
     techStack: text('tech_stack').default(''),
     deliverableUrl: text('deliverable_url').default(''),
+    deliverableLinks: jsonb('deliverable_links').$type<{ name: string; url: string; note?: string }[]>().default([]),
     milestonesCount: integer('milestones_count').default(0),
     description: text('description').default(''),
     checkpoints: jsonb('checkpoints').$type<{ id: string; title: string; isCompleted: boolean }[]>().default([]),
