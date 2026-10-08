@@ -1214,9 +1214,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   {viewingEpic.title}
                 </h2>
                 {viewingEpic.description && (
-                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                    {viewingEpic.description}
-                  </p>
+                  <div className="pt-1">
+                    <MarkdownViewer content={viewingEpic.description} />
+                  </div>
                 )}
               </div>
 
@@ -2196,9 +2196,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   {viewingInitiativeInEpics.title}
                 </h2>
                 {viewingInitiativeInEpics.description && (
-                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                    {viewingInitiativeInEpics.description}
-                  </p>
+                  <div className="pt-1">
+                    <MarkdownViewer content={viewingInitiativeInEpics.description} />
+                  </div>
                 )}
               </div>
 

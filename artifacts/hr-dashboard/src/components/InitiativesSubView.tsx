@@ -1077,9 +1077,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
                   {viewingInitiative.title}
                 </h2>
                 {viewingInitiative.description && (
-                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                    {viewingInitiative.description}
-                  </p>
+                  <div className="pt-1">
+                    <MarkdownViewer content={viewingInitiative.description} />
+                  </div>
                 )}
               </div>
 

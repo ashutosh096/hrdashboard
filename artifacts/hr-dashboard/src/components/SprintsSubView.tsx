@@ -223,6 +223,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [targetWeek, setTargetWeek] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [sprintInitialStatus, setSprintInitialStatus] = useState<string>('BACKLOG');
+  const [sprintDueDate, setSprintDueDate] = useState<string>('');
   const [goal, setGoal] = useState('');
   const [isClone, setIsClone] = useState(false);
   const [cloneSourceId, setCloneSourceId] = useState('');
@@ -591,7 +593,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         assigneeId: task.assigneeId || (employees[0]?.id || ''),
         reviewingLeadId: task.reviewingLeadId || (employees[0]?.id || ''),
         sprintWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
-        dueDate: task.dueDate ? task.dueDate.split('T')[0] : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        dueDate: task.dueDate ? (String(task.dueDate).includes('T') ? String(task.dueDate).split('T')[0] : String(task.dueDate)) : '',
         priority: task.priority || 'P3',
         description: task.description || task.notes || '',
         checklists: initialChks,
@@ -693,7 +695,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       assigneeId: assigneeId || null,
       reviewingLeadId: reviewingLeadId || null,
       sprintWeek,
-      dueDate,
+      dueDate: dueDate || null,
       priority,
       description,
     };
@@ -726,7 +728,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
             reviewingLeadId: reviewingLeadId || null,
             reviewingLead: leadEmp ? `${leadEmp.firstName} ${leadEmp.lastName}` : (reviewingLeadId ? t.reviewingLead : 'Unassigned'),
             sprintWeek,
-            dueDate,
+            dueDate: dueDate || null,
             priority,
             description,
             checklists: (Array.isArray(checklists) && checklists.length > 0) ? checklists : t.checklists,
@@ -836,7 +838,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           startDate,
           endDate,
           goal,
-          status: 'BACKLOG',
+          status: sprintInitialStatus || 'BACKLOG',
           deliverableUrl: sprintDeliverableUrl,
           deliverableUrls: finalSprintLinks,
           checklists: modalChecklists,
@@ -859,9 +861,9 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           reviewingLeadIds: selectedLeadIds,
           epicId: selectedEpicId || null,
           projectId: selectedProjectId || null,
-          status: 'BACKLOG',
+          status: sprintInitialStatus || 'BACKLOG',
           priority: sprintPriority,
-          dueDate: endDate,
+          dueDate: sprintDueDate || endDate || null,
           sprintWeek: targetWeek || 'Week 1 (Days 1–7)',
           sprintId: sprintId,
           deliverableUrl: sprintDeliverableUrl,
@@ -913,7 +915,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       entityCode: sprintEntity,
       entity: sprintEntity,
       assigneeCode: sprintEntity,
-      status: 'BACKLOG',
+      status: sprintInitialStatus || 'BACKLOG',
       assigneeId: targetEmpId,
       assigneeIds: selectedEmpIds,
       assigneeName: assigneeNamesStr,
@@ -922,8 +924,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       reviewingLeadIds: selectedLeadIds,
       reviewingLead: leadNamesStr,
       sprintWeek: targetWeek,
-      priority: 'P3',
-      dueDate: endDate,
+      priority: sprintPriority || 'P3',
+      dueDate: sprintDueDate || endDate || null,
       description: goal,
       outputUrl: sprintDeliverableUrl,
       deliverableUrl: sprintDeliverableUrl,
@@ -1022,15 +1024,16 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       status: task.status === 'DONE' || task.status === 'COMPLETED' ? 'Done' :
         task.status === 'IN_REVIEW' || task.status === 'TO_REVIEW' ? 'To Review' :
           task.status === 'PLANNED' ? 'Planned' :
-            task.status === 'BACKLOG' ? 'Backlog' :
-              task.status === 'DELAYED' ? 'Delayed' :
-                task.status === 'BLOCKED' ? 'Blocked' : 'In Progress',
+            task.status === 'TODO' || task.status === 'To Do' || task.status === 'TO_DO' ? 'To Do' :
+              task.status === 'BACKLOG' ? 'Backlog' :
+                task.status === 'DELAYED' ? 'Delayed' :
+                  task.status === 'BLOCKED' ? 'Blocked' : 'In Progress',
       outputUrl: rawLinks,
       deliverableUrl: rawLinks,
       deliverableUrls: parsedLinks,
       waitingOn: task.waitingOn || 'None (Self)',
       notes: task.description || task.notes || '',
-      dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+      dueDate: task.dueDate ? (String(task.dueDate).includes('T') ? String(task.dueDate).split('T')[0] : String(task.dueDate)) : '',
       targetWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
       priority: task.priority || 'P3',
       createdAt: task.createdAt,
@@ -1048,6 +1051,15 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       const resolvedEntityLabel = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CLIMAGRO' : 'EHM';
       const resolvedEntityCode = badge.isCommon ? 'COMMON' : badge.isCAG ? 'CAG' : 'EHM';
 
+      let apiStatus = updated.status;
+      const upperStatus = (updated.status || '').toUpperCase().trim();
+      if (upperStatus === 'PLANNED') apiStatus = 'PLANNED';
+      else if (upperStatus === 'TODO' || upperStatus === 'TO DO' || upperStatus === 'TO_DO') apiStatus = 'TODO';
+      else if (upperStatus === 'IN_PROGRESS' || upperStatus === 'IN PROGRESS' || upperStatus === 'ACTIVE') apiStatus = 'IN_PROGRESS';
+      else if (upperStatus === 'TO_REVIEW' || upperStatus === 'TO REVIEW' || upperStatus === 'IN_REVIEW' || upperStatus === 'REVIEW') apiStatus = 'TO_REVIEW';
+      else if (upperStatus === 'DONE' || upperStatus === 'COMPLETED') apiStatus = 'DONE';
+      else if (upperStatus === 'BACKLOG') apiStatus = 'BACKLOG';
+
       await fetchApi<any>(`/api/tasks/${updated.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -1061,7 +1073,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           reviewingLead: updated.reviewingLead === 'Unassigned' ? '' : updated.reviewingLead,
           reviewingLeadId: updated.reviewingLeadId || null,
           reviewingLeadIds: (updated as any).reviewingLeadIds || (updated.reviewingLeadId ? [updated.reviewingLeadId] : []),
-          status: updated.status,
+          status: apiStatus,
           deliverableUrl: updated.outputUrl || (updated as any).deliverableUrl,
           deliverableUrls: (updated as any).deliverableUrls || [],
           description: updated.notes,
@@ -1152,7 +1164,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       window.dispatchEvent(new CustomEvent('tasks-updated'));
 
       // Reload live DB tasks
-      await loadTasks();
+      await loadData();
 
       // Open update modal with complete live cloned task
       if (realTask) {
@@ -1621,7 +1633,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                                 const month = monthNames[d.getMonth()];
                                 dueDateInfo = {
-                                  label: isOverdue ? 'Overdue' : `${day} ${month}`,
+                                  label: isOverdue ? `Overdue (${day} ${month})` : `Due ${day} ${month}`,
                                   isOverdue,
                                 };
                               }
@@ -1803,11 +1815,12 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                   {dueDateInfo ? (
                                     <div className={`flex items-center gap-1 font-bold ${dueDateInfo.isOverdue ? 'text-red-600 font-extrabold' : 'text-gray-500'}`}>
                                       <Calendar className={`w-3 h-3 ${dueDateInfo.isOverdue ? 'text-red-500' : 'text-gray-400'}`} />
-                                      <span>Due {dueDateInfo.label}</span>
+                                      <span>{dueDateInfo.label}</span>
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-1 text-gray-400 font-medium">
-                                      <span>{entityName}</span>
+                                      <Calendar className="w-3 h-3 text-gray-300" />
+                                      <span className="italic">No Due Date</span>
                                     </div>
                                   )}
                                 </div>
@@ -1860,22 +1873,14 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
               {/* Left Column (Task Info & Subtask Checklist) */}
               <div className="lg:col-span-7 space-y-4 text-left">
 
-                {/* Entity & Department (Grid Pair 1) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. Brand / Entity & Task Code & Created At & Department (Matching Img 3 Top Meta Bar) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Entity / Brand *</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-emerald-700 font-extrabold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                        {sprintEntity}
-                      </span>
-                    </label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Brand / Entity</label>
                     <select
                       value={sprintEntity}
                       onChange={(e) => setSprintEntity(e.target.value as 'EHM' | 'CAG')}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-extrabold text-gray-900 cursor-pointer"
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
                       <option value="EHM">EHM</option>
                       <option value="CAG">CLIMAGRO</option>
@@ -1883,13 +1888,31 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
-                      Department
-                    </label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Task Code</label>
+                    <input
+                      type="text"
+                      disabled
+                      value="NEW-TASK"
+                      className="w-full text-xs font-bold bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 text-emerald-800 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Created At</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Department</label>
                     <select
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold cursor-pointer"
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
                       {DEPARTMENT_OPTIONS.map(d => (
                         <option key={d} value={d}>{d}</option>
@@ -1898,38 +1921,55 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                   </div>
                 </div>
 
-                {/* Parent Epic & Parent Project (Grid Pair 2) */}
+                {/* 2. DELIVERABLE / TASK NAME (Matching Img 3) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable / Task Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter task title / deliverable name..."
+                    value={sprintName}
+                    onChange={(e) => setSprintName(e.target.value)}
+                    className="w-full text-xs font-semibold bg-white border border-gray-300 rounded-xl p-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* 3. Parent Feature Epic & Parent Project (Matching Img 3) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-purple-600" />
-                        <span>Parent Epic</span>
-                      </span>
-                      <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                        Optional
-                      </span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Parent Feature Epic
+                      </label>
+                      {selectedEpicId ? (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          ✓ Linked to Epic
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400">
+                          No Parent Epic (Standalone Backlog)
+                        </span>
+                      )}
+                    </div>
                     <SearchableSelect
                       options={epicOptions}
                       value={selectedEpicId}
                       onChange={setSelectedEpicId}
                       placeholder="Select Parent Epic..."
-                      noneLabel="-- No Epic (Standalone) --"
+                      noneLabel="-- No parent epic (Standalone Backlog) --"
                       searchPlaceholder="Search epics..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Parent Project</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Parent Project
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        Optional (Standalone)
                       </span>
-                      <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                        Optional
-                      </span>
-                    </label>
+                    </div>
                     <SearchableSelect
                       options={projectOptions}
                       value={selectedProjectId}
@@ -1941,60 +1981,14 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                   </div>
                 </div>
 
-                {/* Sprint Task Title */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Sprint Task Title *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Implement OAuth 2.0 Auth Server Callback"
-                    value={sprintName}
-                    onChange={(e) => setSprintName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                  />
-                </div>
-
-                {/* Target Week & Priority & Assign Team Member (Grid Pair 3 - Issue 2 Parity) */}
-                {/* Target Week & Priority & Assign Team Member (Grid Pair 3 - Issue 2 Parity) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                  <div className="flex flex-col">
-                    <div className="min-h-[28px] flex items-end mb-1.5">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider leading-tight" title="Target Week / Date">
-                        Target Week / Date
+                {/* 4. Assignee(s) & Reviewing Lead(s) (Matching Img 3 2-Column Row) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Assignee(s)
                       </label>
-                    </div>
-                    <CalendarPicker
-                      value={targetWeek}
-                      onChange={(formatted) => setTargetWeek(formatted)}
-                      placeholder="e.g. 28 Sep 2026 or Week 1"
-                      formatMode="date"
-                    />
-                  </div>
-
-                  <div className="flex flex-col">
-                    <div className="min-h-[28px] flex items-end mb-1.5">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider leading-tight">
-                        Priority
-                      </label>
-                    </div>
-                    <select
-                      value={sprintPriority}
-                      onChange={(e) => setSprintPriority(e.target.value as any)}
-                      className="w-full px-3 h-[38px] text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-gray-900 cursor-pointer shadow-2xs"
-                    >
-                      <option value="URGENT">P1</option>
-                      <option value="HIGH">P2</option>
-                      <option value="MEDIUM">P3</option>
-                      <option value="LOW">P4</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <div className="min-h-[28px] flex items-end justify-between mb-1.5">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider leading-tight">
-                        Assign Team Member(s)
-                      </label>
-                      <span className="text-[10px] text-gray-400 font-medium shrink-0 leading-tight ml-1">
+                      <span className="text-[10px] text-gray-400 font-medium">
                         {selectedEmpIds.length > 0 ? `${selectedEmpIds.length} selected` : 'Optional (Unassigned)'}
                       </span>
                     </div>
@@ -2005,60 +1999,91 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       isMulti={true}
                       multiValues={selectedEmpIds}
                       onMultiChange={setSelectedEmpIds}
-                      placeholder="Select team member(s)..."
+                      placeholder="Select team member(s) or leave unassigned..."
                       noneLabel="-- Unassigned Team Member --"
                       searchPlaceholder="Search team members..."
                     />
                   </div>
-                </div>
 
-                {/* Reviewing Lead (Grid Pair 4 - Multi-Select Supported) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Reviewing Lead(s)
-                    </label>
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      {selectedLeadIds.length > 0 ? `${selectedLeadIds.length} selected` : 'Optional (None)'}
-                    </span>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Reviewing Lead(s)
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {selectedLeadIds.length > 0 ? `${selectedLeadIds.length} selected` : 'Optional (None)'}
+                      </span>
+                    </div>
+                    <SearchableSelect
+                      options={leadOptions}
+                      value=""
+                      onChange={() => {}}
+                      isMulti={true}
+                      multiValues={selectedLeadIds}
+                      onMultiChange={setSelectedLeadIds}
+                      placeholder="Select lead(s) or leave unassigned..."
+                      noneLabel="-- Unassigned Lead --"
+                      searchPlaceholder="Search leads & managers..."
+                    />
                   </div>
-                  <SearchableSelect
-                    options={leadOptions}
-                    value=""
-                    onChange={() => {}}
-                    isMulti={true}
-                    multiValues={selectedLeadIds}
-                    onMultiChange={setSelectedLeadIds}
-                    placeholder="Select reviewing lead(s) (Optional)..."
-                    noneLabel="-- Unassigned Lead --"
-                    searchPlaceholder="Search managers & leads..."
-                  />
                 </div>
 
-                {/* Deliverable Goal / Objective */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Deliverable Goal / Objective</label>
-                  <RichTextEditor
-                    value={goal}
-                    onChange={setGoal}
-                    placeholder="Outline expected deliverable outcome for this sprint task..."
-                    rows={3}
-                  />
+                {/* 5. Priority & Due Date (Matching Img 3 2-Column Row) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Priority</label>
+                    <select
+                      value={sprintPriority}
+                      onChange={(e) => setSprintPriority(e.target.value as any)}
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="URGENT">P1</option>
+                      <option value="HIGH">P2</option>
+                      <option value="MEDIUM">P3</option>
+                      <option value="LOW">P4</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Due Date</label>
+                      {sprintDueDate && (
+                        <button
+                          type="button"
+                          onClick={() => setSprintDueDate('')}
+                          className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                        >
+                          Clear Due Date
+                        </button>
+                      )}
+                    </div>
+                    <CalendarPicker
+                      value={sprintDueDate}
+                      onChange={(formatted) => {
+                        setSprintDueDate(formatted || '');
+                        if (formatted && !targetWeek) {
+                          setTargetWeek(formatted);
+                        }
+                      }}
+                      placeholder="Select Due Date (Optional)..."
+                      formatMode="date"
+                    />
+                  </div>
                 </div>
 
-                {/* Task Deliverable Links (Multiple Links Supported) */}
+                {/* 6. Task Deliverable & Links (Matching Img 3 Position & Styling) */}
                 <div className="space-y-2 pt-1">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Sprint Deliverable & Links</span>
+                      <span>Task Deliverable & Links</span>
                     </label>
                     <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
-                      {sprintDeliverableLinks.length} {sprintDeliverableLinks.length === 1 ? 'Link' : 'Links'} Added
+                      {sprintDeliverableLinks.length} {sprintDeliverableLinks.length === 1 ? 'Link' : 'Links'} Attached
                     </span>
                   </div>
 
-                  {/* Add Link Input Group with Custom Name, URL, and Note */}
+                  {/* Add Link Input Group */}
                   <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-200/80 space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                       <div className="md:col-span-4">
@@ -2148,6 +2173,36 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       Optional: Add one or more named deliverable links (HTML Prototype, Test Link, Docs).
                     </p>
                   )}
+                </div>
+
+                {/* 7. Status Dropdown (Matching Img 3 Position & All 6 Kanban Statuses for Img 2) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Status</label>
+                  <select
+                    value={sprintInitialStatus}
+                    onChange={(e) => setSprintInitialStatus(e.target.value)}
+                    className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="BACKLOG">Backlog</option>
+                    <option value="PLANNED">Planned</option>
+                    <option value="TODO">To Do</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="TO_REVIEW">To Review</option>
+                    <option value="DONE">Done</option>
+                  </select>
+                </div>
+
+                {/* 8. Progress Notes / Comments (Matching Img 3) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
+                    Progress Notes / Comments
+                  </label>
+                  <RichTextEditor
+                    value={goal}
+                    onChange={setGoal}
+                    placeholder="Detail your daily progress..."
+                    rows={3}
+                  />
                 </div>
 
                 {/* Subtask Checklist Section */}
@@ -2655,12 +2710,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">Task Description & Deliverables</label>
-                  <textarea
+                  <RichTextEditor
                     rows={3}
                     placeholder="Execution details, specifications, or deliverable instructions..."
                     value={assignTaskModal.description}
-                    onChange={(e) => setAssignTaskModal({ ...assignTaskModal, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl font-medium bg-white text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                    onChange={(val) => setAssignTaskModal({ ...assignTaskModal, description: val })}
                   />
                 </div>
               </div>

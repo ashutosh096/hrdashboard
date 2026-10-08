@@ -84,6 +84,19 @@ const normalizePriorityCode = (p: string | undefined): 'P1' | 'P2' | 'P3' | 'P4'
   return 'P3';
 };
 
+export const normalizeStatusLabel = (s: string | undefined | null): string => {
+  if (!s) return 'Backlog';
+  const val = String(s).toUpperCase().trim();
+  if (val === 'PLANNED') return 'Planned';
+  if (val === 'TODO' || val === 'TO DO' || val === 'TO_DO') return 'To Do';
+  if (val === 'IN_PROGRESS' || val === 'IN PROGRESS' || val === 'ACTIVE') return 'In Progress';
+  if (val === 'TO_REVIEW' || val === 'TO REVIEW' || val === 'IN_REVIEW' || val === 'REVIEW') return 'To Review';
+  if (val === 'DONE' || val === 'COMPLETED' || val === 'APPROVED') return 'Done';
+  if (val === 'BACKLOG') return 'Backlog';
+  if (s === 'Planned' || s === 'To Do' || s === 'In Progress' || s === 'To Review' || s === 'Done' || s === 'Backlog') return s;
+  return 'Backlog';
+};
+
 const formatPriorityLabel = (p: string | undefined): string => {
   return normalizePriorityCode(p);
 };
@@ -351,7 +364,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setNewDeliverableLinkNote('');
       setOutputUrl(task.outputUrl || (task as any).deliverableUrl || '');
 
-      setStatus(task.status || 'In Progress');
+      setStatus(normalizeStatusLabel(task.status));
       setWaitingOn(task.waitingOn || 'None (Self)');
       setNotes(task.notes || '');
       setTargetWeek(task.targetWeek || 'Week 1 (Days 1–7)');
@@ -1195,8 +1208,16 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Status</label>
                 {readOnlyMode ? (
                   <div className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-900 flex items-center gap-2 cursor-default">
-                    <span className={`w-2.5 h-2.5 rounded-full ${status === 'Done' ? 'bg-emerald-500' : status === 'Delayed' ? 'bg-amber-500' : status === 'Blocked' ? 'bg-red-500' : 'bg-blue-500'
-                      }`}></span>
+                    <span className={`w-2.5 h-2.5 rounded-full ${
+                      status === 'Done' ? 'bg-emerald-500' :
+                      status === 'To Review' ? 'bg-indigo-500' :
+                      status === 'In Progress' ? 'bg-amber-500' :
+                      status === 'To Do' ? 'bg-blue-500' :
+                      status === 'Planned' ? 'bg-purple-500' :
+                      status === 'Delayed' ? 'bg-amber-500' :
+                      status === 'Blocked' ? 'bg-red-500' :
+                      'bg-gray-400'
+                    }`}></span>
                     <span>{status}</span>
                   </div>
                 ) : (
@@ -1206,6 +1227,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
                     <option value="Backlog">Backlog</option>
+                    <option value="Planned">Planned</option>
+                    <option value="To Do">To Do</option>
                     <option value="In Progress">In Progress</option>
                     <option value="To Review">To Review</option>
                     <option value="Done">Done</option>

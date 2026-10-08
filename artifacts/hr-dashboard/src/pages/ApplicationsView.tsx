@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { RichTextEditor } from '../components/RichTextEditor';
+import { MarkdownViewer } from '../components/MarkdownViewer';
 import { SearchableSelect, SelectOption } from '../components/SearchableSelect';
 import { RecordHistoryPanel } from '../components/RecordHistoryPanel';
 import { RecentActivitySection } from '../components/RecentActivitySection';
@@ -1134,9 +1135,9 @@ export const ApplicationsView: React.FC = () => {
                               <td colSpan={5} className="p-4 border-t border-gray-100">
                                 <div className="space-y-3 bg-white p-4 rounded-xl border border-gray-200/80 shadow-2xs">
                                   {prj.description && (
-                                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                                      {prj.description}
-                                    </p>
+                                    <div className="pt-1">
+                                      <MarkdownViewer content={prj.description} />
+                                    </div>
                                   )}
 
                                   {/* Info Grid */}
@@ -2258,13 +2259,13 @@ export const ApplicationsView: React.FC = () => {
                 <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block">
                   PROJECT DESCRIPTION
                 </span>
-                <p className="text-xs font-medium text-gray-700 leading-relaxed">
-                  {p.description && p.description.trim() ? (
-                    p.description
-                  ) : (
-                    <span className="italic text-gray-400">No description added yet.</span>
-                  )}
-                </p>
+                {p.description && p.description.trim() ? (
+                  <div className="pt-1">
+                    <MarkdownViewer content={p.description} />
+                  </div>
+                ) : (
+                  <p className="text-xs font-medium text-gray-400 italic">No description added yet.</p>
+                )}
               </div>
 
               <hr className="border-gray-100" />

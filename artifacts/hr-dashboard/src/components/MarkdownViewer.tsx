@@ -1,4 +1,5 @@
 import React from 'react';
+import { ExternalLink } from 'lucide-react';
 
 interface Props {
   content: string;
@@ -10,37 +11,46 @@ export const MarkdownViewer: React.FC<Props> = ({ content, className = '' }) => 
 
   const parseInlineFormatting = (text: string): React.ReactNode[] => {
     // Regex matches markdown links [text](url), raw URLs, highlights ==text==, bold **text**, and italic *text*
-    const regex = /(\[.*?\]\(https?:\/\/[^\s\)]+\)|https?:\/\/[^\s\)]+|==.*?==|\*\*.*?\*\*|\*.*?\*)/g;
+    const regex = /(\[.*?\]\(.*?\)|https?:\/\/[^\s\)]+|www\.[^\s\)]+|==.*?==|\*\*.*?\*\*|\*.*?\*)/g;
     const parts = text.split(regex);
 
     return parts.map((part, idx) => {
+      if (!part) return null;
+
       // Hyperlink [text](url)
-      const mdLinkMatch = part.match(/^\[(.*?)\]\((https?:\/\/[^\s\)]+)\)$/);
+      const mdLinkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
       if (mdLinkMatch) {
+        let url = mdLinkMatch[2].trim();
+        if (!/^https?:\/\//i.test(url) && (url.includes('.') || url.startsWith('localhost'))) {
+          url = `https://${url}`;
+        }
         return (
           <a
             key={idx}
-            href={mdLinkMatch[2]}
+            href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-emerald-600 font-bold underline hover:text-emerald-700 break-all"
+            className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold underline underline-offset-2 break-all group transition-colors"
           >
-            {mdLinkMatch[1]}
+            <span>{mdLinkMatch[1] || url}</span>
+            <ExternalLink className="w-3 h-3 text-emerald-500 group-hover:text-emerald-700 inline shrink-0" />
           </a>
         );
       }
 
       // Raw URL
-      if (part.startsWith('http://') || part.startsWith('https://')) {
+      if (part.startsWith('http://') || part.startsWith('https://') || part.startsWith('www.')) {
+        const url = part.startsWith('www.') ? `https://${part}` : part;
         return (
           <a
             key={idx}
-            href={part}
+            href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-emerald-600 font-bold underline hover:text-emerald-700 break-all"
+            className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold underline underline-offset-2 break-all group transition-colors"
           >
-            {part}
+            <span>{part}</span>
+            <ExternalLink className="w-3 h-3 text-emerald-500 group-hover:text-emerald-700 inline shrink-0" />
           </a>
         );
       }

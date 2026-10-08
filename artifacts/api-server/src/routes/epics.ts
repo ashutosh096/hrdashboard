@@ -82,7 +82,6 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
   try {
     const created = await db.transaction(async (tx) => {
       let targetEntityId = entityId;
-      let prefixCode = 'EP';
 
       // 1. Explicit entity provided in request body
       if (entityId || entity || entityCode) {
@@ -109,7 +108,6 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         const [init] = await tx.select().from(initiatives).where(eq(initiatives.id, initiativeId));
         if (init) {
           targetEntityId = targetEntityId || init.entityId;
-          prefixCode = init.initiativeCode || 'INIT';
         }
       }
 
@@ -117,9 +115,6 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       if (projectId) {
         const [proj] = await tx.select().from(projects).where(eq(projects.id, projectId));
         if (proj) {
-          if (!initiativeId) {
-            prefixCode = proj.code || 'PRJ';
-          }
           if (!targetEntityId) {
             const entCode = proj.entity === 'CAG' ? 'CAG' : proj.entity === 'COMMON' ? 'COMMON' : 'EHM';
             const [matchedEnt] = await tx.select().from(entities).where(eq(entities.code, entCode));

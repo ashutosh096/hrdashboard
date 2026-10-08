@@ -28,6 +28,8 @@ import { db, sql } from '@workspace/db';
 
 import notificationsRouter from './routes/notifications.js';
 import historyRouter from './routes/history.js';
+import { backupRouter } from './routes/backup.js';
+import { startBackupCron } from './jobs/backup-cron.js';
 
 dotenv.config();
 
@@ -130,6 +132,31 @@ async function ensureTablesExist() {
       END $$;
     `);
 
+    // 3. Backup History table
+    await db.execute(sql`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'backup_trigger') THEN
+          CREATE TYPE backup_trigger AS ENUM ('MANUAL', 'CRON');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'backup_status') THEN
+          CREATE TYPE backup_status AS ENUM ('SUCCESS', 'FAILED');
+        END IF;
+      END $$;
+
+      CREATE TABLE IF NOT EXISTS backup_history (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        filename VARCHAR(255) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size_bytes BIGINT NOT NULL DEFAULT 0,
+        trigger_type backup_trigger NOT NULL,
+        status backup_status NOT NULL,
+        verification_result JSONB DEFAULT '[]'::jsonb,
+        error_message TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+      );
+    `);
+
     console.log('✅ [DATABASE] Schema verified & non-destructive migrations completed on startup.');
   } catch (err) {
     console.error('[DATABASE STARTUP NOTICE]:', err);
@@ -165,6 +192,7 @@ app.use('/api/epics', epicsRouter);
 app.use('/api/sprints', sprintsRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/history', historyRouter);
+app.use('/api/backup', backupRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'HROS API Server v2', timestamp: new Date().toISOString() });
@@ -212,6 +240,7 @@ if (fs.existsSync(frontendDistPath)) {
 startSyncCron();
 startDigestCron();
 startOverdueCheckCron();
+startBackupCron();
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {

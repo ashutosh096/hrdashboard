@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Bold, Italic, List, ListOrdered, Link as LinkIcon, Highlighter } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Highlighter } from 'lucide-react';
 
 interface Props {
   value: string;
@@ -11,7 +11,7 @@ interface Props {
 export const RichTextEditor: React.FC<Props> = ({
   value,
   onChange,
-  placeholder = 'Write description with rich formatting (bold, highlight, lists, links)...',
+  placeholder = 'Write description with rich formatting...',
   rows = 4,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -31,29 +31,6 @@ export const RichTextEditor: React.FC<Props> = ({
     setTimeout(() => {
       el.focus();
       el.setSelectionRange(start + prefix.length, start + prefix.length + (selectedText.length || 4));
-    }, 0);
-  };
-
-  const insertLink = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selectedText = value.substring(start, end);
-
-    const userUrl = window.prompt('Enter Hyperlink URL (e.g. https://google.com):', 'https://');
-    if (!userUrl) return;
-
-    const linkText = selectedText || 'Link Description';
-    const replacement = `[${linkText}](${userUrl})`;
-
-    const newValue = value.substring(0, start) + replacement + value.substring(end);
-    onChange(newValue);
-
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + 1, start + 1 + linkText.length);
     }, 0);
   };
 
@@ -112,17 +89,6 @@ export const RichTextEditor: React.FC<Props> = ({
 
         <button
           type="button"
-          onClick={insertLink}
-          className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer flex items-center gap-1"
-          title="Insert Hyperlink [text](url)"
-        >
-          <LinkIcon className="w-3.5 h-3.5" />
-        </button>
-
-        <div className="w-px h-4 bg-gray-300 mx-1" />
-
-        <button
-          type="button"
           onClick={() => insertList('bullet')}
           className="p-1.5 rounded-lg hover:bg-gray-200/80 text-gray-700 transition-colors cursor-pointer"
           title="Bulleted List (• item)"
@@ -138,20 +104,16 @@ export const RichTextEditor: React.FC<Props> = ({
         >
           <ListOrdered className="w-3.5 h-3.5" />
         </button>
-
-        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 ml-auto">
-          Rich Text Editor
-        </span>
       </div>
 
-      {/* Input Textarea */}
+      {/* Textarea */}
       <textarea
         ref={textareaRef}
         rows={rows}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full p-3 text-xs text-gray-900 bg-white outline-none resize-y font-medium leading-relaxed"
+        className="w-full p-3 text-xs text-gray-900 bg-white outline-none resize-y font-medium leading-relaxed block"
       />
     </div>
   );

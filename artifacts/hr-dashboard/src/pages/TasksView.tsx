@@ -340,7 +340,8 @@ export const TasksView: React.FC = () => {
       status: task.status === 'DONE' || task.status === 'Done' ? 'Done' :
         task.status === 'IN_REVIEW' || task.status === 'To Review' ? 'To Review' :
           task.status === 'PLANNED' || task.status === 'Planned' ? 'Planned' :
-            task.status === 'BACKLOG' || task.status === 'Backlog' ? 'Backlog' : 'In Progress',
+            task.status === 'TODO' || task.status === 'To Do' || task.status === 'TO_DO' ? 'To Do' :
+              task.status === 'BACKLOG' || task.status === 'Backlog' ? 'Backlog' : 'In Progress',
       outputUrl: task.outputUrl || task.deliverableUrl || '',
       deliverableUrl: task.outputUrl || task.deliverableUrl || '',
       deliverableUrls: task.deliverableUrls || [],
@@ -362,6 +363,15 @@ export const TasksView: React.FC = () => {
 
   const handleSaveTaskUpdate = async (updated: TaskItem) => {
     try {
+      let apiStatus = updated.status;
+      const upperStatus = (updated.status || '').toUpperCase().trim();
+      if (upperStatus === 'PLANNED') apiStatus = 'PLANNED';
+      else if (upperStatus === 'TODO' || upperStatus === 'TO DO' || upperStatus === 'TO_DO') apiStatus = 'TODO';
+      else if (upperStatus === 'IN_PROGRESS' || upperStatus === 'IN PROGRESS' || upperStatus === 'ACTIVE') apiStatus = 'IN_PROGRESS';
+      else if (upperStatus === 'TO_REVIEW' || upperStatus === 'TO REVIEW' || upperStatus === 'IN_REVIEW' || upperStatus === 'REVIEW') apiStatus = 'TO_REVIEW';
+      else if (upperStatus === 'DONE' || upperStatus === 'COMPLETED') apiStatus = 'DONE';
+      else if (upperStatus === 'BACKLOG') apiStatus = 'BACKLOG';
+
       const patchBody: any = {
         title: updated.title,
         entity: updated.entity,
@@ -371,7 +381,7 @@ export const TasksView: React.FC = () => {
         assigneeId: updated.assigneeId || null,
         reviewingLead: updated.reviewingLead === 'Unassigned' ? '' : updated.reviewingLead,
         reviewingLeadId: updated.reviewingLeadId || null,
-        status: updated.status,
+        status: apiStatus,
         deliverableUrl: updated.outputUrl || '',
         description: updated.notes || '',
         dueDate: updated.dueDate || null,
@@ -1165,9 +1175,9 @@ export const TasksView: React.FC = () => {
                   {viewingEpicInTasks.title}
                 </h2>
                 {viewingEpicInTasks.description && (
-                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                    {viewingEpicInTasks.description}
-                  </p>
+                  <div className="pt-1">
+                    <MarkdownViewer content={viewingEpicInTasks.description} />
+                  </div>
                 )}
               </div>
 
