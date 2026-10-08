@@ -140,12 +140,19 @@ export const PinnedAnnouncementBanner: React.FC = () => {
       // Primary check: database verified read status
       if (a.isDismissed === true) return false;
 
-      // Secondary check: optimistic local cache
+      // Secondary check: seenBy / seen_by array on announcement
+      const seen = Array.isArray(a.seenBy) ? a.seenBy : Array.isArray(a.seen_by) ? a.seen_by : [];
+      const seenLower = seen.map((x: any) => String(x).toLowerCase().trim());
+      if (userIdentifiers.some((ident) => seenLower.includes(ident))) {
+        return false;
+      }
+
+      // Tertiary check: local dismissed storage for this profile
       if (dismissedIds.includes(a.id)) return false;
 
       return true;
     });
-  }, [pinnedList, dismissedIds]);
+  }, [pinnedList, dismissedIds, userIdentifiers]);
 
   // Adjust currentIndex if items were dismissed
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, announcements, announcementReads, entities, eq, desc, sql } from '@workspace/db';
+import { db, announcements, announcementReads, entities, eq, or, desc, sql } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -15,16 +15,30 @@ router.get('/', async (req, res) => {
 
     const allEntities = await db.select().from(entities);
     const userId = req.user!.id;
+    const userEmpId = req.user?.employeeId;
+    const userEmail = req.user?.email?.toLowerCase().trim();
 
-    // Relational read status from announcement_reads table
+    // Relational read status from announcement_reads table (supports userId and employeeId)
     const userReads = await db
       .select({ announcementId: announcementReads.announcementId })
       .from(announcementReads)
-      .where(eq(announcementReads.userId, userId));
+      .where(or(
+        eq(announcementReads.userId, userId),
+        ...(userEmpId ? [eq(announcementReads.userId, userEmpId)] : [])
+      ));
     const readAnnouncementIds = new Set(userReads.map(r => r.announcementId));
 
     const enriched = list.map((a: any) => {
-      const isDismissed = readAnnouncementIds.has(a.id);
+      // Check both announcement_reads relational table AND seenBy jsonb array across all profile identifiers
+      const rawSeen = Array.isArray(a.seenBy) ? a.seenBy : [];
+      const seenArray = rawSeen.map((x: any) => String(x).toLowerCase().trim());
+
+      const isDismissed =
+        readAnnouncementIds.has(a.id) ||
+        seenArray.includes(userId.toLowerCase()) ||
+        (userEmpId ? seenArray.includes(userEmpId.toLowerCase()) : false) ||
+        (userEmail ? seenArray.includes(userEmail) : false);
+
       const ent = allEntities.find((e: any) => e.id === a.targetEntityId);
       const resolvedEntity = ent?.code === 'CAG' ? 'CLIMAGRO' : ent?.code === 'EHM' ? 'EHM' : 'BOTH';
       const entityName = ent?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'EHM' ? 'EHM Consultancy' : 'Both (EHM & CLIMAGRO)');
@@ -235,6 +249,8 @@ router.post('/:id/dismiss', async (req, res) => {
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = (rawId || '').trim();
   const userId = req.user?.id;
+  const userEmpId = req.user?.employeeId;
+  const userEmail = req.user?.email?.toLowerCase().trim();
 
   if (!userId) {
     return res.status(401).json({ message: 'User authentication required' });
@@ -246,13 +262,35 @@ router.post('/:id/dismiss', async (req, res) => {
       return res.json({ success: true, message: 'Dismissed' });
     }
 
+    // 1. Relational insert into announcement_reads for canonical user.id
     await db.execute(sql`
       INSERT INTO announcement_reads (announcement_id, user_id, read_at)
       VALUES (${id}, ${userId}, now())
       ON CONFLICT (announcement_id, user_id) DO NOTHING;
     `);
 
-    res.json({ success: true, message: 'Announcement permanently dismissed for user' });
+    // 2. Also insert for employeeId if distinct valid UUID
+    if (userEmpId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userEmpId)) {
+      try {
+        await db.execute(sql`
+          INSERT INTO announcement_reads (announcement_id, user_id, read_at)
+          VALUES (${id}, ${userEmpId}, now())
+          ON CONFLICT (announcement_id, user_id) DO NOTHING;
+        `);
+      } catch {}
+    }
+
+    // 3. Atomically append all profile identifiers into announcements.seen_by jsonb array
+    const userIdentifiers = [userId, userEmpId, userEmail].filter(Boolean) as string[];
+    for (const ident of userIdentifiers) {
+      await db.execute(sql`
+        UPDATE announcements
+        SET seen_by = COALESCE(seen_by, '[]'::jsonb) || jsonb_build_array(${ident}::text)
+        WHERE id = ${id} AND NOT (COALESCE(seen_by, '[]'::jsonb) ? ${ident}::text);
+      `);
+    }
+
+    res.json({ success: true, message: 'Announcement permanently dismissed for user profile' });
   } catch (err: any) {
     console.error('[DISMISS ANNOUNCEMENT ERROR]:', err);
     res.status(500).json({ message: err?.message || 'Failed to dismiss announcement' });
