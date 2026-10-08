@@ -1,16 +1,16 @@
 import { Router } from 'express';
-import { db, notifications, tasks, eq, and, isNull, sql, lt, or, inArray } from '@workspace/db';
+import { db, notifications, eq, and, isNull, sql, lt } from '@workspace/db';
 import { desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
-import { MAX_NOTIFICATIONS_LIMIT } from '../services/notificationService.js';
 
 const router = Router();
 router.use(requireAuth);
 
 /**
- * Auto-cleanup job: deletes read notifications older than 60 days for the user.
+ * Deletes read notifications older than 60 days for a single user.
+ * Non-blocking; errors are logged but never surface to the caller.
  */
-async function cleanupOldNotifications(userId: string) {
+async function cleanupOldReadNotifications(userId: string) {
   try {
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
     await db
@@ -18,122 +18,45 @@ async function cleanupOldNotifications(userId: string) {
       .where(
         and(
           eq(notifications.userId, userId),
-          lt(notifications.createdAt, sixtyDaysAgo)
+          lt(notifications.createdAt, sixtyDaysAgo),
+          sql`${notifications.readAt} IS NOT NULL`   // Only delete READ ones
         )
       );
   } catch (err) {
-    console.warn('[NOTIFICATIONS CLEANUP WARNING]:', err);
+    console.warn('[NOTIFICATIONS CLEANUP]:', err);
   }
 }
 
-// GET / - Return notifications STRICTLY scoped to the authenticated user (No admin/manager bypass!)
+/**
+ * GET /api/notifications
+ *
+ * Returns ALL notifications (read + unread) for the authenticated user only.
+ * Used by the full Notifications history page.
+ * STRICT: WHERE user_id = req.user.id — zero role exceptions. No admin bypass.
+ */
 router.get('/', async (req, res) => {
   try {
     const userId = req.user!.id;
 
-    // Trigger non-blocking cleanup of stale notifications
-    cleanupOldNotifications(userId).catch(() => { });
+    // Non-blocking background cleanup of stale read notifications
+    cleanupOldReadNotifications(userId).catch(() => {});
 
-    const rawNotifs = await db
+    const rows = await db
       .select()
       .from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt))
-      .limit(MAX_NOTIFICATIONS_LIMIT);
+      .limit(100);
 
-    // Identify any task notifications that lack a descriptive title/message
-    const taskCodesToLookup: string[] = [];
-    const taskIdsToLookup: string[] = [];
-
-    for (const n of rawNotifs) {
+    const formatted = rows.map(n => {
       const payload = (n.payload as any) || {};
-      const isGeneric = !payload.title || payload.title === 'Notification Alert' || !payload.taskTitle;
-      if (isGeneric) {
-        if (payload.taskCode && typeof payload.taskCode === 'string') taskCodesToLookup.push(payload.taskCode);
-        if (payload.taskId && typeof payload.taskId === 'string') taskIdsToLookup.push(payload.taskId);
-      }
-    }
-
-    // Batch query tasks table to resolve real titles and statuses
-    const taskMap = new Map<string, { code: string; title: string; status: string }>();
-    if (taskCodesToLookup.length > 0 || taskIdsToLookup.length > 0) {
-      try {
-        const conditions = [];
-        if (taskCodesToLookup.length > 0) conditions.push(inArray(tasks.taskCode, taskCodesToLookup));
-        if (taskIdsToLookup.length > 0) conditions.push(inArray(tasks.id, taskIdsToLookup));
-
-        const matchedTasks = await db
-          .select({ id: tasks.id, code: tasks.taskCode, title: tasks.title, status: tasks.status })
-          .from(tasks)
-          .where(or(...conditions));
-
-        for (const t of matchedTasks) {
-          if (t.code) taskMap.set(t.code, t);
-          if (t.id) taskMap.set(t.id, t);
-        }
-      } catch (lookupErr) {
-        console.warn('[TASK NOTIFICATION ENRICHMENT LOOKUP WARNING]:', lookupErr);
-      }
-    }
-
-    const formatted = rawNotifs.map(n => {
-      const payload = (n.payload as any) || {};
-      const resolvedTask =
-        (payload.taskCode && taskMap.get(payload.taskCode)) ||
-        (payload.taskId && taskMap.get(payload.taskId));
-
-      const taskCode = payload.taskCode || resolvedTask?.code || null;
-      const taskTitle = payload.taskTitle || resolvedTask?.title || null;
-      const taskStatus = payload.toStatus || payload.status || resolvedTask?.status || null;
-
-      let title = payload.title;
-      let message = payload.message;
-
-      // Generate structured, clear title if missing or placeholder
-      if (!title || title === 'Notification Alert') {
-        if (taskCode && taskTitle) {
-          title = `Task [${taskCode}]: ${taskTitle}`;
-        } else if (taskCode) {
-          title = `Task Assignment: [${taskCode}]`;
-        } else if (payload.entityType) {
-          title = `${payload.entityType} Alert`;
-        } else {
-          title = 'Task Assignment Alert';
-        }
-      }
-
-      // Generate clear, explanatory message if missing or placeholder
-      if (!message || message === 'System Notification' || message === 'Notification alert received') {
-        const event = payload.eventType || n.type || '';
-        if (event.includes('ASSIGN') || n.type?.includes('ASSIGN')) {
-          message = taskTitle
-            ? `You are assigned to work on [${taskCode || 'Task'}]: "${taskTitle}".`
-            : `You are assigned to task [${taskCode || 'item'}]. Click to view and update.`;
-        } else if (event.includes('STATUS') || n.type?.includes('STATUS')) {
-          message = `Status updated to ${taskStatus || 'in progress'} on [${taskCode || 'Task'}].`;
-        } else if (event.includes('COMMENT') || n.type?.includes('COMMENT')) {
-          message = `New discussion or comment on [${taskCode || 'Task'}].`;
-        } else if (taskCode) {
-          message = taskTitle
-            ? `Active task in your workflow: "${taskTitle}". Click below to open.`
-            : `Notification for task [${taskCode}]. Click below to view details.`;
-        } else {
-          message = 'You have an active assignment or task update in your workflow.';
-        }
-      }
-
       return {
         id: n.id,
         type: n.type,
         userId: n.userId,
-        payload: {
-          ...payload,
-          taskCode,
-          taskTitle,
-          tagged: true, // User is guaranteed direct stakeholder
-        },
-        title,
-        message,
+        payload,
+        title: payload.title || n.type,
+        message: payload.message || '',
         isRead: !!n.readAt,
         readAt: n.readAt,
         createdAt: n.createdAt,
@@ -142,12 +65,55 @@ router.get('/', async (req, res) => {
 
     res.json(formatted);
   } catch (err) {
-    console.error('[NOTIFICATIONS ROUTE ERROR]:', err);
+    console.error('[NOTIFICATIONS GET ERROR]:', err);
     res.status(500).json({ message: 'Failed to fetch notifications' });
   }
 });
 
-// GET /unread-count - Lightweight badge counter scoped strictly to current user
+/**
+ * GET /api/notifications/unread
+ *
+ * Returns ONLY unread notifications for the authenticated user.
+ * Used by the slide-in tray and toast queue.
+ */
+router.get('/unread', async (req, res) => {
+  try {
+    const userId = req.user!.id;
+
+    const rows = await db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)))
+      .orderBy(desc(notifications.createdAt))
+      .limit(100);
+
+    const formatted = rows.map(n => {
+      const payload = (n.payload as any) || {};
+      return {
+        id: n.id,
+        type: n.type,
+        userId: n.userId,
+        payload,
+        title: payload.title || n.type,
+        message: payload.message || '',
+        isRead: false,
+        readAt: null,
+        createdAt: n.createdAt,
+      };
+    });
+
+    res.json(formatted);
+  } catch (err) {
+    console.error('[NOTIFICATIONS UNREAD GET ERROR]:', err);
+    res.status(500).json({ message: 'Failed to fetch unread notifications' });
+  }
+});
+
+/**
+ * GET /api/notifications/unread-count
+ *
+ * Lightweight badge counter — returns only { unreadCount: number }.
+ */
 router.get('/unread-count', async (req, res) => {
   try {
     const userId = req.user!.id;
@@ -163,7 +129,32 @@ router.get('/unread-count', async (req, res) => {
   }
 });
 
-// POST /read-all - Mark all unread notifications read FOR CURRENT USER ONLY
+/**
+ * POST /api/notifications/:id/read
+ *
+ * Marks a single notification as read. Double-checked: WHERE id AND user_id
+ * so a user can never mark another user's notification as read.
+ */
+router.post('/:id/read', async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  try {
+    await db
+      .update(notifications)
+      .set({ readAt: new Date() })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[NOTIFICATIONS READ SINGLE ERROR]:', err);
+    res.status(500).json({ message: 'Failed to mark notification read' });
+  }
+});
+
+/**
+ * POST /api/notifications/read-all
+ *
+ * Marks ALL unread notifications as read for the current user only.
+ */
 router.post('/read-all', async (req, res) => {
   try {
     const userId = req.user!.id;
@@ -171,7 +162,6 @@ router.post('/read-all', async (req, res) => {
       .update(notifications)
       .set({ readAt: new Date() })
       .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
-
     res.json({ message: 'All notifications marked as read' });
   } catch (err) {
     console.error('[NOTIFICATIONS READ ALL ERROR]:', err);
@@ -179,12 +169,18 @@ router.post('/read-all', async (req, res) => {
   }
 });
 
-// POST /clear-all & DELETE / - Clear all notifications FOR CURRENT USER ONLY
+/**
+ * POST /api/notifications/clear-all
+ * DELETE /api/notifications
+ *
+ * Deletes all notifications for the current user only.
+ * This is a destructive operation and will remove the full history.
+ */
 router.post('/clear-all', async (req, res) => {
   try {
     const userId = req.user!.id;
     await db.delete(notifications).where(eq(notifications.userId, userId));
-    res.json({ success: true, message: 'All personal notifications cleared successfully' });
+    res.json({ success: true, message: 'All personal notifications cleared' });
   } catch (err) {
     console.error('[NOTIFICATIONS CLEAR ALL ERROR]:', err);
     res.status(500).json({ message: 'Failed to clear notifications' });
@@ -195,26 +191,10 @@ router.delete('/', async (req, res) => {
   try {
     const userId = req.user!.id;
     await db.delete(notifications).where(eq(notifications.userId, userId));
-    res.json({ success: true, message: 'All personal notifications deleted successfully' });
+    res.json({ success: true, message: 'All personal notifications deleted' });
   } catch (err) {
     console.error('[NOTIFICATIONS DELETE ALL ERROR]:', err);
     res.status(500).json({ message: 'Failed to delete notifications' });
-  }
-});
-
-// POST /:id/read - Mark single notification as read (Strict ownership verification)
-router.post('/:id/read', async (req, res) => {
-  const rawId = req.params.id;
-  const userId = req.user!.id;
-  try {
-    await db
-      .update(notifications)
-      .set({ readAt: new Date() })
-      .where(and(eq(notifications.id, rawId), eq(notifications.userId, userId)));
-    res.json({ success: true, message: 'Notification marked as read' });
-  } catch (err) {
-    console.error('[NOTIFICATIONS READ SINGLE ERROR]:', err);
-    res.status(500).json({ message: 'Failed to mark notification read' });
   }
 });
 

@@ -1,14 +1,25 @@
 /**
  * Pure Recipient Engine for Tasks, Sprints, Epics, and Projects.
  *
- * Invariants:
- * 1. Actor who performed the action is ALWAYS excluded from receiving their own notification.
- * 2. Assignee acts -> Reviewing Lead ONLY receives notification.
- * 3. Reviewing Lead acts -> Assignee(s) ONLY receive notification.
- * 4. Third-party (Manager/Admin) acts -> Both Assignee(s) and Reviewing Lead receive notification.
- * 5. Assignee and Reviewing Lead are the same person -> Nobody is notified (returns []).
- * 6. Admins NEVER get fallback alerts; they only receive alerts if they are explicitly the assignee, lead, or tagged.
- * 7. Reassignments trigger an 'ASSIGNED' event for the new assignee and 'REMOVED' notice for the old assignee.
+ * Core invariants (enforced unconditionally on every code path):
+ * 1. The actor who performed the action is ALWAYS excluded from their own notification.
+ * 2. Recipient matching is ALWAYS by userId (users.id UUID). Never by name, email, or string.
+ * 3. One row is inserted per recipient — never a shared row for multiple recipients.
+ * 4. Admins NEVER receive fallback alerts. If an employee has no linked user account, the
+ *    notification is silently skipped — never re-routed to an Admin.
+ *
+ * Event routing rules:
+ * - ASSIGNED / REASSIGNED  → new assignee(s) only (actor excluded)
+ * - STATUS_CHANGED         → assignees + reviewing lead (actor excluded)
+ * - REVIEW_SUBMITTED       → reviewing lead ONLY (actor excluded)
+ * - SIGNED_OFF / APPROVED  → all assignees (actor excluded)
+ * - REOPENED               → all assignees + reviewing lead (actor excluded)
+ * - CHECKLIST_COMPLETED    → reviewing lead ONLY (actor excluded)
+ * - COMMENT_ADDED          → assignees + reviewing lead (actor excluded)
+ * - MENTIONED              → explicitly tagged users (actor excluded)
+ * - EPIC_ASSIGNED          → epic owner / department lead (actor excluded)
+ * - PROJECT_ASSIGNED       → project team members with new/changed role (actor excluded)
+ * - SPRINT_ASSIGNED        → the sprint owner employee (actor excluded)
  */
 
 export type NotificationEvent =
@@ -16,31 +27,38 @@ export type NotificationEvent =
   | 'ASSIGNED'
   | 'REASSIGNED'
   | 'STATUS_CHANGED'
-  | 'SUBTASK_ADDED'
-  | 'SUBTASK_COMPLETED'
-  | 'COMMENT_ADDED'
+  | 'REVIEW_SUBMITTED'
   | 'SIGNED_OFF'
   | 'REOPENED'
-  | 'DUE_DATE_CHANGED'
-  | 'MENTIONED';
+  | 'CHECKLIST_COMPLETED'
+  | 'COMMENT_ADDED'
+  | 'MENTIONED'
+  | 'EPIC_ASSIGNED'
+  | 'PROJECT_ASSIGNED'
+  | 'SPRINT_ASSIGNED'
+  // Legacy aliases kept for backward compat with existing dispatchNotification call sites
+  | 'SUBTASK_ADDED'
+  | 'SUBTASK_COMPLETED'
+  | 'DUE_DATE_CHANGED';
 
 export interface EntityStakeholders {
   entityType: 'TASK' | 'EPIC' | 'PROJECT' | 'SPRINT';
   entityId: string;
-  assigneeUserIds: string[];          // Canonical user.id[]
-  reviewingLeadUserId: string | null; // Canonical user.id
-  creatorUserId?: string | null;      // Canonical user.id
-  taggedUserIds?: string[];           // Mentioned user.id[]
-  previousAssigneeUserIds?: string[]; // For reassignment detection
+  assigneeUserIds: string[];           // Canonical users.id[]
+  reviewingLeadUserId: string | null;  // Canonical users.id
+  creatorUserId?: string | null;       // Canonical users.id
+  taggedUserIds?: string[];            // @mentioned users.id[]
+  previousAssigneeUserIds?: string[];  // For REASSIGNED detection
 }
 
 export interface RecipientResult {
-  recipientUserIds: string[];         // Primary alert recipients
-  removedAssigneeUserIds: string[];   // For reassignment removal notices
+  recipientUserIds: string[];         // Primary notification recipients
+  removedAssigneeUserIds: string[];   // For REASSIGNED removal notices
 }
 
 /**
- * Pure, deterministic function to compute exact recipients for any entity event.
+ * Pure, deterministic, ID-based recipient computation for any entity event.
+ * Never returns the actorUserId in any result set.
  */
 export function getRecipients(
   stakeholders: EntityStakeholders,
@@ -48,72 +66,97 @@ export function getRecipients(
   eventType: NotificationEvent
 ): RecipientResult {
   const actor = actorUserId?.trim();
-  const assignees = Array.from(new Set((stakeholders.assigneeUserIds || []).map(id => id?.trim()).filter(Boolean)));
+  const assignees = dedupe((stakeholders.assigneeUserIds || []).map(id => id?.trim()).filter(Boolean));
   const lead = stakeholders.reviewingLeadUserId?.trim() || null;
-  const tagged = Array.from(new Set((stakeholders.taggedUserIds || []).map(id => id?.trim()).filter(Boolean)));
-  const previousAssignees = Array.from(new Set((stakeholders.previousAssigneeUserIds || []).map(id => id?.trim()).filter(Boolean)));
+  const tagged = dedupe((stakeholders.taggedUserIds || []).map(id => id?.trim()).filter(Boolean));
+  const previousAssignees = dedupe((stakeholders.previousAssigneeUserIds || []).map(id => id?.trim()).filter(Boolean));
 
-  // If assignee and lead are the exact same person, no notifications needed (self-review / solo task)
-  if (lead && assignees.length === 1 && assignees[0] === lead && tagged.length === 0) {
-    return { recipientUserIds: [], removedAssigneeUserIds: [] };
-  }
+  const excActor = (id: string) => id !== actor;
 
-  // Handle MENTIONED event (explicit @mentions take precedence)
+  // ── MENTIONED ──────────────────────────────────────────────────────────────
   if (eventType === 'MENTIONED') {
-    const mentionRecipients = tagged.filter(id => id !== actor);
-    return { recipientUserIds: mentionRecipients, removedAssigneeUserIds: [] };
+    return { recipientUserIds: tagged.filter(excActor), removedAssigneeUserIds: [] };
   }
 
-  // Handle REASSIGNED event
+  // ── REASSIGNED ─────────────────────────────────────────────────────────────
   if (eventType === 'REASSIGNED') {
-    const newAssignees = assignees.filter(id => !previousAssignees.includes(id) && id !== actor);
-    const removedAssignees = previousAssignees.filter(id => !assignees.includes(id) && id !== actor);
-
-    const primaryRecipients = new Set<string>(newAssignees);
-    // If the lead was not the actor, notify the lead about the reassignment
-    if (lead && lead !== actor) {
-      primaryRecipients.add(lead);
-    }
-
-    return {
-      recipientUserIds: Array.from(primaryRecipients),
-      removedAssigneeUserIds: removedAssignees,
-    };
+    const newAssignees = assignees.filter(id => !previousAssignees.includes(id) && excActor(id));
+    const removedAssignees = previousAssignees.filter(id => !assignees.includes(id) && excActor(id));
+    const primary = new Set<string>(newAssignees);
+    if (lead && excActor(lead)) primary.add(lead);
+    return { recipientUserIds: Array.from(primary), removedAssigneeUserIds: removedAssignees };
   }
 
-  const isActorAssignee = assignees.includes(actor);
-  const isActorLead = lead !== null && lead === actor;
-
-  const targetRecipients = new Set<string>();
-
-  if (isActorAssignee && !isActorLead) {
-    // 1. Actor is an Assignee -> Notify Reviewing Lead ONLY
-    if (lead && lead !== actor) {
-      targetRecipients.add(lead);
-    }
-  } else if (isActorLead && !isActorAssignee) {
-    // 2. Actor is the Reviewing Lead -> Notify all Assignees ONLY
-    assignees.forEach(id => {
-      if (id !== actor) targetRecipients.add(id);
-    });
-  } else {
-    // 3. Actor is a third party (e.g. Manager, Admin, or Creator who is neither assignee nor lead)
-    // Notify both Assignees and Reviewing Lead
-    assignees.forEach(id => {
-      if (id !== actor) targetRecipients.add(id);
-    });
-    if (lead && lead !== actor) {
-      targetRecipients.add(lead);
-    }
+  // ── REVIEW_SUBMITTED ───────────────────────────────────────────────────────
+  // Only the reviewing lead receives this; the submitter (actor) is excluded.
+  if (eventType === 'REVIEW_SUBMITTED') {
+    const recipients: string[] = [];
+    if (lead && excActor(lead)) recipients.push(lead);
+    return { recipientUserIds: recipients, removedAssigneeUserIds: [] };
   }
 
-  // Include any tagged users who are not the actor
-  tagged.forEach(id => {
-    if (id !== actor) targetRecipients.add(id);
-  });
+  // ── CHECKLIST_COMPLETED ────────────────────────────────────────────────────
+  // Only the reviewing lead; signals "all subtasks done, ready for final review".
+  if (eventType === 'CHECKLIST_COMPLETED' || eventType === 'SUBTASK_COMPLETED') {
+    const recipients: string[] = [];
+    if (lead && excActor(lead)) recipients.push(lead);
+    return { recipientUserIds: recipients, removedAssigneeUserIds: [] };
+  }
 
-  return {
-    recipientUserIds: Array.from(targetRecipients),
-    removedAssigneeUserIds: [],
-  };
+  // ── SIGNED_OFF / APPROVED ─────────────────────────────────────────────────
+  // All assignees receive this; the lead who approved is the actor (excluded).
+  if (eventType === 'SIGNED_OFF') {
+    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+  }
+
+  // ── COMMENT_ADDED ─────────────────────────────────────────────────────────
+  // All assignees + reviewing lead, minus the commenter (actor).
+  if (eventType === 'COMMENT_ADDED') {
+    const recipients = new Set<string>();
+    assignees.filter(excActor).forEach(id => recipients.add(id));
+    if (lead && excActor(lead)) recipients.add(lead);
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
+  }
+
+  // ── EPIC_ASSIGNED ─────────────────────────────────────────────────────────
+  // The epic's owner / department lead receives this. assigneeUserIds[0] is the owner here.
+  if (eventType === 'EPIC_ASSIGNED') {
+    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+  }
+
+  // ── PROJECT_ASSIGNED ──────────────────────────────────────────────────────
+  // The person(s) newly added to the project team. Stored in assigneeUserIds.
+  if (eventType === 'PROJECT_ASSIGNED') {
+    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+  }
+
+  // ── SPRINT_ASSIGNED ───────────────────────────────────────────────────────
+  // Only the sprint owner employee (assigneeUserIds[0]); NOT the reviewing lead.
+  if (eventType === 'SPRINT_ASSIGNED') {
+    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+  }
+
+  // ── ASSIGNED / CREATED ─────────────────────────────────────────────────────
+  if (eventType === 'ASSIGNED' || eventType === 'CREATED') {
+    // New assignee(s) get notified; lead is also notified if a third party made the assignment.
+    const isActorLead = lead !== null && lead === actor;
+    const recipients = new Set<string>(assignees.filter(excActor));
+    // If lead is not the actor (i.e. a third party assigned), notify the lead too
+    if (!isActorLead && lead && excActor(lead)) recipients.add(lead);
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
+  }
+
+  // ── STATUS_CHANGED / REOPENED / DUE_DATE_CHANGED / SUBTASK_ADDED ─────────
+  // General updates: assignees + reviewing lead, actor excluded.
+  {
+    const recipients = new Set<string>();
+    assignees.filter(excActor).forEach(id => recipients.add(id));
+    if (lead && excActor(lead)) recipients.add(lead);
+    tagged.filter(excActor).forEach(id => recipients.add(id));
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
+  }
+}
+
+function dedupe(arr: string[]): string[] {
+  return Array.from(new Set(arr));
 }

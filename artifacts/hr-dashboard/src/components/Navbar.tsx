@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Bell, Chrome, Check, AlertCircle, Calendar, ShieldCheck, UserCheck, Sparkles, ArrowRight, ArrowUpRight, Loader2, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Bell, ShieldCheck, UserCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { fetchApi, clearApiCache } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
-import { formatDateTime } from '../utils/dateUtils';
 import { ProfileModal } from './ProfileModal';
 import { SearchModal } from './SearchModal';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
+import { NotificationSlideOver, SlideOverNotificationItem } from './NotificationSlideOver';
+import { NotificationToastQueue, ToastNotificationItem } from './NotificationToastQueue';
 
 interface NavbarProps {
   onOpenAssignTask?: () => void;
@@ -26,14 +27,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAssignTask,
   onOpenAddEmployee,
   onOpenExportReport,
+  onOpenTaskModal,
+  onOpenAddEmployeeModal,
+  onOpenExportModal,
 }) => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
+  const [, setLocation] = useLocation();
+
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
-  const notifDropdownRef = useRef<HTMLDivElement>(null);
+  const [dismissedToastIds, setDismissedToastIds] = useState<Set<string>>(new Set());
+
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskItem | null>(null);
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -59,27 +67,38 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [user]);
 
-  // Close notifications dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target as Node)) {
-        setShowNotificationsDropdown(false);
-      }
-    };
+  // Pure entity-based filter: Server guarantees personal recipient isolation (WHERE user_id = req.user.id)
+  const displayNotifications = useMemo(() => {
+    return notifications.filter((n: any) => {
+      const payload = n.payload || {};
+      return matchesEntityFilter(n, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
+    });
+  }, [notifications, selectedEntity]);
 
-    if (showNotificationsDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showNotificationsDropdown]);
+  const unreadNotificationsCount = useMemo(() => {
+    return displayNotifications.filter((n: any) => !n.isRead).length;
+  }, [displayNotifications]);
 
-  const [, setLocation] = useLocation();
-  const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskItem | null>(null);
-  const [isLoadingTaskModal, setIsLoadingTaskModal] = useState(false);
+  // Unread toast queue (FIFO order, max 3 visible at once)
+  const toastQueueItems: ToastNotificationItem[] = useMemo(() => {
+    return displayNotifications
+      .filter((n: any) => !n.isRead && !dismissedToastIds.has(n.id))
+      .map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        createdAt: n.createdAt,
+        payload: n.payload,
+        isRead: n.isRead,
+      }));
+  }, [displayNotifications, dismissedToastIds]);
+
+  const handleDismissToast = (id: string) => {
+    setDismissedToastIds((prev) => new Set(prev).add(id));
+  };
 
   const getNotificationTarget = (n: any) => {
     const payload = n.payload || {};
@@ -107,50 +126,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
   };
 
-  const displayNotifications = useMemo(() => {
-    return notifications.filter((n: any) => {
-      const payload = n.payload || {};
-      const matchesEntity = matchesEntityFilter(n, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
-      if (!isEmployee) return matchesEntity;
-
-      const userId = user?.id;
-      const empId = user?.employeeId;
-      const userName = (user?.name || '').toLowerCase();
-      const userEmail = (user?.email || '').toLowerCase();
-
-      const isDirect = n.userId === userId || (empId && n.userId === empId);
-      const isTagged = Array.isArray(payload.taggedUserIds) && (
-        (userId && payload.taggedUserIds.includes(userId)) ||
-        (empId && payload.taggedUserIds.includes(empId))
-      );
-      const isAssignee =
-        (userId && payload.assigneeId === userId) ||
-        (empId && payload.assigneeId === empId) ||
-        (userEmail && payload.assigneeEmail?.toLowerCase() === userEmail) ||
-        (userName && payload.assigneeName && payload.assigneeName.toLowerCase().trim() === userName);
-
-      const msgLower = (n.message || '').toLowerCase();
-      const titleLower = (n.title || '').toLowerCase();
-      const isUserMatch = isDirect || isTagged || isAssignee || n.tagged || (userName && (msgLower.includes(userName) || titleLower.includes(userName)));
-      return matchesEntity && isUserMatch;
-    });
-  }, [notifications, selectedEntity, isEmployee, user]);
-
-  const unreadNotificationsCount = useMemo(() => {
-    return displayNotifications.filter((n: any) => !n.isRead).length;
-  }, [displayNotifications]);
-
   const handleNotificationAction = async (n: any) => {
     const target = getNotificationTarget(n);
 
     // 1. Mark as read immediately in state & DB
     if (!n.isRead) {
-      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => { });
+      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
       setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
+      handleDismissToast(n.id);
     }
 
-    // 2. Close notifications dropdown
-    setShowNotificationsDropdown(false);
+    // 2. Close slide-over tray if open
+    setIsSlideOverOpen(false);
 
     // 3. Handle Meeting
     if (target.isMeeting) {
@@ -167,12 +154,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     // 5. Handle Task / Sprint Task
     if (target.isTask && (target.taskId || target.taskCode)) {
       const identifier = target.taskId || target.taskCode;
-      setIsLoadingTaskModal(true);
       try {
         let taskData: any = null;
         try {
           taskData = await fetchApi<any>(`/api/tasks/${identifier}`);
-        } catch { }
+        } catch {}
 
         if (!taskData || !taskData.id) {
           const allTasks = await fetchApi<any[]>('/api/tasks').catch(() => []);
@@ -200,8 +186,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       } catch (err) {
         console.warn('[NOTIFICATION OPEN TASK ERROR]:', err);
         setLocation(target.isSprint ? '/sprints' : '/tasks');
-      } finally {
-        setIsLoadingTaskModal(false);
       }
       return;
     }
@@ -213,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleMarkAllRead = async () => {
     try {
       await fetchApi('/api/notifications/read-all', { method: 'POST' });
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       toast.success('All notifications marked as read');
     } catch (err) {
       console.error('[MARK ALL READ ERROR]:', err);
@@ -221,16 +205,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const handleClearAll = async () => {
-    try {
-      await fetchApi('/api/notifications/clear-all', { method: 'POST' });
-      setNotifications([]);
-      toast.success('All notifications cleared & emptied');
-    } catch (err) {
-      console.error('[CLEAR ALL NOTIFICATIONS ERROR]:', err);
-      toast.error('Failed to clear notifications');
-    }
-  };
+  const openAssignTaskHandler = onOpenAssignTask || onOpenTaskModal;
+  const openAddEmployeeHandler = onOpenAddEmployee || onOpenAddEmployeeModal;
+  const openExportReportHandler = onOpenExportReport || onOpenExportModal;
 
   return (
     <>
@@ -264,9 +241,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right: Quick Action Buttons & Notifications */}
         <div className="flex items-center gap-3">
-          {!isEmployee && onOpenAddEmployee && (
+          {!isEmployee && openAddEmployeeHandler && (
             <button
-              onClick={onOpenAddEmployee}
+              onClick={openAddEmployeeHandler}
               className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-colors shadow-2xs cursor-pointer"
             >
               <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -274,20 +251,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {!isEmployee && onOpenAssignTask && (
+          {!isEmployee && openAssignTaskHandler && (
             <button
-              onClick={onOpenAssignTask}
+              onClick={openAssignTaskHandler}
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
               <span>Assign Task</span>
             </button>
-
           )}
 
-          {onOpenExportReport && (
+          {openExportReportHandler && (
             <button
-              onClick={onOpenExportReport}
+              onClick={openExportReportHandler}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors shadow-2xs cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
@@ -295,119 +271,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Notifications Dropdown Container */}
-          <div className="relative" ref={notifDropdownRef}>
+          {/* Notifications Slide-Over Trigger Button */}
+          <div className="relative">
             <button
-              onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+              onClick={() => setIsSlideOverOpen(true)}
               className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all relative flex items-center justify-center cursor-pointer"
               title="Notifications"
+              aria-label="Open notifications panel"
             >
               <Bell className="w-5.5 h-5.5 text-gray-600" />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white animate-pulse shadow-2xs">
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-indigo-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white animate-pulse shadow-2xs">
                   {unreadNotificationsCount}
                 </span>
               )}
             </button>
-
-            {/* Notifications Flyout Dropdown */}
-            {showNotificationsDropdown && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 space-y-3 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Notifications</h3>
-                  <div className="flex items-center gap-2">
-                    {unreadNotificationsCount > 0 && (
-                      <button
-                        onClick={handleMarkAllRead}
-                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
-                        title="Mark all as read"
-                      >
-                        <Check className="w-3 h-3" /> Mark read
-                      </button>
-                    )}
-                    {displayNotifications.length > 0 && (
-                      <button
-                        onClick={handleClearAll}
-                        className="text-[10px] text-red-500 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
-                        title="Clear and empty all notifications"
-                      >
-                        <Trash2 className="w-3 h-3" /> Clear all
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {displayNotifications.length === 0 ? (
-                    <p className="text-xs text-gray-400 py-4 text-center">No notifications right now</p>
-                  ) : (
-                    displayNotifications.map((n) => {
-                      const target = getNotificationTarget(n);
-
-                      const displayTitle = (n.title && n.title !== 'Notification Alert') 
-                        ? n.title 
-                        : (target.taskCode 
-                            ? `Task Assigned: [${target.taskCode}]`
-                            : (target.label ? `${target.label} Notification` : 'System Notification'));
-
-                      const displayMessage = (n.message && n.message !== 'System Notification' && n.message !== 'Notification alert received')
-                        ? n.message
-                        : (target.taskCode 
-                            ? `You have an active assignment on [${target.taskCode}]. Click below to open.`
-                            : 'You have a new update regarding your responsibilities.');
-
-                      return (
-                        <div
-                          key={n.id}
-                          onClick={() => handleNotificationAction(n)}
-                          className={`p-3 rounded-2xl border text-xs space-y-1.5 transition-all cursor-pointer hover:shadow-xs group/card ${n.isRead
-                              ? 'bg-white border-gray-100 hover:border-gray-200 opacity-75 hover:opacity-100'
-                              : 'bg-emerald-50/50 border-emerald-100/90 hover:border-emerald-200 shadow-2xs'
-                            }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-bold text-gray-900 group-hover/card:text-emerald-700 transition-colors line-clamp-1">
-                              {displayTitle}
-                            </span>
-                            <span className="text-[10px] text-gray-400 font-bold shrink-0">
-                              {formatDateTime(n.createdAt)}
-                            </span>
-                          </div>
-
-                          <p className="text-[11px] text-gray-600 font-medium leading-relaxed">{displayMessage}</p>
-
-                          {/* Arrow at bottom to redirect and open in popup mode */}
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNotificationAction(n);
-                            }}
-                            className="mt-2 pt-1.5 border-t border-gray-100/80 flex items-center justify-between text-[11px] font-bold text-emerald-700 group-hover/card:text-emerald-800 select-none transition-colors"
-                            title="Click to view details in popup mode"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="truncate">Open {target.label}</span>
-                              {target.taskCode && (
-                                <span className="text-[9.5px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-mono font-bold tracking-tight shrink-0">
-                                  {target.taskCode}
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="w-5 h-5 rounded-full bg-emerald-100/90 group-hover/card:bg-emerald-200 flex items-center justify-center text-emerald-700 transition-all shrink-0 shadow-2xs group-hover/card:translate-x-0.5">
-                              <ArrowRight className="w-3 h-3" />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* User Profile Avatar — Opens Profile Details Modal */}
+          {/* User Profile Avatar */}
           <button
             onClick={() => setIsProfileModalOpen(true)}
             className="pl-1 focus:outline-none cursor-pointer group"
@@ -421,6 +302,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
       </header>
+
+      {/* Slide-In Notifications Tray */}
+      <NotificationSlideOver
+        isOpen={isSlideOverOpen}
+        onClose={() => setIsSlideOverOpen(false)}
+        notifications={displayNotifications as SlideOverNotificationItem[]}
+        unreadCount={unreadNotificationsCount}
+        onMarkAllRead={handleMarkAllRead}
+        onItemClick={handleNotificationAction}
+        onViewAllHistory={() => setLocation('/notifications')}
+      />
+
+      {/* Floating Toast Queue (Max 3 visible, FIFO queue behind it) */}
+      <NotificationToastQueue
+        notifications={toastQueueItems}
+        onOpenItem={handleNotificationAction}
+        onDismiss={handleDismissToast}
+        maxVisible={3}
+      />
 
       {/* User Profile Middle Popup Modal */}
       <ProfileModal
@@ -454,7 +354,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               toast.error(err?.message || 'Failed to update task');
             }
           }}
-          onDelete={(deletedId) => {
+          onDelete={() => {
             clearApiCache('/api/tasks');
             clearApiCache('/api/sprints');
             setSelectedTaskForModal(null);
@@ -464,4 +364,3 @@ export const Navbar: React.FC<NavbarProps> = ({
     </>
   );
 };
-

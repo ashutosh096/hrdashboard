@@ -1,4 +1,4 @@
-import { db, notifications, sql, eq, and, gte } from '@workspace/db';
+import { db, notifications, eq, and, gte, sql } from '@workspace/db';
 import { getRecipients, EntityStakeholders, NotificationEvent } from './recipientService.js';
 import { resolveUserIdFromEmployeeId, resolveUserIdsFromEmployeeIds } from '../utils/userResolver.js';
 
@@ -21,35 +21,44 @@ interface DispatchParams {
   extraPayload?: Record<string, any>;
 }
 
-// In-memory burst tracker for debouncing micro-updates (e.g. 4 subtasks clicked in 1 minute)
+// In-memory burst tracker: debounces rapid micro-updates within a 60-second window.
 // Key: `${entityId}_${recipientUserId}_${eventType}`
 interface BurstEntry {
   count: number;
   lastTimestamp: number;
-  firstMessage: string;
 }
 const burstMap = new Map<string, BurstEntry>();
 const BURST_WINDOW_MS = 60 * 1000; // 60 seconds
 
 /**
- * Dispatches targeted notifications exclusively to stakeholders calculated by getRecipients.
- * Safe, asynchronous, non-blocking: Never throws errors to callers.
+ * Dispatches targeted notifications to the stakeholders computed by getRecipients().
+ *
+ * INVARIANTS guaranteed by this function:
+ * - actorUserId is NEVER in the recipient set (enforced in getRecipients).
+ * - Matching is entirely by users.id UUID — no name/email strings ever appear in WHERE clauses.
+ * - Each recipient gets exactly one row in the notifications table.
+ * - This function never throws to its caller; all errors are caught and logged.
+ * - The caller's HTTP response is never blocked (runs via setImmediate).
  */
 export async function dispatchNotification(params: DispatchParams): Promise<void> {
-  // Execute asynchronously so caller's HTTP response is never blocked or failed
   setImmediate(async () => {
     try {
       const { entity, actorUserId, eventType, title, message, extraPayload = {} } = params;
 
-      // 1. Resolve canonical user.id for all stakeholder parties
-      const [assigneeUserIds, reviewingLeadUserId, creatorUserId, taggedUserIds, previousAssigneeUserIds] =
-        await Promise.all([
-          resolveUserIdsFromEmployeeIds(entity.assigneeEmployeeIds || []),
-          resolveUserIdFromEmployeeId(entity.reviewingLeadEmployeeId),
-          resolveUserIdFromEmployeeId(entity.creatorEmployeeId),
-          resolveUserIdsFromEmployeeIds(entity.taggedEmployeeIds || []),
-          resolveUserIdsFromEmployeeIds(entity.previousAssigneeEmployeeIds || []),
-        ]);
+      // 1. Resolve all employeeIds → canonical users.id values
+      const [
+        assigneeUserIds,
+        reviewingLeadUserId,
+        creatorUserId,
+        taggedUserIds,
+        previousAssigneeUserIds,
+      ] = await Promise.all([
+        resolveUserIdsFromEmployeeIds(entity.assigneeEmployeeIds || []),
+        resolveUserIdFromEmployeeId(entity.reviewingLeadEmployeeId),
+        resolveUserIdFromEmployeeId(entity.creatorEmployeeId),
+        resolveUserIdsFromEmployeeIds(entity.taggedEmployeeIds || []),
+        resolveUserIdsFromEmployeeIds(entity.previousAssigneeEmployeeIds || []),
+      ]);
 
       const stakeholders: EntityStakeholders = {
         entityType: entity.entityType,
@@ -61,7 +70,7 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
         previousAssigneeUserIds,
       };
 
-      // 2. Pure stakeholder recipient routing
+      // 2. Pure ID-based recipient routing (actor always excluded inside getRecipients)
       const { recipientUserIds, removedAssigneeUserIds } = getRecipients(
         stakeholders,
         actorUserId,
@@ -71,35 +80,33 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
       const now = Date.now();
       const insertRows: any[] = [];
 
-      // 3. Process primary recipients
+      // 3. Build notification rows for primary recipients
       for (const recipientId of recipientUserIds) {
         if (!recipientId) continue;
 
-        // Burst debounce check for rapid subtask or status toggles
-        if (eventType === 'SUBTASK_ADDED' || eventType === 'SUBTASK_COMPLETED' || eventType === 'STATUS_CHANGED') {
+        // Burst debounce: suppress duplicate rapid-fire updates within 60 s
+        if (
+          eventType === 'STATUS_CHANGED' ||
+          eventType === 'SUBTASK_ADDED' ||
+          eventType === 'SUBTASK_COMPLETED' ||
+          eventType === 'CHECKLIST_COMPLETED'
+        ) {
           const burstKey = `${entity.entityId}_${recipientId}_${eventType}`;
-          const existingBurst = burstMap.get(burstKey);
-
-          if (existingBurst && (now - existingBurst.lastTimestamp < BURST_WINDOW_MS)) {
-            // Already sent an alert within last 60 seconds, increment count and suppress duplicate alert
-            existingBurst.count += 1;
-            existingBurst.lastTimestamp = now;
-            continue;
+          const entry = burstMap.get(burstKey);
+          if (entry && now - entry.lastTimestamp < BURST_WINDOW_MS) {
+            entry.count += 1;
+            entry.lastTimestamp = now;
+            continue; // suppress duplicate within burst window
           }
-
-          burstMap.set(burstKey, {
-            count: 1,
-            lastTimestamp: now,
-            firstMessage: message,
-          });
+          burstMap.set(burstKey, { count: 1, lastTimestamp: now });
         }
 
-        // Deduplication check: verify no identical notification was created for this recipient in last 60 seconds
-        const idempotencyKey = `${entity.entityType}_${entity.entityId}_${eventType}_${recipientId}_${Math.floor(now / 60000)}`;
+        // Notification type prefix: TASK_*, EPIC_*, PROJECT_*, SPRINT_*
+        const notifType = `${entity.entityType}_${eventType}`;
 
         insertRows.push({
           userId: recipientId,
-          type: `TASK_${eventType}`,
+          type: notifType,
           payload: {
             title,
             message,
@@ -109,19 +116,19 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
             taskCode: entity.entityCode,
             taskTitle: entity.title,
             eventType,
-            idempotencyKey,
+            actorUserId,
             ...extraPayload,
           },
         });
       }
 
-      // 4. Process removed assignees on reassignment
-      if (eventType === 'REASSIGNED' && removedAssigneeUserIds && removedAssigneeUserIds.length > 0) {
+      // 4. Removal notices for unassigned stakeholders on REASSIGNED events
+      if (eventType === 'REASSIGNED' && removedAssigneeUserIds.length > 0) {
         for (const removedId of removedAssigneeUserIds) {
           if (!removedId) continue;
           insertRows.push({
             userId: removedId,
-            type: 'TASK_REMOVED',
+            type: `${entity.entityType}_REMOVED`,
             payload: {
               title: `Removed from ${entity.entityType}: [${entity.entityCode || 'ITEM'}]`,
               message: `You were unassigned from [${entity.entityCode || 'ITEM'}] "${entity.title}".`,
@@ -131,20 +138,29 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
               taskCode: entity.entityCode,
               taskTitle: entity.title,
               eventType: 'REASSIGNED',
+              actorUserId,
               ...extraPayload,
             },
           });
         }
       }
 
-      // 5. Batch insert all rows in one operation
+      // 5. Batch insert all rows atomically
       if (insertRows.length > 0) {
         await db.insert(notifications).values(insertRows);
-        console.log(`[TARGETED DISPATCH SUCCESS] Event: ${eventType} on ${entity.entityType} ${entity.entityCode} -> Recipients: [${recipientUserIds.join(', ')}]`);
+        console.log(
+          `[DISPATCH] ${eventType} on ${entity.entityType}[${entity.entityCode}] ` +
+          `→ recipients: [${recipientUserIds.join(', ')}] ` +
+          `(actor ${actorUserId} excluded)`
+        );
+      } else {
+        console.log(
+          `[DISPATCH] ${eventType} on ${entity.entityType}[${entity.entityCode}] ` +
+          `→ no recipients (actor is sole stakeholder or no stakeholders resolved)`
+        );
       }
     } catch (err) {
-      // NEVER crash caller; log and isolate failure
-      console.error('[TARGETED DISPATCH FAILED NON-BLOCKING]:', err);
+      console.error('[DISPATCH FAILED (non-blocking)]:', err);
     }
   });
 }

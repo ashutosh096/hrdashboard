@@ -1,124 +1,35 @@
-import { db, tasks, employees, users, notifications, googleTokens, eq, and, ne, lt, lte, gt, gte, sql, isNotNull } from '@workspace/db';
-import { sendOverdueTaskAlertEmail, sendCalendarReconnectEmail } from '../services/email.js';
+/**
+ * calendar-token-cron.ts
+ *
+ * Runs once on boot and then every 24 hours.
+ * Checks for Google OAuth tokens that are about to expire without a refresh token,
+ * and sends a CALENDAR_RECONNECT notification to the affected user.
+ *
+ * NOTE: The overdue task alert cron that previously lived here has been permanently
+ * removed. "Task Due / Overdue Warning" notifications are no longer generated anywhere
+ * in this codebase.
+ */
+
+import { db, notifications, googleTokens, users, eq, and, lt, gte, sql } from '@workspace/db';
+import { sendCalendarReconnectEmail } from '../services/email.js';
 import { insertNotification } from '../services/notificationService.js';
 
 export function startOverdueCheckCron() {
-  console.log('[OVERDUE & TOKEN CRON] Initializing daily task overdue and calendar token expiry check...');
-
-  // Run once on server startup
-  runOverdueAndTokenChecks();
-
-  // Run once every 24 hours
-  setInterval(runOverdueAndTokenChecks, 24 * 60 * 60 * 1000);
+  console.log('[CALENDAR TOKEN CRON] Initializing daily calendar token expiry check...');
+  // Run once on startup, then every 24 hours
+  runCalendarTokenChecks();
+  setInterval(runCalendarTokenChecks, 24 * 60 * 60 * 1000);
 }
 
 export async function runOverdueAndTokenChecks() {
-  const now = new Date();
+  // Backward-compat alias — overdue logic has been removed.
+  return runCalendarTokenChecks();
+}
+
+async function runCalendarTokenChecks() {
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  // 1. Overdue Task Alert Check
-  try {
-    const overdueTasks = await db
-      .select()
-      .from(tasks)
-      .where(and(isNotNull(tasks.dueDate), lt(tasks.dueDate, now), ne(tasks.status, 'DONE')));
-
-    for (const task of overdueTasks) {
-      if (!task.dueDate) continue;
-      const daysOverdue = Math.max(1, Math.ceil((now.getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24)));
-
-      // 1. Resolve Assignee details and Assignee User Account
-      let assigneeName = 'Unassigned';
-      let assigneeUser: any = null;
-      if (task.assigneeId) {
-        const [assigneeEmp] = await db.select().from(employees).where(eq(employees.id, task.assigneeId));
-        if (assigneeEmp) {
-          assigneeName = `${assigneeEmp.firstName || ''} ${assigneeEmp.lastName || ''}`.trim();
-          const [userRow] = await db.select().from(users).where(eq(users.employeeId, assigneeEmp.id));
-          if (userRow) assigneeUser = userRow;
-        }
-      }
-
-      // 2. Resolve Lead / Manager Recipient (Reviewing Lead -> Creator -> Fallback Admin)
-      let leadUser: any = null;
-      if (task.reviewingLeadId) {
-        const [lead] = await db.select().from(users).where(eq(users.employeeId, task.reviewingLeadId));
-        if (lead) leadUser = lead;
-      }
-
-      if (!leadUser && task.creatorId) {
-        const [creator] = await db.select().from(users).where(eq(users.employeeId, task.creatorId));
-        if (creator) leadUser = creator;
-      }
-
-      // DO NOT fallback to Admin: If lead is unassigned, alert is only sent to assignee (no company-wide admin spam!)
-
-      // 3. Build deduplicated list of target notification recipients (Lead + Assignee)
-      const recipientUsers: any[] = [];
-      const addedUserIds = new Set<string>();
-
-      if (leadUser && !addedUserIds.has(leadUser.id)) {
-        recipientUsers.push(leadUser);
-        addedUserIds.add(leadUser.id);
-      }
-      if (assigneeUser && !addedUserIds.has(assigneeUser.id)) {
-        recipientUsers.push(assigneeUser);
-        addedUserIds.add(assigneeUser.id);
-      }
-
-      const taskDueDateStr = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
-
-      // 4. Send exactly ONE alert when task first becomes overdue; alert again ONLY if dueDate changes
-      for (const recipientUser of recipientUsers) {
-        const existingOverdues = await db
-          .select()
-          .from(notifications)
-          .where(
-            and(
-              eq(notifications.userId, recipientUser.id),
-              eq(notifications.type, 'TASK_OVERDUE'),
-              sql`payload->>'taskId' = ${task.id}`
-            )
-          );
-
-        const alreadyAlertedForThisDueDate = existingOverdues.some(n => {
-          const p = (n.payload as any) || {};
-          return p.dueDate === taskDueDateStr;
-        });
-
-        if (alreadyAlertedForThisDueDate) {
-          // Already alerted for this due date; do NOT repeat daily spam
-          continue;
-        }
-
-        await insertNotification({
-          userId: recipientUser.id,
-          type: 'TASK_OVERDUE',
-          payload: {
-            taskId: task.id,
-            taskCode: task.taskCode,
-            taskTitle: task.title,
-            assigneeName,
-            daysOverdue,
-            dueDate: taskDueDateStr,
-          },
-        });
-
-        await sendOverdueTaskAlertEmail(
-          recipientUser.email,
-          recipientUser.id === assigneeUser?.id ? assigneeName : 'Manager',
-          task.taskCode,
-          task.title,
-          assigneeName,
-          daysOverdue
-        );
-      }
-    }
-  } catch (err) {
-    console.error('[OVERDUE CRON ERROR]:', err);
-  }
-
-  // 2. Google Token Expiry Reminder Check (Only alert if no refreshToken is available to auto-renew)
+  // Google Token Expiry: alert only when no refreshToken is available to auto-renew
   try {
     const future24h = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const expiringTokens = await db
@@ -132,8 +43,9 @@ export async function runOverdueAndTokenChecks() {
       );
 
     for (const tokenRow of expiringTokens) {
+      // De-duplicate: skip if we already sent a CALENDAR_RECONNECT in the last 24 h
       const recentNotifs = await db
-        .select()
+        .select({ id: notifications.id })
         .from(notifications)
         .where(
           and(
@@ -144,14 +56,20 @@ export async function runOverdueAndTokenChecks() {
         );
 
       if (recentNotifs.length === 0) {
-        const [targetUser] = await db.select().from(users).where(eq(users.id, tokenRow.userId));
+        const [targetUser] = await db
+          .select({ id: users.id, email: users.email })
+          .from(users)
+          .where(eq(users.id, tokenRow.userId))
+          .limit(1);
+
         if (targetUser) {
           await insertNotification({
             userId: targetUser.id,
             type: 'CALENDAR_RECONNECT',
             payload: {
               title: 'Action Required: Reconnect Google Calendar',
-              message: 'Your Google Calendar integration requires manual reconnection in Settings to continue syncing meetings.',
+              message:
+                'Your Google Calendar integration requires manual reconnection in Settings to continue syncing meetings.',
             },
           });
 
@@ -160,6 +78,6 @@ export async function runOverdueAndTokenChecks() {
       }
     }
   } catch (err) {
-    console.error('[TOKEN EXPIRY CRON ERROR]:', err);
+    console.error('[CALENDAR TOKEN CRON ERROR]:', err);
   }
 }

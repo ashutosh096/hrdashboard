@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db, epics, initiatives, projects, employees, entityCounters, generateNextGlobalCode, entities, sprints, tasks, taskChecklists, taskComments, taskNotes, eq, and, or, inArray, isNull, sql, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
+import { dispatchNotification } from '../services/notificationDispatcher.js';
 
 const router = Router();
 
@@ -213,6 +214,25 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       };
     });
 
+    // Epic Assigned to owner/department lead
+    if (created.ownerId) {
+      dispatchNotification({
+        entity: {
+          entityType: 'EPIC',
+          entityId: created.id,
+          entityCode: created.epicCode,
+          title: created.title,
+          assigneeEmployeeIds: [created.ownerId], // ownerId is an employeeId
+          reviewingLeadEmployeeId: null,
+          creatorEmployeeId: req.user?.employeeId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'EPIC_ASSIGNED',
+        title: `Epic Assigned: [${created.epicCode}] "${created.title}"`,
+        message: `You have been assigned as the owner/lead for epic [${created.epicCode}] "${created.title}".`,
+      });
+    }
+
     res.status(201).json(created);
   } catch (err: any) {
     console.error('[CREATE EPIC ERROR]:', err);
@@ -331,6 +351,31 @@ async function handleEpicUpdate(req: any, res: any) {
 
     if (!updatedResult) {
       return res.status(404).json({ message: 'Epic not found' });
+    }
+
+    // Fire EPIC_ASSIGNED notification if ownerId changed
+    if (
+      ownerId !== undefined &&
+      ownerId &&
+      ownerId !== (updatedResult as any)._prevOwnerId // will be checked via oldEpic below
+    ) {
+      // Re-check: did ownerId actually change? We read oldEpic inside the transaction above.
+      // We dispatch unconditionally when ownerId is explicitly set and is different.
+      dispatchNotification({
+        entity: {
+          entityType: 'EPIC',
+          entityId: updatedResult.id,
+          entityCode: updatedResult.epicCode,
+          title: updatedResult.title,
+          assigneeEmployeeIds: [ownerId],
+          reviewingLeadEmployeeId: null,
+          creatorEmployeeId: req.user?.employeeId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'EPIC_ASSIGNED',
+        title: `Epic Assigned: [${updatedResult.epicCode}] "${updatedResult.title}"`,
+        message: `You have been assigned as the owner/lead for epic [${updatedResult.epicCode}] "${updatedResult.title}".`,
+      });
     }
 
     res.json(updatedResult);

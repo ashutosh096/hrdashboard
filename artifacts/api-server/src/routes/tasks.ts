@@ -356,6 +356,10 @@ function normalizeTaskStatus(status: any): 'PLANNED' | 'BACKLOG' | 'TODO' | 'IN_
   return 'TODO';
 }
 
+/**
+ * Inserts a direct notification to a single user by employeeId or userId.
+ * NEVER falls back to Admin. If the user cannot be resolved, the notification is silently dropped.
+ */
 export async function createTaskNotification({
   targetEmployeeId,
   targetUserId,
@@ -380,32 +384,24 @@ export async function createTaskNotification({
   try {
     let resolvedUserId = targetUserId;
     if (!resolvedUserId && targetEmployeeId) {
-      const [userRow] = await db.select().from(users).where(eq(users.employeeId, targetEmployeeId));
+      const [userRow] = await db.select({ id: users.id }).from(users).where(eq(users.employeeId, targetEmployeeId)).limit(1);
       if (userRow) resolvedUserId = userRow.id;
     }
 
+    // HARD RULE: No Admin fallback. If we can't resolve a real recipient, drop the notification.
     if (!resolvedUserId) {
-      const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
-      if (fallbackAdmin) resolvedUserId = fallbackAdmin.id;
+      console.warn(`[NOTIFICATION SKIPPED] No user account for employeeId=${targetEmployeeId}. Notification type=${type} for task ${taskCode} dropped (no Admin fallback).`);
+      return;
     }
 
-    if (resolvedUserId) {
-      await insertNotification({
-        userId: resolvedUserId,
-        type,
-        payload: {
-          title,
-          message,
-          taskId,
-          taskCode,
-          taskTitle,
-          ...extraPayload,
-        },
-      });
-      console.log(`[NOTIFICATION DISPATCHED] type: ${type} to user: ${resolvedUserId} for task: ${taskCode}`);
-    }
+    await insertNotification({
+      userId: resolvedUserId,
+      type,
+      payload: { title, message, taskId, taskCode, taskTitle, ...extraPayload },
+    });
+    console.log(`[NOTIFICATION] type=${type} → user=${resolvedUserId} task=${taskCode}`);
   } catch (err) {
-    console.error('[TASK NOTIFICATION DISPATCH ERROR]:', err);
+    console.error('[TASK NOTIFICATION ERROR]:', err);
   }
 }
 
@@ -1062,16 +1058,31 @@ const handleTaskUpdate = async (req: any, res: any) => {
     const oldStatus = existingTaskCheck.status;
     const newStatus = updatedTask.status;
 
-    // 1. If assigned to a new assignee:
-    if (updatedTask.assigneeId && updatedTask.assigneeId !== existingTaskCheck.assigneeId) {
+    // Resolve all current assignee IDs (supports multi-assignee arrays)
+    const currentAssigneeIds: (string | null | undefined)[] =
+      Array.isArray((updatedTask as any).assigneeIds) && (updatedTask as any).assigneeIds.length > 0
+        ? (updatedTask as any).assigneeIds
+        : updatedTask.assigneeId ? [updatedTask.assigneeId] : [];
+
+    const prevAssigneeIds: (string | null | undefined)[] =
+      Array.isArray((existingTaskCheck as any).assigneeIds) && (existingTaskCheck as any).assigneeIds.length > 0
+        ? (existingTaskCheck as any).assigneeIds
+        : existingTaskCheck.assigneeId ? [existingTaskCheck.assigneeId] : [];
+
+    const assigneeChanged =
+      updatedTask.assigneeId !== existingTaskCheck.assigneeId ||
+      JSON.stringify(currentAssigneeIds.sort()) !== JSON.stringify(prevAssigneeIds.sort());
+
+    // 1. Assignee changed → REASSIGNED event
+    if (assigneeChanged) {
       dispatchNotification({
         entity: {
           entityType: 'TASK',
           entityId: updatedTask.id,
           entityCode: updatedTask.taskCode,
           title: updatedTask.title,
-          assigneeEmployeeIds: [updatedTask.assigneeId],
-          previousAssigneeEmployeeIds: existingTaskCheck.assigneeId ? [existingTaskCheck.assigneeId] : [],
+          assigneeEmployeeIds: currentAssigneeIds,
+          previousAssigneeEmployeeIds: prevAssigneeIds,
           reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
           creatorEmployeeId: updatedTask.creatorId,
         },
@@ -1082,15 +1093,16 @@ const handleTaskUpdate = async (req: any, res: any) => {
       });
     }
 
-    // 2. If status marked as DONE (Signed off):
+    // 2. Status transitions
     if (newStatus === 'DONE' && oldStatus !== 'DONE') {
+      // Approved/Completed → all assignees
       dispatchNotification({
         entity: {
           entityType: 'TASK',
           entityId: updatedTask.id,
           entityCode: updatedTask.taskCode,
           title: updatedTask.title,
-          assigneeEmployeeIds: [updatedTask.assigneeId],
+          assigneeEmployeeIds: currentAssigneeIds,
           reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
           creatorEmployeeId: updatedTask.creatorId,
         },
@@ -1099,15 +1111,32 @@ const handleTaskUpdate = async (req: any, res: any) => {
         title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
         message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been signed off and marked Done.`,
       });
-    } else if (oldStatus === 'DONE' && newStatus !== 'DONE') {
-      // Reopened
+    } else if (newStatus === 'TO_REVIEW' && oldStatus !== 'TO_REVIEW') {
+      // Submitted for review → reviewing lead ONLY
       dispatchNotification({
         entity: {
           entityType: 'TASK',
           entityId: updatedTask.id,
           entityCode: updatedTask.taskCode,
           title: updatedTask.title,
-          assigneeEmployeeIds: [updatedTask.assigneeId],
+          assigneeEmployeeIds: currentAssigneeIds,
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'REVIEW_SUBMITTED',
+        title: `Review Pending: [${updatedTask.taskCode}]`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been submitted for your review.`,
+      });
+    } else if (oldStatus === 'DONE' && newStatus !== 'DONE') {
+      // Reopened → assignees + lead
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: currentAssigneeIds,
           reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
           creatorEmployeeId: updatedTask.creatorId,
         },
@@ -1117,26 +1146,26 @@ const handleTaskUpdate = async (req: any, res: any) => {
         message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" was moved out of Done back to ${newStatus}.`,
       });
     } else if (newStatus !== oldStatus) {
-      // General status transition
+      // General status/progress update → assignees + lead, actor excluded
       dispatchNotification({
         entity: {
           entityType: 'TASK',
           entityId: updatedTask.id,
           entityCode: updatedTask.taskCode,
           title: updatedTask.title,
-          assigneeEmployeeIds: [updatedTask.assigneeId],
+          assigneeEmployeeIds: currentAssigneeIds,
           reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
           creatorEmployeeId: updatedTask.creatorId,
         },
         actorUserId: req.user!.id,
         eventType: 'STATUS_CHANGED',
-        title: `Task Status: [${updatedTask.taskCode}] -> ${newStatus}`,
-        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" status changed to ${newStatus}.`,
+        title: `Task Progress: [${updatedTask.taskCode}] → ${newStatus}`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" status changed from ${oldStatus} to ${newStatus}.`,
         extraPayload: { oldStatus, newStatus },
       });
     }
 
-    // 3. Due Date Changed:
+    // 3. Due Date Changed
     const oldDueDate = existingTaskCheck.dueDate ? new Date(existingTaskCheck.dueDate).toISOString().split('T')[0] : '';
     const newDueDate = updatedTask.dueDate ? new Date(updatedTask.dueDate).toISOString().split('T')[0] : '';
     if (newDueDate && oldDueDate && newDueDate !== oldDueDate) {
@@ -1146,7 +1175,7 @@ const handleTaskUpdate = async (req: any, res: any) => {
           entityId: updatedTask.id,
           entityCode: updatedTask.taskCode,
           title: updatedTask.title,
-          assigneeEmployeeIds: [updatedTask.assigneeId],
+          assigneeEmployeeIds: currentAssigneeIds,
           reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
           creatorEmployeeId: updatedTask.creatorId,
         },
@@ -1238,27 +1267,64 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Notifications for status change:
+    // Notifications for status change via the dedicated /status endpoint:
+    const statusAssigneeIds: (string | null | undefined)[] =
+      Array.isArray((updatedTask as any).assigneeIds) && (updatedTask as any).assigneeIds.length > 0
+        ? (updatedTask as any).assigneeIds
+        : updatedTask.assigneeId ? [updatedTask.assigneeId] : [];
+
     if (normalizedStatus === 'DONE' && targetTask.status !== 'DONE') {
-      createTaskNotification({
-        targetEmployeeId: updatedTask.assigneeId,
-        type: 'TASK_COMPLETED',
+      // Approved/Completed → all assignees (actor=lead who approved is excluded)
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: statusAssigneeIds,
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'SIGNED_OFF',
         title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
-        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been marked Done.`,
-        taskId: updatedTask.id,
-        taskCode: updatedTask.taskCode,
-        taskTitle: updatedTask.title,
-      }).catch(console.error);
-    } else if (status === 'TO_REVIEW' || status === 'IN_REVIEW' || status === 'To Review') {
-      createTaskNotification({
-        targetEmployeeId: updatedTask.reviewingLeadId || updatedTask.creatorId,
-        type: 'TASK_REVIEW_SUBMITTED',
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been signed off and marked Done.`,
+      });
+    } else if (normalizedStatus === 'TO_REVIEW' && targetTask.status !== 'TO_REVIEW') {
+      // Submitted for review → reviewing lead ONLY
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: statusAssigneeIds,
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'REVIEW_SUBMITTED',
         title: `Review Pending: [${updatedTask.taskCode}]`,
-        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" is ready for review.`,
-        taskId: updatedTask.id,
-        taskCode: updatedTask.taskCode,
-        taskTitle: updatedTask.title,
-      }).catch(console.error);
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" has been submitted for your review.`,
+      });
+    } else if (normalizedStatus !== targetTask.status) {
+      // General progress update → assignees + lead, actor excluded
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: updatedTask.id,
+          entityCode: updatedTask.taskCode,
+          title: updatedTask.title,
+          assigneeEmployeeIds: statusAssigneeIds,
+          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
+          creatorEmployeeId: updatedTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'STATUS_CHANGED',
+        title: `Task Progress: [${updatedTask.taskCode}] → ${normalizedStatus}`,
+        message: `Task [${updatedTask.taskCode}] "${updatedTask.title}" status changed to ${normalizedStatus}.`,
+        extraPayload: { oldStatus: targetTask.status, newStatus: normalizedStatus },
+      });
     }
 
     const [enriched] = await enrichTasks([updatedTask]);
@@ -1287,19 +1353,18 @@ router.post('/:id/delay-request', async (req, res) => {
     let targetUser: any = null;
 
     if (targetTask.reviewingLeadId) {
-      const [leadUser] = await db.select().from(users).where(eq(users.employeeId, targetTask.reviewingLeadId));
+      const [leadUser] = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.employeeId, targetTask.reviewingLeadId)).limit(1);
       if (leadUser) targetUser = leadUser;
     }
 
     if (!targetUser && targetTask.creatorId) {
-      const [creatorUser] = await db.select().from(users).where(eq(users.employeeId, targetTask.creatorId));
+      const [creatorUser] = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.employeeId, targetTask.creatorId)).limit(1);
       if (creatorUser) targetUser = creatorUser;
     }
 
+    // HARD RULE: No Admin fallback. If neither lead nor creator has an account, drop the notification.
     if (!targetUser) {
-      console.warn(`[DELAY REQUEST WARNING] Fallback to default ADMIN user for task ${targetTask.taskCode}`);
-      const [fallbackAdmin] = await db.select().from(users).where(eq(users.role, 'ADMIN')).limit(1);
-      targetUser = fallbackAdmin;
+      console.warn(`[DELAY REQUEST SKIPPED] No user account found for reviewingLead or creator of task ${targetTask.taskCode}. Notification dropped.`);
     }
 
     if (targetUser) {
@@ -1560,27 +1625,34 @@ router.patch('/checklists/:checklistId', async (req, res) => {
       });
     }
 
-    // Check if all checklists are now completed:
+    // Checklist item completed → notify reviewing lead (actor excluded)
     if (isCompleted) {
       const allItems = await db.select().from(taskChecklists).where(eq(taskChecklists.taskId, targetTask.id));
       const allDone = allItems.every(c => c.id === checklistId || c.isCompleted);
-      if (allDone && allItems.length > 0) {
-        dispatchNotification({
-          entity: {
-            entityType: 'TASK',
-            entityId: targetTask.id,
-            entityCode: targetTask.taskCode,
-            title: targetTask.title,
-            assigneeEmployeeIds: [targetTask.assigneeId],
-            reviewingLeadEmployeeId: targetTask.reviewingLeadId,
-            creatorEmployeeId: targetTask.creatorId,
-          },
-          actorUserId: req.user!.id,
-          eventType: 'SUBTASK_COMPLETED',
-          title: `Checklist Completed: [${targetTask.taskCode}]`,
-          message: `All checklist items have been checked off for [${targetTask.taskCode}] "${targetTask.title}".`,
-        });
-      }
+      const notifTitle = allDone && allItems.length > 0
+        ? `All Checklist Items Done: [${targetTask.taskCode}]`
+        : `Checklist Item Completed: [${targetTask.taskCode}]`;
+      const notifMsg = allDone && allItems.length > 0
+        ? `All checklist items have been checked off for [${targetTask.taskCode}] "${targetTask.title}". Ready for review.`
+        : `A checklist item was checked off on [${targetTask.taskCode}] "${targetTask.title}".`;
+
+      dispatchNotification({
+        entity: {
+          entityType: 'TASK',
+          entityId: targetTask.id,
+          entityCode: targetTask.taskCode,
+          title: targetTask.title,
+          assigneeEmployeeIds: Array.isArray((targetTask as any).assigneeIds) && (targetTask as any).assigneeIds.length > 0
+            ? (targetTask as any).assigneeIds
+            : targetTask.assigneeId ? [targetTask.assigneeId] : [],
+          reviewingLeadEmployeeId: targetTask.reviewingLeadId,
+          creatorEmployeeId: targetTask.creatorId,
+        },
+        actorUserId: req.user!.id,
+        eventType: 'CHECKLIST_COMPLETED',
+        title: notifTitle,
+        message: notifMsg,
+      });
     }
 
     res.json(updated);

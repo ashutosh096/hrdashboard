@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { db, projects, employees, tasks, generateNextGlobalCode, eq, desc, sql, and, or, inArray, recordHistory } from '@workspace/db';
+import { db, projects, employees, tasks, users, generateNextGlobalCode, eq, desc, sql, and, or, inArray, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
+import { dispatchNotification } from '../services/notificationDispatcher.js';
 
 const router = Router();
 
@@ -548,6 +549,31 @@ router.patch('/:id', async (req, res) => {
 
     if (!updated) {
       return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Project team assignment notifications:
+    // Find employee IDs newly added to the team and notify each one.
+    if (team !== undefined && Array.isArray(team)) {
+      const oldTeam: string[] = Array.isArray(existingCheck.team) ? (existingCheck.team as string[]) : [];
+      const newTeamIds = (team as string[]).filter(memberId => !oldTeam.includes(memberId));
+
+      if (newTeamIds.length > 0) {
+        dispatchNotification({
+          entity: {
+            entityType: 'PROJECT',
+            entityId: updated.id,
+            entityCode: updated.code,
+            title: updated.name,
+            assigneeEmployeeIds: newTeamIds, // newly added members by employeeId
+            reviewingLeadEmployeeId: null,
+            creatorEmployeeId: req.user?.employeeId,
+          },
+          actorUserId: req.user!.id,
+          eventType: 'PROJECT_ASSIGNED',
+          title: `Project Assignment: [${updated.code}] "${updated.name}"`,
+          message: `You have been added to the project team for [${updated.code}] "${updated.name}".`,
+        });
+      }
     }
 
     res.json(updated);

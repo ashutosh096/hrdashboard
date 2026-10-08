@@ -144,19 +144,19 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
         });
       }
 
-      // 6. Targeted notification to Sprint Owner & Lead (Strictly targeted)
+      // Targeted notification: Sprint Assigned → sprint owner ONLY (not reviewing lead at creation time)
       dispatchNotification({
         entity: {
           entityType: 'SPRINT',
           entityId: newSprint.id,
           entityCode: newSprint.sprintCode,
           title: newSprint.name,
-          assigneeEmployeeIds: [emp.id],
-          reviewingLeadEmployeeId: newSprint.reviewingLeadId,
+          assigneeEmployeeIds: [emp.id], // emp = the sprint owner
+          reviewingLeadEmployeeId: null,  // Lead is intentionally NOT notified at creation
           creatorEmployeeId: caller.employeeId,
         },
         actorUserId: req.user!.id,
-        eventType: 'ASSIGNED',
+        eventType: 'SPRINT_ASSIGNED',
         title: `New Sprint Assigned: [${newSprint.sprintCode}] "${newSprint.name}"`,
         message: `You have been assigned to sprint [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
       });

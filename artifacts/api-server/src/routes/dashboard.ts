@@ -148,45 +148,39 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/dashboard/notifications
+// STRICT: returns only the current user's own notifications. No admin bypass.
+// Admin/Manager see the same shape as any employee — only their personally relevant rows.
+// For a company-wide audit log, use GET /api/audit-logs (separate endpoint, never wired to bell/toasts).
 router.get('/notifications', async (req, res) => {
   try {
-    const isManagerOrAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
+    const userId = req.user!.id;
 
-    let list;
-    if (isManagerOrAdmin) {
-      list = await db
-        .select()
-        .from(notifications)
-        .orderBy(desc(notifications.createdAt))
-        .limit(100);
-    } else {
-      list = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.userId, req.user!.id))
-        .orderBy(desc(notifications.createdAt))
-        .limit(100);
-    }
+    const list = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(100);
 
     const formatted = list.map(n => {
       const payload = (n.payload as any) || {};
-      const isDirectUser = n.userId === req.user!.id;
-      const isTaggedUser = Array.isArray(payload.taggedUserIds) && payload.taggedUserIds.includes(req.user!.id);
-      const isAssigneeUser = payload.assigneeId === req.user!.id || (req.user!.employeeId && payload.assigneeId === req.user!.employeeId);
-      const tagged = isDirectUser || isTaggedUser || isAssigneeUser || payload.tagged === true;
-
       return {
-        ...n,
-        payload: {
-          ...payload,
-          tagged,
-        },
+        id: n.id,
+        type: n.type,
+        userId: n.userId,
+        payload,
+        title: payload.title || n.type,
+        message: payload.message || '',
+        isRead: !!n.readAt,
+        readAt: n.readAt,
+        createdAt: n.createdAt,
       };
     });
 
     res.json(formatted);
   } catch (err) {
-    console.error('[NOTIFICATIONS ERROR]:', err);
+    console.error('[DASHBOARD NOTIFICATIONS ERROR]:', err);
     res.status(500).json({ message: 'Failed to fetch notifications' });
   }
 });
