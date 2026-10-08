@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, ArrowRight, CheckCircle2, UserCheck, MessageSquare, AlertCircle, Clock } from 'lucide-react';
+import { X, ArrowRight, CheckCircle2, UserCheck, User, MessageSquare, AlertCircle, Clock } from 'lucide-react';
 import { getNotificationSeverity } from '../utils/notificationUtils';
 
 export interface ToastNotificationItem {
@@ -86,15 +86,21 @@ export const NotificationToastQueue: React.FC<NotificationToastQueueProps> = ({
               className="flex-1 min-w-0 cursor-pointer"
               onClick={() => onOpenItem(toast)}
             >
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 flex-wrap mb-1">
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${severity.badgeBg}`}
                 >
                   {severity.label}
                 </span>
-                {toast.payload?.taskCode && (
-                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
-                    {toast.payload.taskCode}
+                {(toast.payload?.taskCode || toast.payload?.entityCode || toast.payload?.code) && (
+                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                    {toast.payload.taskCode || toast.payload.entityCode || toast.payload.code}
+                  </span>
+                )}
+                {(toast.payload?.actorName || toast.payload?.authorName || toast.payload?.changedByName) && (
+                  <span className="text-[10px] font-medium bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full flex items-center gap-1 border border-slate-200">
+                    <User className="w-2.5 h-2.5 text-slate-500" />
+                    <span>by <strong className="font-semibold text-slate-900">{toast.payload.actorName || toast.payload.authorName || toast.payload.changedByName}</strong></span>
                   </span>
                 )}
               </div>

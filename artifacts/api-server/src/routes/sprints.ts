@@ -156,9 +156,10 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           creatorEmployeeId: caller.employeeId,
         },
         actorUserId: req.user!.id,
+        actorName: caller.callerName,
         eventType: 'SPRINT_ASSIGNED',
         title: `New Sprint Assigned: [${newSprint.sprintCode}] "${newSprint.name}"`,
-        message: `You have been assigned to sprint [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
+        message: `${caller.callerName || 'A manager'} assigned you to sprint [${newSprint.sprintCode}] "${newSprint.name}" (${newSprint.targetWeek || 'Week 1'}).`,
       });
 
       return newSprint;
@@ -182,6 +183,7 @@ async function handleSprintUpdate(req: any, res: any) {
       if (!oldSprint) return null;
 
       const updatePayload: any = {};
+      if (req.body.employeeId !== undefined) updatePayload.employeeId = req.body.employeeId || null;
       if (name !== undefined) updatePayload.name = name;
       if (goal !== undefined) updatePayload.goal = goal;
       if (startDate !== undefined) updatePayload.startDate = startDate ? new Date(startDate) : null;
@@ -261,11 +263,51 @@ async function handleSprintUpdate(req: any, res: any) {
         }
       }
 
-      return resSprint;
+      return { ...resSprint, _prevEmployeeId: oldSprint.employeeId, _prevStatus: oldSprint.status };
     });
 
     if (!updated) {
       return res.status(404).json({ message: 'Sprint not found' });
+    }
+
+    const caller = await getCallerInfo(req.user);
+    if (updated.employeeId && updated.employeeId !== (updated as any)._prevEmployeeId) {
+      dispatchNotification({
+        entity: {
+          entityType: 'SPRINT',
+          entityId: updated.id,
+          entityCode: updated.sprintCode,
+          title: updated.name,
+          assigneeEmployeeIds: [updated.employeeId],
+          reviewingLeadEmployeeId: updated.reviewingLeadId,
+          creatorEmployeeId: caller.employeeId,
+        },
+        actorUserId: req.user!.id,
+        actorName: caller.callerName,
+        eventType: 'SPRINT_ASSIGNED',
+        title: `Sprint Assigned: [${updated.sprintCode}] "${updated.name}"`,
+        message: `${caller.callerName || 'A manager'} assigned you to sprint [${updated.sprintCode}] "${updated.name}".`,
+      });
+    }
+
+    if (updated.status && updated.status !== (updated as any)._prevStatus) {
+      dispatchNotification({
+        entity: {
+          entityType: 'SPRINT',
+          entityId: updated.id,
+          entityCode: updated.sprintCode,
+          title: updated.name,
+          assigneeEmployeeIds: updated.employeeId ? [updated.employeeId] : [],
+          reviewingLeadEmployeeId: updated.reviewingLeadId,
+          creatorEmployeeId: caller.employeeId,
+        },
+        actorUserId: req.user!.id,
+        actorName: caller.callerName,
+        eventType: 'STATUS_CHANGED',
+        title: `Sprint Status: [${updated.sprintCode}] → ${updated.status}`,
+        message: `${caller.callerName || 'A team member'} changed sprint status to ${updated.status}.`,
+        extraPayload: { oldStatus: (updated as any)._prevStatus, newStatus: updated.status },
+      });
     }
 
     res.json(updated);

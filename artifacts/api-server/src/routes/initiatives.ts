@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db, initiatives, entityCounters, generateNextGlobalCode, entities, departments, employees, epics, tasks, eq, isNull, sql, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
+import { dispatchNotification } from '../services/notificationDispatcher.js';
 
 const router = Router();
 
@@ -143,6 +144,26 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       return newInitiative;
     });
 
+    if (created.ownerId) {
+      const caller = await getCallerInfo(req.user);
+      dispatchNotification({
+        entity: {
+          entityType: 'INITIATIVE',
+          entityId: created.id,
+          entityCode: created.initiativeCode,
+          title: created.title,
+          assigneeEmployeeIds: [created.ownerId],
+          reviewingLeadEmployeeId: null,
+          creatorEmployeeId: req.user?.employeeId,
+        },
+        actorUserId: req.user!.id,
+        actorName: caller.callerName,
+        eventType: 'INITIATIVE_ASSIGNED',
+        title: `Initiative Assigned: [${created.initiativeCode}] "${created.title}"`,
+        message: `${caller.callerName || 'A manager'} assigned you as owner of initiative [${created.initiativeCode}] "${created.title}".`,
+      });
+    }
+
     res.status(201).json(created);
   } catch (err: any) {
     console.error('[CREATE INITIATIVE ERROR]:', err);
@@ -235,11 +256,35 @@ async function handleInitiativeUpdate(req: any, res: any) {
         });
       }
 
-      return resInit;
+      return { ...resInit, _prevOwnerId: oldInit.ownerId };
     });
 
     if (!updated) {
       return res.status(404).json({ message: 'Initiative not found' });
+    }
+
+    if (
+      ownerId !== undefined &&
+      ownerId &&
+      ownerId !== (updated as any)._prevOwnerId
+    ) {
+      const caller = await getCallerInfo(req.user);
+      dispatchNotification({
+        entity: {
+          entityType: 'INITIATIVE',
+          entityId: updated.id,
+          entityCode: updated.initiativeCode,
+          title: updated.title,
+          assigneeEmployeeIds: [ownerId],
+          reviewingLeadEmployeeId: null,
+          creatorEmployeeId: req.user?.employeeId,
+        },
+        actorUserId: req.user!.id,
+        actorName: caller.callerName,
+        eventType: 'INITIATIVE_ASSIGNED',
+        title: `Initiative Assigned: [${updated.initiativeCode}] "${updated.title}"`,
+        message: `${caller.callerName || 'A manager'} assigned you as owner of initiative [${updated.initiativeCode}] "${updated.title}".`,
+      });
     }
 
     res.json(updated);

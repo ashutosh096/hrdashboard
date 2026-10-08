@@ -351,7 +351,8 @@ export const NotificationsView: React.FC = () => {
                 const severity = getNotificationSeverity(n.type);
                 const target = getNotificationTarget(n);
                 const payload = n.payload || {};
-                const taskCode = payload.taskCode || null;
+                const entityCode = payload.taskCode || payload.entityCode || payload.code || null;
+                const actorName = payload.actorName || payload.authorName || payload.changedByName || null;
 
                 return (
                   <div
@@ -378,9 +379,16 @@ export const NotificationsView: React.FC = () => {
                             {severity.label}
                           </span>
 
-                          {taskCode && (
-                            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
-                              {taskCode}
+                          {entityCode && (
+                            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                              {entityCode}
+                            </span>
+                          )}
+
+                          {actorName && (
+                            <span className="text-[10px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full flex items-center gap-1 border border-slate-200">
+                              <User className="w-2.5 h-2.5 text-slate-500" />
+                              <span>by <strong className="font-semibold text-slate-900">{actorName}</strong></span>
                             </span>
                           )}
 

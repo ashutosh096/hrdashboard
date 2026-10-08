@@ -558,6 +558,7 @@ router.patch('/:id', async (req, res) => {
       const newTeamIds = (team as string[]).filter(memberId => !oldTeam.includes(memberId));
 
       if (newTeamIds.length > 0) {
+        const caller = await getCallerInfo(req.user);
         dispatchNotification({
           entity: {
             entityType: 'PROJECT',
@@ -569,9 +570,10 @@ router.patch('/:id', async (req, res) => {
             creatorEmployeeId: req.user?.employeeId,
           },
           actorUserId: req.user!.id,
+          actorName: caller.callerName,
           eventType: 'PROJECT_ASSIGNED',
           title: `Project Assignment: [${updated.code}] "${updated.name}"`,
-          message: `You have been added to the project team for [${updated.code}] "${updated.name}".`,
+          message: `${caller.callerName || 'A manager'} added you to the project team for [${updated.code}] "${updated.name}".`,
         });
       }
     }

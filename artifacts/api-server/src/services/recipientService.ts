@@ -36,13 +36,14 @@ export type NotificationEvent =
   | 'EPIC_ASSIGNED'
   | 'PROJECT_ASSIGNED'
   | 'SPRINT_ASSIGNED'
+  | 'INITIATIVE_ASSIGNED'
   // Legacy aliases kept for backward compat with existing dispatchNotification call sites
   | 'SUBTASK_ADDED'
   | 'SUBTASK_COMPLETED'
   | 'DUE_DATE_CHANGED';
 
 export interface EntityStakeholders {
-  entityType: 'TASK' | 'EPIC' | 'PROJECT' | 'SPRINT';
+  entityType: 'TASK' | 'EPIC' | 'PROJECT' | 'SPRINT' | 'INITIATIVE';
   entityId: string;
   assigneeUserIds: string[];           // Canonical users.id[]
   reviewingLeadUserId: string | null;  // Canonical users.id
@@ -68,6 +69,7 @@ export function getRecipients(
   const actor = actorUserId?.trim();
   const assignees = dedupe((stakeholders.assigneeUserIds || []).map(id => id?.trim()).filter(Boolean));
   const lead = stakeholders.reviewingLeadUserId?.trim() || null;
+  const creator = stakeholders.creatorUserId?.trim() || null;
   const tagged = dedupe((stakeholders.taggedUserIds || []).map(id => id?.trim()).filter(Boolean));
   const previousAssignees = dedupe((stakeholders.previousAssigneeUserIds || []).map(id => id?.trim()).filter(Boolean));
 
@@ -88,19 +90,30 @@ export function getRecipients(
   }
 
   // ── REVIEW_SUBMITTED ───────────────────────────────────────────────────────
-  // Only the reviewing lead receives this; the submitter (actor) is excluded.
+  // Reviewing lead receives this; if lead is unset, falls back to creator
   if (eventType === 'REVIEW_SUBMITTED') {
-    const recipients: string[] = [];
-    if (lead && excActor(lead)) recipients.push(lead);
-    return { recipientUserIds: recipients, removedAssigneeUserIds: [] };
+    const recipients = new Set<string>();
+    if (lead && excActor(lead)) {
+      recipients.add(lead);
+    } else if (creator && excActor(creator)) {
+      recipients.add(creator);
+    }
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 
   // ── CHECKLIST_COMPLETED ────────────────────────────────────────────────────
-  // Only the reviewing lead; signals "all subtasks done, ready for final review".
+  // Reviewing lead; if lead is not specified or lead is actor, fall back to creator or collaborators
   if (eventType === 'CHECKLIST_COMPLETED' || eventType === 'SUBTASK_COMPLETED') {
-    const recipients: string[] = [];
-    if (lead && excActor(lead)) recipients.push(lead);
-    return { recipientUserIds: recipients, removedAssigneeUserIds: [] };
+    const recipients = new Set<string>();
+    if (lead && excActor(lead)) {
+      recipients.add(lead);
+    } else if (creator && excActor(creator)) {
+      recipients.add(creator);
+    }
+    if (recipients.size === 0) {
+      assignees.filter(excActor).forEach(id => recipients.add(id));
+    }
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 
   // ── SIGNED_OFF / APPROVED ─────────────────────────────────────────────────
@@ -121,6 +134,12 @@ export function getRecipients(
   // ── EPIC_ASSIGNED ─────────────────────────────────────────────────────────
   // The epic's owner / department lead receives this. assigneeUserIds[0] is the owner here.
   if (eventType === 'EPIC_ASSIGNED') {
+    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+  }
+
+  // ── INITIATIVE_ASSIGNED ───────────────────────────────────────────────────
+  // The initiative owner receives this. assigneeUserIds[0] is the owner here.
+  if (eventType === 'INITIATIVE_ASSIGNED') {
     return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
   }
 

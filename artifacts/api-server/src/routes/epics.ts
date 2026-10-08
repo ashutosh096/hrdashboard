@@ -216,6 +216,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
 
     // Epic Assigned to owner/department lead
     if (created.ownerId) {
+      const caller = await getCallerInfo(req.user);
       dispatchNotification({
         entity: {
           entityType: 'EPIC',
@@ -227,9 +228,10 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           creatorEmployeeId: req.user?.employeeId,
         },
         actorUserId: req.user!.id,
+        actorName: caller.callerName,
         eventType: 'EPIC_ASSIGNED',
         title: `Epic Assigned: [${created.epicCode}] "${created.title}"`,
-        message: `You have been assigned as the owner/lead for epic [${created.epicCode}] "${created.title}".`,
+        message: `${caller.callerName || 'A manager'} assigned you as the owner/lead for epic [${created.epicCode}] "${created.title}".`,
       });
     }
 
@@ -361,6 +363,7 @@ async function handleEpicUpdate(req: any, res: any) {
     ) {
       // Re-check: did ownerId actually change? We read oldEpic inside the transaction above.
       // We dispatch unconditionally when ownerId is explicitly set and is different.
+      const caller = await getCallerInfo(req.user);
       dispatchNotification({
         entity: {
           entityType: 'EPIC',
@@ -372,9 +375,10 @@ async function handleEpicUpdate(req: any, res: any) {
           creatorEmployeeId: req.user?.employeeId,
         },
         actorUserId: req.user!.id,
+        actorName: caller.callerName,
         eventType: 'EPIC_ASSIGNED',
         title: `Epic Assigned: [${updatedResult.epicCode}] "${updatedResult.title}"`,
-        message: `You have been assigned as the owner/lead for epic [${updatedResult.epicCode}] "${updatedResult.title}".`,
+        message: `${caller.callerName || 'A manager'} assigned you as the owner/lead for epic [${updatedResult.epicCode}] "${updatedResult.title}".`,
       });
     }
 

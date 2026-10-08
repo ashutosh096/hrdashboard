@@ -1,10 +1,11 @@
-import { db, notifications, eq, and, gte, sql } from '@workspace/db';
+import { db, notifications, users, employees, eq, and, sql } from '@workspace/db';
 import { getRecipients, EntityStakeholders, NotificationEvent } from './recipientService.js';
 import { resolveUserIdFromEmployeeId, resolveUserIdsFromEmployeeIds } from '../utils/userResolver.js';
+import { pruneNotificationsForUser } from './notificationService.js';
 
 interface DispatchParams {
   entity: {
-    entityType: 'TASK' | 'EPIC' | 'PROJECT' | 'SPRINT';
+    entityType: 'TASK' | 'EPIC' | 'PROJECT' | 'SPRINT' | 'INITIATIVE';
     entityId: string;
     entityCode?: string | null;
     title: string;
@@ -15,6 +16,7 @@ interface DispatchParams {
     previousAssigneeEmployeeIds?: (string | null | undefined)[];
   };
   actorUserId: string;
+  actorName?: string;
   eventType: NotificationEvent;
   title: string;
   message: string;
@@ -45,7 +47,25 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
     try {
       const { entity, actorUserId, eventType, title, message, extraPayload = {} } = params;
 
-      // 1. Resolve all employeeIds → canonical users.id values
+      // 1. Resolve actor display name
+      let resolvedActorName = params.actorName;
+      if (!resolvedActorName && actorUserId) {
+        try {
+          const [actorRow] = await db
+            .select({
+              name: sql<string>`COALESCE(NULLIF(TRIM(CONCAT(${employees.firstName}, ' ', ${employees.lastName})), ''), ${employees.firstName}, ${users.email})`,
+            })
+            .from(users)
+            .leftJoin(employees, eq(employees.id, users.employeeId))
+            .where(eq(users.id, actorUserId))
+            .limit(1);
+          resolvedActorName = actorRow?.name || 'A team member';
+        } catch {
+          resolvedActorName = 'A team member';
+        }
+      }
+
+      // 2. Resolve all employeeIds → canonical users.id values
       const [
         assigneeUserIds,
         reviewingLeadUserId,
@@ -70,7 +90,7 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
         previousAssigneeUserIds,
       };
 
-      // 2. Pure ID-based recipient routing (actor always excluded inside getRecipients)
+      // 3. Pure ID-based recipient routing (actor always excluded inside getRecipients)
       const { recipientUserIds, removedAssigneeUserIds } = getRecipients(
         stakeholders,
         actorUserId,
@@ -80,28 +100,22 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
       const now = Date.now();
       const insertRows: any[] = [];
 
-      // 3. Build notification rows for primary recipients
+      // 4. Build notification rows for primary recipients
       for (const recipientId of recipientUserIds) {
         if (!recipientId) continue;
 
-        // Burst debounce: suppress duplicate rapid-fire updates within 60 s
-        if (
-          eventType === 'STATUS_CHANGED' ||
-          eventType === 'SUBTASK_ADDED' ||
-          eventType === 'SUBTASK_COMPLETED' ||
-          eventType === 'CHECKLIST_COMPLETED'
-        ) {
+        // Micro-debounce only rapid duplicate status transitions on same entity within 5s
+        if (eventType === 'STATUS_CHANGED') {
           const burstKey = `${entity.entityId}_${recipientId}_${eventType}`;
           const entry = burstMap.get(burstKey);
-          if (entry && now - entry.lastTimestamp < BURST_WINDOW_MS) {
+          if (entry && now - entry.lastTimestamp < 5000) {
             entry.count += 1;
             entry.lastTimestamp = now;
-            continue; // suppress duplicate within burst window
+            continue;
           }
           burstMap.set(burstKey, { count: 1, lastTimestamp: now });
         }
 
-        // Notification type prefix: TASK_*, EPIC_*, PROJECT_*, SPRINT_*
         const notifType = `${entity.entityType}_${eventType}`;
 
         insertRows.push({
@@ -117,12 +131,13 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
             taskTitle: entity.title,
             eventType,
             actorUserId,
+            actorName: resolvedActorName || 'A team member',
             ...extraPayload,
           },
         });
       }
 
-      // 4. Removal notices for unassigned stakeholders on REASSIGNED events
+      // 5. Removal notices for unassigned stakeholders on REASSIGNED events
       if (eventType === 'REASSIGNED' && removedAssigneeUserIds.length > 0) {
         for (const removedId of removedAssigneeUserIds) {
           if (!removedId) continue;
@@ -131,7 +146,7 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
             type: `${entity.entityType}_REMOVED`,
             payload: {
               title: `Removed from ${entity.entityType}: [${entity.entityCode || 'ITEM'}]`,
-              message: `You were unassigned from [${entity.entityCode || 'ITEM'}] "${entity.title}".`,
+              message: `You were unassigned from [${entity.entityCode || 'ITEM'}] "${entity.title}" by ${resolvedActorName || 'a team member'}.`,
               entityType: entity.entityType,
               entityId: entity.entityId,
               taskId: entity.entityType === 'TASK' ? entity.entityId : undefined,
@@ -139,24 +154,31 @@ export async function dispatchNotification(params: DispatchParams): Promise<void
               taskTitle: entity.title,
               eventType: 'REASSIGNED',
               actorUserId,
+              actorName: resolvedActorName || 'A team member',
               ...extraPayload,
             },
           });
         }
       }
 
-      // 5. Batch insert all rows atomically
+      // 6. Batch insert all rows atomically & prune per-user
       if (insertRows.length > 0) {
         await db.insert(notifications).values(insertRows);
+        for (const r of recipientUserIds) {
+          if (r) pruneNotificationsForUser(r).catch(() => {});
+        }
+        for (const rem of removedAssigneeUserIds) {
+          if (rem) pruneNotificationsForUser(rem).catch(() => {});
+        }
         console.log(
           `[DISPATCH] ${eventType} on ${entity.entityType}[${entity.entityCode}] ` +
-          `→ recipients: [${recipientUserIds.join(', ')}] ` +
+          `by "${resolvedActorName}" → recipients: [${recipientUserIds.join(', ')}] ` +
           `(actor ${actorUserId} excluded)`
         );
       } else {
         console.log(
           `[DISPATCH] ${eventType} on ${entity.entityType}[${entity.entityCode}] ` +
-          `→ no recipients (actor is sole stakeholder or no stakeholders resolved)`
+          `by "${resolvedActorName}" → no recipients (actor is sole stakeholder or no stakeholders resolved)`
         );
       }
     } catch (err) {
