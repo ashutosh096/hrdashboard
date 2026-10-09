@@ -734,7 +734,7 @@ export const EmployeeDashboardView: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[315px] overflow-y-auto pr-1.5 custom-scrollbar">
               {displayedDeliverables.length === 0 ? (
                 <div className="p-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
                   <p className="text-xs font-bold text-gray-500">
