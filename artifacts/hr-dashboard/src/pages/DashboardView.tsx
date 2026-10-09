@@ -38,6 +38,7 @@ import {
 import { StatCard } from '../components/StatCard';
 import { RevenueChart } from '../components/RevenueChart';
 import { ScheduleWidget } from '../components/ScheduleWidget';
+import { DeliverablesBreakdownChart } from '../components/DeliverablesBreakdownChart';
 import { TaskAnalyticsPanel } from '../components/TaskAnalyticsPanel';
 import { TaskProgressSprintAnalytics } from '../components/TaskProgressSprintAnalytics';
 import { EmployeeDashboardView } from '../components/EmployeeDashboardView';
@@ -236,6 +237,11 @@ export const DashboardView: React.FC = () => {
           <ScheduleWidget className="h-full" />
         </div>
       </div>
+
+      {/* Interactive Pie Chart: Work Hierarchy & Deliverables Breakdown (Admin & Manager mode only) */}
+      {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+        <DeliverablesBreakdownChart />
+      )}
 
       {/* Embedded Unified Task Analytics & Operations Component */}
       <TaskAnalyticsPanel />

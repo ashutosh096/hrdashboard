@@ -144,6 +144,56 @@ router.get('/unread-count', async (req, res) => {
 });
 
 /**
+ * GET /api/notifications/unread-summary
+ *
+ * Ultra-lightweight poller endpoint — returns only { unreadCount, latestUnreadId, latestUnreadCreatedAt }.
+ * Scoped strictly to req.user.id. Single indexed query with no payload or list returned.
+ */
+router.get('/unread-summary', async (req, res) => {
+  try {
+    const userId = req.user!.id;
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    const [result] = await db
+      .select({
+        unreadCount: sql<number>`count(*)::int`,
+        latestUnreadId: sql<string | null>`(array_agg(${notifications.id} order by ${notifications.createdAt} desc))[1]`,
+        latestUnreadCreatedAt: sql<Date | string | null>`(array_agg(${notifications.createdAt} order by ${notifications.createdAt} desc))[1]`,
+      })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+
+    const rawCreated = result?.latestUnreadCreatedAt;
+    let latestUnreadCreatedAt: string | null = null;
+    if (rawCreated) {
+      if (rawCreated instanceof Date) {
+        latestUnreadCreatedAt = rawCreated.toISOString();
+      } else {
+        const str = String(rawCreated).trim().replace(' ', 'T');
+        latestUnreadCreatedAt = new Date(str.endsWith('Z') ? str : `${str}Z`).toISOString();
+      }
+    }
+
+    res.json({
+      unreadCount: result?.unreadCount || 0,
+      latestUnreadId: result?.latestUnreadId || null,
+      latestUnreadCreatedAt,
+    });
+  } catch (err) {
+    console.error('[NOTIFICATIONS UNREAD SUMMARY ERROR]:', err);
+    res.status(500).json({
+      message: 'Failed to get unread summary',
+      unreadCount: 0,
+      latestUnreadId: null,
+      latestUnreadCreatedAt: null,
+    });
+  }
+});
+
+/**
  * POST /api/notifications/:id/read
  *
  * Marks a single notification as read. Double-checked: WHERE id AND user_id

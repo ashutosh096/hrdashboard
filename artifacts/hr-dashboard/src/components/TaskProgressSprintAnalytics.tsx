@@ -10,7 +10,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
@@ -58,12 +58,13 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
   defaultEmployeeId,
 }) => {
   const { selectedEntity } = useEntity();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [tasks, setTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
+  const [employees, setEmployees] = useState<EmployeeOption[]>(() => (getCachedApi<any[]>('/api/employees') || []));
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(defaultEmployeeId || 'ALL');
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthKey);
   const [lastUpdateStr, setLastUpdateStr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Resolved Component Title per User Request
   const resolvedTitle = title || (viewType === 'EMPLOYEE' ? 'Task Analysis' : 'Task Completion');
@@ -72,8 +73,10 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
       ? 'Personal deliverable throughput, completion milestones, and 4-week execution trends.'
       : 'Weekly tracking of completed deliverables (4 Weeks) and overall task completion rate.';
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent && !getCachedApi('/api/tasks') && tasks.length === 0) {
+      setLoading(true);
+    }
     try {
       const [rawTasks, rawEmps] = await Promise.all([
         fetchApi<any[]>('/api/tasks').catch(() => []),
@@ -240,11 +243,15 @@ export const TaskProgressSprintAnalytics: React.FC<TaskProgressSprintAnalyticsPr
             <div className="text-[11px] text-gray-400 font-semibold mt-1 flex items-center gap-1.5">
               <span>Last update: {lastUpdateStr}</span>
               <button
-                onClick={loadData}
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  await loadData();
+                  setIsRefreshing(false);
+                }}
                 className="hover:text-emerald-600 transition-colors cursor-pointer"
                 title="Refresh Completion Data"
               >
-                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
+                <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-emerald-600' : ''}`} />
               </button>
             </div>
           )}

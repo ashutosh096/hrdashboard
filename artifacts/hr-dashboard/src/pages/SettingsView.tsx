@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { TableSkeleton } from '../components/Skeletons';
 
 interface BackupHistoryItem {
   id: string;
@@ -290,11 +291,8 @@ export const SettingsView: React.FC = () => {
               </span>
             </div>
 
-            {isLoadingHistory ? (
-              <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                <Loader2 className="w-5 h-5 text-gray-400 animate-spin mx-auto mb-2" />
-                <span className="text-xs text-gray-500">Loading backup audit logs...</span>
-              </div>
+            {isLoadingHistory && history.length === 0 ? (
+              <TableSkeleton rows={3} columns={4} />
             ) : history.length === 0 ? (
               <div className="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 <Database className="w-6 h-6 text-gray-400 mx-auto mb-2 opacity-60" />

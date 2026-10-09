@@ -43,6 +43,7 @@ import { MarkdownViewer } from '../components/MarkdownViewer';
 import { SearchableSelect, SelectOption } from '../components/SearchableSelect';
 import { RecordHistoryPanel } from '../components/RecordHistoryPanel';
 import { RecentActivitySection } from '../components/RecentActivitySection';
+import { TableSkeleton, InlineErrorRetry } from '../components/Skeletons';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { formatAuthorDisplayName } from '../components/TaskUpdateModal';
@@ -130,6 +131,7 @@ export const ApplicationsView: React.FC = () => {
     archived: 0,
   });
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadProjectsError, setLoadProjectsError] = useState<string | null>(null);
   const [activeOverflowMenuId, setActiveOverflowMenuId] = useState<string | null>(null);
   const pageSize = 25;
 
@@ -174,9 +176,10 @@ export const ApplicationsView: React.FC = () => {
   }, [searchTerm]);
 
   // Load projects from live database with true server pagination
-  const loadProjects = async () => {
-    setLoadingProjects(true);
+  const loadProjects = async (silent = false) => {
+    if (!silent && projects.length === 0) setLoadingProjects(true);
     try {
+      setLoadProjectsError(null);
       const effectiveEntity = selectedEntity !== 'ALL' ? selectedEntity : entityFilter;
       const queryParams = new URLSearchParams({
         page: String(currentPage),
@@ -212,8 +215,9 @@ export const ApplicationsView: React.FC = () => {
         setTotalProjectsCount(sortedProjs.length);
         setTotalPages(Math.max(1, Math.ceil(sortedProjs.length / pageSize)));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[PROJECTS FETCH ERROR]:', err);
+      setLoadProjectsError(err?.message || 'Failed to load projects');
     } finally {
       setLoadingProjects(false);
     }
@@ -589,6 +593,7 @@ export const ApplicationsView: React.FC = () => {
 
           toast.success(`Project "${projectName}" updated and saved to database!`);
           await loadProjects();
+          window.dispatchEvent(new CustomEvent('projects-updated'));
           if (selectedProjectForView?.id === editingProjectId) {
             setSelectedProjectForView(updated || { ...selectedProjectForView, ...payload });
           }
@@ -626,6 +631,7 @@ export const ApplicationsView: React.FC = () => {
 
           toast.success(`New project "${projectName}" (${created?.code || 'Created'}) saved permanently to database!`);
           await loadProjects();
+          window.dispatchEvent(new CustomEvent('projects-updated'));
         } catch (err: any) {
           console.error('[PROJECT CREATE ERROR]:', err);
           toast.error(`Failed to create project: ${err?.message || 'Server error'}`);
@@ -667,6 +673,7 @@ export const ApplicationsView: React.FC = () => {
       await fetchApi(`/api/projects/${projectId}`, { method: 'DELETE' });
       toast.success(`Project "${projName}" permanently removed from database.`);
       await loadProjects();
+      window.dispatchEvent(new CustomEvent('projects-updated'));
     } catch (err: any) {
       console.error('[PROJECT DELETE ERROR]:', err);
       toast.error(`Failed to delete project: ${err?.message || 'Server error'}`);
@@ -712,29 +719,37 @@ export const ApplicationsView: React.FC = () => {
 
     const projectId = selectedProjectToUpdate.id;
     const newStatus = updateProjectStatus;
+    const prevProjects = projects;
+    const prevView = selectedProjectForView;
+
+    // Optimistic UI update
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus as any } : p));
+    if (selectedProjectForView?.id === projectId) {
+      setSelectedProjectForView(prev => prev ? { ...prev, status: newStatus as any } : null);
+    }
 
     try {
       await fetchApi(`/api/projects/${projectId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus }),
       });
-      await loadProjects();
+
+      if (newStatus === 'Completed') {
+        toast.success(`Project "${selectedProjectToUpdate.name}" marked as Completed and moved to Archived Projects!`);
+      } else {
+        toast.success(`Project status updated to ${newStatus}!`);
+      }
+
+      setSelectedProjectToUpdate(null);
+      await loadProjects(true);
+      window.dispatchEvent(new CustomEvent('projects-updated'));
     } catch (err: any) {
+      // Rollback UI on failure
+      setProjects(prevProjects);
+      setSelectedProjectForView(prevView);
       console.error('[STATUS PERSIST ERROR]:', err);
       toast.error(`Failed to update project status: ${err?.message || 'Server error'}`);
     }
-
-    if (selectedProjectForView?.id === projectId) {
-      setSelectedProjectForView(prev => prev ? { ...prev, status: newStatus } : null);
-    }
-
-    if (newStatus === 'Completed') {
-      toast.success(`Project "${selectedProjectToUpdate.name}" marked as Completed and moved to Archived Projects!`);
-    } else {
-      toast.success(`Project status updated to ${newStatus}!`);
-    }
-
-    setSelectedProjectToUpdate(null);
   };
 
   return (
@@ -921,10 +936,10 @@ export const ApplicationsView: React.FC = () => {
         </div>
 
         {/* High-Performance Paginated Projects Table */}
-        {loadingProjects ? (
-          <div className="py-16 text-center text-xs font-semibold text-gray-400 bg-white rounded-2xl border border-gray-200/80">
-            Loading projects page {currentPage} from live database...
-          </div>
+        {loadProjectsError && projects.length === 0 ? (
+          <InlineErrorRetry message={loadProjectsError} onRetry={() => loadProjects()} />
+        ) : loadingProjects && projects.length === 0 ? (
+          <TableSkeleton rows={8} />
         ) : (
           <div className="bg-white border border-gray-200/80 rounded-2xl shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">

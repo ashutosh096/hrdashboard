@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Route, Switch, useLocation } from 'wouter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/queryClient';
 import { Toaster, toast } from 'sonner';
 import { fetchApi } from '@workspace/api-client-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -29,14 +30,6 @@ import { ReportsView } from './pages/ReportsView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { RolePreviewBanner } from './components/RolePreviewBanner';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [, setLocation] = useLocation();
@@ -134,7 +127,7 @@ export const MainContent: React.FC = () => {
         <Route path="/sprints" component={SprintsView} />
         <Route path="/applications" component={ApplicationsView} />
         <Route path="/projects" component={ApplicationsView} />
-        <Route path="/performance" component={DashboardView} />
+        <Route path="/performance" component={PerformanceView} />
         <Route path="/team" component={TeamDirectoryView} />
         <Route path="/reports" component={ReportsView} />
         <Route path="/roles" component={ReportsView} />

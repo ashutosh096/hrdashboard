@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, History, ChevronRight, Loader2 } from 'lucide-react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { HistoryItem, formatHistoryDate } from './RecordHistoryPanel';
 
 interface RecentActivitySectionProps {
@@ -47,7 +47,10 @@ export const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({
   onOpenHistory,
   refreshTrigger,
 }) => {
-  const [recentItems, setRecentItems] = useState<HistoryItem[]>([]);
+  const cacheKey = `/api/history/${tableName}/${recordId}?limit=3`;
+  const [recentItems, setRecentItems] = useState<HistoryItem[]>(() => {
+    return getCachedApi<{ history: HistoryItem[] }>(cacheKey)?.history || [];
+  });
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -56,7 +59,9 @@ export const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({
     let isCancelled = false;
 
     const fetchRecent = async () => {
-      setLoading(true);
+      if (!getCachedApi(cacheKey) && recentItems.length === 0) {
+        setLoading(true);
+      }
       try {
         const data = await fetchApi<{
           history: HistoryItem[];
@@ -99,10 +104,10 @@ export const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({
         </button>
       </div>
 
-      {loading ? (
-        <div className="py-4 flex items-center justify-center text-gray-400 gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-          <span className="text-xs">Loading activity...</span>
+      {loading && recentItems.length === 0 ? (
+        <div className="space-y-1.5 animate-pulse">
+          <div className="h-7 bg-gray-100 rounded-xl" />
+          <div className="h-7 bg-gray-100 rounded-xl" />
         </div>
       ) : recentItems.length === 0 ? (
         <p className="text-xs text-gray-400 py-1">No activity recorded yet.</p>

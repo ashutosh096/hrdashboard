@@ -16,7 +16,7 @@ import {
   AlertCircle,
   CheckSquare,
 } from 'lucide-react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 
 export interface HistoryItem {
   id: string;
@@ -271,7 +271,10 @@ export const RecordHistoryPanel: React.FC<RecordHistoryPanelProps> = ({
   title,
   code,
 }) => {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const cacheUrl = `/api/history/${tableName}/${recordId}?limit=20`;
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
+    return getCachedApi<{ history: HistoryItem[] }>(cacheUrl)?.history || [];
+  });
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -283,7 +286,9 @@ export const RecordHistoryPanel: React.FC<RecordHistoryPanelProps> = ({
       if (!recordId) return;
       const isInitial = !beforeTimestamp;
       if (isInitial) {
-        setLoading(true);
+        if (!getCachedApi(cacheUrl) && history.length === 0) {
+          setLoading(true);
+        }
         setError(null);
       } else {
         setLoadingMore(true);
@@ -377,10 +382,17 @@ export const RecordHistoryPanel: React.FC<RecordHistoryPanelProps> = ({
 
           {/* Timeline Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
-                <Loader2 className="w-7 h-7 animate-spin text-gray-500" />
-                <span className="text-xs font-medium">Loading timeline...</span>
+            {loading && history.length === 0 ? (
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="flex gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+                    <div className="w-8 h-8 rounded-full bg-gray-200" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                      <div className="h-3 bg-gray-200 rounded w-2/3" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : error ? (
               <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">

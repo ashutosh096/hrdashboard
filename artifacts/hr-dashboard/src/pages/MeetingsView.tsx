@@ -37,7 +37,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
@@ -86,11 +86,11 @@ export const MeetingsView: React.FC = () => {
   const [eventDescription, setEventDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Data
-  const [meetings, setMeetings] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [availability, setAvailability] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Data with instant cache-first loading
+  const [meetings, setMeetings] = useState<any[]>(() => (getCachedApi<any[]>('/api/meetings') || []));
+  const [employees, setEmployees] = useState<any[]>(() => (getCachedApi<any[]>('/api/employees') || []));
+  const [availability, setAvailability] = useState<any[]>(() => (getCachedApi<any[]>('/api/meetings/availability') || []));
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/meetings') && getCachedApi('/api/employees')));
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
@@ -101,8 +101,10 @@ export const MeetingsView: React.FC = () => {
   const searchParams = new URLSearchParams(window.location.search);
   const isJustConnected = searchParams.get('calendarConnected') === 'true';
 
-  const loadMeetings = async () => {
-    setLoading(true);
+  const loadMeetings = async (silent = false) => {
+    if (!silent && !getCachedApi('/api/meetings') && meetings.length === 0) {
+      setLoading(true);
+    }
     try {
       const [meetingsData, employeesData, availabilityData] = await Promise.all([
         fetchApi<any[]>('/api/meetings'),

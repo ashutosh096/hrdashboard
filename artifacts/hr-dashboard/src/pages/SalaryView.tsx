@@ -3,13 +3,12 @@ import { DollarSign, Download, CreditCard, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useEntity } from '../contexts/EntityContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { matchesEntityFilter } from '../utils/entityUtils';
 
 export const SalaryView: React.FC = () => {
   const { selectedEntity } = useEntity();
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<any[]>(() => (getCachedApi<any[]>('/api/employees') || []));
 
   useEffect(() => {
     fetchApi<any[]>('/api/employees')
@@ -18,8 +17,7 @@ export const SalaryView: React.FC = () => {
       })
       .catch((err) => {
         console.error('[SALARY FETCH ERROR]:', err);
-      })
-      .finally(() => setLoading(false));
+      });
   }, []);
 
   const fallbackPayroll = [

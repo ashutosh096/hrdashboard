@@ -7,6 +7,8 @@ import { InitiativesSubView } from '../components/InitiativesSubView';
 import { EpicsSubView } from '../components/EpicsSubView';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import { RecordHistoryPanel } from '../components/RecordHistoryPanel';
+import { TableSkeleton, InlineErrorRetry } from '../components/Skeletons';
+import { usePrefetchTask } from '../hooks/useDataQueries';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi, getCachedApi, clearApiCache } from '@workspace/api-client-react';
@@ -22,6 +24,7 @@ export const TasksView: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const { selectedEntity } = useEntity();
+  const prefetchTask = usePrefetchTask();
 
   const isEmployee = user?.role === 'EMPLOYEE';
   const isManager = !isEmployee;
@@ -66,6 +69,7 @@ export const TasksView: React.FC = () => {
   }, [user?.employeeId, hasDefaultedUserFilter]);
 
   const [loading, setLoading] = useState(() => !(getCachedApi('/api/tasks') && getCachedApi('/api/epics')));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Scalable Server-Side Filtering & Pagination States for 1,000+ Tasks
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,8 +106,9 @@ export const TasksView: React.FC = () => {
 
   const currentTab = activeTab;
 
-  const loadTasks = async () => {
-    if (!getCachedApi('/api/tasks')) setLoading(true);
+  const loadTasks = async (silent = false) => {
+    if (!silent && !getCachedApi('/api/tasks') && tasks.length === 0) setLoading(true);
+    setLoadError(null);
     try {
       const queryParams = new URLSearchParams({
         page: String(currentPage),
@@ -229,8 +234,9 @@ export const TasksView: React.FC = () => {
       });
       const entityFiltered = formatted.filter((t: any) => matchesEntityFilter(t, selectedEntity));
       setTasks(entityFiltered);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TASKS VIEW FETCH ERROR]:', err);
+      setLoadError(err?.message || 'Failed to load deliverables from server.');
     } finally {
       setLoading(false);
     }
@@ -242,6 +248,7 @@ export const TasksView: React.FC = () => {
 
   useEffect(() => {
     const handleUpdate = () => {
+      clearApiCache('/api/tasks');
       loadTasks();
     };
     window.addEventListener('tasks-updated', handleUpdate);
@@ -299,6 +306,9 @@ export const TasksView: React.FC = () => {
       toast.error('You can only update tasks assigned to you.');
       return;
     }
+    const previousStatus = task?.status;
+    // ⚡ Optimistic update immediately applied to local UI
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
     try {
       await fetchApi(`/api/tasks/${taskId}`, {
         method: 'PUT',
@@ -308,9 +318,10 @@ export const TasksView: React.FC = () => {
       clearApiCache('/api/sprints');
       window.dispatchEvent(new CustomEvent('tasks-updated'));
       toast.success(`Task status updated to ${newStatus}`);
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
-    } catch (err) {
-      toast.error('Failed to update task status');
+    } catch (err: any) {
+      // 🔄 Rollback state on server failure
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: previousStatus } : t)));
+      toast.error(err?.message || 'Failed to update task status');
     }
   };
 
@@ -537,6 +548,7 @@ export const TasksView: React.FC = () => {
     return (
       <tr
         key={t.id}
+        onMouseEnter={() => prefetchTask(t.id)}
         className="hover:bg-gray-50/80 transition-colors border-b border-gray-100/80 group"
       >
         {/* Deliverable Column: Task ID stacked above Title */}
@@ -943,10 +955,17 @@ export const TasksView: React.FC = () => {
           </div>
 
           {/* High-Performance Paginated Table View */}
-          {loading ? (
-            <div className="py-16 text-center text-xs font-semibold text-gray-400 bg-white rounded-2xl border border-gray-200/80">
-              Loading tasks page {currentPage} from live database...
-            </div>
+          {loadError && tasks.length === 0 ? (
+            <InlineErrorRetry
+              title="Failed to load tasks"
+              message={loadError}
+              onRetry={() => {
+                setLoadError(null);
+                loadTasks();
+              }}
+            />
+          ) : loading && tasks.length === 0 ? (
+            <TableSkeleton rows={8} columns={7} />
           ) : (
             <div className="bg-white border border-gray-200/80 rounded-2xl shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">

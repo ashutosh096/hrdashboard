@@ -37,6 +37,8 @@ migration_mapping_step2.*
 scratch/
 scratch_*
 imagedemo/
+test-results/
+playwright-report/
 
 # Chat logs / discussion files with sensitive content
 chatdiscussion.md

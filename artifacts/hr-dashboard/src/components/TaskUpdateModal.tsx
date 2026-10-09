@@ -199,6 +199,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [editingCommentText, setEditingCommentText] = useState<string>('');
 
   const [isSavingTask, setIsSavingTask] = useState(false);
+  const [loadingSubresources, setLoadingSubresources] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -231,6 +232,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
   const loadTaskData = async () => {
     if (!task?.id) return;
+    setLoadingSubresources(true);
     try {
       const [checklistsData, commentsData] = await Promise.all([
         fetchApi<ChecklistItem[]>(`/api/tasks/${task.id}/checklists`).catch(() => []),
@@ -253,6 +255,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       }
     } catch (err) {
       console.error('[TASK SUB-RESOURCES FETCH ERROR]:', err);
+    } finally {
+      setLoadingSubresources(false);
     }
   };
 
@@ -1308,7 +1312,12 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
               {/* Subtask items list */}
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {checklists.length === 0 ? (
+                {loadingSubresources && checklists.length === 0 ? (
+                  <div className="space-y-2 animate-pulse py-2">
+                    <div className="h-8 bg-gray-100 rounded-xl" />
+                    <div className="h-8 bg-gray-100 rounded-xl" />
+                  </div>
+                ) : checklists.length === 0 ? (
                   <div className="py-4 text-center text-xs text-gray-400 font-medium bg-gray-50 rounded-xl border border-dashed border-gray-200">
                     No subtasks added yet. Add one below!
                   </div>
@@ -1433,7 +1442,12 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
             {/* Comments Feed */}
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-[260px] mb-3">
-              {comments.length === 0 ? (
+              {loadingSubresources && comments.length === 0 ? (
+                <div className="space-y-2 animate-pulse py-2">
+                  <div className="h-16 bg-white rounded-xl border border-gray-100" />
+                  <div className="h-16 bg-white rounded-xl border border-gray-100" />
+                </div>
+              ) : comments.length === 0 ? (
                 <div className="h-full flex items-center justify-center py-12 text-center text-xs text-gray-400 font-medium bg-white rounded-xl border border-dashed border-gray-200">
                   No comments yet. Post the first comment!
                 </div>

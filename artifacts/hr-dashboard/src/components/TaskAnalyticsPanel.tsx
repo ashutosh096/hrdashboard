@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BarChart3, Calendar, CheckCircle2, Clock, Search, X } from 'lucide-react';
 import { useEntity } from '../contexts/EntityContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
 interface EmployeeRecord {
@@ -68,9 +68,9 @@ const getCurrentMonthKey = (): string => {
 
 export const TaskAnalyticsPanel: React.FC = () => {
   const { selectedEntity } = useEntity();
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [tasks, setTasks] = useState<TaskRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>(() => (getCachedApi<EmployeeRecord[]>('/api/employees') || []));
+  const [tasks, setTasks] = useState<TaskRecord[]>(() => (getCachedApi<TaskRecord[]>('/api/tasks') || []));
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/employees') && getCachedApi('/api/tasks')));
   const [searchTerm, setSearchTerm] = useState('');
 
   // Dynamic Month & Week Filter States - default to current live month & All Weeks
@@ -205,11 +205,15 @@ export const TaskAnalyticsPanel: React.FC = () => {
   const overallRate = totalAssigned > 0 ? Math.min(100, Math.round((totalCompleted / totalAssigned) * 100)) : 0;
   const pendingRate = totalAssigned > 0 ? Math.min(100, Math.round((totalPending / totalAssigned) * 100)) : 0;
 
-  if (loading) {
+  if (loading && tasks.length === 0) {
     return (
-      <div className="bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs">
-        <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
-          <Clock className="w-4 h-4 animate-spin text-emerald-600" /> Loading live task analytics...
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs space-y-4 animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="h-16 bg-gray-100 rounded-xl"></div>
+          <div className="h-16 bg-gray-100 rounded-xl"></div>
+          <div className="h-16 bg-gray-100 rounded-xl"></div>
+          <div className="h-16 bg-gray-100 rounded-xl"></div>
         </div>
       </div>
     );

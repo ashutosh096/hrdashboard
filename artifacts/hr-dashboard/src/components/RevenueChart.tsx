@@ -8,8 +8,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { Calendar, Settings, ExternalLink, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 
 interface TaskAnalyticsItem {
   name: string;
@@ -66,7 +65,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export const RevenueChart: React.FC = () => {
   const [taskAnalyticsData, setTaskAnalyticsData] = useState<TaskAnalyticsItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !getCachedApi('/api/tasks'));
 
   useEffect(() => {
     async function loadTaskTrendData() {
@@ -173,10 +172,8 @@ export const RevenueChart: React.FC = () => {
 
       {/* Recharts Area & Curve Chart */}
       <div className="h-60 w-full">
-        {loading ? (
-          <div className="h-full flex items-center justify-center text-xs text-gray-400 font-medium">
-            Loading chart analytics from database...
-          </div>
+        {loading && taskAnalyticsData.length === 0 ? (
+          <div className="h-full w-full bg-gray-50/80 rounded-xl animate-pulse flex items-center justify-center border border-dashed border-gray-200" />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={taskAnalyticsData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>

@@ -29,7 +29,8 @@ import {
   Search,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
+import { CardGridSkeleton, TableSkeleton } from '../components/Skeletons';
 import { useEntity } from '../contexts/EntityContext';
 import { MALE_AVATAR, FEMALE_AVATAR } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
@@ -94,13 +95,14 @@ export const PerformanceView: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'WEEK1' | 'WEEK2' | 'MONTH' | 'QUARTER'>('WEEK1');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [tasks, setTasks] = useState<TaskRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>(() => (getCachedApi<EmployeeRecord[]>('/api/employees') || []));
+  const [tasks, setTasks] = useState<TaskRecord[]>(() => (getCachedApi<TaskRecord[]>('/api/tasks') || []));
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/employees') && getCachedApi('/api/tasks')));
 
   useEffect(() => {
     async function loadLiveData() {
       try {
+        if (employees.length === 0) setLoading(true);
         const [empData, taskData] = await Promise.all([
           fetchApi('/api/employees'),
           fetchApi('/api/tasks'),
@@ -191,10 +193,11 @@ export const PerformanceView: React.FC = () => {
       e.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  if (loading && processedEmployees.length === 0) {
     return (
-      <div className="p-6">
-        <div className="text-xs font-semibold text-gray-500">Loading performance analytics from database...</div>
+      <div className="p-6 space-y-6 select-none">
+        <CardGridSkeleton count={4} />
+        <TableSkeleton rows={6} columns={6} />
       </div>
     );
   }

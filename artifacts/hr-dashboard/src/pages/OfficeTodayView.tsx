@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Video, Calendar, Clock, Building2, Laptop, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
+import { CardGridSkeleton } from '../components/Skeletons';
 import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 
@@ -32,15 +33,15 @@ const isSameDay = (d1: Date, d2: Date): boolean => {
 export const OfficeTodayView: React.FC = () => {
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>(() => (getCachedApi<any[]>('/api/employees') || []));
   const [availability, setAvailability] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !getCachedApi('/api/employees'));
   const [dateFilter, setDateFilter] = useState<'TODAY' | 'TOMORROW'>('TODAY');
   const [cardDateFilters, setCardDateFilters] = useState<Record<string, 'TODAY' | 'TOMORROW'>>({});
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+    const loadData = async (silent = false) => {
+      if (!silent && employees.length === 0) setLoading(true);
       try {
         const [employeesData, availabilityData] = await Promise.all([
           fetchApi<any[]>('/api/employees'),
@@ -222,8 +223,8 @@ export const OfficeTodayView: React.FC = () => {
         </div>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading office presence and meetings...</div>
+      {loading && filteredPresence.length === 0 ? (
+        <CardGridSkeleton count={4} />
       ) : filteredPresence.length === 0 ? (
         <div className="bg-white border border-gray-200/80 rounded-3xl p-12 text-center shadow-xs">
           <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />

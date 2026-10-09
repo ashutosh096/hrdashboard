@@ -432,8 +432,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
               className="flex-1 overflow-y-auto p-3 space-y-1.5 max-h-96 custom-scrollbar"
             >
               {isLoading ? (
-                <div className="py-12 text-center text-xs font-semibold text-gray-400">
-                  Loading full workspace search index...
+                <div className="py-6 px-4 space-y-2.5 animate-pulse">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-10 bg-gray-100 rounded-xl" />
+                  ))}
                 </div>
               ) : filteredResults.length === 0 ? (
                 <div className="py-12 text-center space-y-2">

@@ -116,7 +116,7 @@ export const TeamDirectoryView: React.FC = () => {
 
   const loadTeam = async (silent = false) => {
     try {
-      if (!silent) setLoading(true);
+      if (!silent && team.length === 0) setLoading(true);
       const data = await fetchApi<any[]>('/api/employees');
 
       if (Array.isArray(data)) {
@@ -517,13 +517,17 @@ export const TeamDirectoryView: React.FC = () => {
             </thead>
 
             <tbody className="divide-y divide-gray-100 font-medium">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-14 text-center text-gray-400 font-semibold text-xs">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-emerald-600" />
-                    Loading team members...
-                  </td>
-                </tr>
+              {loading && team.length === 0 ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-4 px-4"><div className="h-4 bg-gray-200/80 rounded w-32" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-gray-200/80 rounded w-20" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-gray-200/80 rounded w-36" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-gray-200/80 rounded w-24" /></td>
+                    <td className="py-4 px-4"><div className="h-4 bg-gray-200/80 rounded w-20" /></td>
+                    <td className="py-4 px-4 text-right"><div className="h-4 bg-gray-200/80 rounded w-8 ml-auto" /></td>
+                  </tr>
+                ))
               ) : currentRows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-14 text-center text-gray-400 font-semibold text-xs">

@@ -29,35 +29,25 @@ import { toast } from 'sonner';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { matchesEntityFilter } from '../utils/entityUtils';
 import { getNotificationSeverity } from '../utils/notificationUtils';
+import { useNotifications } from '../hooks/useNotifications';
+import { queryClient } from '../lib/queryClient';
+import { TableSkeleton } from '../components/Skeletons';
 
 export const NotificationsView: React.FC = () => {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    notifications,
+    isListLoading: loading,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'completed' | 'assigned' | 'status' | 'comments' | 'action'>('all');
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskItem | null>(null);
   const pageSize = 20;
   const MAX_NOTIFICATIONS = 100;
-
-  const loadNotifications = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchApi<any[]>('/api/notifications').catch(() => []);
-      const notifList = Array.isArray(data) ? data : [];
-      setNotifications(notifList);
-    } catch {
-      setNotifications([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadNotifications();
-  }, [user]);
 
   // Strictly filter by entity only — zero name-string comparison or role bypass
   const entityFiltered = useMemo(() => {
@@ -89,14 +79,8 @@ export const NotificationsView: React.FC = () => {
 
   const unreadCount = entityFiltered.filter((n) => !n.isRead).length;
 
-  const handleMarkAllRead = async () => {
-    try {
-      await fetchApi('/api/notifications/read-all', { method: 'POST' });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      toast.success('All notifications marked as read');
-    } catch {
-      toast.error('Failed to mark notifications read');
-    }
+  const handleMarkAllRead = () => {
+    markAllAsRead();
   };
 
   const handleClearAll = async () => {
@@ -105,7 +89,8 @@ export const NotificationsView: React.FC = () => {
     }
     try {
       await fetchApi('/api/notifications/clear-all', { method: 'POST' });
-      setNotifications([]);
+      clearApiCache('/api/notifications');
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Notification history deleted');
     } catch {
       toast.error('Failed to delete notifications');
@@ -138,18 +123,15 @@ export const NotificationsView: React.FC = () => {
     };
   };
 
-  const handleDismissNotification = async (id: string) => {
-    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true, readAt: new Date() } : item)));
-    await fetchApi(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {});
-    clearApiCache('/api/notifications');
+  const handleDismissNotification = (id: string) => {
+    markAsRead(id);
   };
 
   const handleNotificationAction = async (n: any) => {
     const target = getNotificationTarget(n);
 
     if (!n.isRead) {
-      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
-      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
+      markAsRead(n.id);
     }
 
     if (target.isMeeting) {
@@ -344,8 +326,8 @@ export const NotificationsView: React.FC = () => {
         </button>
       </div>
 
-      {loading ? (
-        <div className="py-16 text-center text-xs font-semibold text-slate-400">Loading notifications...</div>
+      {loading && notifications.length === 0 ? (
+        <TableSkeleton rows={5} columns={4} />
       ) : (
         <div className="space-y-4">
           <div className="space-y-3">

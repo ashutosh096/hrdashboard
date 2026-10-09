@@ -12,6 +12,7 @@ import { getAvatarByName } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 import { NotificationSlideOver, SlideOverNotificationItem } from './NotificationSlideOver';
 import { NotificationToastQueue, ToastNotificationItem } from './NotificationToastQueue';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface NavbarProps {
   onOpenAssignTask?: () => void;
@@ -38,27 +39,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [dismissedToastIds, setDismissedToastIds] = useState<Set<string>>(new Set());
+
+  const {
+    unreadCount,
+    notifications,
+    activeToasts,
+    dismissToast,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications(isSlideOverOpen);
 
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskItem | null>(null);
 
   const isEmployee = user?.role === 'EMPLOYEE';
 
-  const loadNotifications = async () => {
-    try {
-      const data = await fetchApi<any[]>('/api/notifications');
-      const notifList = Array.isArray(data) ? data : [];
-      setNotifications(notifList);
-    } catch (err) {
-      console.error('[NOTIFICATIONS FETCH ERROR]:', err);
-      setNotifications([]);
-    }
-  };
-
   useEffect(() => {
-    loadNotifications();
-
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -67,7 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [user]);
+  }, []);
 
   // Pure entity-based filter: Server guarantees personal recipient isolation (WHERE user_id = req.user.id)
   const displayNotifications = useMemo(() => {
@@ -78,47 +73,32 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [notifications, selectedEntity]);
 
   const unreadNotificationsCount = useMemo(() => {
+    if (selectedEntity === 'ALL') {
+      return unreadCount;
+    }
     return displayNotifications.filter((n: any) => !n.isRead).length;
-  }, [displayNotifications]);
+  }, [selectedEntity, unreadCount, displayNotifications]);
 
-  // Unread toast queue (FIFO order, max 3 visible at once)
+  // Active toast queue items (filtered by entity, FIFO order, max 3 visible at once)
   const toastQueueItems: ToastNotificationItem[] = useMemo(() => {
-    return displayNotifications
-      .filter((n: any) => !n.isRead && !dismissedToastIds.has(n.id))
-      .map((n: any) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        createdAt: n.createdAt,
-        payload: n.payload,
-        isRead: n.isRead,
+    return activeToasts
+      .filter((t: any) => {
+        const payload = t.payload || {};
+        return matchesEntityFilter(t, selectedEntity) || matchesEntityFilter(payload, selectedEntity);
+      })
+      .map((t: any) => ({
+        id: t.id,
+        type: t.type,
+        title: t.title,
+        message: t.message,
+        createdAt: t.createdAt,
+        payload: t.payload,
+        isRead: t.isRead,
       }));
-  }, [displayNotifications, dismissedToastIds]);
+  }, [activeToasts, selectedEntity]);
 
-  // While slide-over tray is open, suppress toasts for all notifications currently in queue
-  useEffect(() => {
-    if (isSlideOverOpen) {
-      setDismissedToastIds((prev) => {
-        const next = new Set(prev);
-        notifications.forEach((n) => next.add(n.id));
-        return next;
-      });
-    }
-  }, [isSlideOverOpen, notifications]);
-
-  const handleDismissToast = async (id: string) => {
-    // 1. Mark as dismissed visually in local toast set and mark read in notifications list
-    setDismissedToastIds((prev) => new Set(prev).add(id));
-    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true, readAt: new Date() } : item)));
-
-    // 2. ALWAYS immediately persist read_at to the database via API call
-    try {
-      await fetchApi(`/api/notifications/${id}/read`, { method: 'POST' });
-      clearApiCache('/api/notifications');
-    } catch (err) {
-      console.warn('[NOTIFICATIONS DISMISS PERSIST ERROR]:', err);
-    }
+  const handleDismissToast = (id: string) => {
+    dismissToast(id);
   };
 
   const getNotificationTarget = (n: any) => {
@@ -152,9 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
     // 1. Mark as read immediately in state & DB
     if (!n.isRead) {
-      fetchApi(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
-      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
-      handleDismissToast(n.id);
+      markAsRead(n.id);
     }
 
     // 2. Close slide-over tray if open
@@ -215,15 +193,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     setLocation('/notifications');
   };
 
-  const handleMarkAllRead = async () => {
-    try {
-      await fetchApi('/api/notifications/read-all', { method: 'POST' });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      toast.success('All notifications marked as read');
-    } catch (err) {
-      console.error('[MARK ALL READ ERROR]:', err);
-      toast.error('Failed to mark notifications read');
-    }
+  const handleMarkAllRead = () => {
+    markAllAsRead();
   };
 
   const openAssignTaskHandler = onOpenAssignTask || onOpenTaskModal;

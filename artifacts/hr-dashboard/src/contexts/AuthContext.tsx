@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchApi, clearApiCache } from '@workspace/api-client-react';
+import { queryClient } from '../lib/queryClient';
 
 export type UserRole = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
 
@@ -224,6 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       clearApiCache();
+      queryClient.clear();
       const res = await fetchApi<{ token: string; user: User }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password: pass, rememberMe }),
@@ -240,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setUserSession = (userData: User, authToken: string) => {
     clearApiCache();
+    queryClient.clear();
     localStorage.removeItem('hros_preview_role');
     localStorage.removeItem('hros_active_role');
     localStorage.setItem('hros_token', authToken);
@@ -251,6 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('[AUTH SECURITY]: Role preview switching is strictly restricted to ADMIN accounts.');
       return;
     }
+    queryClient.clear();
     localStorage.setItem('hros_preview_role', newRole);
     setPreviewRoleState(newRole);
     setUser((prev) => (prev ? { ...prev, role: newRole } : null));
@@ -268,6 +272,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     clearApiCache();
+    queryClient.clear();
     localStorage.removeItem('hros_token');
     localStorage.removeItem('hros_preview_role');
     localStorage.removeItem('hros_active_role');

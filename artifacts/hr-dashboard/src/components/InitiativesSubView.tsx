@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Target, Calendar, Layers, ArrowRight, Tag, BarChart3, AlertCircle, Archive, Building2, Pencil, Save, Zap, ListTodo, Clock, ChevronRight, ChevronDown, Eye, Trash2, History, UserCheck, MoreVertical } from 'lucide-react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { MarkdownViewer } from './MarkdownViewer';
 import { RichTextEditor } from './RichTextEditor';
@@ -9,6 +9,7 @@ import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
 import { RecordHistoryPanel } from './RecordHistoryPanel';
 import { RecentActivitySection } from './RecentActivitySection';
+import { CardGridSkeleton, InlineErrorRetry } from './Skeletons';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -68,7 +69,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const { selectedEntity } = useEntity();
-  const [initiatives, setInitiatives] = useState<InitiativeItem[]>([]);
+  const [initiatives, setInitiatives] = useState<InitiativeItem[]>(() => (getCachedApi<InitiativeItem[]>('/api/initiatives') || []));
   const [viewingInitiative, setViewingInitiative] = useState<InitiativeItem | null>(null);
   const [historyTarget, setHistoryTarget] = useState<{ recordId: string; title: string; code: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -76,8 +77,9 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
   const [viewingEpicDetails, setViewingEpicDetails] = useState<any | null>(null);
   const [showDeleteEpicConfirm, setShowDeleteEpicConfirm] = useState(false);
   const [isDeletingEpic, setIsDeletingEpic] = useState(false);
-  const [allTasks, setAllTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allTasks, setAllTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
+  const [loading, setLoading] = useState(() => !getCachedApi('/api/initiatives'));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Quick Task Creation for Epic Details inside Initiatives view
   const [quickTaskSlotIdx, setQuickTaskSlotIdx] = useState<number | null>(null);
@@ -277,15 +279,17 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
   };
 
   const loadData = async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent && !getCachedApi('/api/initiatives') && initiatives.length === 0) setLoading(true);
     try {
+      setLoadError(null);
       const initData = await fetchApi<InitiativeItem[]>('/api/initiatives');
       const sortedInits = [...(initData || [])].sort((a, b) =>
         (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' })
       );
       setInitiatives(sortedInits);
-    } catch (err) {
+    } catch (err: any) {
       if (!silent) setInitiatives([]);
+      setLoadError(err?.message || 'Failed to load initiatives');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -476,6 +480,8 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
 
   const handleDirectStatusChange = async (id: string, newStatus: string) => {
     const targetInit = initiatives.find(i => i.id === id);
+    const previousInitiatives = initiatives;
+    const previousViewing = viewingInitiative;
     const mappedStatus = newStatus === 'DONE' ? 'DONE' : newStatus === 'ACTIVE' ? 'ACTIVE' : 'PLANNED';
 
     // Optimistic update
@@ -496,10 +502,12 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         toast.success(`Initiative ${targetInit?.initiativeCode || ''} status updated to ${mappedStatus === 'ACTIVE' ? 'ACTIVE (IN PROGRESS)' : mappedStatus}`);
       }
       window.dispatchEvent(new CustomEvent('initiatives-updated'));
-      loadData();
+      loadData(true);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update initiative status');
-      loadData();
+      // Rollback on failure
+      setInitiatives(previousInitiatives);
+      setViewingInitiative(previousViewing);
+      toast.error(err?.message || 'Failed to update initiative status');
     }
   };
 
@@ -654,8 +662,10 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
         </div>
       </div>
 
-      {loading && initiatives.length === 0 ? (
-        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading initiatives from database...</div>
+      {loadError && initiatives.length === 0 ? (
+        <InlineErrorRetry message={loadError} onRetry={() => loadData()} />
+      ) : loading && initiatives.length === 0 ? (
+        <CardGridSkeleton count={6} />
       ) : displayedInitiatives.length === 0 ? (
         <div className="bg-gray-50 rounded-2xl p-8 text-center border border-gray-200">
           {viewMode === 'ARCHIVE' ? (

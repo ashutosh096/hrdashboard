@@ -11,6 +11,7 @@ import { RecordHistoryPanel } from './RecordHistoryPanel';
 import { formatDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
+import { KanbanSkeleton, InlineErrorRetry } from './Skeletons';
 
 interface SprintItem {
   id: string;
@@ -104,6 +105,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [employees, setEmployees] = useState<EmployeeOption[]>(() => (getCachedApi<EmployeeOption[]>('/api/employees') || []));
   const [epics, setEpics] = useState<EpicOption[]>(() => (getCachedApi<EpicOption[]>('/api/epics') || []));
   const [loading, setLoading] = useState(() => !(getCachedApi('/api/sprints') && getCachedApi('/api/tasks')));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Scalable View Controls & Filters
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
@@ -365,6 +367,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const loadData = async (silent = false) => {
     if (!silent && (!getCachedApi('/api/sprints') || !getCachedApi('/api/tasks'))) setLoading(true);
     try {
+      setLoadError(null);
       const [sprintsData, empData, epicsData, tasksData, projsData] = await Promise.all([
         fetchApi<SprintItem[]>('/api/sprints'),
         fetchApi<any[]>('/api/employees'),
@@ -430,8 +433,9 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       const sortedEpics = [...(epicsData || [])].sort((a, b) => a.title.localeCompare(b.title));
       setEpics(sortedEpics);
       // Keep selectedEmpIds, selectedLeadId, selectedEpicId, selectedProjectId EMPTY by default as requested
-    } catch (err) {
+    } catch (err: any) {
       console.error('[FETCH SPRINTS DATA ERROR]:', err);
+      setLoadError(err?.message || 'Failed to load sprints and tasks');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -513,6 +517,12 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     const taskCode = targetTask?.taskCode || taskId;
     const reviewingLead = targetTask?.reviewingLead || 'Reviewing Lead';
 
+    const previousTasks = allTasks;
+    // Optimistic UI update
+    setAllTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, status: apiStatus } : t))
+    );
+
     try {
       await fetchApi(`/api/tasks/${taskId}`, {
         method: 'PATCH',
@@ -524,20 +534,14 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       } else {
         toast.success(`Task ${taskCode} moved to ${newColumn}!`);
       }
-    } catch (err) {
-      if (newColumn === 'TO_REVIEW') {
-        toast.success(`Review Pending notification logged for Lead (${reviewingLead})!`);
-      } else {
-        toast.success(`Task status updated to ${newColumn}!`);
-      }
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/sprints');
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+    } catch (err: any) {
+      // Rollback UI on failure
+      setAllTasks(previousTasks);
+      toast.error(err?.message || 'Failed to update task status');
     }
-
-    setAllTasks(prev =>
-      prev.map(t => (t.id === taskId ? { ...t, status: apiStatus } : t))
-    );
-    clearApiCache('/api/tasks');
-    clearApiCache('/api/sprints');
-    window.dispatchEvent(new CustomEvent('tasks-updated'));
   };
 
   const isTaskAssignedToUser = (task: any) => {
@@ -658,6 +662,13 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const confirmShiftToPlanned = async () => {
     if (!confirmPlannedModal) return;
     const { task } = confirmPlannedModal;
+    const previousTasks = allTasks;
+
+    // Optimistic UI update
+    setAllTasks(prev =>
+      prev.map(t => (t.id === task.id ? { ...t, status: 'PLANNED' } : t))
+    );
+    setConfirmPlannedModal(null);
 
     try {
       await fetchApi(`/api/tasks/${task.id}`, {
@@ -665,17 +676,14 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         body: JSON.stringify({ status: 'PLANNED' }),
       });
       toast.success(`Task ${task.taskCode || task.id} shifted to Planned!`);
-    } catch (err) {
-      toast.success(`Task shifted to Planned!`);
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/sprints');
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+    } catch (err: any) {
+      // Rollback UI on failure
+      setAllTasks(previousTasks);
+      toast.error(err?.message || 'Failed to shift task to Planned');
     }
-
-    setAllTasks(prev =>
-      prev.map(t => (t.id === task.id ? { ...t, status: 'PLANNED' } : t))
-    );
-    setConfirmPlannedModal(null);
-    clearApiCache('/api/tasks');
-    clearApiCache('/api/sprints');
-    window.dispatchEvent(new CustomEvent('tasks-updated'));
   };
 
   const confirmAssignTask = async () => {
@@ -1479,8 +1487,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       {/* Week sub-nav removed — showing all weeks */}
 
       {/* 🚀 6-COLUMN KANBAN BOARD VIEW (Backlog -> Planned -> To Do -> In Progress -> To Review -> Done) */}
-      {loading ? (
-        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading sprint tasks...</div>
+      {loadError && allTasks.length === 0 ? (
+        <InlineErrorRetry message={loadError} onRetry={() => loadData()} />
+      ) : loading && allTasks.length === 0 ? (
+        <KanbanSkeleton columns={6} />
       ) : (
         <div className="space-y-2">
           {/* ↔ TOP SYNCHRONIZED HORIZONTAL SCROLLBAR TRACK (Requested in circled space) */}

@@ -18,7 +18,8 @@ import { toast } from 'sonner';
 import { MarkAttendanceModal } from '../components/MarkAttendanceModal';
 import { useEntity } from '../contexts/EntityContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
+import { TableSkeleton } from '../components/Skeletons';
 import { getAvatarByName, isFemaleEmployee } from '../utils/avatars';
 import { matchesEntityFilter } from '../utils/entityUtils';
 import { getKolkataDateString } from '../utils/dateUtils';
@@ -54,7 +55,7 @@ export const AttendanceView: React.FC = () => {
   const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !(getCachedApi('/api/attendance') && getCachedApi('/api/employees')));
 
   // Filter Mode: 'TODAY' | 'MONTHLY' | 'CUSTOM'
   const [activeFilterTab, setActiveFilterTab] = useState<'TODAY' | 'MONTHLY' | 'CUSTOM'>('TODAY');
@@ -383,10 +384,10 @@ export const AttendanceView: React.FC = () => {
     });
   }, [baseScopedAttendance, searchTerm, activeFilterTab, statusFilter]);
 
-  if (loading) {
+  if (loading && baseScopedAttendance.length === 0) {
     return (
-      <div className="p-8 text-center text-xs font-semibold text-gray-500 animate-pulse">
-        Loading attendance records from live database...
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        <TableSkeleton rows={8} columns={6} />
       </div>
     );
   }

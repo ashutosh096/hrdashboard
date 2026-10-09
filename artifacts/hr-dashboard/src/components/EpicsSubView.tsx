@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Layers, Calendar, ArrowRight, ListTodo, Tag, Zap, Eye, Edit3, X, CheckCircle2, User, Search, Filter, Table, Building2, Archive, RotateCcw, Pencil, Clock, Target, BarChart3, ChevronRight, ChevronDown, Trash2, History, UserCheck, MoreVertical } from 'lucide-react';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 import { useLocation } from 'wouter';
 import { getAvatarByName } from '../utils/avatars';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
 import { RecordHistoryPanel } from './RecordHistoryPanel';
 import { RecentActivitySection } from './RecentActivitySection';
+import { CardGridSkeleton, InlineErrorRetry } from './Skeletons';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
@@ -85,15 +86,16 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   const { user } = useAuth();
   const { selectedEntity } = useEntity();
   const isAdmin = user?.role === 'ADMIN';
-  const [epics, setEpics] = useState<EpicItem[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteInitiativeConfirm, setShowDeleteInitiativeConfirm] = useState(false);
   const [isDeletingInitiative, setIsDeletingInitiative] = useState(false);
-  const [initiatives, setInitiatives] = useState<InitiativeOption[]>([]);
-  const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [allTasks, setAllTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [epics, setEpics] = useState<EpicItem[]>(() => (getCachedApi<EpicItem[]>('/api/epics') || []));
+  const [initiatives, setInitiatives] = useState<InitiativeOption[]>(() => (getCachedApi<InitiativeOption[]>('/api/initiatives') || []));
+  const [projects, setProjects] = useState<ProjectOption[]>(() => (getCachedApi<ProjectOption[]>('/api/projects') || []));
+  const [allTasks, setAllTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
+  const [loading, setLoading] = useState(() => !getCachedApi('/api/epics'));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // View Mode: Active vs Archive Mode
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
@@ -332,8 +334,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
   };
 
   const loadData = async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent && !getCachedApi('/api/epics') && epics.length === 0) setLoading(true);
     try {
+      setLoadError(null);
       const [epicsData, initsData, tasksData, projsData, employeesData] = await Promise.all([
         fetchApi<EpicItem[]>('/api/epics'),
         fetchApi<InitiativeOption[]>('/api/initiatives'),
@@ -366,8 +369,9 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         const sortedInits = [...initsData].sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
         setInitiatives(sortedInits);
       }
-    } catch {
+    } catch (err: any) {
       if (!silent) setEpics([]);
+      setLoadError(err?.message || 'Failed to load epics');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -570,7 +574,17 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
 
   const handleStatusChange = async (epicId: string, newStatus: string) => {
     const targetEpic = epics.find(e => e.id === epicId);
+    const previousEpics = epics;
+    const previousViewing = viewingEpic;
     const apiStatus = newStatus === 'DONE' ? 'COMPLETED' : newStatus;
+
+    // Optimistic UI update
+    setEpics((prev) =>
+      prev.map((e) => (e.id === epicId ? { ...e, status: apiStatus } : e))
+    );
+    if (viewingEpic && viewingEpic.id === epicId) {
+      setViewingEpic((prev) => (prev ? { ...prev, status: apiStatus } : null));
+    }
 
     try {
       await fetchApi<any>(`/api/epics/${epicId}`, {
@@ -585,14 +599,11 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         toast.success(`Epic ${targetEpic?.epicCode || ''} status updated to ${newStatus} & restored to Active!`);
       }
 
-      setEpics((prev) =>
-        prev.map((e) => (e.id === epicId ? { ...e, status: apiStatus } : e))
-      );
-      if (viewingEpic && viewingEpic.id === epicId) {
-        setViewingEpic((prev) => (prev ? { ...prev, status: apiStatus } : null));
-      }
       window.dispatchEvent(new CustomEvent('epics-updated'));
     } catch (err: any) {
+      // Rollback UI on failure
+      setEpics(previousEpics);
+      setViewingEpic(previousViewing);
       toast.error(err.message || 'Failed to update status');
     }
   };
@@ -783,8 +794,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
         </div>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading epics from database...</div>
+      {loadError && epics.length === 0 ? (
+        <InlineErrorRetry message={loadError} onRetry={() => loadData()} />
+      ) : loading && epics.length === 0 ? (
+        <CardGridSkeleton count={4} />
       ) : filteredEpics.length === 0 ? (
         <div className="bg-gray-50 rounded-2xl p-8 text-center border border-gray-200">
           <Layers className="w-10 h-10 text-gray-300 mx-auto mb-2" />

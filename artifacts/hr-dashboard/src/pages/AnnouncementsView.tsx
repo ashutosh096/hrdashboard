@@ -5,7 +5,8 @@ import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter } from '../utils/entityUtils';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, getCachedApi } from '@workspace/api-client-react';
+import { CardGridSkeleton } from '../components/Skeletons';
 
 export const AnnouncementsView: React.FC = () => {
   const { user } = useAuth();
@@ -13,8 +14,8 @@ export const AnnouncementsView: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
   const [viewingAnnouncement, setViewingAnnouncement] = useState<any | null>(null);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<any[]>(() => (getCachedApi<any[]>('/api/announcements') || []));
+  const [loading, setLoading] = useState(() => !getCachedApi('/api/announcements'));
   
   const isEmployee = user?.role === 'EMPLOYEE';
 
@@ -25,8 +26,8 @@ export const AnnouncementsView: React.FC = () => {
   const [entityScope, setEntityScope] = useState<'BOTH' | 'EHM' | 'CAG'>('BOTH');
   const [isPinned, setIsPinned] = useState(false);
 
-  const loadAnnouncements = async () => {
-    setLoading(true);
+  const loadAnnouncements = async (silent = false) => {
+    if (!silent && announcements.length === 0) setLoading(true);
     try {
       const data = await fetchApi<any[]>('/api/announcements');
       setAnnouncements(Array.isArray(data) ? data : []);
@@ -156,8 +157,8 @@ export const AnnouncementsView: React.FC = () => {
       </div>
 
       {/* Announcements List */}
-      {loading ? (
-        <div className="py-12 text-center text-xs font-semibold text-gray-400">Loading company announcements...</div>
+      {loading && filteredAnnouncements.length === 0 ? (
+        <CardGridSkeleton count={3} />
       ) : (
         <div className="space-y-4 max-w-3xl">
           {filteredAnnouncements.length === 0 ? (
