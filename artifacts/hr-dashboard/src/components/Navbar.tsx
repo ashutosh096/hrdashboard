@@ -96,8 +96,29 @@ export const Navbar: React.FC<NavbarProps> = ({
       }));
   }, [displayNotifications, dismissedToastIds]);
 
-  const handleDismissToast = (id: string) => {
+  // While slide-over tray is open, suppress toasts for all notifications currently in queue
+  useEffect(() => {
+    if (isSlideOverOpen) {
+      setDismissedToastIds((prev) => {
+        const next = new Set(prev);
+        notifications.forEach((n) => next.add(n.id));
+        return next;
+      });
+    }
+  }, [isSlideOverOpen, notifications]);
+
+  const handleDismissToast = async (id: string) => {
+    // 1. Mark as dismissed visually in local toast set and mark read in notifications list
     setDismissedToastIds((prev) => new Set(prev).add(id));
+    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true, readAt: new Date() } : item)));
+
+    // 2. ALWAYS immediately persist read_at to the database via API call
+    try {
+      await fetchApi(`/api/notifications/${id}/read`, { method: 'POST' });
+      clearApiCache('/api/notifications');
+    } catch (err) {
+      console.warn('[NOTIFICATIONS DISMISS PERSIST ERROR]:', err);
+    }
   };
 
   const getNotificationTarget = (n: any) => {
@@ -312,14 +333,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         onMarkAllRead={handleMarkAllRead}
         onItemClick={handleNotificationAction}
         onViewAllHistory={() => setLocation('/notifications')}
+        onDismissItem={handleDismissToast}
       />
 
-      {/* Floating Toast Queue (Max 3 visible, FIFO queue behind it) */}
+      {/* Floating Toast Queue (Max 3 visible, FIFO queue behind it - suppressed while tray is open) */}
       <NotificationToastQueue
         notifications={toastQueueItems}
         onOpenItem={handleNotificationAction}
         onDismiss={handleDismissToast}
         maxVisible={3}
+        isSuppressed={isSlideOverOpen}
       />
 
       {/* User Profile Middle Popup Modal */}

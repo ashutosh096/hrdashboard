@@ -90,19 +90,11 @@ router.post('/login', async (req: Request, res: Response) => {
 
   try {
     const cleanEmail = email.toLowerCase().trim();
-    let [user] = await db
+    const [user] = await db
       .select()
       .from(users)
-      .where(sql`TRIM(LOWER(${users.email})) = ${cleanEmail}`);
-
-    // If alias entered (e.g. ashutoshmishraup78@gmail.com or admin@example.com or ashutosh@ehmconsultancy.com)
-    if (!user && (cleanEmail.includes('ashutosh') || cleanEmail.startsWith('admin@'))) {
-      [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.role, 'ADMIN'))
-        .limit(1);
-    }
+      .where(sql`TRIM(LOWER(${users.email})) = ${cleanEmail}`)
+      .limit(1);
 
     if (!user || !user.passwordHash) {
       return res.status(401).json({ message: 'Invalid email or password' });
