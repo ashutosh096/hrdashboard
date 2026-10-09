@@ -111,8 +111,16 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [selectedWeek, setSelectedWeek] = useState<string>('ALL');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(() => user?.employeeId || 'ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [hasDefaultedSprintEmployee, setHasDefaultedSprintEmployee] = useState(false);
+
+  useEffect(() => {
+    if (user?.employeeId && !hasDefaultedSprintEmployee) {
+      setSelectedEmployeeId(user.employeeId);
+      setHasDefaultedSprintEmployee(true);
+    }
+  }, [user?.employeeId, hasDefaultedSprintEmployee]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isBacklogExpanded, setIsBacklogExpanded] = useState<boolean>(true);
 
@@ -512,14 +520,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       });
 
       if (newColumn === 'TO_REVIEW') {
-        fetchApi('/api/notifications', {
-          method: 'POST',
-          body: JSON.stringify({
-            title: `Review Pending: ${taskCode}`,
-            message: `Task ${taskCode} "${taskTitle}" has been pushed to To Review queue for your manager sign-off.`,
-            isRead: false,
-          }),
-        }).catch(() => { });
         toast.success(`Review Pending notification sent to Lead (${reviewingLead})!`);
       } else {
         toast.success(`Task ${taskCode} moved to ${newColumn}!`);

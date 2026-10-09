@@ -55,7 +55,15 @@ export const TasksView: React.FC = () => {
   const [initiatives, setInitiatives] = useState<any[]>(() => (getCachedApi<any[]>('/api/initiatives') || []));
   const [tasks, setTasks] = useState<any[]>(() => (getCachedApi<any[]>('/api/tasks') || []));
   const [employees, setEmployees] = useState<any[]>(() => (getCachedApi<any[]>('/api/employees') || []));
-  const [employeeFilter, setEmployeeFilter] = useState<string>('ALL');
+  const [employeeFilter, setEmployeeFilter] = useState<string>(() => user?.employeeId || 'ALL');
+  const [hasDefaultedUserFilter, setHasDefaultedUserFilter] = useState(false);
+
+  useEffect(() => {
+    if (user?.employeeId && !hasDefaultedUserFilter) {
+      setEmployeeFilter(user.employeeId);
+      setHasDefaultedUserFilter(true);
+    }
+  }, [user?.employeeId, hasDefaultedUserFilter]);
 
   const [loading, setLoading] = useState(() => !(getCachedApi('/api/tasks') && getCachedApi('/api/epics')));
 
@@ -476,7 +484,7 @@ export const TasksView: React.FC = () => {
         entity: realTask.entity || resolvedEntityLabel,
         entityCode: realTask.entityCode || resolvedEntityCode,
         assignee: realTask.assigneeName || 'Unassigned',
-        reviewingLead: realTask.reviewingLeadName || 'Manager Lead',
+        reviewingLead: realTask.reviewingLeadName || 'Unassigned',
         status: realTask.status || 'BACKLOG',
         outputUrl: realTask.deliverableUrl || '',
         waitingOn: realTask.waitingOn || 'None (Self)',
