@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, projects, employees, tasks, users, generateNextGlobalCode, eq, desc, sql, and, or, inArray, recordHistory } from '@workspace/db';
+import { db, projects, employees, tasks, epics, users, generateNextGlobalCode, eq, desc, sql, and, or, inArray, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
 import { dispatchNotification } from '../services/notificationDispatcher.js';
@@ -35,34 +35,38 @@ router.get('/', async (req, res) => {
       search !== undefined;
 
     const conditions: any[] = [];
+    const statConditions: any[] = [];
 
-    // 0. Employee Scoping: Restrict only when specifically requesting personal/assigned sub-tab
+    // 0. Employee Scoping: Strict ID & Linkage Filtering whenever logged in as EMPLOYEE
     const isEmployee = req.user?.role === 'EMPLOYEE';
-    const isMyProjectsOnly = isEmployee && (subTab === 'MY_PROJECTS' || subTab === 'ASSIGNED');
-    if (isMyProjectsOnly) {
+    if (isEmployee) {
       const userEmail = (req.user?.email || '').toLowerCase().trim();
-      const userEmpId = req.user?.employeeId || req.user?.id;
+      const userEmpId = req.user?.employeeId;
+      const userId = req.user?.id;
 
       let empName = '';
       let empCode = '';
-      if (userEmpId || userEmail) {
+      let targetEmpId = userEmpId;
+
+      if (targetEmpId || userEmail) {
         const [emp] = await db
           .select()
           .from(employees)
           .where(
-            userEmpId
-              ? eq(employees.id, userEmpId)
+            targetEmpId
+              ? eq(employees.id, targetEmpId)
               : eq(sql`LOWER(${employees.email})`, userEmail)
           )
           .limit(1);
 
         if (emp) {
+          targetEmpId = emp.id;
           empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim().toLowerCase();
           empCode = (emp.employeeCode || '').toLowerCase();
         }
       }
 
-      // Collect project IDs where this employee has tasks assigned
+      // Collect project IDs where this employee has tasks assigned, created, or lead-reviewed
       const linkedTaskProjects = await db
         .select({ projectId: tasks.projectId })
         .from(tasks)
@@ -70,17 +74,46 @@ router.get('/', async (req, res) => {
           and(
             sql`${tasks.projectId} IS NOT NULL`,
             or(
-              userEmpId ? eq(tasks.assigneeId, userEmpId) : sql`false`,
-              userEmpId ? eq(tasks.creatorId, userEmpId) : sql`false`
+              targetEmpId ? eq(tasks.assigneeId, targetEmpId) : sql`false`,
+              targetEmpId ? eq(tasks.creatorId, targetEmpId) : sql`false`,
+              targetEmpId ? eq(tasks.reviewingLeadId, targetEmpId) : sql`false`
             )
           )
         );
 
-      const linkedProjectIds = linkedTaskProjects
-        .map(t => t.projectId)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+      // Collect project IDs where this employee has epics owned or created
+      const linkedEpicProjects = await db
+        .select({ projectId: epics.projectId })
+        .from(epics)
+        .where(
+          and(
+            sql`${epics.projectId} IS NOT NULL`,
+            or(
+              targetEmpId ? eq(epics.ownerId, targetEmpId) : sql`false`,
+              targetEmpId ? eq(epics.createdById, targetEmpId) : sql`false`
+            )
+          )
+        );
 
-      const empOrConditions = [];
+      const linkedProjectIds = Array.from(
+        new Set([
+          ...linkedTaskProjects.map(t => t.projectId),
+          ...linkedEpicProjects.map(e => e.projectId),
+        ])
+      ).filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+      const empOrConditions: any[] = [];
+      if (targetEmpId) {
+        // Strict ID check in projects.team JSONB array
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE member = ${targetEmpId})`);
+        // Created by employee
+        empOrConditions.push(eq(projects.createdById, targetEmpId));
+        // Lead matches employee ID
+        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${targetEmpId}%`}`);
+      }
+      if (userId && userId !== targetEmpId) {
+        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE member = ${userId})`);
+      }
       if (empName) {
         empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${empName}%`}`);
         empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${empName}%`})`);
@@ -93,31 +126,36 @@ router.get('/', async (req, res) => {
         empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${userEmail}%`}`);
         empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${userEmail}%`})`);
       }
-      if (userEmpId) {
-        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE member = ${userEmpId})`);
-      }
       if (linkedProjectIds.length > 0) {
         empOrConditions.push(inArray(projects.id, linkedProjectIds));
       }
 
       if (empOrConditions.length > 0) {
-        conditions.push(or(...empOrConditions));
+        const empClause = or(...empOrConditions);
+        conditions.push(empClause);
+        statConditions.push(empClause);
       } else {
         conditions.push(sql`1 = 0`);
+        statConditions.push(sql`1 = 0`);
       }
     }
 
     // 1. Entity Filter
     if (entity && entity !== 'ALL') {
       const entUpper = String(entity).toUpperCase().trim();
-      if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
-        conditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO', 'COMMON')`);
-      } else if (entUpper === 'EHM') {
-        conditions.push(sql`UPPER(${projects.entity}) IN ('EHM', 'COMMON')`);
+      const entityCond =
+        entUpper === 'CAG' || entUpper === 'CLIMAGRO'
+          ? sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO', 'COMMON')`
+          : entUpper === 'EHM'
+            ? sql`UPPER(${projects.entity}) IN ('EHM', 'COMMON')`
+            : undefined;
+      if (entityCond) {
+        conditions.push(entityCond);
+        statConditions.push(entityCond);
       }
     }
 
-    // 2. SubTab (Active vs Archived)
+    // 2. SubTab (Active vs Archived) - Applied to list query only, NOT stat tiles
     if (subTab === 'ARCHIVED') {
       conditions.push(sql`UPPER(${projects.status}) IN ('COMPLETED', 'ARCHIVED')`);
     } else if (subTab === 'ACTIVE') {
@@ -142,112 +180,31 @@ router.get('/', async (req, res) => {
 
     // 4. Lead Filter
     if (lead && lead !== 'ALL' && typeof lead === 'string' && lead.trim() !== '') {
-      conditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${lead.trim().toLowerCase()}%`}`);
+      const leadCond = sql`LOWER(${projects.lead}) LIKE ${`%${lead.trim().toLowerCase()}%`}`;
+      conditions.push(leadCond);
+      statConditions.push(leadCond);
     }
 
     // 5. Search Filter (code, name, category, lead, description)
     if (search && typeof search === 'string' && search.trim() !== '') {
       const searchPattern = `%${search.trim().toLowerCase()}%`;
-      conditions.push(
-        sql`(LOWER(${projects.code}) LIKE ${searchPattern} OR LOWER(${projects.name}) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.category}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.lead}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.description}, '')) LIKE ${searchPattern})`
-      );
+      const searchCond = sql`(LOWER(${projects.code}) LIKE ${searchPattern} OR LOWER(${projects.name}) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.category}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.lead}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.description}, '')) LIKE ${searchPattern})`;
+      conditions.push(searchCond);
+      statConditions.push(searchCond);
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    // Stat tiles queries - compute across the entity/role/lead/search scope WITHOUT being restricted by subTab (Active vs Archived)
-    const statConditions: any[] = [];
-    if (isEmployee) {
-      // Re-use employee scoping for stats
-      const userEmail = (req.user?.email || '').toLowerCase().trim();
-      const userEmpId = req.user?.employeeId || req.user?.id;
-      let empName = '';
-      let empCode = '';
-      if (userEmpId || userEmail) {
-        const [emp] = await db
-          .select()
-          .from(employees)
-          .where(
-            userEmpId
-              ? eq(employees.id, userEmpId)
-              : eq(sql`LOWER(${employees.email})`, userEmail)
-          )
-          .limit(1);
-        if (emp) {
-          empName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim().toLowerCase();
-          empCode = (emp.employeeCode || '').toLowerCase();
-        }
-      }
-      const linkedTaskProjects = await db
-        .select({ projectId: tasks.projectId })
-        .from(tasks)
-        .where(
-          and(
-            sql`${tasks.projectId} IS NOT NULL`,
-            or(
-              userEmpId ? eq(tasks.assigneeId, userEmpId) : sql`false`,
-              userEmpId ? eq(tasks.creatorId, userEmpId) : sql`false`
-            )
-          )
-        );
-      const linkedProjectIds = linkedTaskProjects
-        .map(t => t.projectId)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0);
-
-      const empOrConditions = [];
-      if (empName) {
-        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${empName}%`}`);
-        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${empName}%`})`);
-      }
-      if (empCode) {
-        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${empCode}%`}`);
-        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${empCode}%`})`);
-      }
-      if (userEmail) {
-        empOrConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${userEmail}%`}`);
-        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE LOWER(member) LIKE ${`%${userEmail}%`})`);
-      }
-      if (userEmpId) {
-        empOrConditions.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(${projects.team}, '[]'::jsonb)) AS member WHERE member = ${userEmpId})`);
-      }
-      if (linkedProjectIds.length > 0) {
-        empOrConditions.push(inArray(projects.id, linkedProjectIds));
-      }
-      if (empOrConditions.length > 0) {
-        statConditions.push(or(...empOrConditions));
-      } else {
-        statConditions.push(sql`1 = 0`);
-      }
-    }
-
-    if (entity && entity !== 'ALL') {
-      const entUpper = String(entity).toUpperCase().trim();
-      if (entUpper === 'CAG' || entUpper === 'CLIMAGRO') {
-        statConditions.push(sql`UPPER(${projects.entity}) IN ('CAG', 'CLIMAGRO', 'COMMON')`);
-      } else if (entUpper === 'EHM') {
-        statConditions.push(sql`UPPER(${projects.entity}) IN ('EHM', 'COMMON')`);
-      }
-    }
-
-    if (lead && lead !== 'ALL' && typeof lead === 'string' && lead.trim() !== '') {
-      statConditions.push(sql`LOWER(${projects.lead}) LIKE ${`%${lead.trim().toLowerCase()}%`}`);
-    }
-
-    if (search && typeof search === 'string' && search.trim() !== '') {
-      const searchPattern = `%${search.trim().toLowerCase()}%`;
-      statConditions.push(
-        sql`(LOWER(${projects.code}) LIKE ${searchPattern} OR LOWER(${projects.name}) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.category}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.lead}, '')) LIKE ${searchPattern} OR LOWER(COALESCE(${projects.description}, '')) LIKE ${searchPattern})`
-      );
-    }
-
     const statWhereClause = statConditions.length > 0 ? and(...statConditions) : undefined;
 
-    const statQuery = db.select({
-      total: sql<number>`count(*)`,
-      active: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) NOT IN ('COMPLETED', 'ARCHIVED'))`,
-      planningOrReview: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) IN ('PLANNING', 'IN REVIEW', 'IN_REVIEW', 'REVIEWING'))`,
-      archived: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) IN ('COMPLETED', 'ARCHIVED'))`,
-    }).from(projects);
+    // Stat tiles queries - compute across the entity/role/lead/search scope WITHOUT being restricted by subTab (Active vs Archived)
+    const statQuery = db
+      .select({
+        total: sql<number>`count(*)`,
+        active: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) NOT IN ('COMPLETED', 'ARCHIVED'))`,
+        planningOrReview: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) IN ('PLANNING', 'IN REVIEW', 'IN_REVIEW', 'REVIEWING'))`,
+        archived: sql<number>`count(*) FILTER (WHERE UPPER(${projects.status}) IN ('COMPLETED', 'ARCHIVED'))`,
+      })
+      .from(projects);
 
     const [statsRow] = statWhereClause ? await statQuery.where(statWhereClause) : await statQuery;
 
@@ -258,12 +215,43 @@ router.get('/', async (req, res) => {
       archived: Number(statsRow?.archived || 0),
     };
 
+    // Helper to format project rows with resolved employee names & IDs
+    const allEmpsForFormat = await db.select().from(employees);
+    const empIdToNameMap = new Map<string, string>();
+    for (const e of allEmpsForFormat) {
+      empIdToNameMap.set(e.id, `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode || e.email);
+    }
+
+    const formatProjectRows = (rows: any[]) => {
+      return rows.map((p) => {
+        const rawTeam: string[] = Array.isArray(p.team) ? p.team : [];
+        const teamNames: string[] = [];
+        const teamIds: string[] = [];
+        for (const m of rawTeam) {
+          if (!m) continue;
+          if (empIdToNameMap.has(m)) {
+            teamIds.push(m);
+            teamNames.push(empIdToNameMap.get(m)!);
+          } else {
+            teamIds.push(m);
+            teamNames.push(m);
+          }
+        }
+        return {
+          ...p,
+          team: teamNames,
+          teamIds,
+        };
+      });
+    };
+
     if (!isPaginatedRequest) {
       const allProjects = whereClause
         ? await db.select().from(projects).where(whereClause).orderBy(sql`LOWER(${projects.name}) ASC`)
         : await db.select().from(projects).orderBy(sql`LOWER(${projects.name}) ASC`);
-      allProjects.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
-      return res.json(allProjects);
+      const formatted = formatProjectRows(allProjects);
+      formatted.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+      return res.json(formatted);
     }
 
     // Server-Side Pagination with real COUNT(*)
@@ -292,10 +280,11 @@ router.get('/', async (req, res) => {
           .limit(targetPageSize)
           .offset(offset);
 
-    projectRows.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    const formattedRows = formatProjectRows(projectRows);
+    formattedRows.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
     return res.json({
-      projects: projectRows,
+      projects: formattedRows,
       totalCount,
       stats,
       page: targetPage,
@@ -352,6 +341,24 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       finalProjDeliverableLinks = deliverableUrl.split(/[,;\n]/).map(u => u.trim()).filter(Boolean).map(u => ({ name: 'Deliverable Link', url: u, note: '' }));
     }
 
+    const allEmpsForTeam = await db.select().from(employees);
+    const normalizedTeamIds: string[] = [];
+    for (const member of finalTeam) {
+      if (!member) continue;
+      const matched = allEmpsForTeam.find(
+        (e) =>
+          e.id === member ||
+          `${e.firstName || ''} ${e.lastName || ''}`.trim().toLowerCase() === String(member).trim().toLowerCase() ||
+          e.employeeCode?.toLowerCase() === String(member).trim().toLowerCase() ||
+          e.email?.toLowerCase() === String(member).trim().toLowerCase()
+      );
+      if (matched) {
+        if (!normalizedTeamIds.includes(matched.id)) normalizedTeamIds.push(matched.id);
+      } else {
+        if (!normalizedTeamIds.includes(member)) normalizedTeamIds.push(member);
+      }
+    }
+
     const created = await db.transaction(async (tx) => {
       const caller = await getCallerInfo(req.user, tx);
 
@@ -367,7 +374,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
           entityName: finalEntityName,
           category: category || 'General',
           lead: lead || '',
-          team: finalTeam,
+          team: normalizedTeamIds,
           budget: budget || '',
           startDate: startDate || null,
           targetDate: targetDate || null,
@@ -400,7 +407,49 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       return newProj;
     });
 
-    res.status(201).json(created);
+    // Notify team members + all Admins on project creation
+    const allEmps = await db.select().from(employees);
+    const targetMemberEmpIds: string[] = [];
+    if (created.lead) {
+      const matchedLead = allEmps.find(e => e.id === created.lead || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(created.lead).trim().toLowerCase());
+      if (matchedLead) targetMemberEmpIds.push(matchedLead.id);
+    }
+    if (Array.isArray(created.team)) {
+      for (const member of created.team) {
+        const matched = allEmps.find(e => e.id === member || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(member).trim().toLowerCase());
+        if (matched) targetMemberEmpIds.push(matched.id);
+      }
+    }
+
+    const caller = await getCallerInfo(req.user);
+    dispatchNotification({
+      entity: {
+        entityType: 'PROJECT',
+        entityId: created.id,
+        entityCode: created.code,
+        title: created.name,
+        assigneeEmployeeIds: Array.from(new Set(targetMemberEmpIds)),
+        reviewingLeadEmployeeId: null,
+        creatorEmployeeId: req.user?.employeeId,
+      },
+      actorUserId: req.user!.id,
+      actorName: caller.callerName,
+      eventType: 'CREATED',
+      title: created.name,
+      message: `New Project '${created.name}' created by ${caller.callerName || 'a team member'}`,
+    });
+
+    const empIdToNameMap = new Map<string, string>();
+    for (const e of allEmps) {
+      empIdToNameMap.set(e.id, `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode || e.email);
+    }
+    const formattedCreated = {
+      ...created,
+      team: (created.team || []).map((m: string) => empIdToNameMap.get(m) || m),
+      teamIds: created.team || [],
+    };
+
+    res.status(201).json(formattedCreated);
   } catch (err: any) {
     console.error('[CREATE PROJECT ERROR]:', err);
     res.status(500).json({ message: 'Failed to create project', error: err?.message });
@@ -425,8 +474,9 @@ router.patch('/:id', async (req, res) => {
       const callerNameLower = (callerInfo.callerName || '').toLowerCase().trim();
       const callerEmpId = callerInfo.employeeId;
       const leadLower = (existingCheck.lead || '').toLowerCase().trim();
-      const isLead = (callerNameLower && leadLower.includes(callerNameLower)) || (callerEmpId && (existingCheck as any).leadId === callerEmpId);
-      const isTeamMember = Array.isArray(existingCheck.team) && callerNameLower && existingCheck.team.some((t: string) => t.toLowerCase().includes(callerNameLower));
+      const isLead = (callerEmpId && leadLower.includes(callerEmpId)) || (callerNameLower && leadLower.includes(callerNameLower)) || (callerEmpId && (existingCheck as any).leadId === callerEmpId);
+      const rawTeam: string[] = Array.isArray(existingCheck.team) ? (existingCheck.team as string[]) : [];
+      const isTeamMember = (callerEmpId && rawTeam.includes(callerEmpId)) || (callerNameLower && rawTeam.some((t: string) => t.toLowerCase().includes(callerNameLower)));
       const isCreator = callerEmpId && (existingCheck as any).createdById === callerEmpId;
 
       if (!isLead && !isTeamMember && !isCreator) {
@@ -468,7 +518,27 @@ router.patch('/:id', async (req, res) => {
       if (entityName !== undefined) updatePayload.entityName = entityName;
       if (category !== undefined) updatePayload.category = category;
       if (lead !== undefined) updatePayload.lead = lead;
-      if (team !== undefined) updatePayload.team = team;
+      if (team !== undefined) {
+        const rawTeam = Array.isArray(team) ? team : [];
+        const allEmpsForTeam = await db.select().from(employees);
+        const normalizedTeamIds: string[] = [];
+        for (const member of rawTeam) {
+          if (!member) continue;
+          const matched = allEmpsForTeam.find(
+            (e) =>
+              e.id === member ||
+              `${e.firstName || ''} ${e.lastName || ''}`.trim().toLowerCase() === String(member).trim().toLowerCase() ||
+              e.employeeCode?.toLowerCase() === String(member).trim().toLowerCase() ||
+              e.email?.toLowerCase() === String(member).trim().toLowerCase()
+          );
+          if (matched) {
+            if (!normalizedTeamIds.includes(matched.id)) normalizedTeamIds.push(matched.id);
+          } else {
+            if (!normalizedTeamIds.includes(member)) normalizedTeamIds.push(member);
+          }
+        }
+        updatePayload.team = normalizedTeamIds;
+      }
       if (budget !== undefined && budget !== null && String(budget).trim() !== '') {
         updatePayload.budget = budget;
       }
@@ -551,34 +621,71 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    // Project team assignment notifications:
-    // Find employee IDs newly added to the team and notify each one.
-    if (team !== undefined && Array.isArray(team)) {
+    // Project update notifications:
+    // Notify team members + all Admins on significant changes (status, lead, team, name)
+    const caller = await getCallerInfo(req.user);
+    let whatChanged = '';
+    if (status !== undefined && status !== existingCheck.status) {
+      whatChanged = `status changed to ${status}`;
+    } else if (lead !== undefined && lead !== existingCheck.lead) {
+      whatChanged = `lead changed to ${lead}`;
+    } else if (name !== undefined && name !== existingCheck.name) {
+      whatChanged = 'name updated';
+    } else if (team !== undefined) {
       const oldTeam: string[] = Array.isArray(existingCheck.team) ? (existingCheck.team as string[]) : [];
       const newTeamIds = (team as string[]).filter(memberId => !oldTeam.includes(memberId));
-
       if (newTeamIds.length > 0) {
-        const caller = await getCallerInfo(req.user);
-        dispatchNotification({
-          entity: {
-            entityType: 'PROJECT',
-            entityId: updated.id,
-            entityCode: updated.code,
-            title: updated.name,
-            assigneeEmployeeIds: newTeamIds, // newly added members by employeeId
-            reviewingLeadEmployeeId: null,
-            creatorEmployeeId: req.user?.employeeId,
-          },
-          actorUserId: req.user!.id,
-          actorName: caller.callerName,
-          eventType: 'PROJECT_ASSIGNED',
-          title: `Project Assignment: [${updated.code}] "${updated.name}"`,
-          message: `${caller.callerName || 'A manager'} added you to the project team for [${updated.code}] "${updated.name}".`,
-        });
+        whatChanged = 'team members updated';
       }
     }
 
-    res.json(updated);
+    if (whatChanged) {
+      const allEmps = await db.select().from(employees);
+      const targetMemberEmpIds: string[] = [];
+      const leadVal = updated?.lead || existingCheck.lead;
+      if (leadVal) {
+        const matchedLead = allEmps.find(e => e.id === leadVal || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(leadVal).trim().toLowerCase());
+        if (matchedLead) targetMemberEmpIds.push(matchedLead.id);
+      }
+      const teamArr = updated?.team || existingCheck.team;
+      if (Array.isArray(teamArr)) {
+        for (const member of teamArr) {
+          const matched = allEmps.find(e => e.id === member || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(member).trim().toLowerCase());
+          if (matched) targetMemberEmpIds.push(matched.id);
+        }
+      }
+
+      dispatchNotification({
+        entity: {
+          entityType: 'PROJECT',
+          entityId: updated.id,
+          entityCode: updated.code,
+          title: updated.name,
+          assigneeEmployeeIds: Array.from(new Set(targetMemberEmpIds)),
+          reviewingLeadEmployeeId: null,
+          creatorEmployeeId: req.user?.employeeId,
+        },
+        actorUserId: req.user!.id,
+        actorName: caller.callerName,
+        eventType: 'STATUS_CHANGED',
+        title: updated.name,
+        message: `Project '${updated.name}' updated by ${caller.callerName || 'a team member'}: ${whatChanged}`,
+        extraPayload: { whatChanged },
+      });
+    }
+
+    const allEmpsAfterUpdate = await db.select().from(employees);
+    const empIdToNameMap = new Map<string, string>();
+    for (const e of allEmpsAfterUpdate) {
+      empIdToNameMap.set(e.id, `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode || e.email);
+    }
+    const formattedUpdated = {
+      ...updated,
+      team: (updated.team || []).map((m: string) => empIdToNameMap.get(m) || m),
+      teamIds: updated.team || [],
+    };
+
+    res.json(formattedUpdated);
   } catch (err: any) {
     console.error('[UPDATE PROJECT ERROR]:', err);
     res.status(500).json({ message: 'Failed to update project', error: err?.message });

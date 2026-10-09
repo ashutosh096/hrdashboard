@@ -152,7 +152,8 @@ export const ApplicationsView: React.FC = () => {
   // Projects List Data with instant cache + Database sync
   const [projects, setProjects] = useState<ProjectItem[]>(() => {
     try {
-      const cached = localStorage.getItem('hros_projects_list');
+      const cacheKey = user?.id ? `hros_projects_list_${user.id}` : 'hros_projects_list';
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) return parsed;
@@ -200,7 +201,8 @@ export const ApplicationsView: React.FC = () => {
           setProjectStats(res.stats);
         }
         try {
-          localStorage.setItem('hros_projects_list', JSON.stringify(sortedProjs));
+          const cacheKey = user?.id ? `hros_projects_list_${user.id}` : 'hros_projects_list';
+          localStorage.setItem(cacheKey, JSON.stringify(sortedProjs));
         } catch {}
       } else if (Array.isArray(res)) {
         const sortedProjs = [...res].sort((a: any, b: any) =>
@@ -406,20 +408,27 @@ export const ApplicationsView: React.FC = () => {
 
   const canEditProject = (p: ProjectItem) => {
     if (!isEmployee) return true;
+    const userEmpId = user?.employeeId;
     const isLead = Boolean(
+      (userEmpId && p.lead?.includes(userEmpId)) ||
       (currentUserName && p.lead?.toLowerCase().includes(currentUserName)) ||
       (userFirstName && p.lead?.toLowerCase().includes(userFirstName)) ||
       (userEmail && p.lead?.toLowerCase().includes(userEmail))
     );
-    const isTeamMember = Array.isArray(p.team) && p.team.some(member => {
-      const mLower = member.toLowerCase();
-      return Boolean(
-        (currentUserName && mLower.includes(currentUserName)) ||
-        (userFirstName && mLower.includes(userFirstName)) ||
-        (userEmail && mLower.includes(userEmail))
-      );
-    });
-    return isLead || isTeamMember;
+    const isTeamMember =
+      (Array.isArray(p.team) &&
+        p.team.some((member) => {
+          const mLower = member.toLowerCase();
+          return Boolean(
+            (userEmpId && member === userEmpId) ||
+            (currentUserName && mLower.includes(currentUserName)) ||
+            (userFirstName && mLower.includes(userFirstName)) ||
+            (userEmail && mLower.includes(userEmail))
+          );
+        })) ||
+      (Array.isArray((p as any).teamIds) && Boolean(userEmpId && (p as any).teamIds.includes(userEmpId)));
+    const isCreator = Boolean(userEmpId && (p as any).createdById === userEmpId);
+    return isLead || isTeamMember || isCreator;
   };
 
   const scopedProjects = projects.filter(p => {
