@@ -149,8 +149,60 @@ const TAGGED_USER = 'user-tagged-1';
   }
 }
 
+// Case 11: Initiative created by Manager -> routes to owner AND Admin, excludes actor
+{
+  const stakeholders: EntityStakeholders = {
+    entityType: 'INITIATIVE',
+    entityId: 'init-1',
+    assigneeUserIds: [ASSIGNEE_1],
+    reviewingLeadUserId: null,
+    adminUserIds: [ADMIN_USER],
+  };
+  const result = getRecipients(stakeholders, REVIEW_LEAD, 'CREATED');
+  assertEqual(result.recipientUserIds, [ASSIGNEE_1, ADMIN_USER], 'Case 11: Initiative CREATED routes to owner and all admins');
+}
+
+// Case 12: Epic updated by Manager -> routes to owner AND Admin
+{
+  const stakeholders: EntityStakeholders = {
+    entityType: 'EPIC',
+    entityId: 'epic-1',
+    assigneeUserIds: [ASSIGNEE_1],
+    reviewingLeadUserId: null,
+    adminUserIds: [ADMIN_USER],
+  };
+  const result = getRecipients(stakeholders, REVIEW_LEAD, 'STATUS_CHANGED');
+  assertEqual(result.recipientUserIds, [ASSIGNEE_1, ADMIN_USER], 'Case 12: Epic STATUS_CHANGED routes to owner and all admins');
+}
+
+// Case 13: Project created by Admin -> routes to team members, Admin actor excluded
+{
+  const stakeholders: EntityStakeholders = {
+    entityType: 'PROJECT',
+    entityId: 'proj-1',
+    assigneeUserIds: [ASSIGNEE_1, ASSIGNEE_2],
+    reviewingLeadUserId: null,
+    adminUserIds: [ADMIN_USER],
+  };
+  const result = getRecipients(stakeholders, ADMIN_USER, 'CREATED');
+  assertEqual(result.recipientUserIds, [ASSIGNEE_1, ASSIGNEE_2], 'Case 13: Project CREATED by Admin notifies team members, Admin actor excluded');
+}
+
+// Case 14: Task STATUS_CHANGED -> Admin NOT assigned receives ZERO alerts (invariant holds)
+{
+  const stakeholders: EntityStakeholders = {
+    entityType: 'TASK',
+    entityId: 'task-114',
+    assigneeUserIds: [ASSIGNEE_1],
+    reviewingLeadUserId: REVIEW_LEAD,
+    adminUserIds: [ADMIN_USER],
+  };
+  const result = getRecipients(stakeholders, REVIEW_LEAD, 'STATUS_CHANGED');
+  assertEqual(result.recipientUserIds, [ASSIGNEE_1], 'Case 14: Task STATUS_CHANGED routes strictly to assignee, Admin NOT notified');
+}
+
 if (process.exitCode === 1) {
   console.error('\n❌ SOME UNIT TESTS FAILED!\n');
 } else {
-  console.log('\n🎉 ALL 11 UNIT TESTS PASSED WITH 100% ACCURACY!\n');
+  console.log('\n🎉 ALL UNIT TESTS PASSED WITH 100% ACCURACY!\n');
 }

@@ -16,7 +16,7 @@ import {
   Calendar,
   Sparkles,
 } from 'lucide-react';
-import { formatDateTime } from '../utils/dateUtils';
+import { formatDateTime, formatNotificationDateTime } from '../utils/dateUtils';
 import { getNotificationSeverity } from '../utils/notificationUtils';
 
 export interface SlideOverNotificationItem {
@@ -39,6 +39,7 @@ interface NotificationSlideOverProps {
   onMarkAllRead: () => void;
   onItemClick: (item: SlideOverNotificationItem) => void;
   onViewAllHistory: () => void;
+  onDismissItem?: (id: string) => void;
 }
 
 export const NotificationSlideOver: React.FC<NotificationSlideOverProps> = ({
@@ -49,6 +50,7 @@ export const NotificationSlideOver: React.FC<NotificationSlideOverProps> = ({
   onMarkAllRead,
   onItemClick,
   onViewAllHistory,
+  onDismissItem,
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
 
@@ -212,9 +214,24 @@ export const NotificationSlideOver: React.FC<NotificationSlideOverProps> = ({
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-400 font-medium shrink-0">
-                      {formatDateTime(n.createdAt)}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                        {formatNotificationDateTime(n.createdAt)}
+                      </span>
+                      {onDismissItem && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDismissItem(n.id);
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Dismiss notification"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <h4
@@ -222,7 +239,7 @@ export const NotificationSlideOver: React.FC<NotificationSlideOverProps> = ({
                       n.isRead ? 'text-slate-600' : 'text-slate-900'
                     }`}
                   >
-                    {n.title}
+                    {payload.taskTitle || n.title}
                   </h4>
 
                   <p

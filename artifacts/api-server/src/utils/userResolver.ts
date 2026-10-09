@@ -1,4 +1,4 @@
-import { db, users, employees, eq, inArray } from '@workspace/db';
+import { db, users, employees, eq, and, inArray } from '@workspace/db';
 
 /**
  * In-memory short-lived cache for employeeId <-> userId lookups to avoid redundant DB roundtrips.
@@ -7,9 +7,14 @@ const empToUserCache = new Map<string, { userId: string; timestamp: number }>();
 const userToEmpCache = new Map<string, { employeeId: string; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
+export function clearUserResolverCache() {
+  empToUserCache.clear();
+  userToEmpCache.clear();
+}
+
 /**
- * Resolves a canonical user.id from an employeeId (UUID or employee record ID).
- * If the input is already a user.id, it returns it directly.
+ * Resolves a canonical active user.id from an employeeId (UUID or employee record ID).
+ * If the input is already a user.id, it verifies the user is ACTIVE and returns it.
  */
 export async function resolveUserIdFromEmployeeId(employeeOrUserId?: string | null): Promise<string | null> {
   if (!employeeOrUserId) return null;
@@ -23,15 +28,23 @@ export async function resolveUserIdFromEmployeeId(employeeOrUserId?: string | nu
   }
 
   try {
-    // 1. Check if rawId is already a user.id
-    const [userRowById] = await db.select({ id: users.id }).from(users).where(eq(users.id, rawId)).limit(1);
+    // 1. Check if rawId is already an active user.id
+    const [userRowById] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.id, rawId), eq(users.status, 'ACTIVE')))
+      .limit(1);
     if (userRowById) {
       empToUserCache.set(rawId, { userId: userRowById.id, timestamp: Date.now() });
       return userRowById.id;
     }
 
-    // 2. Query users where users.employeeId = rawId
-    const [userRowByEmp] = await db.select({ id: users.id }).from(users).where(eq(users.employeeId, rawId)).limit(1);
+    // 2. Query users where users.employeeId = rawId AND status = 'ACTIVE'
+    const [userRowByEmp] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.employeeId, rawId), eq(users.status, 'ACTIVE')))
+      .limit(1);
     if (userRowByEmp) {
       empToUserCache.set(rawId, { userId: userRowByEmp.id, timestamp: Date.now() });
       return userRowByEmp.id;
@@ -45,7 +58,7 @@ export async function resolveUserIdFromEmployeeId(employeeOrUserId?: string | nu
 }
 
 /**
- * Batch resolves canonical user.id array from an array of employeeIds or userIds.
+ * Batch resolves canonical active user.id array from an array of employeeIds or userIds.
  */
 export async function resolveUserIdsFromEmployeeIds(employeeOrUserIds: (string | null | undefined)[]): Promise<string[]> {
   const filtered = Array.from(new Set(employeeOrUserIds.filter(Boolean) as string[])).map(id => id.trim());
@@ -65,8 +78,11 @@ export async function resolveUserIdsFromEmployeeIds(employeeOrUserIds: (string |
 
   if (uncached.length > 0) {
     try {
-      // Find matching user.id directly
-      const byUserIds = await db.select({ id: users.id }).from(users).where(inArray(users.id, uncached));
+      // Find matching active user.id directly
+      const byUserIds = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(inArray(users.id, uncached), eq(users.status, 'ACTIVE')));
       const foundUserIds = new Set(byUserIds.map(u => u.id));
 
       for (const uid of foundUserIds) {
@@ -76,7 +92,10 @@ export async function resolveUserIdsFromEmployeeIds(employeeOrUserIds: (string |
 
       const stillUnresolved = uncached.filter(id => !foundUserIds.has(id));
       if (stillUnresolved.length > 0) {
-        const byEmpIds = await db.select({ id: users.id, employeeId: users.employeeId }).from(users).where(inArray(users.employeeId, stillUnresolved));
+        const byEmpIds = await db
+          .select({ id: users.id, employeeId: users.employeeId })
+          .from(users)
+          .where(and(inArray(users.employeeId, stillUnresolved), eq(users.status, 'ACTIVE')));
         for (const row of byEmpIds) {
           if (row.employeeId) {
             results.push(row.id);

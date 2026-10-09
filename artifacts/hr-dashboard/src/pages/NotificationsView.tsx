@@ -18,9 +18,10 @@ import {
   UserCheck,
   Trash2,
   Filter,
+  X,
 } from 'lucide-react';
-import { formatDateTime } from '../utils/dateUtils';
-import { fetchApi } from '@workspace/api-client-react';
+import { formatDateTime, formatNotificationDateTime } from '../utils/dateUtils';
+import { fetchApi, clearApiCache } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { useLocation } from 'wouter';
@@ -135,6 +136,12 @@ export const NotificationsView: React.FC = () => {
       isTask: Boolean(taskId || taskCode || type.includes('TASK') || type.includes('DELAY')),
       label,
     };
+  };
+
+  const handleDismissNotification = async (id: string) => {
+    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true, readAt: new Date() } : item)));
+    await fetchApi(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {});
+    clearApiCache('/api/notifications');
   };
 
   const handleNotificationAction = async (n: any) => {
@@ -404,7 +411,7 @@ export const NotificationsView: React.FC = () => {
                               : 'text-slate-900 group-hover/card:text-indigo-600'
                           }`}
                         >
-                          {n.title}
+                          {payload.taskTitle || n.title}
                         </h4>
 
                         <p
@@ -420,8 +427,22 @@ export const NotificationsView: React.FC = () => {
                     <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400 shrink-0 flex items-center gap-1">
                         <Clock className="w-3 h-3 text-slate-400" />
-                        {formatDateTime(n.createdAt)}
+                        {formatNotificationDateTime(n.createdAt)}
                       </span>
+
+                      {!n.isRead && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismissNotification(n.id);
+                          }}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                          title="Dismiss notification"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
                       <button
                         type="button"

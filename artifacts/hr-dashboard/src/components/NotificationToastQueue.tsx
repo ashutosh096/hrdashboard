@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { X, ArrowRight, CheckCircle2, UserCheck, User, MessageSquare, AlertCircle, Clock } from 'lucide-react';
 import { getNotificationSeverity } from '../utils/notificationUtils';
+import { formatNotificationDateTime } from '../utils/dateUtils';
 
 export interface ToastNotificationItem {
   id: string;
@@ -17,6 +18,7 @@ interface NotificationToastQueueProps {
   onOpenItem: (item: ToastNotificationItem) => void;
   onDismiss: (id: string) => void;
   maxVisible?: number;
+  isSuppressed?: boolean;
 }
 
 export const NotificationToastQueue: React.FC<NotificationToastQueueProps> = ({
@@ -24,6 +26,7 @@ export const NotificationToastQueue: React.FC<NotificationToastQueueProps> = ({
   onOpenItem,
   onDismiss,
   maxVisible = 3,
+  isSuppressed = false,
 }) => {
   // Visible slice (max 3 items at a time, FIFO order)
   const visibleToasts = notifications.slice(0, maxVisible);
@@ -43,7 +46,7 @@ export const NotificationToastQueue: React.FC<NotificationToastQueueProps> = ({
     return () => clearTimeout(timer);
   }, [visibleToasts, onDismiss]);
 
-  if (visibleToasts.length === 0) return null;
+  if (isSuppressed || visibleToasts.length === 0) return null;
 
   return (
     <div
@@ -86,29 +89,34 @@ export const NotificationToastQueue: React.FC<NotificationToastQueueProps> = ({
               className="flex-1 min-w-0 cursor-pointer"
               onClick={() => onOpenItem(toast)}
             >
-              <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${severity.badgeBg}`}
-                >
-                  {severity.label}
+              <div className="flex items-center justify-between gap-1.5 flex-wrap mb-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${severity.badgeBg}`}
+                  >
+                    {severity.label}
+                  </span>
+                  {(toast.payload?.taskCode || toast.payload?.entityCode || toast.payload?.code) && (
+                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                      {toast.payload.taskCode || toast.payload.entityCode || toast.payload.code}
+                    </span>
+                  )}
+                  {(toast.payload?.actorName || toast.payload?.authorName || toast.payload?.changedByName) && (
+                    <span className="text-[10px] font-medium bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full flex items-center gap-1 border border-slate-200">
+                      <User className="w-2.5 h-2.5 text-slate-500" />
+                      <span>by <strong className="font-semibold text-slate-900">{toast.payload.actorName || toast.payload.authorName || toast.payload.changedByName}</strong></span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                  {formatNotificationDateTime(toast.createdAt)}
                 </span>
-                {(toast.payload?.taskCode || toast.payload?.entityCode || toast.payload?.code) && (
-                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
-                    {toast.payload.taskCode || toast.payload.entityCode || toast.payload.code}
-                  </span>
-                )}
-                {(toast.payload?.actorName || toast.payload?.authorName || toast.payload?.changedByName) && (
-                  <span className="text-[10px] font-medium bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full flex items-center gap-1 border border-slate-200">
-                    <User className="w-2.5 h-2.5 text-slate-500" />
-                    <span>by <strong className="font-semibold text-slate-900">{toast.payload.actorName || toast.payload.authorName || toast.payload.changedByName}</strong></span>
-                  </span>
-                )}
               </div>
 
               <h4 className="text-xs font-bold text-slate-900 leading-snug line-clamp-1 hover:text-indigo-600 transition-colors">
-                {toast.title}
+                {toast.payload?.taskTitle || toast.title}
               </h4>
-              <p className="text-[11px] text-slate-500 font-medium leading-relaxed line-clamp-2 mt-0.5">
+              <p className="text-[11px] text-slate-600 font-medium leading-relaxed line-clamp-2 mt-0.5">
                 {toast.message}
               </p>
 

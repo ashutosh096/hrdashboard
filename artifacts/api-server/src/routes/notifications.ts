@@ -38,6 +38,11 @@ router.get('/', async (req, res) => {
   try {
     const userId = req.user!.id;
 
+    // Prevent any browser or proxy HTTP caching of notifications
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     // Non-blocking background cleanup of stale read notifications
     cleanupOldReadNotifications(userId).catch(() => {});
 
@@ -80,6 +85,10 @@ router.get('/unread', async (req, res) => {
   try {
     const userId = req.user!.id;
 
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const rows = await db
       .select()
       .from(notifications)
@@ -117,6 +126,11 @@ router.get('/unread', async (req, res) => {
 router.get('/unread-count', async (req, res) => {
   try {
     const userId = req.user!.id;
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const [result] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(notifications)

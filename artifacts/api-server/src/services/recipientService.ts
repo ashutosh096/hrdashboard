@@ -50,6 +50,7 @@ export interface EntityStakeholders {
   creatorUserId?: string | null;       // Canonical users.id
   taggedUserIds?: string[];            // @mentioned users.id[]
   previousAssigneeUserIds?: string[];  // For REASSIGNED detection
+  adminUserIds?: string[];             // Canonical users.id[] with role 'ADMIN' (for INITIATIVE / EPIC / PROJECT only)
 }
 
 export interface RecipientResult {
@@ -73,6 +74,13 @@ export function getRecipients(
   const tagged = dedupe((stakeholders.taggedUserIds || []).map(id => id?.trim()).filter(Boolean));
   const previousAssignees = dedupe((stakeholders.previousAssigneeUserIds || []).map(id => id?.trim()).filter(Boolean));
 
+  // Admins are routed strictly for INITIATIVE / EPIC / PROJECT events only.
+  // Never for TASK or SPRINT level events.
+  const isHighLevelEntity = ['INITIATIVE', 'EPIC', 'PROJECT'].includes(stakeholders.entityType);
+  const admins = isHighLevelEntity
+    ? dedupe((stakeholders.adminUserIds || []).map(id => id?.trim()).filter(Boolean))
+    : [];
+
   const excActor = (id: string) => id !== actor;
 
   // ── MENTIONED ──────────────────────────────────────────────────────────────
@@ -86,6 +94,7 @@ export function getRecipients(
     const removedAssignees = previousAssignees.filter(id => !assignees.includes(id) && excActor(id));
     const primary = new Set<string>(newAssignees);
     if (lead && excActor(lead)) primary.add(lead);
+    if (isHighLevelEntity) admins.filter(excActor).forEach(id => primary.add(id));
     return { recipientUserIds: Array.from(primary), removedAssigneeUserIds: removedAssignees };
   }
 
@@ -117,9 +126,11 @@ export function getRecipients(
   }
 
   // ── SIGNED_OFF / APPROVED ─────────────────────────────────────────────────
-  // All assignees receive this; the lead who approved is the actor (excluded).
+  // All assignees receive this; lead is also notified if a third party signed off (lead is not actor).
   if (eventType === 'SIGNED_OFF') {
-    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+    const recipients = new Set<string>(assignees.filter(excActor));
+    if (lead && excActor(lead)) recipients.add(lead);
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 
   // ── COMMENT_ADDED ─────────────────────────────────────────────────────────
@@ -132,25 +143,31 @@ export function getRecipients(
   }
 
   // ── EPIC_ASSIGNED ─────────────────────────────────────────────────────────
-  // The epic's owner / department lead receives this. assigneeUserIds[0] is the owner here.
+  // The epic's owner / department lead receives this, plus all Admins (actor excluded).
   if (eventType === 'EPIC_ASSIGNED') {
-    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+    const recipients = new Set<string>(assignees.filter(excActor));
+    admins.filter(excActor).forEach(id => recipients.add(id));
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 
   // ── INITIATIVE_ASSIGNED ───────────────────────────────────────────────────
-  // The initiative owner receives this. assigneeUserIds[0] is the owner here.
+  // The initiative owner receives this, plus all Admins (actor excluded).
   if (eventType === 'INITIATIVE_ASSIGNED') {
-    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+    const recipients = new Set<string>(assignees.filter(excActor));
+    admins.filter(excActor).forEach(id => recipients.add(id));
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 
   // ── PROJECT_ASSIGNED ──────────────────────────────────────────────────────
-  // The person(s) newly added to the project team. Stored in assigneeUserIds.
+  // The person(s) newly added to the project team, plus all Admins (actor excluded).
   if (eventType === 'PROJECT_ASSIGNED') {
-    return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
+    const recipients = new Set<string>(assignees.filter(excActor));
+    admins.filter(excActor).forEach(id => recipients.add(id));
+    return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 
   // ── SPRINT_ASSIGNED ───────────────────────────────────────────────────────
-  // Only the sprint owner employee (assigneeUserIds[0]); NOT the reviewing lead.
+  // Only the sprint owner employee (assigneeUserIds[0]); NOT the reviewing lead; NOT admins.
   if (eventType === 'SPRINT_ASSIGNED') {
     return { recipientUserIds: assignees.filter(excActor), removedAssigneeUserIds: [] };
   }
@@ -162,16 +179,20 @@ export function getRecipients(
     const recipients = new Set<string>(assignees.filter(excActor));
     // If lead is not the actor (i.e. a third party assigned), notify the lead too
     if (!isActorLead && lead && excActor(lead)) recipients.add(lead);
+    // If Initiative / Epic / Project created: notify all Admins as well
+    if (isHighLevelEntity) admins.filter(excActor).forEach(id => recipients.add(id));
     return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 
   // ── STATUS_CHANGED / REOPENED / DUE_DATE_CHANGED / SUBTASK_ADDED ─────────
   // General updates: assignees + reviewing lead, actor excluded.
+  // For Initiative / Epic / Project: also include all Admins (actor excluded).
   {
     const recipients = new Set<string>();
     assignees.filter(excActor).forEach(id => recipients.add(id));
     if (lead && excActor(lead)) recipients.add(lead);
     tagged.filter(excActor).forEach(id => recipients.add(id));
+    if (isHighLevelEntity) admins.filter(excActor).forEach(id => recipients.add(id));
     return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 }
@@ -179,3 +200,4 @@ export function getRecipients(
 function dedupe(arr: string[]): string[] {
   return Array.from(new Set(arr));
 }
+
