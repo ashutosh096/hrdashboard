@@ -212,7 +212,7 @@ export const DashboardView: React.FC = () => {
                 Your Mail
               </span>
               <span className="text-xs sm:text-sm font-semibold text-emerald-50">
-                {user?.email || 'admin@example.com'}
+                {user?.email || 'ashutoshmishraup78@gmail.com'}
               </span>
             </div>
           </div>

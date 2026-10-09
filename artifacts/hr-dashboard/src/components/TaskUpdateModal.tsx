@@ -652,7 +652,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             </h3>
             <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-bold ${readOnlyMode ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
               }`}>
-              {readOnlyMode ? 'Read-Only View 👁️' : 'Manager Edit Mode ✏️'}
+              {readOnlyMode ? 'Read-Only View 👁️' : `${user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : null) || 'Ashutosh Mishra'} • Edit Mode ✏️`}
             </span>
           </div>
           <div className="flex items-center gap-2">

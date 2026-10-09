@@ -199,6 +199,7 @@ router.get('/:id', async (req, res) => {
 export async function enrichTasks(tasksList: any[]) {
   if (!Array.isArray(tasksList) || tasksList.length === 0) return [];
   const allEmployees = await db.select().from(employees);
+  const allUsers = await db.select().from(users);
   const allEpics = await db.select().from(epics);
   const allInitiatives = await db.select().from(initiatives);
   const allProjects = await db.select().from(projects);
@@ -225,7 +226,8 @@ export async function enrichTasks(tasksList: any[]) {
   return tasksList.map(t => {
     const assigneeEmp = allEmployees.find(e => e.id === t.assigneeId);
     const leadEmp = allEmployees.find(e => e.id === t.reviewingLeadId);
-    const creatorEmp = allEmployees.find(e => e.id === t.creatorId);
+    const creatorUser = allUsers.find(u => u.id === t.creatorId || u.id === t.createdById);
+    const creatorEmp = allEmployees.find(e => e.id === t.creatorId || e.id === t.createdById || (creatorUser && e.id === creatorUser.employeeId));
     const parentEpic = allEpics.find(e => e.id === t.epicId);
     const parentInit = allInitiatives.find(i => i.id === (t.initiativeId || parentEpic?.initiativeId));
     const parentProj = allProjects.find(p => p.id === (t.projectId || parentEpic?.projectId));
@@ -253,7 +255,7 @@ export async function enrichTasks(tasksList: any[]) {
     const reviewingLeadEmps = allEmployees.filter(e => resolvedReviewingLeadIds.includes(e.id));
     const resolvedReviewingLeadName = reviewingLeadEmps.length > 0
       ? reviewingLeadEmps.map(e => `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode).join(', ')
-      : (leadEmp ? `${leadEmp.firstName || ''} ${leadEmp.lastName || ''}`.trim() || leadEmp.employeeCode : 'Manager Lead');
+      : (leadEmp ? `${leadEmp.firstName || ''} ${leadEmp.lastName || ''}`.trim() || leadEmp.employeeCode : 'Unassigned');
 
     // Resolve Structured Deliverable Links
     let resolvedDeliverableLinks: { name: string; url: string; note?: string }[] = [];
@@ -278,6 +280,10 @@ export async function enrichTasks(tasksList: any[]) {
     }
 
     const resolvedDeliverableUrls = resolvedDeliverableLinks.map(l => l.url);
+
+    const resolvedCreatorName = creatorEmp
+      ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() || creatorEmp.employeeCode
+      : (creatorUser ? (creatorUser.email?.split('@')[0] || 'System') : 'System');
 
     return {
       ...t,
@@ -305,8 +311,8 @@ export async function enrichTasks(tasksList: any[]) {
       reviewingLead: resolvedReviewingLeadName,
       reviewingLeadName: resolvedReviewingLeadName,
       reviewingLeadEmail: reviewingLeadEmps[0]?.email || leadEmp?.email || '',
-      creatorName: creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin',
-      createdByName: t.createdByName || (creatorEmp ? `${creatorEmp.firstName || ''} ${creatorEmp.lastName || ''}`.trim() : 'Admin'),
+      creatorName: resolvedCreatorName,
+      createdByName: t.createdByName || resolvedCreatorName,
       epicCode: parentEpic?.epicCode || null,
       epicTitle: parentEpic?.title || null,
       parentEpicCode: parentEpic?.epicCode || null,
@@ -1272,144 +1278,9 @@ router.patch('/:id', handleTaskUpdate);
 // PUT /api/tasks/:id - Update Task details
 router.put('/:id', handleTaskUpdate);
 
-// PATCH /api/tasks/:id/status
-router.patch('/:id/status', async (req, res) => {
-  const taskId = req.params.id;
-  const { status } = req.body;
+// PATCH /api/tasks/:id/status - Dedicated status endpoint delegates to unified handleTaskUpdate
+router.patch('/:id/status', handleTaskUpdate);
 
-  if (!status) {
-    return res.status(400).json({ message: 'Status required' });
-  }
-
-  try {
-    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, taskId));
-    if (!targetTask) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    if (req.user?.role === 'EMPLOYEE' && targetTask.assigneeId !== req.user.employeeId) {
-      return res.status(403).json({ message: 'You can only update tasks assigned to you' });
-    }
-
-    // Restrict DELAYED and BLOCKED statuses to ADMIN/MANAGER roles
-    if (['DELAYED', 'BLOCKED'].includes(status) && !['ADMIN', 'MANAGER'].includes(req.user?.role || '')) {
-      return res.status(403).json({ message: 'Only managers and leads can mark tasks as DELAYED or BLOCKED' });
-    }
-
-    let normalizedStatus = normalizeTaskStatus(status);
-    if (normalizedStatus === 'DONE' && req.user?.role === 'EMPLOYEE') {
-      if (targetTask.reviewingLeadId !== req.user.employeeId && targetTask.creatorId !== req.user.employeeId) {
-        normalizedStatus = 'TO_REVIEW';
-      }
-    }
-    const updatedTask = await db.transaction(async (tx) => {
-      const [resTask] = await tx
-        .update(tasks)
-        .set({ status: normalizedStatus, updatedAt: new Date() })
-        .where(eq(tasks.id, taskId))
-        .returning();
-
-      if (resTask && targetTask.status !== normalizedStatus) {
-        const caller = await getCallerInfo(req.user, tx);
-        await recordHistory(tx, {
-          tableName: 'tasks',
-          recordId: taskId,
-          action: 'STATUS_CHANGED',
-          changes: [{ field: 'status', old: targetTask.status, new: normalizedStatus }],
-          changedById: caller.employeeId,
-          changedByName: caller.callerName,
-        });
-      }
-
-      const targetSprintId = resTask?.sprintId || targetTask.sprintId;
-      if (typeof targetSprintId === 'string' && targetSprintId) {
-        const s = String(normalizedStatus).toUpperCase();
-        const sprintStatus = s === 'DONE' ? 'COMPLETED' : (s === 'IN_PROGRESS' || s === 'TO_REVIEW' || s === 'TODO') ? 'ACTIVE' : 'PLANNED';
-        try {
-          await tx.update(sprints).set({ status: sprintStatus }).where(eq(sprints.id, targetSprintId));
-        } catch (sprintErr) {
-          console.error('[TASK-SPRINT STATUS SYNC ERROR]:', sprintErr);
-        }
-      }
-
-      return resTask;
-    });
-
-    if (!updatedTask) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    // Notifications for status change via the dedicated /status endpoint:
-    const caller = await getCallerInfo(req.user);
-    const statusAssigneeIds: (string | null | undefined)[] =
-      Array.isArray((updatedTask as any).assigneeIds) && (updatedTask as any).assigneeIds.length > 0
-        ? (updatedTask as any).assigneeIds
-        : updatedTask.assigneeId ? [updatedTask.assigneeId] : [];
-
-    if (normalizedStatus === 'DONE' && targetTask.status !== 'DONE') {
-      // Approved/Completed → all assignees (actor=lead who approved is excluded)
-      dispatchNotification({
-        entity: {
-          entityType: 'TASK',
-          entityId: updatedTask.id,
-          entityCode: updatedTask.taskCode,
-          title: updatedTask.title,
-          assigneeEmployeeIds: statusAssigneeIds,
-          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
-          creatorEmployeeId: updatedTask.creatorId,
-        },
-        actorUserId: req.user!.id,
-        actorName: caller.callerName,
-        eventType: 'SIGNED_OFF',
-        title: `Task Approved & Completed: [${updatedTask.taskCode}]`,
-        message: `${caller.callerName || 'A reviewer'} signed off and marked [${updatedTask.taskCode}] "${updatedTask.title}" as Done.`,
-      });
-    } else if (normalizedStatus === 'TO_REVIEW' && targetTask.status !== 'TO_REVIEW') {
-      // Submitted for review → reviewing lead ONLY
-      dispatchNotification({
-        entity: {
-          entityType: 'TASK',
-          entityId: updatedTask.id,
-          entityCode: updatedTask.taskCode,
-          title: updatedTask.title,
-          assigneeEmployeeIds: statusAssigneeIds,
-          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
-          creatorEmployeeId: updatedTask.creatorId,
-        },
-        actorUserId: req.user!.id,
-        actorName: caller.callerName,
-        eventType: 'REVIEW_SUBMITTED',
-        title: `Review Pending: [${updatedTask.taskCode}]`,
-        message: `${caller.callerName || 'An assignee'} submitted task [${updatedTask.taskCode}] "${updatedTask.title}" for your review.`,
-      });
-    } else if (normalizedStatus !== targetTask.status) {
-      // General progress update → assignees + lead, actor excluded
-      dispatchNotification({
-        entity: {
-          entityType: 'TASK',
-          entityId: updatedTask.id,
-          entityCode: updatedTask.taskCode,
-          title: updatedTask.title,
-          assigneeEmployeeIds: statusAssigneeIds,
-          reviewingLeadEmployeeId: updatedTask.reviewingLeadId,
-          creatorEmployeeId: updatedTask.creatorId,
-        },
-        actorUserId: req.user!.id,
-        actorName: caller.callerName,
-        eventType: 'STATUS_CHANGED',
-        title: `Task Progress: [${updatedTask.taskCode}] → ${normalizedStatus}`,
-        message: `${caller.callerName || 'A team member'} changed status of [${updatedTask.taskCode}] "${updatedTask.title}" from ${targetTask.status} to ${normalizedStatus}.`,
-        extraPayload: { oldStatus: targetTask.status, newStatus: normalizedStatus },
-      });
-    }
-
-    const [enriched] = await enrichTasks([updatedTask]);
-    res.json(enriched || updatedTask);
-  } catch (err: any) {
-    console.error('[TASK STATUS UPDATE ERROR]:', err);
-    res.status(500).json({ message: 'Failed to update task status' });
-  }
-});
 
 // POST /api/tasks/:id/delay-request
 router.post('/:id/delay-request', async (req, res) => {

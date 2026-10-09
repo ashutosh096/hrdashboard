@@ -221,7 +221,7 @@ export const InitiativesSubView: React.FC<Props> = ({ isManager, onSelectEpic, s
       title: taskItem.title || 'Task Deliverable',
       entity: resolvedEntity,
       entityCode: resolvedEntityCode,
-      assignee: taskItem.assigneeName || taskItem.assignee || 'admin@example.com',
+      assignee: taskItem.assigneeName || taskItem.assignee || 'Unassigned',
       assigneeId: taskItem.assigneeId,
       reviewingLead: taskItem.reviewingLead || 'Dr. Harshit Mishra',
       reviewingLeadId: taskItem.reviewingLeadId,

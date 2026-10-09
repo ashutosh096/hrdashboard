@@ -214,26 +214,23 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       };
     });
 
-    // Epic Assigned to owner/department lead
-    if (created.ownerId) {
-      const caller = await getCallerInfo(req.user);
-      dispatchNotification({
-        entity: {
-          entityType: 'EPIC',
-          entityId: created.id,
-          entityCode: created.epicCode,
-          title: created.title,
-          assigneeEmployeeIds: [created.ownerId], // ownerId is an employeeId
-          reviewingLeadEmployeeId: null,
-          creatorEmployeeId: req.user?.employeeId,
-        },
-        actorUserId: req.user!.id,
-        actorName: caller.callerName,
-        eventType: 'EPIC_ASSIGNED',
-        title: `Epic Assigned: [${created.epicCode}] "${created.title}"`,
-        message: `${caller.callerName || 'A manager'} assigned you as the owner/lead for epic [${created.epicCode}] "${created.title}".`,
-      });
-    }
+    const caller = await getCallerInfo(req.user);
+    dispatchNotification({
+      entity: {
+        entityType: 'EPIC',
+        entityId: created.id,
+        entityCode: created.epicCode,
+        title: created.title,
+        assigneeEmployeeIds: created.ownerId ? [created.ownerId] : [], // ownerId is an employeeId
+        reviewingLeadEmployeeId: null,
+        creatorEmployeeId: req.user?.employeeId,
+      },
+      actorUserId: req.user!.id,
+      actorName: caller.callerName,
+      eventType: 'CREATED',
+      title: created.title,
+      message: `New Epic '${created.title}' created by ${caller.callerName || 'a team member'}`,
+    });
 
     res.status(201).json(created);
   } catch (err: any) {
@@ -345,6 +342,8 @@ async function handleEpicUpdate(req: any, res: any) {
 
       return {
         ...updated,
+        _prevOwnerId: oldEpic.ownerId,
+        _prevStatus: oldEpic.status,
         entity: resolvedEntity,
         entityCode: entRow?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM'),
         entityName: entRow?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
@@ -355,30 +354,33 @@ async function handleEpicUpdate(req: any, res: any) {
       return res.status(404).json({ message: 'Epic not found' });
     }
 
-    // Fire EPIC_ASSIGNED notification if ownerId changed
-    if (
-      ownerId !== undefined &&
-      ownerId &&
-      ownerId !== (updatedResult as any)._prevOwnerId // will be checked via oldEpic below
-    ) {
-      // Re-check: did ownerId actually change? We read oldEpic inside the transaction above.
-      // We dispatch unconditionally when ownerId is explicitly set and is different.
-      const caller = await getCallerInfo(req.user);
+    const caller = await getCallerInfo(req.user);
+    let whatChanged = '';
+    if (mappedStatus !== undefined && mappedStatus !== (updatedResult as any)._prevStatus) {
+      whatChanged = `status changed to ${mappedStatus}`;
+    } else if (ownerId !== undefined && ownerId !== (updatedResult as any)._prevOwnerId) {
+      whatChanged = 'ownership updated';
+    } else if (title !== undefined && title !== (updatedResult as any).title) {
+      whatChanged = 'title updated';
+    }
+
+    if (whatChanged) {
       dispatchNotification({
         entity: {
           entityType: 'EPIC',
           entityId: updatedResult.id,
           entityCode: updatedResult.epicCode,
           title: updatedResult.title,
-          assigneeEmployeeIds: [ownerId],
+          assigneeEmployeeIds: updatedResult.ownerId ? [updatedResult.ownerId] : [],
           reviewingLeadEmployeeId: null,
           creatorEmployeeId: req.user?.employeeId,
         },
         actorUserId: req.user!.id,
         actorName: caller.callerName,
-        eventType: 'EPIC_ASSIGNED',
-        title: `Epic Assigned: [${updatedResult.epicCode}] "${updatedResult.title}"`,
-        message: `${caller.callerName || 'A manager'} assigned you as the owner/lead for epic [${updatedResult.epicCode}] "${updatedResult.title}".`,
+        eventType: 'STATUS_CHANGED',
+        title: updatedResult.title,
+        message: `Epic '${updatedResult.title}' updated by ${caller.callerName || 'a team member'}: ${whatChanged}`,
+        extraPayload: { whatChanged },
       });
     }
 

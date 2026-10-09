@@ -144,25 +144,23 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       return newInitiative;
     });
 
-    if (created.ownerId) {
-      const caller = await getCallerInfo(req.user);
-      dispatchNotification({
-        entity: {
-          entityType: 'INITIATIVE',
-          entityId: created.id,
-          entityCode: created.initiativeCode,
-          title: created.title,
-          assigneeEmployeeIds: [created.ownerId],
-          reviewingLeadEmployeeId: null,
-          creatorEmployeeId: req.user?.employeeId,
-        },
-        actorUserId: req.user!.id,
-        actorName: caller.callerName,
-        eventType: 'INITIATIVE_ASSIGNED',
-        title: `Initiative Assigned: [${created.initiativeCode}] "${created.title}"`,
-        message: `${caller.callerName || 'A manager'} assigned you as owner of initiative [${created.initiativeCode}] "${created.title}".`,
-      });
-    }
+    const caller = await getCallerInfo(req.user);
+    dispatchNotification({
+      entity: {
+        entityType: 'INITIATIVE',
+        entityId: created.id,
+        entityCode: created.initiativeCode,
+        title: created.title,
+        assigneeEmployeeIds: created.ownerId ? [created.ownerId] : [],
+        reviewingLeadEmployeeId: null,
+        creatorEmployeeId: req.user?.employeeId,
+      },
+      actorUserId: req.user!.id,
+      actorName: caller.callerName,
+      eventType: 'CREATED',
+      title: created.title,
+      message: `New Initiative '${created.title}' created by ${caller.callerName || 'a team member'}`,
+    });
 
     res.status(201).json(created);
   } catch (err: any) {
@@ -256,34 +254,40 @@ async function handleInitiativeUpdate(req: any, res: any) {
         });
       }
 
-      return { ...resInit, _prevOwnerId: oldInit.ownerId };
+      return { ...resInit, _prevOwnerId: oldInit.ownerId, _prevStatus: oldInit.status };
     });
 
     if (!updated) {
       return res.status(404).json({ message: 'Initiative not found' });
     }
 
-    if (
-      ownerId !== undefined &&
-      ownerId &&
-      ownerId !== (updated as any)._prevOwnerId
-    ) {
-      const caller = await getCallerInfo(req.user);
+    const caller = await getCallerInfo(req.user);
+    let whatChanged = '';
+    if (mappedStatus !== undefined && mappedStatus !== (updated as any)._prevStatus) {
+      whatChanged = `status changed to ${mappedStatus}`;
+    } else if (ownerId !== undefined && ownerId !== (updated as any)._prevOwnerId) {
+      whatChanged = 'ownership updated';
+    } else if (title !== undefined && title !== (updated as any).title) {
+      whatChanged = 'title updated';
+    }
+
+    if (whatChanged) {
       dispatchNotification({
         entity: {
           entityType: 'INITIATIVE',
           entityId: updated.id,
           entityCode: updated.initiativeCode,
           title: updated.title,
-          assigneeEmployeeIds: [ownerId],
+          assigneeEmployeeIds: updated.ownerId ? [updated.ownerId] : [],
           reviewingLeadEmployeeId: null,
           creatorEmployeeId: req.user?.employeeId,
         },
         actorUserId: req.user!.id,
         actorName: caller.callerName,
-        eventType: 'INITIATIVE_ASSIGNED',
-        title: `Initiative Assigned: [${updated.initiativeCode}] "${updated.title}"`,
-        message: `${caller.callerName || 'A manager'} assigned you as owner of initiative [${updated.initiativeCode}] "${updated.title}".`,
+        eventType: 'STATUS_CHANGED',
+        title: updated.title,
+        message: `Initiative '${updated.title}' updated by ${caller.callerName || 'a team member'}: ${whatChanged}`,
+        extraPayload: { whatChanged },
       });
     }
 

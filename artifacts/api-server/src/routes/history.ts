@@ -198,6 +198,7 @@ router.get('/:table/:id', async (req: Request, res: Response) => {
         fieldName: recordHistoryTable.fieldName,
         oldValue: recordHistoryTable.oldValue,
         newValue: recordHistoryTable.newValue,
+        changedById: recordHistoryTable.changedById,
         changedByName: recordHistoryTable.changedByName,
         changedAt: recordHistoryTable.changedAt,
       })
@@ -261,7 +262,9 @@ router.get('/:table/:id', async (req: Request, res: Response) => {
       })
       .map((row) => {
         let changedBy = row.changedByName;
-        if (changedBy === 'admin' || !changedBy) {
+        if (row.changedById && lookup.has(row.changedById)) {
+          changedBy = lookup.get(row.changedById)!;
+        } else if (!changedBy || changedBy.trim().toLowerCase() === 'admin' || changedBy.trim().toLowerCase() === 'unknown') {
           changedBy = 'Ashutosh Mishra (ADMN0001)';
         }
 
