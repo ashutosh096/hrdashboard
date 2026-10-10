@@ -237,8 +237,12 @@ router.get('/', async (req, res) => {
             teamNames.push(m);
           }
         }
+        const rawLead = p.lead || '';
+        const resolvedLead = rawLead && empIdToNameMap.has(rawLead) ? empIdToNameMap.get(rawLead)! : rawLead;
         return {
           ...p,
+          lead: resolvedLead,
+          leadId: rawLead,
           team: teamNames,
           teamIds,
         };
@@ -345,17 +349,11 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
     const normalizedTeamIds: string[] = [];
     for (const member of finalTeam) {
       if (!member) continue;
-      const matched = allEmpsForTeam.find(
-        (e) =>
-          e.id === member ||
-          `${e.firstName || ''} ${e.lastName || ''}`.trim().toLowerCase() === String(member).trim().toLowerCase() ||
-          e.employeeCode?.toLowerCase() === String(member).trim().toLowerCase() ||
-          e.email?.toLowerCase() === String(member).trim().toLowerCase()
-      );
+      const matched = allEmpsForTeam.find((e) => e.id === member);
       if (matched) {
         if (!normalizedTeamIds.includes(matched.id)) normalizedTeamIds.push(matched.id);
-      } else {
-        if (!normalizedTeamIds.includes(member)) normalizedTeamIds.push(member);
+      } else if (typeof member === 'string' && member.trim().length === 36) {
+        if (!normalizedTeamIds.includes(member.trim())) normalizedTeamIds.push(member.trim());
       }
     }
 
@@ -407,16 +405,16 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       return newProj;
     });
 
-    // Notify team members + all Admins on project creation
+    // Notify team members + all Admins on project creation (Pure ID-based only)
     const allEmps = await db.select().from(employees);
     const targetMemberEmpIds: string[] = [];
     if (created.lead) {
-      const matchedLead = allEmps.find(e => e.id === created.lead || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(created.lead).trim().toLowerCase());
+      const matchedLead = allEmps.find(e => e.id === created.lead);
       if (matchedLead) targetMemberEmpIds.push(matchedLead.id);
     }
     if (Array.isArray(created.team)) {
       for (const member of created.team) {
-        const matched = allEmps.find(e => e.id === member || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(member).trim().toLowerCase());
+        const matched = allEmps.find(e => e.id === member);
         if (matched) targetMemberEmpIds.push(matched.id);
       }
     }
@@ -524,17 +522,11 @@ router.patch('/:id', async (req, res) => {
         const normalizedTeamIds: string[] = [];
         for (const member of rawTeam) {
           if (!member) continue;
-          const matched = allEmpsForTeam.find(
-            (e) =>
-              e.id === member ||
-              `${e.firstName || ''} ${e.lastName || ''}`.trim().toLowerCase() === String(member).trim().toLowerCase() ||
-              e.employeeCode?.toLowerCase() === String(member).trim().toLowerCase() ||
-              e.email?.toLowerCase() === String(member).trim().toLowerCase()
-          );
+          const matched = allEmpsForTeam.find((e) => e.id === member);
           if (matched) {
             if (!normalizedTeamIds.includes(matched.id)) normalizedTeamIds.push(matched.id);
-          } else {
-            if (!normalizedTeamIds.includes(member)) normalizedTeamIds.push(member);
+          } else if (typeof member === 'string' && member.trim().length === 36) {
+            if (!normalizedTeamIds.includes(member.trim())) normalizedTeamIds.push(member.trim());
           }
         }
         updatePayload.team = normalizedTeamIds;
@@ -625,17 +617,25 @@ router.patch('/:id', async (req, res) => {
     // Notify team members + all Admins on significant changes (status, lead, team, name)
     const caller = await getCallerInfo(req.user);
     let whatChanged = '';
+    let eventType: 'STATUS_CHANGED' | 'DUE_DATE_CHANGED' = 'STATUS_CHANGED';
     if (status !== undefined && status !== existingCheck.status) {
       whatChanged = `status changed to ${status}`;
+      eventType = 'STATUS_CHANGED';
+    } else if (targetDate !== undefined && targetDate !== existingCheck.targetDate) {
+      whatChanged = `target date updated to ${targetDate}`;
+      eventType = 'DUE_DATE_CHANGED';
     } else if (lead !== undefined && lead !== existingCheck.lead) {
       whatChanged = `lead changed to ${lead}`;
+      eventType = 'STATUS_CHANGED';
     } else if (name !== undefined && name !== existingCheck.name) {
       whatChanged = 'name updated';
+      eventType = 'STATUS_CHANGED';
     } else if (team !== undefined) {
       const oldTeam: string[] = Array.isArray(existingCheck.team) ? (existingCheck.team as string[]) : [];
       const newTeamIds = (team as string[]).filter(memberId => !oldTeam.includes(memberId));
       if (newTeamIds.length > 0) {
         whatChanged = 'team members updated';
+        eventType = 'STATUS_CHANGED';
       }
     }
 
@@ -644,14 +644,16 @@ router.patch('/:id', async (req, res) => {
       const targetMemberEmpIds: string[] = [];
       const leadVal = updated?.lead || existingCheck.lead;
       if (leadVal) {
-        const matchedLead = allEmps.find(e => e.id === leadVal || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(leadVal).trim().toLowerCase());
+        const matchedLead = allEmps.find(e => e.id === leadVal);
         if (matchedLead) targetMemberEmpIds.push(matchedLead.id);
       }
-      const teamArr = updated?.team || existingCheck.team;
-      if (Array.isArray(teamArr)) {
-        for (const member of teamArr) {
-          const matched = allEmps.find(e => e.id === member || `${e.firstName} ${e.lastName}`.trim().toLowerCase() === String(member).trim().toLowerCase());
-          if (matched) targetMemberEmpIds.push(matched.id);
+      if (whatChanged === 'team members updated') {
+        const teamArr = updated?.team || existingCheck.team;
+        if (Array.isArray(teamArr)) {
+          for (const member of teamArr) {
+            const matched = allEmps.find(e => e.id === member);
+            if (matched) targetMemberEmpIds.push(matched.id);
+          }
         }
       }
 
@@ -667,7 +669,7 @@ router.patch('/:id', async (req, res) => {
         },
         actorUserId: req.user!.id,
         actorName: caller.callerName,
-        eventType: 'STATUS_CHANGED',
+        eventType,
         title: updated.name,
         message: `Project '${updated.name}' updated by ${caller.callerName || 'a team member'}: ${whatChanged}`,
         extraPayload: { whatChanged },
@@ -679,8 +681,12 @@ router.patch('/:id', async (req, res) => {
     for (const e of allEmpsAfterUpdate) {
       empIdToNameMap.set(e.id, `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.employeeCode || e.email);
     }
+    const rawLead = updated.lead || '';
+    const resolvedLead = rawLead && empIdToNameMap.has(rawLead) ? empIdToNameMap.get(rawLead)! : rawLead;
     const formattedUpdated = {
       ...updated,
+      lead: resolvedLead,
+      leadId: rawLead,
       team: (updated.team || []).map((m: string) => empIdToNameMap.get(m) || m),
       teamIds: updated.team || [],
     };

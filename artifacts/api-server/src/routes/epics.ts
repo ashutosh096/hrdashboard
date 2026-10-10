@@ -54,8 +54,29 @@ router.get('/', async (req, res) => {
         : 'EHM';
       const resolvedEntityCode = epicEntity?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM');
 
+      let resolvedAssignedToNames: string[] = [];
+      let resolvedAssignedToIds: string[] = [];
+      if (epic.assignedTo) {
+        let parsed = epic.assignedTo;
+        try { parsed = JSON.parse(epic.assignedTo); } catch {}
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            const empMatch = allEmployees.find(e => e.id === item || `${e.firstName || ''} ${e.lastName || ''}`.trim().toLowerCase() === String(item).toLowerCase());
+            if (empMatch) {
+              resolvedAssignedToNames.push(`${empMatch.firstName || ''} ${empMatch.lastName || ''}`.trim() || empMatch.email);
+              resolvedAssignedToIds.push(empMatch.id);
+            } else {
+              resolvedAssignedToNames.push(item);
+              resolvedAssignedToIds.push(item);
+            }
+          }
+        }
+      }
+
       return {
         ...epic,
+        assignedTo: resolvedAssignedToNames,
+        assignedToIds: resolvedAssignedToIds,
         createdByName: creatorName,
         entity: resolvedEntity,
         entityCode: resolvedEntityCode,
@@ -344,6 +365,7 @@ async function handleEpicUpdate(req: any, res: any) {
         ...updated,
         _prevOwnerId: oldEpic.ownerId,
         _prevStatus: oldEpic.status,
+        _prevTargetDate: oldEpic.targetDate,
         entity: resolvedEntity,
         entityCode: entRow?.code || (resolvedEntity === 'CLIMAGRO' ? 'CAG' : resolvedEntity === 'COMMON' ? 'COMMON' : 'EHM'),
         entityName: entRow?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
@@ -356,12 +378,19 @@ async function handleEpicUpdate(req: any, res: any) {
 
     const caller = await getCallerInfo(req.user);
     let whatChanged = '';
+    let notifEventType: any = 'STATUS_CHANGED';
     if (mappedStatus !== undefined && mappedStatus !== (updatedResult as any)._prevStatus) {
       whatChanged = `status changed to ${mappedStatus}`;
+      notifEventType = 'STATUS_CHANGED';
+    } else if (targetDate !== undefined && (!(updatedResult as any)._prevTargetDate || new Date(targetDate).toISOString().split('T')[0] !== new Date((updatedResult as any)._prevTargetDate).toISOString().split('T')[0])) {
+      whatChanged = `due date changed to ${new Date(targetDate).toISOString().split('T')[0]}`;
+      notifEventType = 'DUE_DATE_CHANGED';
     } else if (ownerId !== undefined && ownerId !== (updatedResult as any)._prevOwnerId) {
       whatChanged = 'ownership updated';
+      notifEventType = 'STATUS_CHANGED';
     } else if (title !== undefined && title !== (updatedResult as any).title) {
       whatChanged = 'title updated';
+      notifEventType = 'STATUS_CHANGED';
     }
 
     if (whatChanged) {
@@ -371,20 +400,50 @@ async function handleEpicUpdate(req: any, res: any) {
           entityId: updatedResult.id,
           entityCode: updatedResult.epicCode,
           title: updatedResult.title,
-          assigneeEmployeeIds: updatedResult.ownerId ? [updatedResult.ownerId] : [],
+          assigneeEmployeeIds: [
+            ...(updatedResult.ownerId ? [updatedResult.ownerId] : []),
+            ...(Array.isArray(updatedResult.assignedTo)
+              ? updatedResult.assignedTo
+              : (() => { try { return JSON.parse(updatedResult.assignedTo || '[]'); } catch { return []; } })()),
+          ].filter(Boolean),
           reviewingLeadEmployeeId: null,
           creatorEmployeeId: req.user?.employeeId,
         },
         actorUserId: req.user!.id,
         actorName: caller.callerName,
-        eventType: 'STATUS_CHANGED',
+        eventType: notifEventType,
         title: updatedResult.title,
         message: `Epic '${updatedResult.title}' updated by ${caller.callerName || 'a team member'}: ${whatChanged}`,
         extraPayload: { whatChanged },
       });
     }
 
-    res.json(updatedResult);
+
+    let resolvedAssignedToNames: string[] = [];
+    let resolvedAssignedToIds: string[] = [];
+    const allEmpsAfterPut = await db.select().from(employees);
+    if (updatedResult.assignedTo) {
+      let parsed = updatedResult.assignedTo;
+      try { parsed = JSON.parse(updatedResult.assignedTo); } catch {}
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          const empMatch = allEmpsAfterPut.find(e => e.id === item || `${e.firstName || ''} ${e.lastName || ''}`.trim().toLowerCase() === String(item).toLowerCase());
+          if (empMatch) {
+            resolvedAssignedToNames.push(`${empMatch.firstName || ''} ${empMatch.lastName || ''}`.trim() || empMatch.email);
+            resolvedAssignedToIds.push(empMatch.id);
+          } else {
+            resolvedAssignedToNames.push(item);
+            resolvedAssignedToIds.push(item);
+          }
+        }
+      }
+    }
+
+    res.json({
+      ...updatedResult,
+      assignedTo: resolvedAssignedToNames,
+      assignedToIds: resolvedAssignedToIds,
+    });
   } catch (err: any) {
     console.error('[UPDATE EPIC ERROR]:', err);
     res.status(500).json({ message: err.message || 'Failed to update epic' });

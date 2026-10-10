@@ -377,6 +377,16 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
     }
   };
 
+  const resolveAssigneeName = (item: string) => {
+    const found = adminManagerList.find((a: any) => a.id === item || a.name.toLowerCase() === item.toLowerCase());
+    return found ? found.name : item;
+  };
+
+  const formatAssigneeDisplay = (list: string[]) => {
+    if (!list || list.length === 0) return 'Select assignees...';
+    return list.map(resolveAssigneeName).join(', ');
+  };
+
   useEffect(() => {
     loadData();
 
@@ -869,6 +879,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                       <p className="text-xs text-gray-400 font-medium truncate mt-0.5">
                         {parentInit?.title ? `Init: ${parentInit.title} • ` : ''}{parentProj?.name ? `Project: ${parentProj.name} • ` : ''}{epic.department || 'Product & Tech'} • {tasksSummary}
                         {` • Created by: ${epic.createdByName || 'Admin'}`}
+                        {epic.assignedTo && epic.assignedTo.length > 0 ? ` • Assignees: ${formatAssigneeDisplay(epic.assignedTo)}` : ''}
                       </p>
                     </div>
                   </div>
@@ -1281,6 +1292,15 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     {viewingEpic.createdByName || 'Admin'}
                   </span>
                 </div>
+
+                {viewingEpic.assignedTo && viewingEpic.assignedTo.length > 0 && (
+                  <div className="col-span-2 sm:col-span-4">
+                    <span className="text-xs text-gray-400 font-medium block mb-1">Assignees</span>
+                    <span className="text-xs font-bold text-gray-900 block">
+                      {formatAssigneeDisplay(viewingEpic.assignedTo)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Linked Tasks Section with Progress Bar */}
@@ -1741,7 +1761,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     <span className="truncate">
                       {editAssignedTo.length === 0
                         ? 'Select assignees...'
-                        : editAssignedTo.join(', ')}
+                        : formatAssigneeDisplay(editAssignedTo)}
                     </span>
                     <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${editAssignedDropOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -1753,10 +1773,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                         <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
                           <input
                             type="checkbox"
-                            checked={editAssignedTo.includes(emp.name)}
+                            checked={editAssignedTo.includes(emp.id) || editAssignedTo.includes(emp.name)}
                             onChange={(e) => {
-                              if (e.target.checked) setEditAssignedTo(prev => [...prev, emp.name]);
-                              else setEditAssignedTo(prev => prev.filter(n => n !== emp.name));
+                              if (e.target.checked) setEditAssignedTo(prev => [...prev.filter(n => n !== emp.name && n !== emp.id), emp.id]);
+                              else setEditAssignedTo(prev => prev.filter(n => n !== emp.name && n !== emp.id));
                             }}
                             className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
                           />
@@ -1767,7 +1787,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   )}
                   {editAssignedTo.length > 0 && (
                     <p className="text-[10px] text-emerald-600 font-semibold mt-1 truncate">
-                      {editAssignedTo.length} assigned: {editAssignedTo.join(', ')}
+                      {editAssignedTo.length} assigned: {formatAssigneeDisplay(editAssignedTo)}
                     </p>
                   )}
                 </div>
@@ -1980,7 +2000,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                     <span className="truncate">
                       {createAssignedTo.length === 0
                         ? 'Select assignees...'
-                        : createAssignedTo.join(', ')}
+                        : formatAssigneeDisplay(createAssignedTo)}
                     </span>
                     <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${createAssignedDropOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -1992,10 +2012,10 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                         <label key={emp.id} className="flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 cursor-pointer transition-colors">
                           <input
                             type="checkbox"
-                            checked={createAssignedTo.includes(emp.name)}
+                            checked={createAssignedTo.includes(emp.id) || createAssignedTo.includes(emp.name)}
                             onChange={(e) => {
-                              if (e.target.checked) setCreateAssignedTo(prev => [...prev, emp.name]);
-                              else setCreateAssignedTo(prev => prev.filter(n => n !== emp.name));
+                              if (e.target.checked) setCreateAssignedTo(prev => [...prev.filter(n => n !== emp.name && n !== emp.id), emp.id]);
+                              else setCreateAssignedTo(prev => prev.filter(n => n !== emp.name && n !== emp.id));
                             }}
                             className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
                           />
@@ -2006,7 +2026,7 @@ export const EpicsSubView: React.FC<Props> = ({ isManager, onSelectSprint, onSel
                   )}
                   {createAssignedTo.length > 0 && (
                     <p className="text-[10px] text-emerald-600 font-semibold mt-1 truncate">
-                      {createAssignedTo.length} assigned: {createAssignedTo.join(', ')}
+                      {createAssignedTo.length} assigned: {formatAssigneeDisplay(createAssignedTo)}
                     </p>
                   )}
                 </div>

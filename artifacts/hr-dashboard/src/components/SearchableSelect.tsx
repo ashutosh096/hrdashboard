@@ -89,9 +89,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   // Find single selected item
   const selectedOption = !isMulti ? options.find((opt) => opt.id === value) : null;
 
-  // Find multi selected items
+  // Find multi selected items (Strict ID-only)
   const selectedMultiOptions = isMulti
-    ? options.filter((opt) => multiValues.includes(opt.id) || multiValues.includes(opt.label))
+    ? options.filter((opt) => multiValues.includes(opt.id))
     : [];
 
   const handleToggleMultiOption = (optIdOrLabel: string) => {
@@ -235,7 +235,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             ) : (
               filteredOptions.map((opt) => {
                 const isSelected = isMulti
-                  ? multiValues.includes(opt.id) || multiValues.includes(opt.label)
+                  ? multiValues.includes(opt.id)
                   : opt.id === value;
 
                 return (

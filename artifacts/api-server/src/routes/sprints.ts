@@ -263,7 +263,7 @@ async function handleSprintUpdate(req: any, res: any) {
         }
       }
 
-      return { ...resSprint, _prevEmployeeId: oldSprint.employeeId, _prevStatus: oldSprint.status };
+      return { ...resSprint, _prevEmployeeId: oldSprint.employeeId, _prevStatus: oldSprint.status, _prevEndDate: oldSprint.endDate };
     });
 
     if (!updated) {
@@ -309,6 +309,29 @@ async function handleSprintUpdate(req: any, res: any) {
         extraPayload: { oldStatus: (updated as any)._prevStatus, newStatus: updated.status },
       });
     }
+
+    const oldEndStr = (updated as any)._prevEndDate ? new Date((updated as any)._prevEndDate).toISOString().split('T')[0] : '';
+    const newEndStr = updated.endDate ? new Date(updated.endDate).toISOString().split('T')[0] : '';
+    if (newEndStr && oldEndStr && newEndStr !== oldEndStr) {
+      dispatchNotification({
+        entity: {
+          entityType: 'SPRINT',
+          entityId: updated.id,
+          entityCode: updated.sprintCode,
+          title: updated.name,
+          assigneeEmployeeIds: updated.employeeId ? [updated.employeeId] : [],
+          reviewingLeadEmployeeId: updated.reviewingLeadId,
+          creatorEmployeeId: caller.employeeId,
+        },
+        actorUserId: req.user!.id,
+        actorName: caller.callerName,
+        eventType: 'DUE_DATE_CHANGED',
+        title: `Sprint Due Date Changed: [${updated.sprintCode}] "${updated.name}"`,
+        message: `${caller.callerName || 'A team member'} changed sprint due date to ${newEndStr}.`,
+        extraPayload: { oldEndDate: oldEndStr, newEndDate: newEndStr },
+      });
+    }
+
 
     res.json(updated);
   } catch (err: any) {

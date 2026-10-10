@@ -192,7 +192,6 @@ export function getRecipients(
     assignees.filter(excActor).forEach(id => recipients.add(id));
     if (lead && excActor(lead)) recipients.add(lead);
     tagged.filter(excActor).forEach(id => recipients.add(id));
-    if (isHighLevelEntity) admins.filter(excActor).forEach(id => recipients.add(id));
     return { recipientUserIds: Array.from(recipients), removedAssigneeUserIds: [] };
   }
 }

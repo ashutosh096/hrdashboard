@@ -149,10 +149,11 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const isEmployee = user?.role === 'EMPLOYEE';
   const isAssignee = isEmployee
     ? Boolean(
-      (user?.employeeId && task?.assigneeId === user.employeeId) ||
-      (user?.name && task?.assignee && user.name.toLowerCase() === task.assignee.toLowerCase())
+      (user?.employeeId && (task?.assigneeId === user.employeeId || task?.employeeId === user.employeeId)) ||
+      (Array.isArray(task?.assigneeIds) && user?.employeeId && task.assigneeIds.includes(user.employeeId))
     )
     : true;
+
 
   const canUserEditTask = isManagerOrAdmin || isAssignee;
   const readOnlyMode = isReadOnly !== undefined ? isReadOnly : !canUserEditTask;

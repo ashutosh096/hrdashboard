@@ -64,10 +64,11 @@ export const TeamTasksView: React.FC = () => {
       return false;
     }
     if (isEmployee) {
-      const userFirstName = user?.name?.split(' ')[0]?.toLowerCase() || '';
-      return t.partners.some(p => p.toLowerCase().includes(userFirstName));
+      const userEmpId = user?.employeeId;
+      return Boolean(userEmpId && (t as any).partnerIds?.includes(userEmpId));
     }
     return true;
+
   });
 
   const handleMarkCompleted = (taskId: string) => {

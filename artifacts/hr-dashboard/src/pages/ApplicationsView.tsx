@@ -413,27 +413,15 @@ export const ApplicationsView: React.FC = () => {
   const canEditProject = (p: ProjectItem) => {
     if (!isEmployee) return true;
     const userEmpId = user?.employeeId;
-    const isLead = Boolean(
-      (userEmpId && p.lead?.includes(userEmpId)) ||
-      (currentUserName && p.lead?.toLowerCase().includes(currentUserName)) ||
-      (userFirstName && p.lead?.toLowerCase().includes(userFirstName)) ||
-      (userEmail && p.lead?.toLowerCase().includes(userEmail))
-    );
+    if (!userEmpId) return false;
+    const isLead = Boolean(p.lead === userEmpId || (p as any).leadId === userEmpId);
     const isTeamMember =
-      (Array.isArray(p.team) &&
-        p.team.some((member) => {
-          const mLower = member.toLowerCase();
-          return Boolean(
-            (userEmpId && member === userEmpId) ||
-            (currentUserName && mLower.includes(currentUserName)) ||
-            (userFirstName && mLower.includes(userFirstName)) ||
-            (userEmail && mLower.includes(userEmail))
-          );
-        })) ||
-      (Array.isArray((p as any).teamIds) && Boolean(userEmpId && (p as any).teamIds.includes(userEmpId)));
-    const isCreator = Boolean(userEmpId && (p as any).createdById === userEmpId);
+      (Array.isArray(p.team) && p.team.includes(userEmpId)) ||
+      (Array.isArray((p as any).teamIds) && (p as any).teamIds.includes(userEmpId));
+    const isCreator = Boolean((p as any).createdById === userEmpId);
     return isLead || isTeamMember || isCreator;
   };
+
 
   const scopedProjects = projects.filter(p => {
     const matchesEntity = matchesEntityFilter(p, selectedEntity);
@@ -1177,7 +1165,14 @@ export const ApplicationsView: React.FC = () => {
                                       <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1">
                                         <User className="w-3 h-3 text-indigo-600" /> Project Lead
                                       </span>
-                                      <span className="font-bold text-indigo-700 block">{prj.lead || 'Unassigned'}</span>
+                                      <span className="font-bold text-indigo-700 block">
+                                        {(() => {
+                                          const matchedEmp = employees.find((e: any) => e.id === prj.lead || e.id === (prj as any).leadId);
+                                          return matchedEmp
+                                            ? `${matchedEmp.firstName || ''} ${matchedEmp.lastName || ''}`.trim()
+                                            : (prj.lead && prj.lead.trim() ? prj.lead : 'Unassigned');
+                                        })()}
+                                      </span>
                                     </div>
 
                                     <div className="space-y-1">
@@ -2303,11 +2298,12 @@ export const ApplicationsView: React.FC = () => {
                     <span>PROJECT LEAD</span>
                   </div>
                   <div className="text-xs font-bold text-gray-800">
-                    {p.lead && p.lead.trim() ? (
-                      p.lead
-                    ) : (
-                      <span className="italic font-normal text-gray-400">No lead assigned</span>
-                    )}
+                    {(() => {
+                      const matchedEmp = employees.find((e: any) => e.id === p.lead || e.id === (p as any).leadId);
+                      return matchedEmp
+                        ? `${matchedEmp.firstName || ''} ${matchedEmp.lastName || ''}`.trim()
+                        : (p.lead && p.lead.trim() ? p.lead : <span className="italic font-normal text-gray-400">No lead assigned</span>);
+                    })()}
                   </div>
                 </div>
 

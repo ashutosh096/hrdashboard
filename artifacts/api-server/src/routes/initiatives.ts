@@ -254,7 +254,7 @@ async function handleInitiativeUpdate(req: any, res: any) {
         });
       }
 
-      return { ...resInit, _prevOwnerId: oldInit.ownerId, _prevStatus: oldInit.status };
+      return { ...resInit, _prevOwnerId: oldInit.ownerId, _prevStatus: oldInit.status, _prevTargetDate: oldInit.targetDate };
     });
 
     if (!updated) {
@@ -263,12 +263,19 @@ async function handleInitiativeUpdate(req: any, res: any) {
 
     const caller = await getCallerInfo(req.user);
     let whatChanged = '';
+    let eventType: 'STATUS_CHANGED' | 'DUE_DATE_CHANGED' = 'STATUS_CHANGED';
     if (mappedStatus !== undefined && mappedStatus !== (updated as any)._prevStatus) {
       whatChanged = `status changed to ${mappedStatus}`;
+      eventType = 'STATUS_CHANGED';
+    } else if (targetDate !== undefined && targetDate !== (updated as any)._prevTargetDate) {
+      whatChanged = `target date updated to ${targetDate}`;
+      eventType = 'DUE_DATE_CHANGED';
     } else if (ownerId !== undefined && ownerId !== (updated as any)._prevOwnerId) {
       whatChanged = 'ownership updated';
+      eventType = 'STATUS_CHANGED';
     } else if (title !== undefined && title !== (updated as any).title) {
       whatChanged = 'title updated';
+      eventType = 'STATUS_CHANGED';
     }
 
     if (whatChanged) {
@@ -284,7 +291,7 @@ async function handleInitiativeUpdate(req: any, res: any) {
         },
         actorUserId: req.user!.id,
         actorName: caller.callerName,
-        eventType: 'STATUS_CHANGED',
+        eventType,
         title: updated.title,
         message: `Initiative '${updated.title}' updated by ${caller.callerName || 'a team member'}: ${whatChanged}`,
         extraPayload: { whatChanged },

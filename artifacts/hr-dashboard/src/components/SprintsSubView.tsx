@@ -548,20 +548,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     if (isManager) return true;
     if (!task) return false;
     const targetId = user?.employeeId || user?.id;
-    const targetEmail = (user?.email || '').toLowerCase();
-    const targetName = (user?.name || '').toLowerCase().trim();
+    if (!targetId) return false;
 
     return Boolean(
-      (targetId && (task.assigneeId === targetId || task.employeeId === targetId)) ||
-      (targetId && Array.isArray(task.assigneeIds) && task.assigneeIds.includes(targetId)) ||
-      (targetEmail && task.assigneeEmail?.toLowerCase() === targetEmail) ||
-      (targetName && (
-        (task.assigneeName && (
-          task.assigneeName.toLowerCase().trim() === targetName ||
-          task.assigneeName.split(',').map((n: string) => n.trim().toLowerCase()).includes(targetName)
-        )) ||
-        (task.assignee && task.assignee.toLowerCase().trim() === targetName)
-      ))
+      (task.assigneeId === targetId || task.employeeId === targetId) ||
+      (Array.isArray(task.assigneeIds) && task.assigneeIds.includes(targetId))
     );
   };
 
@@ -821,7 +812,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     const sprintDeliverableUrl = finalSprintLinks.map(l => l.url).join(', ');
 
     const targetEmpId = selectedEmpIds.length > 0 ? selectedEmpIds[0] : null;
-    const assignedEmp = targetEmpId ? employees.find(e => e.id === targetEmpId) : null;
+    if (!targetEmpId) {
+      setIsSubmitting(false);
+      return toast.error('Please select an assignee team member for the sprint');
+    }
+    const assignedEmp = employees.find(e => e.id === targetEmpId) || null;
     const targetLeadId = selectedLeadIds.length > 0 ? selectedLeadIds[0] : (selectedLeadId || null);
     const leadEmp = targetLeadId ? employees.find(e => e.id === targetLeadId) : null;
 
@@ -832,7 +827,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       const createdSprint = await fetchApi<any>('/api/sprints', {
         method: 'POST',
         body: JSON.stringify({
-          employeeId: targetEmpId || (employees[0]?.id || 'emp-1'),
+          employeeId: targetEmpId,
           assigneeIds: selectedEmpIds,
           epicId: selectedEpicId || null,
           projectId: selectedProjectId || null,
@@ -1289,16 +1284,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       matchesEmp = Boolean(
         t.assigneeId === selectedEmployeeId ||
         t.employeeId === selectedEmployeeId ||
-        (selEmail && t.assigneeEmail?.toLowerCase() === selEmail) ||
-        (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(selectedEmployeeId)) ||
-        (isMatchingUserSelf && (
-          (userEmail && t.assigneeEmail?.toLowerCase() === userEmail) ||
-          (userName && (t.assigneeName || t.assignee)?.toLowerCase().trim() === userName)
-        )) ||
-        (t.assigneeName && selFullName && (
-          t.assigneeName.toLowerCase().trim() === selFullName ||
-          t.assigneeName.split(',').map((n: string) => n.trim().toLowerCase()).includes(selFullName)
-        ))
+        (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(selectedEmployeeId))
       );
     }
 

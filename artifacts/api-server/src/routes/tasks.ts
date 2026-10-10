@@ -779,61 +779,28 @@ const handleTaskUpdate = async (req: any, res: any) => {
         updateData.projectId = projectId || null;
       }
 
-      // Handle Assignee ID / Name (Support removing assignee and keeping unassigned)
+      // Handle Assignee ID / IDs (Pure ID-based only, no name or surname matching)
       if (Array.isArray(assigneeIds)) {
-        const cleanIds = assigneeIds.filter(Boolean);
+        const cleanIds = assigneeIds.filter(id => id && typeof id === 'string' && id.trim().length === 36).map(id => id.trim());
         updateData.assigneeIds = cleanIds;
         updateData.assigneeId = cleanIds.length > 0 ? cleanIds[0] : null;
       } else if (assigneeId === null || assigneeId === '' || assigneeName === '' || assigneeName === 'Unassigned' || assigneeName === 'None') {
         updateData.assigneeId = null;
-      } else if (assigneeId && typeof assigneeId === 'string' && assigneeId.length === 36) {
-        updateData.assigneeId = assigneeId;
-      } else if (assigneeName || assigneeId) {
-        const rawTarget = String(assigneeName || assigneeId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
-        if (rawTarget === 'unassigned' || rawTarget === 'none' || rawTarget === '') {
-          updateData.assigneeId = null;
-        } else {
-          const allEmps = await tx.select().from(employees);
-          const matchedEmp = allEmps.find(
-            (e) =>
-              e.id === assigneeId ||
-              `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
-              e.firstName.toLowerCase() === rawTarget ||
-              e.lastName?.toLowerCase() === rawTarget
-          );
-          if (matchedEmp) {
-            updateData.assigneeId = matchedEmp.id;
-          }
-        }
+      } else if (assigneeId && typeof assigneeId === 'string' && assigneeId.trim().length === 36) {
+        updateData.assigneeId = assigneeId.trim();
       }
 
-      // Handle Reviewing Lead ID / Name (Support removing lead and keeping unassigned/none)
+      // Handle Reviewing Lead ID / IDs (Pure ID-based only, no name or surname matching)
       if (Array.isArray(reviewingLeadIds)) {
-        const cleanLeadIds = reviewingLeadIds.filter(Boolean);
+        const cleanLeadIds = reviewingLeadIds.filter(id => id && typeof id === 'string' && id.trim().length === 36).map(id => id.trim());
         updateData.reviewingLeadIds = cleanLeadIds;
         updateData.reviewingLeadId = cleanLeadIds.length > 0 ? cleanLeadIds[0] : null;
       } else if (reviewingLeadId === null || reviewingLeadId === '' || reviewingLead === '' || reviewingLead === 'Unassigned' || reviewingLead === 'None') {
         updateData.reviewingLeadId = null;
-      } else if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.length === 36) {
-        updateData.reviewingLeadId = reviewingLeadId;
-      } else if (reviewingLead || reviewingLeadId) {
-        const rawTarget = String(reviewingLead || reviewingLeadId || '').replace(/\(.*?\)/g, '').trim().toLowerCase();
-        if (rawTarget === 'unassigned' || rawTarget === 'none' || rawTarget === '' || rawTarget === 'manager lead') {
-          updateData.reviewingLeadId = null;
-        } else {
-          const allEmps = await tx.select().from(employees);
-          const matchedLead = allEmps.find(
-            (e) =>
-              e.id === reviewingLeadId ||
-              `${e.firstName} ${e.lastName}`.trim().toLowerCase() === rawTarget ||
-              e.firstName.toLowerCase() === rawTarget ||
-              e.lastName?.toLowerCase() === rawTarget
-          );
-          if (matchedLead) {
-            updateData.reviewingLeadId = matchedLead.id;
-          }
-        }
+      } else if (reviewingLeadId && typeof reviewingLeadId === 'string' && reviewingLeadId.trim().length === 36) {
+        updateData.reviewingLeadId = reviewingLeadId.trim();
       }
+
 
       // Handle Due Date
       if (dueDate !== undefined) {
