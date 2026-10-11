@@ -101,6 +101,14 @@ async function ensureTablesExist() {
           ALTER TABLE projects ADD COLUMN deliverable_url TEXT DEFAULT '';
         END IF;
 
+        -- Ensure deliverable_url on tasks is TEXT to support multiple concatenated links without length limits
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'tasks' AND column_name = 'deliverable_url' AND data_type = 'character varying'
+        ) THEN
+          ALTER TABLE tasks ALTER COLUMN deliverable_url TYPE TEXT;
+        END IF;
+
         -- Ensure checkpoints column exists on projects
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns 

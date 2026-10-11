@@ -32,7 +32,7 @@ export const tasks = pgTable(
     creatorId: uuid('creator_id').references(() => employees.id).notNull(),
     reviewingLeadId: uuid('reviewing_lead_id').references(() => employees.id),
     reviewingLeadIds: jsonb('reviewing_lead_ids').$type<string[]>().default([]),
-    deliverableUrl: varchar('deliverable_url', { length: 500 }),
+    deliverableUrl: text('deliverable_url'),
     deliverableLinks: jsonb('deliverable_links').$type<{ name: string; url: string; note?: string }[]>().default([]),
     parentTaskId: uuid('parent_task_id'),
     groupTaskId: uuid('group_task_id'), // UUID linking cloned group tasks
