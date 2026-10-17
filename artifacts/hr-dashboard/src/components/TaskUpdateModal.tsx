@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2, History, UserCheck, Pencil, Check } from 'lucide-react';
+import { X, Save, Link2, MessageSquare, Eye, ExternalLink, CheckCircle, CheckSquare, Plus, ListChecks, Send, Paperclip, Clock, Copy, Trash2, History, UserCheck, Pencil, Check, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchApi, clearApiCache } from '@workspace/api-client-react';
@@ -9,7 +9,7 @@ import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
 import { RecordHistoryPanel } from './RecordHistoryPanel';
 import { RecentActivitySection } from './RecentActivitySection';
-import { formatDateTime } from '../utils/dateUtils';
+import { formatDateTime, formatCommentDateTime } from '../utils/dateUtils';
 import { getEntityBadge } from '../utils/entityUtils';
 
 export interface ChecklistItem {
@@ -40,6 +40,11 @@ export interface TaskItem {
   epicId?: string | null;
   parentEpicCode?: string | null;
   parentEpicTitle?: string | null;
+  projectId?: string | null;
+  parentProjectCode?: string | null;
+  parentProjectTitle?: string | null;
+  projectCode?: string | null;
+  projectName?: string | null;
   assignee: string;
   assigneeId?: string;
   assigneeIds?: string[];
@@ -149,7 +154,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const isEmployee = user?.role === 'EMPLOYEE';
   const isAssignee = isEmployee
     ? Boolean(
-      (user?.employeeId && (task?.assigneeId === user.employeeId || task?.employeeId === user.employeeId)) ||
+      (user?.employeeId && (task?.assigneeId === user.employeeId || (task as any)?.employeeId === user.employeeId)) ||
       (Array.isArray(task?.assigneeIds) && user?.employeeId && task.assigneeIds.includes(user.employeeId))
     )
     : true;
@@ -165,8 +170,10 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
 
   const [employeesList, setEmployeesList] = useState<{ id: string; name: string; designation: string }[]>([]);
-  const [epicsList, setEpicsList] = useState<{ id: string; epicCode: string; title: string; entityCode?: string }[]>([]);
+  const [epicsList, setEpicsList] = useState<{ id: string; epicCode: string; title: string; entityCode?: string; projectId?: string }[]>([]);
+  const [projectsList, setProjectsList] = useState<{ id: string; code: string; name: string; entity?: string }[]>([]);
   const [selectedEpicId, setSelectedEpicId] = useState<string>('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [entity, setEntity] = useState('EHM');
   const [parentTaskId, setParentTaskId] = useState('');
   const [taskName, setTaskName] = useState('');
@@ -193,6 +200,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [newChecklistText, setNewChecklistText] = useState('');
   const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null);
   const [editingChecklistText, setEditingChecklistText] = useState<string>('');
+  const [draggedChecklistIndex, setDraggedChecklistIndex] = useState<number | null>(null);
+  const [dragOverChecklistIndex, setDragOverChecklistIndex] = useState<number | null>(null);
 
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
@@ -202,12 +211,34 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [isSavingTask, setIsSavingTask] = useState(false);
   const [loadingSubresources, setLoadingSubresources] = useState(false);
 
+  const handleReorderChecklist = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= checklists.length || toIndex >= checklists.length) return;
+    const updated = [...checklists];
+    const [movedItem] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, movedItem);
+    setChecklists(updated);
+
+    if (task?.id) {
+      try {
+        await fetchApi(`/api/tasks/${task.id}/checklists/reorder`, {
+          method: 'PUT',
+          body: JSON.stringify({ orderedIds: updated.map((c) => c.id) }),
+        });
+        clearApiCache(`/api/tasks/${task.id}/checklists`);
+        toast.success('Subtask order updated');
+      } catch (err) {
+        console.error('Failed to save checklist reorder:', err);
+      }
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       Promise.all([
         fetchApi<any[]>('/api/employees').catch(() => []),
         fetchApi<any[]>('/api/epics').catch(() => []),
-      ]).then(([empData, epicsData]) => {
+        fetchApi<any[]>('/api/projects').catch(() => []),
+      ]).then(([empData, epicsData, projsData]) => {
         if (Array.isArray(empData)) {
           const list = empData.map((e) => ({
             id: e.id,
@@ -223,9 +254,20 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
             epicCode: ep.epicCode,
             title: ep.title,
             entityCode: ep.entityCode || ep.entity,
+            projectId: ep.projectId,
           }));
           list.sort((a, b) => (a.title || a.epicCode || '').localeCompare(b.title || b.epicCode || '', undefined, { sensitivity: 'base' }));
           setEpicsList(list);
+        }
+        if (Array.isArray(projsData)) {
+          const list = projsData.map((p: any) => ({
+            id: p.id,
+            code: p.code,
+            name: p.name,
+            entity: p.entity,
+          }));
+          list.sort((a, b) => (a.name || a.code || '').localeCompare(b.name || b.code || '', undefined, { sensitivity: 'base' }));
+          setProjectsList(list);
         }
       }).catch(() => { });
     }
@@ -248,9 +290,9 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       }
 
       if (commentsData && commentsData.length > 0) {
-        setComments(commentsData);
+        setComments([...commentsData].reverse());
       } else if (Array.isArray((task as any).comments) && (task as any).comments.length > 0) {
-        setComments((task as any).comments);
+        setComments([...(task as any).comments].reverse());
       } else {
         setComments([]);
       }
@@ -376,6 +418,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       setPriority(normalizePriorityCode(task.priority));
       setDueDate(parseDateForInput(task.dueDate));
       setSelectedEpicId(task.epicId || (task as any).parentEpicId || '');
+      setSelectedProjectId(task.projectId || (task as any).parentProjectId || '');
       loadTaskData();
     }
   }, [task?.id, isOpen]);
@@ -395,11 +438,21 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       toast.error('Please enter a deliverable URL');
       return;
     }
-    let formattedUrl = urlTrimmed;
-    if (!/^https?:\/\//i.test(formattedUrl) && (formattedUrl.includes('.') || formattedUrl.startsWith('localhost'))) {
-      formattedUrl = `https://${formattedUrl}`;
+
+    if (/^[a-zA-Z]:\\/i.test(urlTrimmed) || urlTrimmed.startsWith('file://') || urlTrimmed.startsWith('\\\\')) {
+      toast.error('Local computer paths (C:\\...) cannot be opened by web browsers. Please upload the PDF/file to Google Drive or OneDrive and paste the shared link.');
+      return;
     }
-    const linkName = newDeliverableLinkName.trim() || 'Deliverable Link';
+
+    let formattedUrl = urlTrimmed;
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+      if (formattedUrl.startsWith('localhost')) {
+        formattedUrl = `http://${formattedUrl}`;
+      } else {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+    }
+    const linkName = newDeliverableLinkName.trim() || (formattedUrl.toLowerCase().includes('.pdf') ? 'PDF Document' : formattedUrl.includes('drive.google') || formattedUrl.includes('docs.google') ? 'Google Drive Link' : 'Deliverable Link');
     const linkNote = newDeliverableLinkNote.trim();
 
     if (deliverableLinks.some(l => l.url.toLowerCase() === formattedUrl.toLowerCase())) {
@@ -509,7 +562,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
         method: 'POST',
         body: JSON.stringify({ content: newCommentText.trim() }),
       });
-      setComments((prev) => [...prev, newComment]);
+      setComments((prev) => [newComment, ...prev]);
       setNewCommentText('');
       toast.success('Comment posted!');
     } catch (err) {
@@ -573,6 +626,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
         setIsSavingTask(true);
         const resolvedCode = entity === 'CLIMAGRO' ? 'CAG' : entity === 'COMMON' ? 'COMMON' : 'EHM';
         const matchedEpic = epicsList.find((e) => e.id === selectedEpicId);
+        const matchedProject = projectsList.find((p) => p.id === selectedProjectId);
 
         // Include any unsaved link typed into the input
         let finalLinks = [...deliverableLinks];
@@ -612,6 +666,11 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           epicId: selectedEpicId || null,
           parentEpicCode: matchedEpic ? matchedEpic.epicCode : selectedEpicId ? task.parentEpicCode : null,
           parentEpicTitle: matchedEpic ? matchedEpic.title : selectedEpicId ? task.parentEpicTitle : null,
+          projectId: selectedProjectId || null,
+          parentProjectCode: matchedProject ? matchedProject.code : selectedProjectId ? task.parentProjectCode : null,
+          parentProjectTitle: matchedProject ? matchedProject.name : selectedProjectId ? task.parentProjectTitle : null,
+          projectCode: matchedProject ? matchedProject.code : selectedProjectId ? task.projectCode : null,
+          projectName: matchedProject ? matchedProject.name : selectedProjectId ? task.projectName : null,
           assignee: primaryAssigneeNames,
           assigneeId: primaryAssigneeId,
           assigneeIds,
@@ -900,50 +959,108 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 )}
               </div>
 
-              {/* Parent Feature Epic */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Parent Feature Epic
-                  </label>
-                  {selectedEpicId ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      ✓ Linked to Feature Epic
-                    </span>
+              {/* 3. Parent Feature Epic & Parent Project (Matching SprintsSubView) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Parent Feature Epic */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Parent Feature Epic
+                    </label>
+                    {selectedEpicId ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        ✓ Linked to Epic
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-gray-400">
+                        No Parent Epic (Standalone Backlog)
+                      </span>
+                    )}
+                  </div>
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={
+                        (() => {
+                          const matched = epicsList.find((e) => e.id === selectedEpicId);
+                          if (matched) return `${matched.epicCode}: ${matched.title}`;
+                          if (task.parentEpicCode) return `${task.parentEpicCode}: ${task.parentEpicTitle || ''}`.trim();
+                          return 'No parent epic (Standalone Backlog)';
+                        })()
+                      }
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
                   ) : (
-                    <span className="text-[10px] font-medium text-gray-400">
-                      No Parent Epic (Standalone Backlog Task)
-                    </span>
+                    <SearchableSelect
+                      options={epicsList.map(ep => ({
+                        id: ep.id,
+                        code: ep.epicCode,
+                        label: ep.title,
+                      }))}
+                      value={selectedEpicId}
+                      onChange={(val) => {
+                        setSelectedEpicId(val);
+                        if (val) {
+                          const found = epicsList.find(e => e.id === val);
+                          if (found && found.projectId && !selectedProjectId) {
+                            setSelectedProjectId(found.projectId);
+                          }
+                        }
+                      }}
+                      placeholder="Select Parent Epic..."
+                      noneLabel="-- No parent epic (Standalone Backlog) --"
+                      searchPlaceholder="Search epics..."
+                    />
                   )}
                 </div>
-                {readOnlyMode ? (
-                  <input
-                    type="text"
-                    disabled
-                    value={
-                      (() => {
-                        const matched = epicsList.find((e) => e.id === selectedEpicId);
-                        if (matched) return `${matched.epicCode}: ${matched.title}`;
-                        if (task.parentEpicCode) return `${task.parentEpicCode}: ${task.parentEpicTitle || ''}`.trim();
-                        return 'No parent epic (Standalone Backlog)';
-                      })()
-                    }
-                    className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
-                  />
-                ) : (
-                  <select
-                    value={selectedEpicId}
-                    onChange={(e) => setSelectedEpicId(e.target.value)}
-                    className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                  >
-                    <option value="">No parent epic (Standalone Backlog)</option>
-                    {epicsList.map((ep) => (
-                      <option key={ep.id} value={ep.id}>
-                        {ep.epicCode} - {ep.title} ({ep.entityCode || 'ALL'})
-                      </option>
-                    ))}
-                  </select>
-                )}
+
+                {/* Parent Project */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Parent Project
+                    </label>
+                    {selectedProjectId ? (
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                        ✓ Linked to Project
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        Optional (Standalone)
+                      </span>
+                    )}
+                  </div>
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={
+                        (() => {
+                          const matched = projectsList.find((p) => p.id === selectedProjectId);
+                          if (matched) return `${matched.code}: ${matched.name}`;
+                          if (task.projectCode || task.projectName) return `${task.projectCode || ''}: ${task.projectName || ''}`.trim();
+                          return 'No project (Standalone)';
+                        })()
+                      }
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <SearchableSelect
+                      options={projectsList.map(p => ({
+                        id: p.id,
+                        code: p.code,
+                        label: p.name,
+                        subtitle: p.entity,
+                      }))}
+                      value={selectedProjectId}
+                      onChange={setSelectedProjectId}
+                      placeholder="Select Parent Project..."
+                      noneLabel="-- No Project (Standalone) --"
+                      searchPlaceholder="Search projects..."
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Assignee & Reviewing Lead */}
@@ -1162,25 +1279,36 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                           <Link2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-xs text-emerald-950">
+                              <a
+                                href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold text-xs text-emerald-950 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                              >
                                 {link.name || 'Deliverable Link'}
-                              </span>
+                              </a>
                               {link.note && (
                                 <span className="text-[10px] text-gray-500 bg-white/80 px-2 py-0.5 rounded-md border border-emerald-200/60">
                                   {link.note}
                                 </span>
                               )}
                             </div>
-                            <p className="truncate font-mono text-[11px] text-emerald-800 hover:underline cursor-pointer" title={link.url}>
+                            <a
+                              href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="truncate font-mono text-[11px] text-emerald-800 hover:underline block"
+                              title={link.url}
+                            >
                               {link.url}
-                            </p>
+                            </a>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <a
                             href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                             title="Open link in new tab"
                           >
@@ -1323,7 +1451,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     No subtasks added yet. Add one below!
                   </div>
                 ) : (
-                  checklists.map((item) => (
+                  checklists.map((item, index) => (
                     editingChecklistId === item.id ? (
                       <div key={item.id} className="flex items-center gap-2 p-2 rounded-xl border border-emerald-300 bg-white">
                         <input
@@ -1361,20 +1489,89 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                     ) : (
                       <div
                         key={item.id}
-                        className={`group flex items-center justify-between p-2.5 rounded-xl border transition-colors ${item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                          }`}
+                        draggable={!readOnlyMode}
+                        onDragStart={(e) => {
+                          if (readOnlyMode) return;
+                          setDraggedChecklistIndex(index);
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', String(index));
+                        }}
+                        onDragOver={(e) => {
+                          if (readOnlyMode) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                          setDragOverChecklistIndex(index);
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverChecklistIndex === index) {
+                            setDragOverChecklistIndex(null);
+                          }
+                        }}
+                        onDrop={(e) => {
+                          if (readOnlyMode) return;
+                          e.preventDefault();
+                          const fromIdx = draggedChecklistIndex;
+                          if (fromIdx !== null && fromIdx !== index) {
+                            handleReorderChecklist(fromIdx, index);
+                          }
+                          setDraggedChecklistIndex(null);
+                          setDragOverChecklistIndex(null);
+                        }}
+                        onDragEnd={() => {
+                          setDraggedChecklistIndex(null);
+                          setDragOverChecklistIndex(null);
+                        }}
+                        className={`group flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                          dragOverChecklistIndex === index
+                            ? 'border-emerald-500 bg-emerald-100/40 shadow-sm scale-[1.01]'
+                            : item.isCompleted
+                            ? 'bg-emerald-50/50 border-emerald-200'
+                            : 'bg-gray-50 border-gray-200'
+                        } ${draggedChecklistIndex === index ? 'opacity-40' : ''}`}
                       >
-                        <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0 pr-2">
-                          <input
-                            type="checkbox"
-                            checked={item.isCompleted}
-                            onChange={() => handleToggleChecklist(item)}
-                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                          />
-                          <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
-                            {item.itemText}
-                          </span>
-                        </label>
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                          {!readOnlyMode && (
+                            <div className="flex items-center gap-0.5 text-gray-300 group-hover:text-gray-500 shrink-0">
+                              <span
+                                title="Slide or drag to reorder subtask"
+                                className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-gray-200/60 transition-colors"
+                              >
+                                <GripVertical className="w-3.5 h-3.5" />
+                              </span>
+                              <div className="flex flex-col -space-y-1">
+                                <button
+                                  type="button"
+                                  disabled={index === 0}
+                                  onClick={() => handleReorderChecklist(index, index - 1)}
+                                  title="Slide up"
+                                  className="p-0.5 text-gray-300 hover:text-emerald-600 disabled:opacity-20 disabled:pointer-events-none rounded transition-colors cursor-pointer"
+                                >
+                                  <ChevronUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={index === checklists.length - 1}
+                                  onClick={() => handleReorderChecklist(index, index + 1)}
+                                  title="Slide down"
+                                  className="p-0.5 text-gray-300 hover:text-emerald-600 disabled:opacity-20 disabled:pointer-events-none rounded transition-colors cursor-pointer"
+                                >
+                                  <ChevronDown className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={item.isCompleted}
+                              onChange={() => handleToggleChecklist(item)}
+                              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                            />
+                            <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                              {item.itemText}
+                            </span>
+                          </label>
+                        </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           {item.completedAt && (
@@ -1431,7 +1628,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
 
           {/* Right Column (Activity Log & Comments) */}
           <div className="lg:col-span-5 flex flex-col bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-left min-h-[420px]">
-            <div className="flex items-center justify-between pb-2.5 border-b border-gray-200 mb-3 flex-shrink-0">
+            <div className="flex items-center justify-between pb-2.5 border-b border-gray-200 mb-2.5 flex-shrink-0">
               <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
                 <span>Activity & Comments</span>
@@ -1441,8 +1638,28 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
               </span>
             </div>
 
-            {/* Comments Feed */}
-            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-[260px] mb-3">
+            {/* Post Comment Form (Moved from down to up) */}
+            {!readOnlyMode && (
+              <form onSubmit={handleAddComment} className="flex gap-2 pb-2.5 border-b border-gray-200 flex-shrink-0 mb-2.5">
+                <input
+                  type="text"
+                  placeholder="Write a comment or activity log..."
+                  value={newCommentText}
+                  onChange={(e) => setNewCommentText(e.target.value)}
+                  className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Post</span>
+                </button>
+              </form>
+            )}
+
+            {/* Comments Feed (Newest on top / from down to up) */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-[260px]">
               {loadingSubresources && comments.length === 0 ? (
                 <div className="space-y-2 animate-pulse py-2">
                   <div className="h-16 bg-white rounded-xl border border-gray-100" />
@@ -1468,7 +1685,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                       <div className="flex items-center gap-1.5">
                         <span className="flex items-center gap-1 font-semibold text-gray-400">
                           <Clock className="w-3 h-3 text-emerald-600" />
-                          {formatDateTime(c.createdAt)}
+                          {formatCommentDateTime(c.createdAt)}
                         </span>
                         {!c.isSystemLog && !readOnlyMode && (
                           <div className="flex items-center gap-0.5 ml-1">
@@ -1525,24 +1742,6 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                 ))
               )}
             </div>
-
-            {/* Post Comment Form */}
-            <form onSubmit={handleAddComment} className="flex gap-2 pt-2.5 border-t border-gray-200 flex-shrink-0">
-              <input
-                type="text"
-                placeholder="Write a comment or activity log..."
-                value={newCommentText}
-                onChange={(e) => setNewCommentText(e.target.value)}
-                className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Post</span>
-              </button>
-            </form>
 
             {/* Audit History Timeline Widget */}
             <div className="mt-3 pt-2">

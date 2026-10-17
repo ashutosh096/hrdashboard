@@ -1437,6 +1437,38 @@ router.get('/:id/checklists', async (req, res) => {
   }
 });
 
+// PUT /api/tasks/:id/checklists/reorder
+router.put('/:id/checklists/reorder', async (req, res) => {
+  const { id } = req.params;
+  const { orderedIds } = req.body;
+  if (!Array.isArray(orderedIds)) {
+    return res.status(400).json({ message: 'orderedIds must be an array of checklist IDs' });
+  }
+
+  try {
+    const [targetTask] = await db.select().from(tasks).where(eq(tasks.id, id));
+    if (!targetTask) return res.status(404).json({ message: 'Task not found' });
+
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db
+        .update(taskChecklists)
+        .set({ sortOrder: i + 1 })
+        .where(and(eq(taskChecklists.id, orderedIds[i]), eq(taskChecklists.taskId, id)));
+    }
+
+    const updated = await db
+      .select()
+      .from(taskChecklists)
+      .where(eq(taskChecklists.taskId, id))
+      .orderBy(asc(taskChecklists.sortOrder));
+
+    res.json(updated);
+  } catch (err) {
+    console.error('[REORDER CHECKLISTS ERROR]:', err);
+    res.status(500).json({ message: 'Failed to reorder checklists' });
+  }
+});
+
 // POST /api/tasks/:id/checklists
 router.post('/:id/checklists', async (req, res) => {
   const { id } = req.params;

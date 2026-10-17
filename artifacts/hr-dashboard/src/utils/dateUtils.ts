@@ -102,3 +102,24 @@ export const getKolkataDateString = (d: Date = new Date()): string => {
   }
 };
 
+export const formatCommentDateTime = (dateInput?: string | Date | null): string => {
+  if (!dateInput) return 'N/A';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput);
+
+    return d.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return String(dateInput);
+  }
+};
+

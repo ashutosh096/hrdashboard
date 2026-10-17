@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send, History, UserCheck, Pencil, Trash2, Check, MoreVertical, Paperclip, Link2, ExternalLink } from 'lucide-react';
+import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send, History, UserCheck, Pencil, Trash2, Check, MoreVertical, Paperclip, Link2, ExternalLink, GripVertical } from 'lucide-react';
 import { fetchApi, getCachedApi, clearApiCache } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { CalendarPicker } from './CalendarPicker';
 import { SearchableSelect } from './SearchableSelect';
 import { RecordHistoryPanel } from './RecordHistoryPanel';
-import { formatDateTime } from '../utils/dateUtils';
+import { formatDateTime, formatCommentDateTime } from '../utils/dateUtils';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { KanbanSkeleton, InlineErrorRetry } from './Skeletons';
@@ -245,6 +245,18 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [modalNewChecklistText, setModalNewChecklistText] = useState('');
   const [editingModalChkId, setEditingModalChkId] = useState<string | null>(null);
   const [editingModalChkText, setEditingModalChkText] = useState('');
+  const [draggedModalChkIndex, setDraggedModalChkIndex] = useState<number | null>(null);
+  const [dragOverModalChkIndex, setDragOverModalChkIndex] = useState<number | null>(null);
+
+  const handleReorderModalChecklist = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= modalChecklists.length || toIndex >= modalChecklists.length) return;
+    setModalChecklists((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, movedItem);
+      return updated;
+    });
+  };
 
   const [modalComments, setModalComments] = useState<{ id: string; authorName: string; content: string; createdAt: string; isSystemLog?: boolean }[]>([]);
   const [modalNewCommentText, setModalNewCommentText] = useState('');
@@ -256,6 +268,17 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [editingAssignChkText, setEditingAssignChkText] = useState('');
   const [editingAssignCmtId, setEditingAssignCmtId] = useState<string | null>(null);
   const [editingAssignCmtText, setEditingAssignCmtText] = useState('');
+  const [draggedAssignChkIndex, setDraggedAssignChkIndex] = useState<number | null>(null);
+  const [dragOverAssignChkIndex, setDragOverAssignChkIndex] = useState<number | null>(null);
+
+  const handleReorderAssignChecklist = (fromIndex: number, toIndex: number) => {
+    if (!assignTaskModal) return;
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= assignTaskModal.checklists.length || toIndex >= assignTaskModal.checklists.length) return;
+    const updated = [...assignTaskModal.checklists];
+    const [movedItem] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, movedItem);
+    setAssignTaskModal({ ...assignTaskModal, checklists: updated });
+  };
 
   const [editingDoneChkId, setEditingDoneChkId] = useState<string | null>(null);
   const [editingDoneChkText, setEditingDoneChkText] = useState('');
@@ -265,14 +288,26 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const handleAddSprintDeliverableLink = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = sprintNewDeliverableLinkUrl.trim();
-    if (!trimmed) return;
-
-    let formattedUrl = trimmed;
-    if (!/^https?:\/\//i.test(formattedUrl) && (formattedUrl.includes('.') || formattedUrl.startsWith('localhost'))) {
-      formattedUrl = `https://${formattedUrl}`;
+    if (!trimmed) {
+      toast.error('Please enter a deliverable URL');
+      return;
     }
 
-    const linkName = sprintNewDeliverableLinkName.trim() || 'Deliverable Link';
+    if (/^[a-zA-Z]:\\/i.test(trimmed) || trimmed.startsWith('file://') || trimmed.startsWith('\\\\')) {
+      toast.error('Local computer paths (C:\\...) cannot be opened by web browsers. Please upload the PDF/file to Google Drive or OneDrive and paste the shared link.');
+      return;
+    }
+
+    let formattedUrl = trimmed;
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+      if (formattedUrl.startsWith('localhost')) {
+        formattedUrl = `http://${formattedUrl}`;
+      } else {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+    }
+
+    const linkName = sprintNewDeliverableLinkName.trim() || (formattedUrl.toLowerCase().includes('.pdf') ? 'PDF Document' : formattedUrl.includes('drive.google') || formattedUrl.includes('docs.google') ? 'Google Drive Link' : 'Deliverable Link');
     const linkNote = sprintNewDeliverableLinkNote.trim();
 
     if (sprintDeliverableLinks.some(l => l.url.toLowerCase() === formattedUrl.toLowerCase())) {
@@ -314,11 +349,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     if (!modalNewCommentText.trim()) return;
     const newComment = {
       id: `cmt-${Date.now()}`,
-      authorName: 'Admin User',
+      authorName: user?.name || 'Admin User',
       content: modalNewCommentText.trim(),
       createdAt: new Date().toISOString(),
     };
-    setModalComments((prev) => [...prev, newComment]);
+    setModalComments((prev) => [newComment, ...prev]);
     setModalNewCommentText('');
   };
 
@@ -580,7 +615,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     // 2. Planned or Backlog -> To Do or In Progress: Assign Employee & Lead form modal
     if ((currentColumn === 'BACKLOG' || currentColumn === 'PLANNED') && ['TODO', 'IN_PROGRESS'].includes(targetColumn)) {
       const initialChks = (task.checklists && Array.isArray(task.checklists)) ? task.checklists : [];
-      const initialCmts = (task.comments && Array.isArray(task.comments)) ? task.comments : [];
+      const initialCmts = (task.comments && Array.isArray(task.comments)) ? [...task.comments].reverse() : [];
 
       setAssignTaskModal({
         task,
@@ -604,10 +639,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       ]).then(([freshChks, freshCmts]) => {
         setAssignTaskModal((prev) => {
           if (!prev || prev.task.id !== task.id) return prev;
+          const orderedCmts = (freshCmts && freshCmts.length > 0) ? [...freshCmts].reverse() : prev.comments;
           return {
             ...prev,
             checklists: (freshChks && freshChks.length > 0) ? freshChks : prev.checklists,
-            comments: (freshCmts && freshCmts.length > 0) ? freshCmts : prev.comments,
+            comments: orderedCmts,
           };
         });
       });
@@ -617,7 +653,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     // 3. To Review / In Progress -> Done: Completion sign-off modal form
     if (targetColumn === 'DONE') {
       const initialChks = (task.checklists && Array.isArray(task.checklists)) ? task.checklists : [];
-      const initialCmts = (task.comments && Array.isArray(task.comments)) ? task.comments : [];
+      const initialCmts = (task.comments && Array.isArray(task.comments)) ? [...task.comments].reverse() : [];
 
       setConfirmDoneModal({
         task,
@@ -636,10 +672,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       ]).then(([freshChks, freshCmts]) => {
         setConfirmDoneModal((prev) => {
           if (!prev || prev.task.id !== task.id) return prev;
+          const orderedCmts = (freshCmts && freshCmts.length > 0) ? [...freshCmts].reverse() : prev.comments;
           return {
             ...prev,
             checklists: (freshChks && freshChks.length > 0) ? freshChks : prev.checklists,
-            comments: (freshCmts && freshCmts.length > 0) ? freshCmts : prev.comments,
+            comments: orderedCmts,
           };
         });
       });
@@ -1018,6 +1055,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       epicId: task.epicId || (task.parentEpicCode ? (epics.find((e: any) => e.epicCode === task.parentEpicCode)?.id || null) : null),
       parentEpicCode: task.epicCode || task.parentEpicCode || null,
       parentEpicTitle: task.epicTitle || task.parentEpicTitle || null,
+      projectId: task.projectId || null,
+      parentProjectCode: task.projectCode || null,
+      parentProjectTitle: task.projectName || null,
+      projectCode: task.projectCode || null,
+      projectName: task.projectName || null,
       assignee: resolvedAssignee,
       assigneeId: task.assigneeId || (assignedEmp?.id || ''),
       assigneeIds: taskAssigneeIds,
@@ -1070,6 +1112,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           entity: resolvedEntityLabel,
           entityCode: resolvedEntityCode,
           epicId: updated.epicId !== undefined ? updated.epicId : null,
+          projectId: updated.projectId !== undefined ? updated.projectId : null,
           assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
           assigneeId: updated.assigneeId || null,
           assigneeIds: (updated as any).assigneeIds || (updated.assigneeId ? [updated.assigneeId] : []),
@@ -1179,6 +1222,11 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           entity: resolvedEntityLabel,
           entityCode: resolvedEntityCode,
           entityId: realTask.entityId,
+          projectId: realTask.projectId || null,
+          parentProjectCode: realTask.projectCode || null,
+          parentProjectTitle: realTask.projectName || null,
+          projectCode: realTask.projectCode || null,
+          projectName: realTask.projectName || null,
           assignee: realTask.assigneeName || realTask.assignee || sourceTask.assigneeName || 'Unassigned',
           assigneeId: realTask.assigneeId || targetAssigneeId,
           assigneeIds: realTask.assigneeIds || targetAssigneeIds,
@@ -1290,9 +1338,32 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     const matchesStatus = selectedStatus === 'ALL' || taskCol === selectedStatus;
 
-    const matchesQuery = !searchQuery.trim() ||
-      t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.taskCode?.toLowerCase().includes(searchQuery.toLowerCase());
+    // Completely case-insensitive, hyphen-agnostic, multi-field sprint task search
+    const cleanSprintQuery = searchQuery.trim().toLowerCase();
+    const sprintNormQuery = cleanSprintQuery.replace(/[^a-z0-9]/g, '');
+    const taskHaystack = [
+      t.title || '',
+      t.taskCode || t.taskId || '',
+      t.description || '',
+      t.assignee || t.assigneeName || '',
+      t.reviewingLead || t.reviewingLeadName || '',
+      t.epicTitle || '',
+      t.parentEpicTitle || '',
+      t.projectName || '',
+      t.status || '',
+      t.priority || '',
+      t.entity || t.entityCode || '',
+      t.deliverableUrl || '',
+    ].join(' ').toLowerCase();
+    const taskNormHaystack = taskHaystack.replace(/[^a-z0-9]/g, '');
+
+    const matchesQuery = !cleanSprintQuery ||
+      taskHaystack.includes(cleanSprintQuery) ||
+      (sprintNormQuery.length > 0 && taskNormHaystack.includes(sprintNormQuery)) ||
+      cleanSprintQuery.split(/\s+/).every(term => {
+        const termNorm = term.replace(/[^a-z0-9]/g, '');
+        return taskHaystack.includes(term) || (termNorm.length > 0 && taskNormHaystack.includes(termNorm));
+      });
 
     const matchesEntity = matchesEntityFilter(t, selectedEntity);
 
@@ -1302,7 +1373,10 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       matchesSelectedWeek = (taskWeekIdx === weekIdx) || (weekIdx === 1 && taskWeekIdx === 0);
     }
 
-    return matchesEntity && matchesViewMode && matchesSprintCategory && matchesSelectedWeek && matchesEmp && matchesStatus && matchesQuery;
+    // When an active search query is entered, prioritize finding the task across the board
+    const effectiveMatchesEmp = cleanSprintQuery ? (matchesEmp || matchesQuery) : matchesEmp;
+
+    return matchesEntity && matchesViewMode && matchesSprintCategory && matchesSelectedWeek && effectiveMatchesEmp && matchesStatus && matchesQuery;
   });
 
   const activeTaskCount = allTasks.filter(t => t.status !== 'DONE' && t.status !== 'COMPLETED').length;
@@ -1801,6 +1875,33 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                   </div>
                                 </div>
 
+                                {/* Deliverable Link Badge on Kanban Card */}
+                                {(() => {
+                                  const rawDeliv = (t.deliverableUrl || t.outputUrl || '').trim();
+                                  if (!rawDeliv) return null;
+                                  const firstUrl = rawDeliv.split(/[,\n]/)[0].trim();
+                                  if (!firstUrl) return null;
+                                  const isPdf = firstUrl.toLowerCase().includes('.pdf');
+                                  const isGoogle = firstUrl.includes('docs.google') || firstUrl.includes('drive.google');
+                                  const targetHref = firstUrl.startsWith('http') ? firstUrl : `https://${firstUrl}`;
+                                  return (
+                                    <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                                      <a
+                                        href={targetHref}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold transition-all max-w-full truncate group/dlink shadow-2xs"
+                                        title={`Open deliverable in new tab: ${targetHref}`}
+                                      >
+                                        <ExternalLink className="w-3 h-3 text-emerald-600 shrink-0 group-hover/dlink:translate-x-0.5 transition-transform" />
+                                        <span className="truncate">
+                                          {isPdf ? '📄 View PDF Deliverable' : isGoogle ? '📊 Google Drive / Doc' : '🔗 Deliverable Link'}
+                                        </span>
+                                      </a>
+                                    </div>
+                                  );
+                                })()}
+
                                 {/* 5. Bottom Line: Left = Posted Date | Right = Target / Due Date */}
                                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[10px] font-medium text-gray-400">
                                   <div className="flex items-center gap-1 text-gray-400" title="Created At">
@@ -2132,20 +2233,36 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                             <Link2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-xs text-emerald-950">
+                                <a
+                                  href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-bold text-xs text-emerald-950 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                                >
                                   {link.name || 'Deliverable Link'}
-                                </span>
+                                </a>
+                                {link.note && (
+                                  <span className="text-[10px] text-gray-500 bg-white/80 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                                    {link.note}
+                                  </span>
+                                )}
                               </div>
-                              <p className="truncate font-mono text-[11px] text-emerald-800 hover:underline cursor-pointer" title={link.url}>
+                              <a
+                                href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="truncate font-mono text-[11px] text-emerald-800 hover:underline block"
+                                title={link.url}
+                              >
                                 {link.url}
-                              </p>
+                              </a>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <a
                               href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                               title="Open link in new tab"
                             >
@@ -2220,7 +2337,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         No subtasks added yet. Add one below!
                       </div>
                     ) : (
-                      modalChecklists.map((item) => (
+                      modalChecklists.map((item, index) => (
                         editingModalChkId === item.id ? (
                           <div key={item.id} className="flex items-center gap-1.5 p-1.5 rounded-xl border border-emerald-300 bg-white">
                             <input
@@ -2272,21 +2389,71 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         ) : (
                           <div
                             key={item.id}
-                            className={`group flex items-center justify-between p-2 rounded-xl border transition-colors ${item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                              }`}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', String(index));
+                              setDraggedModalChkIndex(index);
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setDragOverModalChkIndex(index);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverModalChkIndex === index) setDragOverModalChkIndex(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const fromIdx = parseInt(e.dataTransfer.getData('text/plain') || String(draggedModalChkIndex ?? -1), 10);
+                              if (!isNaN(fromIdx)) {
+                                handleReorderModalChecklist(fromIdx, index);
+                              }
+                              setDraggedModalChkIndex(null);
+                              setDragOverModalChkIndex(null);
+                            }}
+                            className={`group flex items-center justify-between p-2 rounded-xl border transition-all ${
+                              dragOverModalChkIndex === index
+                                ? 'border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-300'
+                                : item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+                            }`}
                           >
-                            <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0 pr-2">
-                              <input
-                                type="checkbox"
-                                checked={item.isCompleted}
-                                onChange={() => handleToggleModalChecklist(item.id)}
-                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                              />
-                              <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
-                                {item.itemText}
-                              </span>
-                            </label>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                              <div
+                                className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-emerald-700 transition-colors p-0.5 rounded"
+                                title="Drag to slide reorder subtask"
+                              >
+                                <GripVertical className="w-3.5 h-3.5" />
+                              </div>
+                              <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={item.isCompleted}
+                                  onChange={() => handleToggleModalChecklist(item.id)}
+                                  className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                                />
+                                <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                                  {item.itemText}
+                                </span>
+                              </label>
+                            </div>
                             <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => handleReorderModalChecklist(index, index - 1)}
+                                title="Slide Up"
+                                className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === modalChecklists.length - 1}
+                                onClick={() => handleReorderModalChecklist(index, index + 1)}
+                                title="Slide Down"
+                                className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2413,11 +2580,36 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                       </span>
                     </div>
 
+                    {/* Comment Input & Post Button (Moved to TOP: Down to Up) */}
+                    <div className="flex gap-2 pb-2 border-b border-gray-100 shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Write a comment or activity log..."
+                        value={modalNewCommentText}
+                        onChange={(e) => setModalNewCommentText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddModalComment(e);
+                          }
+                        }}
+                        className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddModalComment()}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Post</span>
+                      </button>
+                    </div>
+
                     {/* Comments Feed */}
                     <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[140px] max-h-[240px]">
                       {modalComments.length === 0 ? (
                         <div className="h-full flex items-center justify-center py-8 text-center text-xs text-gray-400 font-medium bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                          No comments yet. Post the first comment!
+                          No comments yet. Post the first comment above!
                         </div>
                       ) : (
                         modalComments.map((c) => (
@@ -2433,7 +2625,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                                 {formatAuthorDisplayName(c.authorName)}
                               </span>
                               <div className="flex items-center gap-1.5">
-                                <span>{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                                <span className="text-gray-400 font-semibold">{formatCommentDateTime(c.createdAt)}</span>
                                 {!c.isSystemLog && (
                                   <div className="flex items-center gap-0.5 ml-1">
                                     <button
@@ -2500,31 +2692,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           </div>
                         ))
                       )}
-                    </div>
-
-                    {/* Comment Input & Post Button */}
-                    <div className="flex gap-2 pt-2 border-t border-gray-100 shrink-0">
-                      <input
-                        type="text"
-                        placeholder="Write a comment or activity log..."
-                        value={modalNewCommentText}
-                        onChange={(e) => setModalNewCommentText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddModalComment(e);
-                          }
-                        }}
-                        className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddModalComment()}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Post</span>
-                      </button>
                     </div>
                   </div>
 
@@ -2736,7 +2903,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         No subtasks added yet.
                       </div>
                     ) : (
-                      assignTaskModal.checklists.map(chk => (
+                      assignTaskModal.checklists.map((chk, index) => (
                         editingAssignChkId === chk.id ? (
                           <div key={chk.id} className="flex items-center gap-1.5 p-1.5 rounded-xl border border-emerald-300 bg-white">
                             <input
@@ -2790,26 +2957,76 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         ) : (
                           <div
                             key={chk.id}
-                            className={`flex items-center justify-between p-2 rounded-lg border text-xs font-semibold ${chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
-                              }`}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', String(index));
+                              setDraggedAssignChkIndex(index);
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setDragOverAssignChkIndex(index);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverAssignChkIndex === index) setDragOverAssignChkIndex(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const fromIdx = parseInt(e.dataTransfer.getData('text/plain') || String(draggedAssignChkIndex ?? -1), 10);
+                              if (!isNaN(fromIdx)) {
+                                handleReorderAssignChecklist(fromIdx, index);
+                              }
+                              setDraggedAssignChkIndex(null);
+                              setDragOverAssignChkIndex(null);
+                            }}
+                            className={`group flex items-center justify-between p-2 rounded-lg border text-xs font-semibold transition-all ${
+                              dragOverAssignChkIndex === index
+                                ? 'border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-300'
+                                : chk.isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-gray-200 text-gray-700'
+                            }`}
                           >
-                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0 pr-2">
-                              <input
-                                type="checkbox"
-                                checked={chk.isCompleted}
-                                onChange={() => {
-                                  const updated = assignTaskModal.checklists.map(c =>
-                                    c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
-                                  );
-                                  setAssignTaskModal({ ...assignTaskModal, checklists: updated });
-                                }}
-                                className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                              />
-                              <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
-                                {chk.itemText}
-                              </span>
-                            </label>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                              <div
+                                className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-emerald-700 transition-colors p-0.5 rounded"
+                                title="Drag to slide reorder subtask"
+                              >
+                                <GripVertical className="w-3.5 h-3.5" />
+                              </div>
+                              <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={chk.isCompleted}
+                                  onChange={() => {
+                                    const updated = assignTaskModal.checklists.map(c =>
+                                      c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                    );
+                                    setAssignTaskModal({ ...assignTaskModal, checklists: updated });
+                                  }}
+                                  className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                                <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
+                                  {chk.itemText}
+                                </span>
+                              </label>
+                            </div>
                             <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => handleReorderAssignChecklist(index, index - 1)}
+                                title="Slide Up"
+                                className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === assignTaskModal.checklists.length - 1}
+                                onClick={() => handleReorderAssignChecklist(index, index + 1)}
+                                title="Slide Down"
+                                className="p-1 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2893,10 +3110,59 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                     <span>Activity Log & Comments</span>
                   </span>
 
+                  {/* Comment Input & Post (Moved to TOP: Down to Up) */}
+                  <div className="flex gap-2 pb-1 border-b border-gray-200 shrink-0">
+                    <input
+                      type="text"
+                      placeholder="Post activity note..."
+                      value={assignTaskModal.newCommentText || ''}
+                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, newCommentText: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!assignTaskModal.newCommentText?.trim()) return;
+                          const newCmt = {
+                            id: `cmt-${Date.now()}`,
+                            authorName: user?.name || 'Admin User',
+                            content: assignTaskModal.newCommentText.trim(),
+                            createdAt: new Date().toISOString(),
+                          };
+                          setAssignTaskModal({
+                            ...assignTaskModal,
+                            comments: [newCmt, ...assignTaskModal.comments],
+                            newCommentText: '',
+                          });
+                        }
+                      }}
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!assignTaskModal.newCommentText?.trim()) return;
+                        const newCmt = {
+                          id: `cmt-${Date.now()}`,
+                          authorName: user?.name || 'Admin User',
+                          content: assignTaskModal.newCommentText.trim(),
+                          createdAt: new Date().toISOString(),
+                        };
+                        setAssignTaskModal({
+                          ...assignTaskModal,
+                          comments: [newCmt, ...assignTaskModal.comments],
+                          newCommentText: '',
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Post</span>
+                    </button>
+                  </div>
+
                   <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[100px] max-h-[160px]">
                     {assignTaskModal.comments.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-[11px] text-gray-400 font-medium py-4">
-                        No activity comments yet.
+                        No activity comments yet. Post the first comment above!
                       </div>
                     ) : (
                       assignTaskModal.comments.map(c => (
@@ -2904,7 +3170,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
                             <span>{formatAuthorDisplayName(c.authorName)}</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                              <span className="text-gray-400 font-semibold">{formatCommentDateTime(c.createdAt)}</span>
                               <div className="flex items-center gap-0.5 ml-1">
                                 <button
                                   type="button"
@@ -2972,54 +3238,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         </div>
                       ))
                     )}
-                  </div>
-
-                  <div className="flex gap-2 pt-1 border-t border-gray-200 shrink-0">
-                    <input
-                      type="text"
-                      placeholder="Post activity note..."
-                      value={assignTaskModal.newCommentText || ''}
-                      onChange={(e) => setAssignTaskModal({ ...assignTaskModal, newCommentText: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (!assignTaskModal.newCommentText?.trim()) return;
-                          const newCmt = {
-                            id: `cmt-${Date.now()}`,
-                            authorName: 'Admin User',
-                            content: assignTaskModal.newCommentText.trim(),
-                            createdAt: new Date().toISOString(),
-                          };
-                          setAssignTaskModal({
-                            ...assignTaskModal,
-                            comments: [...assignTaskModal.comments, newCmt],
-                            newCommentText: '',
-                          });
-                        }
-                      }}
-                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!assignTaskModal.newCommentText?.trim()) return;
-                        const newCmt = {
-                          id: `cmt-${Date.now()}`,
-                          authorName: 'Admin User',
-                          content: assignTaskModal.newCommentText.trim(),
-                          createdAt: new Date().toISOString(),
-                        };
-                        setAssignTaskModal({
-                          ...assignTaskModal,
-                          comments: [...assignTaskModal.comments, newCmt],
-                          newCommentText: '',
-                        });
-                      }}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Post</span>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -3300,10 +3518,59 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                     <span>Activity Log & Comments</span>
                   </span>
 
+                  {/* Comment Input & Post (Moved to TOP: Down to Up) */}
+                  <div className="flex gap-2 pb-1 border-b border-gray-200 shrink-0">
+                    <input
+                      type="text"
+                      placeholder="Post sign-off comment..."
+                      value={confirmDoneModal.newCommentText || ''}
+                      onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, newCommentText: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (!confirmDoneModal.newCommentText?.trim()) return;
+                          const newCmt = {
+                            id: `cmt-${Date.now()}`,
+                            authorName: user?.name || 'Admin User',
+                            content: confirmDoneModal.newCommentText.trim(),
+                            createdAt: new Date().toISOString(),
+                          };
+                          setConfirmDoneModal({
+                            ...confirmDoneModal,
+                            comments: [newCmt, ...confirmDoneModal.comments],
+                            newCommentText: '',
+                          });
+                        }
+                      }}
+                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!confirmDoneModal.newCommentText?.trim()) return;
+                        const newCmt = {
+                          id: `cmt-${Date.now()}`,
+                          authorName: user?.name || 'Admin User',
+                          content: confirmDoneModal.newCommentText.trim(),
+                          createdAt: new Date().toISOString(),
+                        };
+                        setConfirmDoneModal({
+                          ...confirmDoneModal,
+                          comments: [newCmt, ...confirmDoneModal.comments],
+                          newCommentText: '',
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Post</span>
+                    </button>
+                  </div>
+
                   <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[90px] max-h-[140px]">
                     {confirmDoneModal.comments.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-[11px] text-gray-400 font-medium py-4">
-                        No activity comments yet.
+                        No activity comments yet. Post the first comment above!
                       </div>
                     ) : (
                       confirmDoneModal.comments.map(c => (
@@ -3311,7 +3578,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                           <div className="flex items-center justify-between text-[10px] font-bold text-emerald-700">
                             <span>{formatAuthorDisplayName(c.authorName)}</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                              <span className="text-gray-400 font-semibold">{formatCommentDateTime(c.createdAt)}</span>
                               <div className="flex items-center gap-0.5 ml-1">
                                 <button
                                   type="button"
@@ -3379,54 +3646,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
                         </div>
                       ))
                     )}
-                  </div>
-
-                  <div className="flex gap-2 pt-1 border-t border-gray-200 shrink-0">
-                    <input
-                      type="text"
-                      placeholder="Post sign-off comment..."
-                      value={confirmDoneModal.newCommentText || ''}
-                      onChange={(e) => setConfirmDoneModal({ ...confirmDoneModal, newCommentText: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (!confirmDoneModal.newCommentText?.trim()) return;
-                          const newCmt = {
-                            id: `cmt-${Date.now()}`,
-                            authorName: 'Admin User',
-                            content: confirmDoneModal.newCommentText.trim(),
-                            createdAt: new Date().toISOString(),
-                          };
-                          setConfirmDoneModal({
-                            ...confirmDoneModal,
-                            comments: [...confirmDoneModal.comments, newCmt],
-                            newCommentText: '',
-                          });
-                        }
-                      }}
-                      className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!confirmDoneModal.newCommentText?.trim()) return;
-                        const newCmt = {
-                          id: `cmt-${Date.now()}`,
-                          authorName: 'Admin User',
-                          content: confirmDoneModal.newCommentText.trim(),
-                          createdAt: new Date().toISOString(),
-                        };
-                        setConfirmDoneModal({
-                          ...confirmDoneModal,
-                          comments: [...confirmDoneModal.comments, newCmt],
-                          newCommentText: '',
-                        });
-                      }}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Post</span>
-                    </button>
                   </div>
                 </div>
               </div>

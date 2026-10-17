@@ -8,6 +8,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { CheckCircle2, AlertCircle, Clock, Calendar, Settings, ExternalLink } from 'lucide-react';
 import { fetchApi, getCachedApi } from '@workspace/api-client-react';
 
 interface TaskAnalyticsItem {

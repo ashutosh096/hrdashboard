@@ -34,6 +34,9 @@ import {
   UserCheck,
   Pencil,
   Check,
+  GripVertical,
+  ChevronUp,
+  Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,6 +50,7 @@ import { TableSkeleton, InlineErrorRetry } from '../components/Skeletons';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { fetchApi } from '@workspace/api-client-react';
 import { formatAuthorDisplayName } from '../components/TaskUpdateModal';
+import { formatCommentDateTime } from '../utils/dateUtils';
 
 export interface ApplicationItem {
   id: string;
@@ -146,6 +150,7 @@ export const ApplicationsView: React.FC = () => {
   const [isSubmittingProject, setIsSubmittingProject] = useState(false);
 
   const isEmployee = user?.role === 'EMPLOYEE';
+  const isAdmin = user?.role === 'ADMIN';
   const [dbEmployees, setDbEmployees] = useState<any[]>([]);
 
   // Applications List Data
@@ -315,6 +320,18 @@ export const ApplicationsView: React.FC = () => {
   const [newCheckpointText, setNewCheckpointText] = useState('');
   const [editingProjectChkId, setEditingProjectChkId] = useState<string | null>(null);
   const [editingProjectChkText, setEditingProjectChkText] = useState('');
+  const [draggedProjectChkIndex, setDraggedProjectChkIndex] = useState<number | null>(null);
+  const [dragOverProjectChkIndex, setDragOverProjectChkIndex] = useState<number | null>(null);
+
+  const handleReorderProjectChecklist = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= projectChecklists.length || toIndex >= projectChecklists.length) return;
+    setProjectChecklists((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, movedItem);
+      return updated;
+    });
+  };
 
   // Multi-select Team Members State
   const [selectedTeamMemberNames, setSelectedTeamMemberNames] = useState<string[]>([]);
@@ -336,7 +353,7 @@ export const ApplicationsView: React.FC = () => {
       content: newProjectCommentText.trim(),
       createdAt: new Date().toISOString(),
     };
-    setProjectComments(prev => [...prev, newCmt]);
+    setProjectComments(prev => [newCmt, ...prev]);
     setNewProjectCommentText('');
   };
 
@@ -505,7 +522,7 @@ export const ApplicationsView: React.FC = () => {
     setProjectDeliverableUrl(proj.deliverableUrl || '');
     setProjectDescription(proj.description);
     setProjectChecklists(proj.checkpoints || []);
-    setProjectComments(proj.comments || []);
+    setProjectComments(proj.comments ? [...proj.comments].reverse() : []);
     setIsProjectClone(false);
     setShowAddProjectModal(true);
     toast.info(`Editing project "${proj.name}". Modify parameters and click Save Changes!`);
@@ -1167,7 +1184,7 @@ export const ApplicationsView: React.FC = () => {
                                       </span>
                                       <span className="font-bold text-indigo-700 block">
                                         {(() => {
-                                          const matchedEmp = employees.find((e: any) => e.id === prj.lead || e.id === (prj as any).leadId);
+                                          const matchedEmp = dbEmployees.find((e: any) => e.id === prj.lead || e.id === (prj as any).leadId);
                                           return matchedEmp
                                             ? `${matchedEmp.firstName || ''} ${matchedEmp.lastName || ''}`.trim()
                                             : (prj.lead && prj.lead.trim() ? prj.lead : 'Unassigned');
@@ -1713,7 +1730,7 @@ export const ApplicationsView: React.FC = () => {
                         No subtasks added yet. Add one below!
                       </div>
                     ) : (
-                      projectChecklists.map((item) => (
+                      projectChecklists.map((item, index) => (
                         editingProjectChkId === item.id ? (
                           <div key={item.id} className="flex items-center gap-1.5 p-1.5 rounded-xl border border-emerald-300 bg-white">
                             <input
@@ -1765,27 +1782,90 @@ export const ApplicationsView: React.FC = () => {
                         ) : (
                           <div
                             key={item.id}
-                            className={`group flex items-center justify-between p-2 rounded-xl border transition-colors ${
-                              item.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                            }`}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedProjectChkIndex(index);
+                              e.dataTransfer.effectAllowed = 'move';
+                              e.dataTransfer.setData('text/plain', String(index));
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              setDragOverProjectChkIndex(index);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverProjectChkIndex === index) {
+                                setDragOverProjectChkIndex(null);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const fromIdx = draggedProjectChkIndex;
+                              if (fromIdx !== null && fromIdx !== index) {
+                                handleReorderProjectChecklist(fromIdx, index);
+                              }
+                              setDraggedProjectChkIndex(null);
+                              setDragOverProjectChkIndex(null);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedProjectChkIndex(null);
+                              setDragOverProjectChkIndex(null);
+                            }}
+                            className={`group flex items-center justify-between p-2 rounded-xl border transition-all ${
+                              dragOverProjectChkIndex === index
+                                ? 'border-emerald-500 bg-emerald-100/40 shadow-sm scale-[1.01]'
+                                : item.isCompleted
+                                ? 'bg-emerald-50/50 border-emerald-200'
+                                : 'bg-gray-50 border-gray-200'
+                            } ${draggedProjectChkIndex === index ? 'opacity-40' : ''}`}
                           >
-                            <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0 pr-2">
-                              <input
-                                type="checkbox"
-                                checked={item.isCompleted}
-                                onChange={() => {
-                                  setProjectChecklists(
-                                    projectChecklists.map((c) =>
-                                      c.id === item.id ? { ...c, isCompleted: !c.isCompleted } : c
-                                    )
-                                  );
-                                }}
-                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
-                              />
-                              <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
-                                {item.title}
-                              </span>
-                            </label>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                              <div className="flex items-center gap-0.5 text-gray-300 group-hover:text-gray-500 shrink-0">
+                                <span
+                                  title="Slide or drag to reorder subtask"
+                                  className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-gray-200/60 transition-colors"
+                                >
+                                  <GripVertical className="w-3.5 h-3.5" />
+                                </span>
+                                <div className="flex flex-col -space-y-1">
+                                  <button
+                                    type="button"
+                                    disabled={index === 0}
+                                    onClick={() => handleReorderProjectChecklist(index, index - 1)}
+                                    title="Slide up"
+                                    className="p-0.5 text-gray-300 hover:text-emerald-600 disabled:opacity-20 disabled:pointer-events-none rounded transition-colors cursor-pointer"
+                                  >
+                                    <ChevronUp className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={index === projectChecklists.length - 1}
+                                    onClick={() => handleReorderProjectChecklist(index, index + 1)}
+                                    title="Slide down"
+                                    className="p-0.5 text-gray-300 hover:text-emerald-600 disabled:opacity-20 disabled:pointer-events-none rounded transition-colors cursor-pointer"
+                                  >
+                                    <ChevronDown className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                              <label className="flex items-center gap-2 text-xs font-semibold text-gray-800 cursor-pointer flex-1 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={item.isCompleted}
+                                  onChange={() => {
+                                    setProjectChecklists(
+                                      projectChecklists.map((c) =>
+                                        c.id === item.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                      )
+                                    );
+                                  }}
+                                  className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+                                />
+                                <span className={`break-words ${item.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                                  {item.title}
+                                </span>
+                              </label>
+                            </div>
                             <div className="flex items-center gap-0.5 shrink-0">
                               <button
                                 type="button"
@@ -1931,7 +2011,32 @@ export const ApplicationsView: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Comments Feed */}
+                    {/* Comment Input & Post Button (Moved to top from down to up) */}
+                    <div className="flex gap-2 pb-2 border-b border-gray-100 shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Write a comment or activity log..."
+                        value={newProjectCommentText}
+                        onChange={(e) => setNewProjectCommentText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddProjectComment(e);
+                          }
+                        }}
+                        className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddProjectComment()}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Post</span>
+                      </button>
+                    </div>
+
+                    {/* Comments Feed (Displaying newest comments from down to up) */}
                     <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[140px] max-h-[240px]">
                       {projectComments.length === 0 ? (
                         <div className="h-full flex items-center justify-center py-8 text-center text-xs text-gray-400 font-medium bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
@@ -1952,7 +2057,7 @@ export const ApplicationsView: React.FC = () => {
                                 {formatAuthorDisplayName(c.authorName)}
                               </span>
                               <div className="flex items-center gap-1.5">
-                                <span>{new Date(c.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                                <span className="text-gray-400 font-semibold">{formatCommentDateTime(c.createdAt)}</span>
                                 {!c.isSystemLog && (
                                   <div className="flex items-center gap-0.5 ml-1">
                                     <button
@@ -1964,7 +2069,7 @@ export const ApplicationsView: React.FC = () => {
                                       title="Edit comment"
                                       className="p-0.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors cursor-pointer"
                                     >
-                                      <Pencil className="w-3 h-3" />
+                                      <Pencil className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                       type="button"
@@ -1972,7 +2077,7 @@ export const ApplicationsView: React.FC = () => {
                                       title="Delete comment"
                                       className="p-0.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                                     >
-                                      <Trash2 className="w-3 h-3" />
+                                      <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 )}
@@ -2019,31 +2124,6 @@ export const ApplicationsView: React.FC = () => {
                           </div>
                         ))
                       )}
-                    </div>
-
-                    {/* Comment Input & Post Button */}
-                    <div className="flex gap-2 pt-2 border-t border-gray-100 shrink-0">
-                      <input
-                        type="text"
-                        placeholder="Write a comment or activity log..."
-                        value={newProjectCommentText}
-                        onChange={(e) => setNewProjectCommentText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddProjectComment(e);
-                          }
-                        }}
-                        className="flex-1 text-xs bg-white border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddProjectComment()}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Post</span>
-                      </button>
                     </div>
                   </div>
 
@@ -2234,296 +2314,335 @@ export const ApplicationsView: React.FC = () => {
         const doneCount = checkpointsList.filter(c => c.isCompleted).length;
         const totalCount = checkpointsList.length;
         const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
-        const deliverable = p.deliverableUrl || p.techStack;
+        const deliverable = (p.deliverableUrl && p.deliverableUrl.trim() && p.deliverableUrl !== 'React, Node.js, Python, GIS') ? p.deliverableUrl.trim() : null;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 select-none overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200/90 animate-in fade-in zoom-in-95 duration-200 my-8 space-y-4 text-left">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4 animate-in fade-in zoom-in-95 duration-150 text-left select-none">
+            <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col overflow-hidden">
               
-              {/* Header Badges & Close */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-gray-100 text-gray-700 border border-gray-200 tracking-wide">
-                    {p.code}
-                  </span>
-                  {(() => {
-                    const badge = getEntityBadge(p);
-                    return (
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold uppercase tracking-wider border ${badge.className}`}>
-                        {badge.label}
-                      </span>
-                    );
-                  })()}
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${priorityColor}`}>
-                    {p.priority === 'Urgent' ? 'P1' : p.priority === 'High' ? 'P2' : p.priority === 'Low' ? 'P4' : 'P3'}
-                  </span>
-                </div>
+              {/* Modal Top Header (Matching View Epic / View Initiative) */}
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0 bg-white">
+                <span className="text-sm font-bold text-gray-700">Project</span>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedProjectForView(null)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Title */}
-              <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-                {p.name}
-              </h2>
-
-              {/* Project Description */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block">
-                  PROJECT DESCRIPTION
-                </span>
-                {p.description && p.description.trim() ? (
-                  <div className="pt-1">
-                    <MarkdownViewer content={p.description} />
-                  </div>
-                ) : (
-                  <p className="text-xs font-medium text-gray-400 italic">No description added yet.</p>
-                )}
-              </div>
-
-              <hr className="border-gray-100" />
-
-              {/* 2-Column Grid: Lead, Target Deadline, Created At, Created By */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Project Lead */}
-                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
-                    <User className="w-3.5 h-3.5 text-gray-400" />
-                    <span>PROJECT LEAD</span>
-                  </div>
-                  <div className="text-xs font-bold text-gray-800">
-                    {(() => {
-                      const matchedEmp = employees.find((e: any) => e.id === p.lead || e.id === (p as any).leadId);
-                      return matchedEmp
-                        ? `${matchedEmp.firstName || ''} ${matchedEmp.lastName || ''}`.trim()
-                        : (p.lead && p.lead.trim() ? p.lead : <span className="italic font-normal text-gray-400">No lead assigned</span>);
-                    })()}
-                  </div>
-                </div>
-
-                {/* Target Deadline */}
-                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
-                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                    <span>TARGET DEADLINE</span>
-                  </div>
-                  <div className="text-xs font-bold text-gray-800">
-                    {p.targetDate && p.targetDate.trim() ? (
-                      p.targetDate
-                    ) : (
-                      <span className="italic font-normal text-gray-400">Not set</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Created At */}
-                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
-                    <Clock className="w-3.5 h-3.5 text-gray-400" />
-                    <span>CREATED AT</span>
-                  </div>
-                  <div className="text-xs font-bold text-gray-800">
-                    {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
-                  </div>
-                </div>
-
-                {/* Created By (Right Below Created At) */}
-                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>CREATED BY</span>
-                  </div>
-                  <div className="text-xs font-bold text-gray-800">
-                    {p.createdByName || p.lead || 'Admin'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Deliverable URL(s) / Links */}
-              <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-1">
-                <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
-                  <LinkIcon className="w-3.5 h-3.5 text-gray-400" />
-                  <span>DELIVERABLE URL(S) / LINKS</span>
-                </div>
-                <div>
-                  {deliverable && deliverable.trim() ? (
-                    deliverable.startsWith('http') ? (
-                      <a
-                        href={deliverable}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1 break-all"
-                      >
-                        <span>{deliverable}</span>
-                        <ExternalLink className="w-3 h-3 shrink-0" />
-                      </a>
-                    ) : (
-                      <span className="text-xs font-bold text-gray-800 break-all">{deliverable}</span>
-                    )
-                  ) : (
-                    <span className="text-xs italic font-normal text-gray-400">No links added yet.</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Assigned Team */}
-              <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 space-y-2">
-                <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
-                  <Users className="w-3.5 h-3.5 text-gray-400" />
-                  <span>ASSIGNED TEAM ({teamList.length})</span>
-                </div>
-                {teamList.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {teamList.map((m: string) => (
-                      <span
-                        key={m}
-                        className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-800 shadow-2xs"
-                      >
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-xs italic font-normal text-gray-400">No team members assigned yet.</span>
-                )}
-              </div>
-
-              {/* Checkpoint Checklist Box (Application Clean Emerald Theme) */}
-              <div className="bg-emerald-50/50 border border-emerald-200/90 rounded-xl p-3.5 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
-                    <ListChecks className="w-4 h-4 text-emerald-600" />
-                    <span>Checkpoint checklist</span>
-                  </div>
-                  {checkpointsList.length > 0 && (
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      {doneCount} of {totalCount} done ({pct}%)
-                    </span>
-                  )}
-                </div>
-
-                {checkpointsList.length > 0 ? (
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                    {checkpointsList.map((chk) => (
-                      <label
-                        key={chk.id}
-                        className={`flex items-center justify-between p-2 rounded-lg border text-xs font-medium transition-colors ${
-                          chk.isCompleted
-                            ? 'bg-emerald-100/60 border-emerald-300 text-emerald-950 font-semibold'
-                            : 'bg-white border-emerald-200 text-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={chk.isCompleted}
-                            disabled={isEmployee}
-                            onChange={() => {
-                              if (isEmployee) return;
-                              handleToggleProjectCardCheckpoint(p.id, chk.id);
-                              setSelectedProjectForView(prev => {
-                                if (!prev) return null;
-                                const updated = (prev.checkpoints || []).map(c =>
-                                  c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
-                                );
-                                return { ...prev, checkpoints: updated };
-                              });
-                            }}
-                            className={`w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 ${
-                              isEmployee ? 'cursor-default' : 'cursor-pointer'
-                            }`}
-                          />
-                          <span className={chk.isCompleted ? 'line-through text-gray-400' : ''}>
-                            {chk.title}
-                          </span>
-                        </div>
-                        {chk.isCompleted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-emerald-800/80 italic font-medium">
-                    No checkpoints defined for this project.
-                  </p>
-                )}
-              </div>
-
-              {/* Audit History Action */}
-              <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-end gap-3 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setHistoryTarget({
-                    recordId: p.id,
-                    title: p.name,
-                    code: p.code,
-                  })}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition-colors cursor-pointer"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  <span>View Full Audit History</span>
-                </button>
-              </div>
-
-              {/* Recent Activity Section */}
-              <RecentActivitySection
-                tableName="projects"
-                recordId={p.id}
-                onOpenHistory={() => setHistoryTarget({
-                  recordId: p.id,
-                  title: p.name,
-                  code: p.code,
-                })}
-              />
-
-              {/* Modal Footer Actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                {!isEmployee ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const current = selectedProjectForView;
-                      setSelectedProjectForView(null);
-                      if (current) handleCloneProject(current);
-                    }}
-                    className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-gray-500" />
-                    <span>Clone project</span>
-                  </button>
-                ) : (
-                  <div />
-                )}
-
-                <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProjectForView(null)}
-                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                  >
-                    Close
-                  </button>
-
-                  {selectedProjectForView && canEditProject(selectedProjectForView) && (
+                <div className="flex items-center gap-2">
+                  {!isEmployee && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (selectedProjectForView) handleEditProject(selectedProjectForView);
+                        const current = selectedProjectForView;
+                        setSelectedProjectForView(null);
+                        if (current) handleCloneProject(current);
                       }}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer shadow-2xs"
+                      title="Clone Project"
                     >
-                      <Edit3 className="w-3.5 h-3.5 text-white" />
-                      <span>Edit project</span>
+                      <Copy className="w-3.5 h-3.5 text-gray-500" />
+                      <span>Clone</span>
                     </button>
                   )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pToDelete = selectedProjectForView;
+                        if (pToDelete) handleDeleteProject(pToDelete.id, pToDelete.name);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 transition-all cursor-pointer"
+                      title="Delete Project (Admin Only)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                  {canEditProject(p) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pToEdit = selectedProjectForView;
+                        setSelectedProjectForView(null);
+                        if (pToEdit) handleEditProject(pToEdit);
+                      }}
+                      className="px-3.5 py-1.5 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedProjectForView(null)}
+                    className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto flex-1 bg-white">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                  {/* Left Column: Metadata & Checkpoints (col-span-7) */}
+                  <div className="lg:col-span-7 space-y-5">
+                    {/* Badges line & Live Status Dropdown */}
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-gray-700 bg-gray-100 px-2.5 py-0.5 rounded-lg border border-gray-200">
+                          {p.code}
+                        </span>
+                        {(() => {
+                          const badge = getEntityBadge(p);
+                          return (
+                            <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-md border uppercase tracking-wide ${badge.className}`}>
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md border uppercase tracking-wide ${priorityColor}`}>
+                          {p.priority === 'Urgent' ? 'P1 • Urgent' : p.priority === 'High' ? 'P2 • High' : p.priority === 'Low' ? 'P4 • Low' : 'P3 • Normal'}
+                        </span>
+
+                        {/* Live Status Selector */}
+                        {!isEmployee ? (
+                          <div className="relative inline-flex items-center">
+                            <select
+                              value={p.status || 'Active'}
+                              onChange={async (e) => {
+                                const newStatus = e.target.value;
+                                try {
+                                  await fetchApi(`/api/projects/${p.id}`, {
+                                    method: 'PATCH',
+                                    body: JSON.stringify({ status: newStatus }),
+                                  });
+                                  setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, status: newStatus as any } : proj));
+                                  setSelectedProjectForView(prev => prev ? { ...prev, status: newStatus as any } : null);
+                                  toast.success(`Project status updated to ${newStatus}`);
+                                  window.dispatchEvent(new CustomEvent('projects-updated'));
+                                } catch (err: any) {
+                                  toast.error(err?.message || 'Failed to update project status');
+                                }
+                              }}
+                              className={`text-xs font-bold px-3 py-1 pr-6 rounded-lg border cursor-pointer appearance-none outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-2xs ${
+                                (p.status as string) === 'Completed' || (p.status as string) === 'Done'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                  : (p.status as string) === 'In Progress' || (p.status as string) === 'Active'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                                  : (p.status as string) === 'In Review' || (p.status as string) === 'Reviewing'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100'
+                                  : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                              }`}
+                              title="Click to change project status live"
+                            >
+                              <option value="Planning">Planning</option>
+                              <option value="Active">Active</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Reviewing">Reviewing</option>
+                              <option value="Completed">Completed</option>
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-1.5 pointer-events-none" />
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                            {p.status || 'Active'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Project Title & Description */}
+                    <div className="space-y-1.5">
+                      <h2 className="text-xl font-extrabold text-gray-900 tracking-tight leading-snug">
+                        {p.name}
+                      </h2>
+                      {p.description && (
+                        <div className="pt-1">
+                          <MarkdownViewer content={p.description} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Deliverable Box (Only shown if custom deliverable URL is explicitly configured) */}
+                    {deliverable ? (
+                      <div className="p-4 rounded-2xl bg-gray-900 text-white space-y-1 shadow-2xs">
+                        <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                          <Target className="w-4 h-4 text-emerald-400" />
+                          <span>Deliverable</span>
+                        </div>
+                        <div className="text-sm font-bold text-white pl-6">
+                          {deliverable.startsWith('http') ? (
+                            <a
+                              href={deliverable}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-emerald-400 hover:text-emerald-300 hover:underline inline-flex items-center gap-1.5 break-all"
+                            >
+                              <span>{deliverable}</span>
+                              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                            </a>
+                          ) : (
+                            <p className="break-all">{deliverable}</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* 4-Column Metadata Grid (matching View Epic/Initiative) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium block mb-1">Target deadline</span>
+                        <span className="text-xs font-bold text-gray-900 block">
+                          {p.targetDate && p.targetDate.trim() ? p.targetDate : 'Not set'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium block mb-1">Project lead</span>
+                        <span className="text-xs font-bold text-gray-900 block">
+                          {(() => {
+                            const matchedEmp = dbEmployees.find((e: any) => e.id === p.lead || e.id === (p as any).leadId);
+                            return matchedEmp
+                              ? `${matchedEmp.firstName || ''} ${matchedEmp.lastName || ''}`.trim()
+                              : (p.lead && p.lead.trim() ? p.lead : 'No lead assigned');
+                          })()}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium block mb-1">Created At</span>
+                        <span className="text-xs font-bold text-gray-900 block">
+                          {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium block mb-1">Created By</span>
+                        <span className="text-xs font-bold text-gray-900 block">
+                          {p.createdByName || p.lead || 'Admin'}
+                        </span>
+                      </div>
+
+                      {teamList.length > 0 && (
+                        <div className="col-span-2 sm:col-span-4">
+                          <span className="text-xs text-gray-400 font-medium block mb-1">Assigned team</span>
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {teamList.map((m: string) => (
+                              <span
+                                key={m}
+                                className="px-2.5 py-0.5 bg-gray-100 border border-gray-200 rounded-md text-xs font-bold text-gray-800"
+                              >
+                                {m}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Checkpoint Checklist Section (Styled exactly like Epic's Linked Tasks!) */}
+                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-gray-900">Checkpoint checklist</h4>
+                          <span className="text-xs font-medium text-gray-500">
+                            {doneCount} of {totalCount} done ({pct}%)
+                          </span>
+                        </div>
+
+                        <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {checkpointsList.length > 0 ? (
+                        <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+                          {checkpointsList.map((chk) => (
+                            <label
+                              key={chk.id}
+                              className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50/80 px-2 rounded-lg transition-colors cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={chk.isCompleted}
+                                  disabled={isEmployee}
+                                  onChange={() => {
+                                    if (isEmployee) return;
+                                    handleToggleProjectCardCheckpoint(p.id, chk.id);
+                                    setSelectedProjectForView(prev => {
+                                      if (!prev) return null;
+                                      const updated = (prev.checkpoints || []).map(c =>
+                                        c.id === chk.id ? { ...c, isCompleted: !c.isCompleted } : c
+                                      );
+                                      return { ...prev, checkpoints: updated };
+                                    });
+                                  }}
+                                  className={`w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 ${
+                                    isEmployee ? 'cursor-default' : 'cursor-pointer'
+                                  }`}
+                                />
+                                <span className={`text-xs font-semibold ${chk.isCompleted ? 'line-through text-gray-400' : 'text-gray-900 group-hover:text-emerald-700'}`}>
+                                  {chk.title}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded border ${
+                                  chk.isCompleted
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                                }`}>
+                                  {chk.isCompleted ? 'Done' : 'Pending'}
+                                </span>
+                                {chk.isCompleted && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic font-medium py-2">
+                          No checkpoints defined for this project.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Activity & Audit History Panel (col-span-5) */}
+                  <div className="lg:col-span-5 bg-gray-50/70 border border-gray-200/80 rounded-2xl p-4.5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-200/80">
+                      <div className="flex items-center gap-2">
+                        <History className="w-4 h-4 text-emerald-600" />
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Activity & History</h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryTarget({
+                          recordId: p.id,
+                          title: p.name,
+                          code: p.code,
+                        })}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 font-bold text-xs rounded-lg border border-emerald-300 transition-colors cursor-pointer shadow-2xs"
+                        title="View Full Audit History in Drawer"
+                      >
+                        <span>Full Log</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <RecentActivitySection
+                        tableName="projects"
+                        recordId={p.id}
+                        onOpenHistory={() => setHistoryTarget({
+                          recordId: p.id,
+                          title: p.name,
+                          code: p.code,
+                        })}
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
             </div>
           </div>
         );

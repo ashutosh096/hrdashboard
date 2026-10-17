@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown, History, UserCheck, MoreVertical, Pencil } from 'lucide-react';
+import { Plus, Clock, Copy, Search, Filter, ArrowRight, Layers, Target, ListTodo, Lock, Eye, Edit3, X, Zap, Calendar, Users, Trash2, ChevronRight, ChevronLeft, ChevronDown, History, UserCheck, MoreVertical, Pencil, ExternalLink } from 'lucide-react';
 import { TaskAssignModal } from '../components/TaskAssignModal';
 import { TaskUpdateModal, TaskItem } from '../components/TaskUpdateModal';
 import { TaskCloneModal } from '../components/TaskCloneModal';
@@ -344,6 +344,11 @@ export const TasksView: React.FC = () => {
       epicId: task.epicId || (task.parentEpicCode ? (rawEpics.find((e: any) => e.epicCode === task.parentEpicCode)?.id || null) : null),
       parentEpicCode: task.parentEpicCode || null,
       parentEpicTitle: task.parentEpicTitle || null,
+      projectId: task.projectId || null,
+      parentProjectCode: task.projectCode || null,
+      parentProjectTitle: task.projectName || null,
+      projectCode: task.projectCode || null,
+      projectName: task.projectName || null,
       assignee: task.assigneeName || task.assignee || 'Unassigned',
       assigneeId: task.assigneeId || '',
       reviewingLead: ((task.reviewingLead && task.reviewingLead.toLowerCase() !== 'manager lead') ? task.reviewingLead : 'Unassigned'),
@@ -388,6 +393,7 @@ export const TasksView: React.FC = () => {
         entity: updated.entity,
         entityCode: updated.entityCode || (updated.entity === 'CLIMAGRO' ? 'CAG' : updated.entity === 'COMMON' ? 'COMMON' : 'EHM'),
         epicId: updated.epicId !== undefined ? updated.epicId : null,
+        projectId: updated.projectId !== undefined ? updated.projectId : null,
         assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
         assigneeId: updated.assigneeId || null,
         reviewingLead: updated.reviewingLead === 'Unassigned' ? '' : updated.reviewingLead,
@@ -486,6 +492,11 @@ export const TasksView: React.FC = () => {
         title: realTask.title,
         entity: realTask.entity || resolvedEntityLabel,
         entityCode: realTask.entityCode || resolvedEntityCode,
+        projectId: realTask.projectId || null,
+        parentProjectCode: realTask.projectCode || null,
+        parentProjectTitle: realTask.projectName || null,
+        projectCode: realTask.projectCode || null,
+        projectName: realTask.projectName || null,
         assignee: realTask.assigneeName || 'Unassigned',
         reviewingLead: realTask.reviewingLeadName || 'Unassigned',
         status: realTask.status || 'BACKLOG',
@@ -563,6 +574,31 @@ export const TasksView: React.FC = () => {
             >
               {t.title}
             </span>
+            {(() => {
+              const rawDeliv = (t.deliverableUrl || t.outputUrl || '').trim();
+              if (!rawDeliv) return null;
+              const firstUrl = rawDeliv.split(/[,\n]/)[0].trim();
+              if (!firstUrl) return null;
+              const isPdf = firstUrl.toLowerCase().includes('.pdf');
+              const isGoogle = firstUrl.includes('docs.google') || firstUrl.includes('drive.google');
+              const targetHref = firstUrl.startsWith('http') ? firstUrl : `https://${firstUrl}`;
+              return (
+                <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                  <a
+                    href={targetHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold transition-all max-w-full truncate group/dlink shadow-2xs"
+                    title={`Open deliverable in new tab: ${targetHref}`}
+                  >
+                    <ExternalLink className="w-2.5 h-2.5 text-emerald-600 shrink-0 group-hover/dlink:translate-x-0.5 transition-transform" />
+                    <span className="truncate">
+                      {isPdf ? '📄 View PDF' : isGoogle ? '📊 Google Drive / Doc' : '🔗 Deliverable Link'}
+                    </span>
+                  </a>
+                </div>
+              );
+            })()}
           </div>
         </td>
 

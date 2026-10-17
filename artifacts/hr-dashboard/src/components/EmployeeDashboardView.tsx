@@ -29,6 +29,7 @@ import {
   X,
   ArrowRight,
   Zap,
+  ExternalLink,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -46,7 +47,7 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchApi } from '@workspace/api-client-react';
+import { fetchApi, clearApiCache } from '@workspace/api-client-react';
 import { useEntity } from '../contexts/EntityContext';
 import { matchesEntityFilter, getEntityBadge } from '../utils/entityUtils';
 import { TaskUpdateModal, TaskItem } from './TaskUpdateModal';
@@ -248,13 +249,18 @@ export const EmployeeDashboardView: React.FC = () => {
               reviewingLeadId: t.reviewingLeadId || matchedLeadEmp?.id,
               assigneeName: currentTargetEmp ? `${currentTargetEmp.firstName} ${currentTargetEmp.lastName}` : (user?.name || 'Team Member'),
               assigneeId: t.assigneeId,
-              status: (t.status === 'DONE'
-                ? 'Done'
-                : t.status === 'BLOCKED'
-                  ? 'Blocked'
-                  : t.status === 'DELAYED'
-                    ? 'Delayed'
-                    : 'In Progress') as any,
+              status: (() => {
+                const s = String(t.status || '').toUpperCase().trim();
+                if (s === 'DONE' || s === 'COMPLETED') return 'Done';
+                if (s === 'TO_REVIEW' || s === 'IN_REVIEW' || s === 'REVIEW') return 'To Review';
+                if (s === 'IN_PROGRESS' || s === 'PROGRESS' || s === 'DOING') return 'In Progress';
+                if (s === 'TODO' || s === 'TO_DO' || s === 'TO DO') return 'To Do';
+                if (s === 'PLANNED') return 'Planned';
+                if (s === 'BACKLOG') return 'Backlog';
+                if (s === 'BLOCKED') return 'Blocked';
+                if (s === 'DELAYED') return 'Delayed';
+                return t.status || 'In Progress';
+              })() as any,
               dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '2026-09-18',
               outputUrl: t.deliverableUrl || '',
               waitingOn: t.waitingOn || 'None (Self)',
@@ -441,13 +447,50 @@ export const EmployeeDashboardView: React.FC = () => {
             : t
         )
       );
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/dashboard');
+      clearApiCache('/api/sprints');
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
-      await loadData(true);
       window.dispatchEvent(new CustomEvent('tasks-updated'));
+      await loadData(true);
     } catch (err: any) {
       console.error('[EMPLOYEE DASH TASK UPDATE ERROR]:', err);
       toast.error(err?.message || 'Failed to save task update to database');
       throw err;
+    }
+  };
+
+  const handleQuickStatusChange = async (task: EmployeeDeliverableTask, newStatus: string) => {
+    // 1. Optimistic update
+    setMyTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              status: newStatus,
+              completionPct: calculateTaskProgress(newStatus),
+            }
+          : t
+      )
+    );
+
+    try {
+      await fetchApi(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+      clearApiCache('/api/tasks');
+      clearApiCache('/api/dashboard');
+      clearApiCache('/api/sprints');
+      toast.success(`Task ${task.taskId} status updated to "${newStatus}"!`);
+      window.dispatchEvent(new CustomEvent('tasks-updated'));
+      await loadData(true);
+    } catch (err: any) {
+      console.error('[QUICK STATUS UPDATE ERROR]:', err);
+      toast.error(err?.message || 'Failed to update task status');
+      await loadData(true);
     }
   };
 
@@ -768,7 +811,7 @@ export const EmployeeDashboardView: React.FC = () => {
                               entity: t.entity,
                               assignee: t.assigneeName,
                               reviewingLead: t.lead,
-                              status: t.status === 'Done' ? 'Done' : 'In Progress',
+                              status: t.status,
                               outputUrl: t.outputUrl,
                               waitingOn: t.waitingOn,
                               notes: t.notes,
@@ -800,23 +843,65 @@ export const EmployeeDashboardView: React.FC = () => {
                       </div>
                       <h4 className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">{t.title}</h4>
                       <p className="text-xs text-gray-500 font-medium line-clamp-1">{t.notes || 'No description provided.'}</p>
+                      {(() => {
+                        const rawDeliv = (t.outputUrl || '').trim();
+                        if (!rawDeliv) return null;
+                        const firstUrl = rawDeliv.split(/[,\n]/)[0].trim();
+                        if (!firstUrl) return null;
+                        const isPdf = firstUrl.toLowerCase().includes('.pdf');
+                        const isGoogle = firstUrl.includes('docs.google') || firstUrl.includes('drive.google');
+                        const targetHref = firstUrl.startsWith('http') ? firstUrl : `https://${firstUrl}`;
+                        return (
+                          <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                            <a
+                              href={targetHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold transition-all max-w-full truncate group/dlink shadow-2xs"
+                              title={`Open deliverable in new tab: ${targetHref}`}
+                            >
+                              <ExternalLink className="w-2.5 h-2.5 text-emerald-600 shrink-0 group-hover/dlink:translate-x-0.5 transition-transform" />
+                              <span className="truncate">
+                                {isPdf ? '📄 View PDF' : isGoogle ? '📊 Google Drive / Doc' : '🔗 Deliverable Link'}
+                              </span>
+                            </a>
+                          </div>
+                        );
+                      })()}
                     </div>
 
-                    {/* Task Status Badge */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className={`px-3 py-1 text-xs font-extrabold rounded-xl border ${t.status === 'Done'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                            : t.status === 'Delayed'
-                              ? 'bg-amber-100 text-amber-900 border-amber-400 font-black'
-                              : t.status === 'Blocked'
-                                ? 'bg-red-50 text-red-800 border-red-300'
-                                : 'bg-blue-50 text-blue-800 border-blue-300'
-                          }`}
+                    {/* Interactive Task Status Selector & Edit Action */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value={t.status}
+                        onChange={(e) => handleQuickStatusChange(t, e.target.value)}
+                        className={`px-2.5 py-1 text-xs font-bold rounded-xl border outline-none cursor-pointer transition-all shadow-2xs ${
+                          t.status === 'Done'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 focus:ring-2 focus:ring-emerald-400 font-extrabold'
+                            : t.status === 'To Review'
+                              ? 'bg-purple-50 text-purple-800 border-purple-300 focus:ring-2 focus:ring-purple-400 font-extrabold'
+                              : t.status === 'Delayed'
+                                ? 'bg-amber-100 text-amber-900 border-amber-400 font-black focus:ring-2 focus:ring-amber-400'
+                                : t.status === 'Blocked'
+                                  ? 'bg-red-50 text-red-800 border-red-300 focus:ring-2 focus:ring-red-400 font-extrabold'
+                                  : t.status === 'To Do'
+                                    ? 'bg-gray-100 text-gray-800 border-gray-300 focus:ring-2 focus:ring-gray-400 font-bold'
+                                    : 'bg-blue-50 text-blue-800 border-blue-300 focus:ring-2 focus:ring-blue-400 font-extrabold'
+                        }`}
+                        title="Change task status directly"
                       >
-                        {t.status}
-                      </span>
-                      <button className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors">
+                        <option value="In Progress">In Progress</option>
+                        <option value="To Review">To Review</option>
+                        <option value="Done">Done</option>
+                        <option value="To Do">To Do</option>
+                        <option value="Delayed">Delayed</option>
+                        <option value="Blocked">Blocked</option>
+                      </select>
+                      <button
+                        onClick={() => handleOpenTaskUpdate(t)}
+                        className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer"
+                        title="Edit Task Details"
+                      >
                         <Edit3 className="w-4 h-4" />
                       </button>
                     </div>
