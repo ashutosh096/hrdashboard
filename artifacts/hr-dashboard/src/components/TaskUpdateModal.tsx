@@ -61,6 +61,9 @@ export interface TaskItem {
   dueDate?: string;
   targetWeek?: string;
   priority?: string;
+  department?: string | null;
+  departmentId?: string | null;
+  departmentName?: string | null;
   createdById?: string | null;
   createdByName?: string | null;
   creatorName?: string | null;
@@ -68,6 +71,14 @@ export interface TaskItem {
   checklists?: ChecklistItem[];
   comments?: CommentItem[];
 }
+
+export const DEPARTMENT_OPTIONS = [
+  'Marketing',
+  'Sales',
+  'Product & Tech',
+  'Operations & Delivery',
+  'Grants & Governance',
+];
 
 interface TaskUpdateModalProps {
   isOpen: boolean;
@@ -175,6 +186,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
   const [selectedEpicId, setSelectedEpicId] = useState<string>('');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [entity, setEntity] = useState('EHM');
+  const [department, setDepartment] = useState('Product & Tech');
   const [parentTaskId, setParentTaskId] = useState('');
   const [taskName, setTaskName] = useState('');
   const [assignee, setAssignee] = useState('');
@@ -331,6 +343,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
       }
 
       setEntity(isEnt);
+      setDepartment(task.department || (task as any).departmentName || 'Product & Tech');
       setParentTaskId(realCode || (task.id ? `TSK-${task.id.slice(0, 6)}` : 'TSK-001'));
       setTaskName(task.title || '');
 
@@ -663,6 +676,7 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           entity,
           entityCode: resolvedCode,
           entityId: undefined,
+          department,
           epicId: selectedEpicId || null,
           parentEpicCode: matchedEpic ? matchedEpic.epicCode : selectedEpicId ? task.parentEpicCode : null,
           parentEpicTitle: matchedEpic ? matchedEpic.title : selectedEpicId ? task.parentEpicTitle : null,
@@ -877,8 +891,8 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
           {/* Left Column (Task Info & Checklist) */}
           <div className="lg:col-span-7 space-y-5 text-left">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Brand / Entity & Parent Task ID & Created At & Created By */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Row 1: Brand / Entity & Department (Editable Categorization Pair) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Brand / Entity</label>
                   {readOnlyMode ? (
@@ -907,6 +921,33 @@ export const TaskUpdateModal: React.FC<TaskUpdateModalProps> = ({
                   )}
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Department</label>
+                  {readOnlyMode ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={department || 'Product & Tech'}
+                      className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-700 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      className="w-full text-xs font-bold border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      {DEPARTMENT_OPTIONS.map((deptOpt) => (
+                        <option key={deptOpt} value={deptOpt}>
+                          {deptOpt}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: Task Code & Created At & Created By (Read-Only Audit Tracking Trio) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Task Code</label>
                   <input

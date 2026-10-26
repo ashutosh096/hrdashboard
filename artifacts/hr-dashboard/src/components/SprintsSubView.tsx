@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Calendar, Search, Filter, Archive, AlertCircle, Users, Lock, Clock, MoveRight, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Eye, Edit3, Sparkles, X, Layers, ListChecks, MessageSquare, Send, History, UserCheck, Pencil, Trash2, Check, MoreVertical, Paperclip, Link2, ExternalLink, GripVertical } from 'lucide-react';
 import { fetchApi, getCachedApi, clearApiCache } from '@workspace/api-client-react';
 import { toast } from 'sonner';
@@ -108,8 +108,12 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Scalable View Controls & Filters
+  const [layoutMode, setLayoutMode] = useState<'BOARD' | 'CALENDAR'>('BOARD');
+  const [calendarDate, setCalendarDate] = useState<Date>(() => new Date());
+  const [calendarFilterMode, setCalendarFilterMode] = useState<'ALL_WORK' | 'MY_TASKS'>('ALL_WORK');
+  const [calendarDayModal, setCalendarDayModal] = useState<{ date: Date; dateStr: string; tasks: any[] } | null>(null);
   const [viewMode, setViewMode] = useState<'ACTIVE' | 'ARCHIVE'>('ACTIVE');
-  const [sprintCategory, setSprintCategory] = useState<'ACTIVE' | 'FUTURE' | 'DATE_RANGE'>('ACTIVE');
+  const [sprintCategory, setSprintCategory] = useState<'PRESENT_WEEK' | 'PAST_WEEK' | 'DATE_RANGE' | 'ALL'>('PRESENT_WEEK');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [selectedWeek, setSelectedWeek] = useState<string>('ALL');
@@ -555,7 +559,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     const previousTasks = allTasks;
     // Optimistic UI update
     setAllTasks(prev =>
-      prev.map(t => (t.id === taskId ? { ...t, status: apiStatus } : t))
+      prev.map(t => (t.id === taskId ? { ...t, status: apiStatus, updatedAt: new Date().toISOString() } : t))
     );
 
     try {
@@ -758,6 +762,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           ? {
             ...t,
             status: apiStatus,
+            updatedAt: new Date().toISOString(),
             assigneeId: assigneeId || null,
             assigneeName: assignedEmp ? `${assignedEmp.firstName} ${assignedEmp.lastName}` : (assigneeId ? t.assigneeName : 'Unassigned'),
             assigneeEmail: assignedEmp?.email || t.assigneeEmail,
@@ -814,6 +819,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
             status: 'DONE',
             deliverableUrl,
             description: notes,
+            updatedAt: new Date().toISOString(),
             checklists: (Array.isArray(checklists) && checklists.length > 0) ? checklists : t.checklists,
             comments: (Array.isArray(comments) && comments.length > 0) ? comments : t.comments,
           }
@@ -1081,6 +1087,8 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
       dueDate: task.dueDate ? (String(task.dueDate).includes('T') ? String(task.dueDate).split('T')[0] : String(task.dueDate)) : '',
       targetWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
       priority: task.priority || 'P3',
+      department: task.department || task.departmentName || (employees.find(e => e.id === task.assigneeId)?.departmentName) || 'Product & Tech',
+      departmentId: task.departmentId || null,
       createdAt: task.createdAt,
       createdById: task.createdById || task.creatorId,
       createdByName: task.createdByName || task.creatorName || (employees.find(e => e.id === (task.createdById || task.creatorId)) ? `${employees.find(e => e.id === (task.createdById || task.creatorId))?.firstName} ${employees.find(e => e.id === (task.createdById || task.creatorId))?.lastName}`.trim() : task.createdBy || ''),
@@ -1111,6 +1119,7 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           title: updated.title,
           entity: resolvedEntityLabel,
           entityCode: resolvedEntityCode,
+          department: updated.department,
           epicId: updated.epicId !== undefined ? updated.epicId : null,
           projectId: updated.projectId !== undefined ? updated.projectId : null,
           assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
@@ -1129,6 +1138,21 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           waitingOn: updated.waitingOn,
         }),
       });
+
+      if ((updated as any).sprintId) {
+        await fetchApi(`/api/sprints/${(updated as any).sprintId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ department: updated.department }),
+        }).catch(() => {});
+      }
+
+      setAllTasks(prev =>
+        prev.map(t =>
+          t.id === updated.id
+            ? { ...t, ...updated, department: updated.department, departmentName: updated.department }
+            : t
+        )
+      );
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
       await loadData();
       window.dispatchEvent(new CustomEvent('tasks-updated'));
@@ -1257,12 +1281,98 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     }
   };
 
-  const getCurrentSprintWeekIndex = (): number => {
-    const day = new Date().getDate();
-    if (day <= 7) return 1;
-    if (day <= 14) return 2;
-    if (day <= 21) return 3;
-    return 4;
+  // Calculate Current Calendar Week (Monday 00:00:00 to Sunday 23:59:59.999)
+  const getPresentWeekRange = (): { start: Date; end: Date } => {
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    return { start: monday, end: sunday };
+  };
+
+  // Calculate Past Calendar Week (Previous Monday 00:00:00 to Sunday 23:59:59.999)
+  const getPastWeekRange = (): { start: Date; end: Date } => {
+    const present = getPresentWeekRange();
+    const pastMonday = new Date(present.start);
+    pastMonday.setDate(pastMonday.getDate() - 7);
+    pastMonday.setHours(0, 0, 0, 0);
+
+    const pastSunday = new Date(present.start);
+    pastSunday.setMilliseconds(-1);
+
+    return { start: pastMonday, end: pastSunday };
+  };
+
+  // Format short date range for button badges (e.g. "Oct 26 – Nov 1")
+  const formatShortDateRange = (start: Date, end: Date): string => {
+    const startMonth = start.toLocaleString('en-US', { month: 'short' });
+    const endMonth = end.toLocaleString('en-US', { month: 'short' });
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+
+    if (startMonth === endMonth) {
+      return `${startMonth} ${startDay}–${endDay}`;
+    }
+    return `${startMonth} ${startDay} – ${endMonth} ${endDay}`;
+  };
+
+  // Extract all activity and lifecycle timestamps for a task (creation, due date, status changes, comments, subtasks)
+  const getTaskActivityTimestamps = (t: any): Date[] => {
+    const dates: Date[] = [];
+
+    const addDate = (val: any) => {
+      if (!val) return;
+      try {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+          dates.push(d);
+        }
+      } catch {
+        // ignore invalid dates
+      }
+    };
+
+    // 1. Core Task Lifecycle Dates
+    addDate(t.createdAt);
+    addDate(t.updatedAt);
+    addDate(t.statusUpdatedAt);
+    addDate(t.dueDate);
+    addDate(t.startDate);
+    addDate(t.endDate);
+
+    // 2. Comments Activity Timestamps
+    if (Array.isArray(t.comments)) {
+      t.comments.forEach((c: any) => {
+        addDate(c.createdAt);
+        addDate(c.updatedAt);
+      });
+    }
+
+    // 3. Subtasks / Checklist Items Activity Timestamps
+    if (Array.isArray(t.checklists)) {
+      t.checklists.forEach((chk: any) => {
+        addDate(chk.createdAt);
+        addDate(chk.updatedAt);
+        addDate(chk.completedAt);
+      });
+    }
+
+    // 4. Notes Activity Timestamps
+    if (Array.isArray(t.notes)) {
+      t.notes.forEach((n: any) => {
+        addDate(n.createdAt);
+        addDate(n.updatedAt);
+      });
+    }
+
+    return dates;
   };
 
   const getSprintWeekIndex = (weekStr?: string | null): number => {
@@ -1275,8 +1385,6 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
     return 0;
   };
 
-  const currentWeekIdx = getCurrentSprintWeekIndex();
-
   const filteredTasks = allTasks.filter(t => {
     const isDone = t.status === 'DONE' || t.status === 'COMPLETED';
     const matchesViewMode = viewMode === 'ARCHIVE' ? isDone : true;
@@ -1285,31 +1393,26 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
     const taskWeekStr = t.sprintWeek || t.targetWeek || '';
     const taskWeekIdx = getSprintWeekIndex(taskWeekStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const taskDueDate = t.dueDate ? new Date(t.dueDate) : null;
 
     let matchesSprintCategory = true;
-    if (sprintCategory === 'ACTIVE') {
-      // Active Sprints (Present & past week's sprints, active statuses, and backlog)
-      const isPresentOrPastWeek = taskWeekIdx <= currentWeekIdx;
-      const isActiveStatus = taskCol === 'IN_PROGRESS' || taskCol === 'TODO' || taskCol === 'TO_REVIEW' || taskCol === 'PLANNED';
-      const isUnassignedWeek = taskWeekIdx === 0;
-      const isBacklogTask = taskCol === 'BACKLOG';
-      matchesSprintCategory = isPresentOrPastWeek || isUnassignedWeek || isActiveStatus || isBacklogTask;
-    } else if (sprintCategory === 'FUTURE') {
-      // Future Sprints & Undecided Sprints (Future weeks, or tasks not declared / not decided / Backlog)
-      const isFutureWeek = taskWeekIdx > currentWeekIdx;
-      const isUndecidedOrBacklog = taskWeekIdx === 0 || taskCol === 'BACKLOG' || !taskWeekStr;
-      const isFutureDueDate = Boolean(taskDueDate && taskDueDate > today);
-      matchesSprintCategory = isFutureWeek || isUndecidedOrBacklog || isFutureDueDate;
+    const activityDates = getTaskActivityTimestamps(t);
+
+    if (sprintCategory === 'PRESENT_WEEK' || (sprintCategory as string) === 'ACTIVE') {
+      const { start, end } = getPresentWeekRange();
+      matchesSprintCategory = activityDates.some(d => d >= start && d <= end);
+    } else if (sprintCategory === 'PAST_WEEK') {
+      const { start, end } = getPastWeekRange();
+      matchesSprintCategory = activityDates.some(d => d >= start && d <= end);
     } else if (sprintCategory === 'DATE_RANGE') {
       if (filterStartDate || filterEndDate) {
-        const taskDateStr = t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : (t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : '');
-        const afterStart = !filterStartDate || (taskDateStr >= filterStartDate);
-        const beforeEnd = !filterEndDate || (taskDateStr <= filterEndDate);
-        matchesSprintCategory = afterStart && beforeEnd;
+        const start = filterStartDate ? new Date(`${filterStartDate}T00:00:00`) : new Date(0);
+        const end = filterEndDate ? new Date(`${filterEndDate}T23:59:59.999`) : new Date(8640000000000000);
+        matchesSprintCategory = activityDates.some(d => d >= start && d <= end);
+      } else {
+        matchesSprintCategory = true;
       }
+    } else if (sprintCategory === 'ALL') {
+      matchesSprintCategory = true;
     }
 
     // Employee Scoping Filter:
@@ -1383,6 +1486,158 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
   const archivedTaskCount = allTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
   const reviewCount = allTasks.filter(t => t.status === 'IN_REVIEW' || t.status === 'TO_REVIEW').length;
 
+  // -------------------------------------------------------------
+  // 📆 CALENDAR VIEW MODE CALCULATIONS & HELPERS
+  // -------------------------------------------------------------
+  const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const calYear = calendarDate.getFullYear();
+  const calMonth = calendarDate.getMonth();
+  const calMonthTitle = `${MONTH_NAMES[calMonth]} ${calYear}`;
+
+  const handlePrevMonth = () => {
+    setCalendarDate(new Date(calYear, calMonth - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCalendarDate(new Date(calYear, calMonth + 1, 1));
+  };
+
+  const handleTodayMonth = () => {
+    setCalendarDate(new Date());
+  };
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(calYear, calMonth, 1);
+    const startDayIndex = firstDay.getDay(); // 0 is SUN, 1 is MON ... 6 is SAT
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
+
+    const days: {
+      date: Date;
+      dateStr: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+      isToday: boolean;
+    }[] = [];
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    // Prev month padding
+    for (let i = startDayIndex - 1; i >= 0; i--) {
+      const dayNum = daysInPrevMonth - i;
+      const d = new Date(calYear, calMonth - 1, dayNum);
+      const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      days.push({
+        date: d,
+        dateStr: dStr,
+        dayNumber: dayNum,
+        isCurrentMonth: false,
+        isToday: dStr === todayStr,
+      });
+    }
+
+    // Current month
+    for (let dNum = 1; dNum <= daysInMonth; dNum++) {
+      const d = new Date(calYear, calMonth, dNum);
+      const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      days.push({
+        date: d,
+        dateStr: dStr,
+        dayNumber: dNum,
+        isCurrentMonth: true,
+        isToday: dStr === todayStr,
+      });
+    }
+
+    // Next month padding (make full 35 or 42 grid cells)
+    const totalCells = days.length <= 35 ? 35 : 42;
+    const remainingDays = totalCells - days.length;
+    for (let dNum = 1; dNum <= remainingDays; dNum++) {
+      const d = new Date(calYear, calMonth + 1, dNum);
+      const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      days.push({
+        date: d,
+        dateStr: dStr,
+        dayNumber: dNum,
+        isCurrentMonth: false,
+        isToday: dStr === todayStr,
+      });
+    }
+
+    return days;
+  }, [calYear, calMonth]);
+
+  // Calendar task filtering & resolution
+  const calendarTasks = useMemo(() => {
+    return allTasks.filter(t => {
+      // Entity match
+      if (!matchesEntityFilter(t, selectedEntity)) return false;
+
+      // Calendar Scope: All Work vs My Tasks
+      if (calendarFilterMode === 'MY_TASKS') {
+        const myId = user?.employeeId || user?.id;
+        const isAssigned = (t.assigneeId === myId || t.employeeId === myId) ||
+          (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(myId));
+        if (!isAssigned) return false;
+      } else if (selectedEmployeeId !== 'ALL') {
+        const isAssigned = (t.assigneeId === selectedEmployeeId || t.employeeId === selectedEmployeeId) ||
+          (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(selectedEmployeeId));
+        if (!isAssigned) return false;
+      }
+
+      // Search match if any query is typed
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const haystack = `${t.title || ''} ${t.taskCode || ''} ${t.assignee || ''} ${t.assigneeName || ''}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+
+      return true;
+    });
+  }, [allTasks, selectedEntity, calendarFilterMode, selectedEmployeeId, user, searchQuery]);
+
+  const calendarTasksWithDueDate = useMemo(() => {
+    return calendarTasks.filter(t => Boolean(t.dueDate));
+  }, [calendarTasks]);
+
+  const calendarCompletedCount = useMemo(() => {
+    return calendarTasksWithDueDate.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
+  }, [calendarTasksWithDueDate]);
+
+  const getCalendarTasksForDay = (dateStr: string) => {
+    return calendarTasksWithDueDate.filter(t => {
+      try {
+        const dStr = new Date(t.dueDate).toISOString().split('T')[0];
+        return dStr === dateStr;
+      } catch {
+        return false;
+      }
+    });
+  };
+
+  const getCalendarPillStyle = (t: any) => {
+    if (t.status === 'DONE' || t.status === 'COMPLETED') {
+      return 'bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-300';
+    }
+    const p = (t.priority || '').toUpperCase();
+    if (p === 'URGENT' || p === 'P1' || p === '1') {
+      return 'bg-rose-100 hover:bg-rose-200 text-rose-950 border-rose-300';
+    }
+    if (p === 'HIGH' || p === 'P2' || p === '2') {
+      return 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300';
+    }
+    if (p === 'LOW' || p === 'P4' || p === '4') {
+      return 'bg-purple-100 hover:bg-purple-200 text-purple-950 border-purple-300';
+    }
+    // Default P3 / Medium
+    return 'bg-sky-100 hover:bg-sky-200 text-sky-950 border-sky-300';
+  };
+
   return (
     <div className="space-y-5 select-none">
       {/* Top Header Bar */}
@@ -1394,40 +1649,71 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            onClick={() => {
-              const newMode = viewMode === 'ACTIVE' ? 'ARCHIVE' : 'ACTIVE';
-              setViewMode(newMode);
-              setSelectedStatus('ALL');
-              if (newMode === 'ARCHIVE') {
-                setTimeout(() => {
-                  if (kanbanContainerRef.current) {
-                    kanbanContainerRef.current.scrollTo({ left: kanbanContainerRef.current.scrollWidth, behavior: 'smooth' });
-                  }
-                  if (topScrollRef.current) {
-                    topScrollRef.current.scrollTo({ left: topScrollRef.current.scrollWidth, behavior: 'smooth' });
-                  }
-                }, 50);
-              } else {
-                setTimeout(() => {
-                  if (kanbanContainerRef.current) {
-                    kanbanContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-                  }
-                  if (topScrollRef.current) {
-                    topScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-                  }
-                }, 50);
-              }
-            }}
-            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${viewMode === 'ARCHIVE'
-                ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700 shadow-xs'
-                : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-2xs'
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {/* View Mode Switcher: Board vs Calendar */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200/80 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setLayoutMode('BOARD')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                layoutMode === 'BOARD'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-gray-200 font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
               }`}
-          >
-            <Archive className="w-3.5 h-3.5 text-gray-500" />
-            <span>{viewMode === 'ACTIVE' ? 'Sprint archive' : 'Active sprints'}</span>
-          </button>
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Board</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLayoutMode('CALENDAR')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                layoutMode === 'CALENDAR'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-gray-200 font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Calendar</span>
+            </button>
+          </div>
+
+          {layoutMode === 'BOARD' && (
+            <button
+              onClick={() => {
+                const newMode = viewMode === 'ACTIVE' ? 'ARCHIVE' : 'ACTIVE';
+                setViewMode(newMode);
+                setSelectedStatus('ALL');
+                if (newMode === 'ARCHIVE') {
+                  setTimeout(() => {
+                    if (kanbanContainerRef.current) {
+                      kanbanContainerRef.current.scrollTo({ left: kanbanContainerRef.current.scrollWidth, behavior: 'smooth' });
+                    }
+                    if (topScrollRef.current) {
+                      topScrollRef.current.scrollTo({ left: topScrollRef.current.scrollWidth, behavior: 'smooth' });
+                    }
+                  }, 50);
+                } else {
+                  setTimeout(() => {
+                    if (kanbanContainerRef.current) {
+                      kanbanContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                    }
+                    if (topScrollRef.current) {
+                      topScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                    }
+                  }, 50);
+                }
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${viewMode === 'ARCHIVE'
+                  ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700 shadow-xs'
+                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-2xs'
+                }`}
+            >
+              <Archive className="w-3.5 h-3.5 text-gray-500" />
+              <span>{viewMode === 'ACTIVE' ? 'Sprint archive' : 'Active sprints'}</span>
+            </button>
+          )}
 
           <button
             onClick={() => setIsModalOpen(true)}
@@ -1439,63 +1725,97 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
         </div>
       </div>
 
-      {/* Sprint Cycle Mode Selector */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5 mr-1 select-none">
-          <Calendar className="w-3.5 h-3.5 text-gray-400" />
-          <span>Sprint</span>
-        </span>
+      {/* Sprint Cycle Mode Selector (Shown in Board layout) */}
+      {layoutMode === 'BOARD' && (
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5 mr-1 select-none">
+            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+            <span>Sprint filter</span>
+          </span>
 
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200/80">
-          <button
-            onClick={() => setSprintCategory('ACTIVE')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${sprintCategory === 'ACTIVE'
-                ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200/80">
+            <button
+              onClick={() => setSprintCategory('PRESENT_WEEK')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                sprintCategory === 'PRESENT_WEEK' || (sprintCategory as string) === 'ACTIVE'
+                  ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
               }`}
-          >
-            Active sprint
-          </button>
+            >
+              <span>Present week</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${
+                  sprintCategory === 'PRESENT_WEEK' || (sprintCategory as string) === 'ACTIVE'
+                    ? 'bg-blue-700/90 text-blue-100'
+                    : 'bg-gray-200/80 text-gray-600'
+                }`}
+              >
+                {formatShortDateRange(getPresentWeekRange().start, getPresentWeekRange().end)}
+              </span>
+            </button>
 
-          <button
-            onClick={() => setSprintCategory('FUTURE')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${sprintCategory === 'FUTURE'
-                ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+            <button
+              onClick={() => setSprintCategory('PAST_WEEK')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                sprintCategory === 'PAST_WEEK'
+                  ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
               }`}
-          >
-            Future and undecided
-          </button>
+            >
+              <span>Past week</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${
+                  sprintCategory === 'PAST_WEEK'
+                    ? 'bg-blue-700/90 text-blue-100'
+                    : 'bg-gray-200/80 text-gray-600'
+                }`}
+              >
+                {formatShortDateRange(getPastWeekRange().start, getPastWeekRange().end)}
+              </span>
+            </button>
 
-          <button
-            onClick={() => setSprintCategory('DATE_RANGE')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${sprintCategory === 'DATE_RANGE'
-                ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+            <button
+              onClick={() => setSprintCategory('DATE_RANGE')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sprintCategory === 'DATE_RANGE'
+                  ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
               }`}
-          >
-            Date range
-          </button>
-        </div>
+            >
+              Custom date
+            </button>
 
-        {sprintCategory === 'DATE_RANGE' && (
-          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs">
-            <input
-              type="date"
-              value={filterStartDate}
-              onChange={e => setFilterStartDate(e.target.value)}
-              className="text-xs font-semibold bg-transparent px-2 py-1 outline-none"
-            />
-            <span className="text-xs text-gray-400">to</span>
-            <input
-              type="date"
-              value={filterEndDate}
-              onChange={e => setFilterEndDate(e.target.value)}
-              className="text-xs font-semibold bg-transparent px-2 py-1 outline-none"
-            />
+            <button
+              onClick={() => setSprintCategory('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sprintCategory === 'ALL'
+                  ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              }`}
+            >
+              All
+            </button>
           </div>
-        )}
-      </div>
+
+          {sprintCategory === 'DATE_RANGE' && (
+            <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs">
+              <input
+                type="date"
+                value={filterStartDate}
+                onChange={e => setFilterStartDate(e.target.value)}
+                className="text-xs font-semibold bg-transparent px-2 py-1 outline-none text-gray-800"
+              />
+              <span className="text-xs text-gray-400 font-semibold">to</span>
+              <input
+                type="date"
+                value={filterEndDate}
+                onChange={e => setFilterEndDate(e.target.value)}
+                className="text-xs font-semibold bg-transparent px-2 py-1 outline-none text-gray-800"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filter Row: Employee Dropdown, Status Dropdown, and Search Box */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -1546,8 +1866,170 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
 
       {/* Week sub-nav removed — showing all weeks */}
 
-      {/* 🚀 6-COLUMN KANBAN BOARD VIEW (Backlog -> Planned -> To Do -> In Progress -> To Review -> Done) */}
-      {loadError && allTasks.length === 0 ? (
+      {/* 🚀 VIEW CONTENT: KANBAN BOARD vs CALENDAR VIEW */}
+      {layoutMode === 'CALENDAR' ? (
+        <div className="space-y-4">
+          {/* Calendar Month Sub-Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-gray-200/90 shadow-2xs">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h3 className="text-lg font-extrabold text-gray-900 tracking-tight min-w-[160px]">
+                {calMonthTitle}
+              </h3>
+              <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="p-1.5 hover:bg-white text-gray-600 hover:text-gray-900 rounded-lg transition-colors cursor-pointer"
+                  title="Previous month"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTodayMonth}
+                  className="px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-white rounded-lg transition-colors cursor-pointer"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="p-1.5 hover:bg-white text-gray-600 hover:text-gray-900 rounded-lg transition-colors cursor-pointer"
+                  title="Next month"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scope Switcher: All Work vs My Tasks */}
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200/80">
+                <button
+                  type="button"
+                  onClick={() => setCalendarFilterMode('ALL_WORK')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    calendarFilterMode === 'ALL_WORK'
+                      ? 'bg-white text-gray-900 shadow-2xs font-extrabold'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                  }`}
+                >
+                  All Work
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarFilterMode('MY_TASKS')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    calendarFilterMode === 'MY_TASKS'
+                      ? 'bg-white text-gray-900 shadow-2xs font-extrabold'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                  }`}
+                >
+                  My Tasks
+                </button>
+              </div>
+            </div>
+
+            {/* Right Status Caption & Completed Counter (Matching User Screenshot) */}
+            <div className="flex items-center gap-4 text-xs font-medium text-gray-500 flex-wrap justify-between sm:justify-end">
+              <span className="flex items-center gap-1.5 text-gray-600">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span>Showing tasks with scheduled due dates</span>
+              </span>
+              <span className="bg-emerald-50 text-emerald-800 font-extrabold px-3 py-1 rounded-full border border-emerald-200 shadow-2xs">
+                {calendarCompletedCount} of {calendarTasksWithDueDate.length} completed
+              </span>
+            </div>
+          </div>
+
+          {/* Calendar 7-Day Grid Container */}
+          <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+            {/* Header: SUN - SAT */}
+            <div className="grid grid-cols-7 bg-slate-50/90 border-b border-gray-200 divide-x divide-gray-200 text-center py-2.5 text-xs font-black text-gray-600 tracking-wider">
+              {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d) => (
+                <div key={d}>{d}</div>
+              ))}
+            </div>
+
+            {/* Monthly Day Cells */}
+            <div className="grid grid-cols-7 divide-x divide-y divide-gray-200 bg-white">
+              {calendarDays.map((day, idx) => {
+                const dayTasks = getCalendarTasksForDay(day.dateStr);
+
+                return (
+                  <div
+                    key={`${day.dateStr}-${idx}`}
+                    onClick={() => {
+                      setSprintDueDate(day.dateStr);
+                      setIsModalOpen(true);
+                    }}
+                    className={`min-h-[125px] p-2 flex flex-col justify-between transition-colors group relative cursor-pointer ${
+                      day.isCurrentMonth ? 'bg-white hover:bg-slate-50/70' : 'bg-slate-50/40 text-gray-400'
+                    }`}
+                  >
+                    {/* Day Number and Quick Add Button */}
+                    <div className="flex items-center justify-between pb-1.5 select-none">
+                      <span
+                        className={`text-xs font-bold ${
+                          day.isToday
+                            ? 'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-extrabold shadow-xs'
+                            : day.isCurrentMonth
+                            ? 'text-gray-800'
+                            : 'text-gray-400'
+                        }`}
+                      >
+                        {day.dayNumber}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSprintDueDate(day.dateStr);
+                          setIsModalOpen(true);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-all cursor-pointer"
+                        title={`Add task due on ${day.dateStr}`}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Tasks List */}
+                    <div className="space-y-1.5 flex-1 min-h-[45px]">
+                      {dayTasks.slice(0, 3).map((t) => (
+                        <div
+                          key={t.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTaskClick(t);
+                          }}
+                          className={`px-2 py-1 rounded-md text-[11px] font-semibold truncate border cursor-pointer transition-all shadow-2xs flex items-center justify-between gap-1 ${getCalendarPillStyle(t)}`}
+                          title={`${t.taskCode || ''}: ${t.title} (${t.status || 'BACKLOG'})`}
+                        >
+                          <span className="truncate">{t.title}</span>
+                          {t.status === 'DONE' && <Check className="w-3 h-3 shrink-0 text-emerald-700" />}
+                        </div>
+                      ))}
+
+                      {dayTasks.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCalendarDayModal({ date: day.date, dateStr: day.dateStr, tasks: dayTasks });
+                          }}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline pt-0.5 text-left block cursor-pointer"
+                        >
+                          +{dayTasks.length - 3} more
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : loadError && allTasks.length === 0 ? (
         <InlineErrorRetry message={loadError} onRetry={() => loadData()} />
       ) : loading && allTasks.length === 0 ? (
         <KanbanSkeleton columns={6} />
@@ -3690,6 +4172,66 @@ export const SprintsSubView: React.FC<SprintsSubViewProps> = ({ isManager }) => 
           }}
           isReadOnly={isModalReadOnly}
         />
+      )}
+
+      {/* Calendar Day Popover Modal for +N more tasks */}
+      {calendarDayModal && (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 select-none">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+              <div>
+                <h3 className="font-bold text-gray-900 text-base tracking-tight flex items-center gap-2">
+                  <span>Tasks Due on {calendarDayModal.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  <span className="text-xs bg-blue-100 text-blue-800 font-extrabold px-2 py-0.5 rounded-full">
+                    {calendarDayModal.tasks.length}
+                  </span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCalendarDayModal(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-2 pr-1 flex-1">
+              {calendarDayModal.tasks.map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => {
+                    setCalendarDayModal(null);
+                    handleTaskClick(t);
+                  }}
+                  className={`p-3 rounded-xl border cursor-pointer hover:shadow-md transition-all flex items-center justify-between gap-3 ${getCalendarPillStyle(t)}`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-600 pb-0.5">
+                      <span className="font-mono">{t.taskCode || t.id}</span>
+                      <span>•</span>
+                      <span>{t.assigneeName || 'Unassigned'}</span>
+                    </div>
+                    <p className="font-bold text-xs text-gray-900 truncate">{t.title}</p>
+                  </div>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/80 border border-gray-300 shrink-0">
+                    {t.status || 'BACKLOG'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setCalendarDayModal(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Record History Slide-Over Drawer */}

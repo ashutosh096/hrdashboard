@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, sprints, employees, entities, epics, tasks, users, notifications, taskChecklists, taskComments, taskNotes, entityCounters, generateNextGlobalCode, eq, inArray, isNull, sql, and, recordHistory } from '@workspace/db';
+import { db, sprints, departments, employees, entities, epics, tasks, users, notifications, taskChecklists, taskComments, taskNotes, entityCounters, generateNextGlobalCode, eq, inArray, isNull, sql, and, recordHistory } from '@workspace/db';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getCallerInfo } from '../utils/userSnapshot.js';
 import { insertNotification } from '../services/notificationService.js';
@@ -34,6 +34,7 @@ router.get('/', async (req, res) => {
     const allEmployees = await db.select().from(employees);
     const allEpics = await db.select().from(epics);
     const allEntities = await db.select().from(entities);
+    const allDepartments = await db.select().from(departments);
 
     const enriched = allSprints.map(sprint => {
       const creatorEmp = allEmployees.find(e => e.id === sprint.createdById);
@@ -42,6 +43,7 @@ router.get('/', async (req, res) => {
       const sprintEmp = allEmployees.find(e => e.id === sprint.employeeId);
       const sprintEpic = allEpics.find(e => e.id === sprint.epicId);
       const sprintEntity = allEntities.find(ent => ent.id === (sprint.entityId || sprintEmp?.entityId));
+      const sprintDept = allDepartments.find(d => d.id === sprint.departmentId || d.name.toLowerCase() === (sprint.department || '').toLowerCase());
       const resolvedEntity = sprintEntity?.code === 'CAG'
         ? 'CLIMAGRO'
         : sprintEntity?.code === 'COMMON'
@@ -55,6 +57,9 @@ router.get('/', async (req, res) => {
         entity: resolvedEntity,
         entityCode: resolvedCode,
         entityName: sprintEntity?.name || (resolvedEntity === 'CLIMAGRO' ? 'Climagro Analytics' : resolvedEntity === 'COMMON' ? 'EHM & CLIMAGRO (COMMON)' : 'EHM Consultancy'),
+        department: sprintDept?.name || sprint.department || '',
+        departmentId: sprintDept?.id || sprint.departmentId || null,
+        departmentName: sprintDept?.name || sprint.department || '',
         tasks: sprintTasks,
         tasksCount: sprintTasks.length,
         employeeName: sprintEmp ? `${sprintEmp.firstName} ${sprintEmp.lastName}` : 'Unassigned',
@@ -95,13 +100,21 @@ router.post('/', requireRole(['ADMIN', 'MANAGER']), async (req, res) => {
       // Atomic counter for Sprint sequence on global_counters
       const sprintCode = await generateNextGlobalCode('SPRT', tx);
 
+      let sprintDeptId = emp.departmentId;
+      if (department) {
+        const allDepts = await tx.select().from(departments);
+        const targetDeptStr = String(department).toLowerCase().trim();
+        const matched = allDepts.find(d => d.id === department || d.name.toLowerCase() === targetDeptStr || d.code.toLowerCase() === targetDeptStr || d.name.toLowerCase().includes(targetDeptStr));
+        if (matched) sprintDeptId = matched.id;
+      }
+
       // 3. Insert Personal Sprint with server-authenticated created_by
       const [newSprint] = await tx
         .insert(sprints)
         .values({
           sprintCode,
           entityId: emp.entityId,
-          departmentId: emp.departmentId,
+          departmentId: sprintDeptId,
           employeeId: emp.id,
           epicId: epicId || null,
           reviewingLeadId: reviewingLeadId || null,
@@ -190,7 +203,20 @@ async function handleSprintUpdate(req: any, res: any) {
       if (endDate !== undefined) updatePayload.endDate = endDate ? new Date(endDate) : null;
       if (status !== undefined) updatePayload.status = status;
       if (targetWeek !== undefined) updatePayload.targetWeek = targetWeek || null;
-      if (department !== undefined) updatePayload.department = department;
+      if (department !== undefined) {
+        updatePayload.department = department;
+        const targetDeptStr = String(department || '').toLowerCase().trim();
+        if (targetDeptStr) {
+          const allDepts = await tx.select().from(departments);
+          const matchedDept = allDepts.find((d: any) => {
+            if (d.id === department) return true;
+            return d.name.toLowerCase() === targetDeptStr || d.code?.toLowerCase() === targetDeptStr || d.name.toLowerCase().includes(targetDeptStr);
+          });
+          if (matchedDept) {
+            updatePayload.departmentId = matchedDept.id;
+          }
+        }
+      }
       if (epicId !== undefined) updatePayload.epicId = epicId || null;
       if (reviewingLeadId !== undefined) updatePayload.reviewingLeadId = reviewingLeadId || null;
 

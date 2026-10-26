@@ -370,6 +370,8 @@ export const TasksView: React.FC = () => {
       dueDate: task.dueDate ? (String(task.dueDate).includes('T') ? String(task.dueDate).split('T')[0] : String(task.dueDate)) : '',
       targetWeek: task.sprintWeek || task.targetWeek || 'Week 1 (Days 1–7)',
       priority: pCode,
+      department: task.department || task.departmentName || (employees.find((e: any) => e.id === task.assigneeId)?.departmentName) || 'Product & Tech',
+      departmentId: task.departmentId || null,
       createdAt: task.createdAt,
       createdById: task.createdById || task.creatorId,
       createdByName: task.createdByName || task.creatorName || (employees.find((e: any) => e.id === (task.createdById || task.creatorId)) ? `${employees.find((e: any) => e.id === (task.createdById || task.creatorId))?.firstName} ${employees.find((e: any) => e.id === (task.createdById || task.creatorId))?.lastName}`.trim() : task.createdBy || ''),
@@ -392,6 +394,7 @@ export const TasksView: React.FC = () => {
         title: updated.title,
         entity: updated.entity,
         entityCode: updated.entityCode || (updated.entity === 'CLIMAGRO' ? 'CAG' : updated.entity === 'COMMON' ? 'COMMON' : 'EHM'),
+        department: updated.department,
         epicId: updated.epicId !== undefined ? updated.epicId : null,
         projectId: updated.projectId !== undefined ? updated.projectId : null,
         assigneeName: updated.assignee === 'Unassigned' ? '' : updated.assignee,
@@ -416,6 +419,21 @@ export const TasksView: React.FC = () => {
         method: 'PATCH',
         body: JSON.stringify(patchBody),
       });
+
+      if ((updated as any).sprintId) {
+        await fetchApi(`/api/sprints/${(updated as any).sprintId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ department: updated.department }),
+        }).catch(() => {});
+      }
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === updated.id
+            ? { ...t, ...updated, department: updated.department, departmentName: updated.department }
+            : t
+        )
+      );
       toast.success(`Task ${updated.taskId} updated & saved to live database!`);
       await loadTasks();
       window.dispatchEvent(new CustomEvent('tasks-updated'));

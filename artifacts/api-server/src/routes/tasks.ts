@@ -204,6 +204,7 @@ export async function enrichTasks(tasksList: any[]) {
   const allInitiatives = await db.select().from(initiatives);
   const allProjects = await db.select().from(projects);
   const allEntities = await db.select().from(entities);
+  const allDepartments = await db.select().from(departments);
 
   const taskIds = tasksList.map(t => t.id).filter(Boolean);
   let allChecklists: any[] = [];
@@ -232,6 +233,7 @@ export async function enrichTasks(tasksList: any[]) {
     const parentInit = allInitiatives.find(i => i.id === (t.initiativeId || parentEpic?.initiativeId));
     const parentProj = allProjects.find(p => p.id === (t.projectId || parentEpic?.projectId));
     const entity = allEntities.find(ent => ent.id === t.entityId);
+    const dept = allDepartments.find(d => d.id === t.departmentId);
 
     const taskChecklistItems = allChecklists.filter(c => c.taskId === t.id);
     const taskCommentItems = allComments.filter(c => c.taskId === t.id);
@@ -324,6 +326,10 @@ export async function enrichTasks(tasksList: any[]) {
       projectId: t.projectId || parentEpic?.projectId || null,
       taskId: t.taskCode || t.id,
       taskCode: t.taskCode,
+      department: dept?.name || '',
+      departmentId: t.departmentId,
+      departmentName: dept?.name || '',
+      departmentCode: dept?.code || '',
       checklists: taskChecklistItems,
       comments: taskCommentItems,
       entity: entity?.code === 'CAG'
@@ -421,6 +427,7 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
     creatorId,
     reviewingLeadId,
     reviewingLeadIds, // Array of reviewing lead IDs
+    department,
     departmentId,
     sprintId,
     initiativeId,
@@ -572,7 +579,21 @@ router.post('/', requireRole(['ADMIN', 'MANAGER', 'EMPLOYEE']), async (req, res)
       const targetReviewingLeadId = primaryReviewingLeadId || (req.user?.employeeId && (!assignee || req.user.employeeId !== assignee.id) ? req.user.employeeId : null);
 
       // Resolve Department ID safely
-      let finalDeptId = departmentId || assignee?.departmentId;
+      let finalDeptId = departmentId;
+      if (!finalDeptId && department) {
+        const allDepts = await tx.select().from(departments);
+        const targetDeptStr = String(department).toLowerCase().trim();
+        const matched = allDepts.find(d =>
+          d.id === department ||
+          d.name.toLowerCase() === targetDeptStr ||
+          d.code.toLowerCase() === targetDeptStr ||
+          d.name.toLowerCase().includes(targetDeptStr)
+        );
+        if (matched) finalDeptId = matched.id;
+      }
+      if (!finalDeptId) {
+        finalDeptId = assignee?.departmentId;
+      }
       if (!finalDeptId) {
         const [firstDept] = await tx.select().from(departments).limit(1);
         finalDeptId = firstDept?.id;
@@ -717,6 +738,8 @@ const handleTaskUpdate = async (req: any, res: any) => {
     reviewingLeadIds,
     reviewingLead,
     dueDate,
+    department,
+    departmentId,
     entityId,
     entity,
     entityCode,
@@ -839,6 +862,26 @@ const handleTaskUpdate = async (req: any, res: any) => {
         }
       } else if (entityId && typeof entityId === 'string' && entityId.length === 36) {
         updateData.entityId = entityId;
+      }
+
+      // Handle Department update
+      const targetDeptStr = (department || departmentId || '').toString().trim();
+      if (targetDeptStr) {
+        const deptStr = targetDeptStr.toLowerCase();
+        const allDepts = await tx.select().from(departments);
+        const matchedDept = allDepts.find((d) => {
+          if (d.id === targetDeptStr) return true;
+          return d.name.toLowerCase() === deptStr || d.code.toLowerCase() === deptStr || d.name.toLowerCase().includes(deptStr);
+        });
+        if (matchedDept) {
+          updateData.departmentId = matchedDept.id;
+          if (existingTaskCheck.sprintId) {
+            await tx.update(sprints).set({
+              department: matchedDept.name,
+              departmentId: matchedDept.id,
+            }).where(eq(sprints.id, existingTaskCheck.sprintId));
+          }
+        }
       }
 
       // Handle Lineage Updates (Epic / Sprint reassignment) while keeping taskCode IMMUTABLE
